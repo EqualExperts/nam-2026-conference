@@ -33,3 +33,10 @@ export const relativeDate = (iso, clock) => {
 };
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * Booked minutes as the whole hours an agenda shows. My Agenda's day headings
+ * and its total both round through here, so the total is the sum of the
+ * headings an attendee can see and the two can never disagree.
+ */
+export const contentHours = (minutes) => Math.round(minutes / 60);

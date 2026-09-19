@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
-import { dayLabel, plural, timeRange } from '../lib/format.js';
+import { contentHours, dayLabel, plural, timeRange } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { NextUpCard } from '../components/NextUpCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
@@ -148,7 +148,7 @@ function DayPlan({ day, isToday }) {
         <div className="flex items-center gap-3 text-xs text-muted">
           <span>{plural(day.sessions.length, 'session')}</span>
           <span className="text-faint">·</span>
-          <span>{Math.round(day.totalMinutes / 60)}h of content</span>
+          <span>{contentHours(day.totalMinutes)}h of content</span>
           {venues.length > 1 && (
             <Chip accent="amber" className="!py-0.5">
               <Icon name="car" className="size-3" /> {venues.join(' + ')}
@@ -195,6 +195,8 @@ export function MyAgendaPage() {
   const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
   const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
   const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
+  // Summed after rounding, so the tile is the sum of the day headings on screen.
+  const totalHours = days.reduce((n, d) => n + contentHours(d.totalMinutes), 0);
   const crossVenueDays = days.filter((d) => d.venuesVisited.length > 1).length;
 
   return (
@@ -229,10 +231,11 @@ export function MyAgendaPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
             <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
+            <Stat value={totalHours} label="Hours booked" data-testid="stat-hours-booked" />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
           </div>
 

@@ -24,6 +24,21 @@ test.describe('My Agenda', () => {
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
+  test('the hours booked tile totals the hours on the day headings', async ({ page }) => {
+    // Reduced motion so CountUp lands on its final number rather than counting
+    // up through it, which a polling assertion could catch mid-animation.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await visit(page, '/my-agenda', { as: ATTENDEES.kenji });
+
+    const headings = await page.locator('[data-testid^="plan-day-"]').getByText(/h of content/).allTextContents();
+    expect(headings.length, 'this attendee has no days booked').toBeGreaterThan(0);
+    const expected = headings.reduce((n, t) => n + Number(t.match(/(\d+)h/)[1]), 0);
+
+    const tile = page.getByTestId('stat-hours-booked');
+    await tile.scrollIntoViewIfNeeded();
+    await expect(tile).toHaveText(new RegExp(`^${expected}\\s*Hours booked$`, 'i'));
+  });
+
   test('each attendee sees their own plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
     await expect(page.getByRole('heading', { name: /Sofia’s agenda/ })).toBeVisible();

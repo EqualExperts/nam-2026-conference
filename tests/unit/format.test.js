@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { time, timeRange, dayLabel, shortDay, relativeDate, plural } from '../../src/lib/format.js';
+import { time, timeRange, dayLabel, shortDay, relativeDate, plural, contentHours } from '../../src/lib/format.js';
 
 describe('Clock times read as people say them', () => {
   test('midnight and noon are twelve, not zero', () => {
@@ -89,5 +89,18 @@ describe('Counts are pluralised', () => {
   test('an irregular plural can be given outright', () => {
     assert.equal(plural(1, 'person', 'people'), '1 person');
     assert.equal(plural(3, 'person', 'people'), '3 people');
+  });
+});
+
+describe('Booked time is shown in whole hours', () => {
+  test('an empty agenda is nought hours, not a blank', () => {
+    assert.equal(contentHours(0), 0);
+  });
+
+  test('minutes round to the nearest hour', () => {
+    assert.equal(contentHours(90), 2);
+    assert.equal(contentHours(150), 3);
+    assert.equal(contentHours(45), 1);
+    assert.equal(contentHours(29), 0);
   });
 });
