@@ -20,7 +20,7 @@
     "avatars": "node scripts/fetch-avatars.mjs"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "react": "^18.3.1",
