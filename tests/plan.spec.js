@@ -24,6 +24,21 @@ test.describe('My Agenda', () => {
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
+  test('the hours booked tile totals the per-day headings', async ({ page }) => {
+    await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
+
+    const tile = page.getByTestId('total-hours');
+    // the figure counts up once it is halfway on screen, so put it in the middle
+    await tile.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+
+    const perDay = (await page.getByTestId('day-hours').allTextContents())
+      .map((t) => Number(t.match(/^(\d+)h/)[1]));
+    expect(perDay.length, 'this attendee should have days booked').toBeGreaterThan(1);
+
+    const total = perDay.reduce((n, h) => n + h, 0);
+    await expect.poll(async () => (await tile.textContent()).match(/^\d+/)[0]).toBe(String(total));
+  });
+
   test('each attendee sees their own plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
     await expect(page.getByRole('heading', { name: /Sofia’s agenda/ })).toBeVisible();

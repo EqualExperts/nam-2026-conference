@@ -148,7 +148,7 @@ function DayPlan({ day, isToday }) {
         <div className="flex items-center gap-3 text-xs text-muted">
           <span>{plural(day.sessions.length, 'session')}</span>
           <span className="text-faint">·</span>
-          <span>{Math.round(day.totalMinutes / 60)}h of content</span>
+          <span data-testid="day-hours">{day.hours}h of content</span>
           {venues.length > 1 && (
             <Chip accent="amber" className="!py-0.5">
               <Icon name="car" className="size-3" /> {venues.join(' + ')}
@@ -181,11 +181,14 @@ export function MyAgendaPage() {
     .map((d) => {
       const sessions = d.sessions.filter((s) => reservationFor(s.id));
       const keptIds = new Set(sessions.map((s) => s.id));
+      const totalMinutes = sessions.reduce((n, s) => n + s.durationMins, 0);
       return {
         ...d,
         sessions,
         conflicts: d.conflicts.filter((c) => c.sessionIds.every((id) => keptIds.has(id))),
-        totalMinutes: sessions.reduce((n, s) => n + s.durationMins, 0),
+        totalMinutes,
+        // the day heading and the total tile both read this, so they cannot disagree
+        hours: Math.round(totalMinutes / 60),
         venuesVisited: [...new Set(sessions.map((s) => s.venue.shortName))],
       };
     })
@@ -196,6 +199,7 @@ export function MyAgendaPage() {
   const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
   const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
   const crossVenueDays = days.filter((d) => d.venuesVisited.length > 1).length;
+  const totalHours = days.reduce((n, d) => n + d.hours, 0);
 
   return (
     <div className="space-y-10">
@@ -229,11 +233,18 @@ export function MyAgendaPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
             <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
+            <Stat
+              value={totalHours}
+              label="Hours booked"
+              accent="violet"
+              className="col-span-2 sm:col-span-1"
+              data-testid="total-hours"
+            />
           </div>
 
           {days.length === 0 ? (
