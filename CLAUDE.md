@@ -424,6 +424,11 @@ one job and the two Playwright projects in two more, all in parallel, on every
 push and pull request. A failed run uploads the HTML report and the traces, and
 every run writes a pass/fail table to the Actions summary.
 
+## Where work is tracked
+
+**Tickets are GitHub Issues.** This repo is made to be forked, so the tracker is
+the Issues of the fork you are working in, never the upstream's.
+
 ## Data model in one paragraph
 
 Four days starting on the day you seed, ~140 sessions, 110 speakers, across
