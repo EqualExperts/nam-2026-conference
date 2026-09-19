@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { time, timeRange, dayLabel, shortDay, relativeDate, plural } from '../../src/lib/format.js';
+import { time, timeRange, dayLabel, shortDay, relativeDate, plural, hours } from '../../src/lib/format.js';
 
 describe('Clock times read as people say them', () => {
   test('midnight and noon are twelve, not zero', () => {
@@ -89,5 +89,22 @@ describe('Counts are pluralised', () => {
   test('an irregular plural can be given outright', () => {
     assert.equal(plural(1, 'person', 'people'), '1 person');
     assert.equal(plural(3, 'person', 'people'), '3 people');
+  });
+});
+
+describe('Hours of content are rounded once, in one place', () => {
+  test('part hours round to the nearest whole one', () => {
+    assert.equal(hours(0), 0);
+    assert.equal(hours(45), 1);
+    assert.equal(hours(89), 1);
+    assert.equal(hours(90), 2);
+  });
+
+  test('a total is the sum of the days, so it always matches the day headings', () => {
+    // Two days that each read "3h", so the agenda total has to read 6h —
+    // rounding the combined 418 minutes instead would say 7 and contradict them.
+    const days = [209, 209];
+    assert.equal(days.reduce((n, m) => n + hours(m), 0), 6);
+    assert.equal(hours(209 + 209), 7);
   });
 });

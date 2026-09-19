@@ -24,6 +24,22 @@ test.describe('My Agenda', () => {
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
+  test('the hours booked tile totals the day headings', async ({ page }) => {
+    // The tile counts up from zero; reduced motion lands it on its final value at once.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
+
+    const headings = page.getByTestId(/^plan-day-/).getByText(/^\d+h of content$/);
+    await expect(headings.first()).toBeVisible();
+    const perDay = (await headings.allTextContents()).map((t) => Number(t.match(/^\d+/)[0]));
+    const expected = perDay.reduce((n, h) => n + h, 0);
+    expect(expected, 'Sofia has the biggest plan, so there are hours to total').toBeGreaterThan(0);
+
+    const tile = page.getByTestId('stat-hours-booked');
+    await expect(tile).toContainText('Hours booked');
+    expect(Number((await tile.innerText()).match(/\d+/)[0])).toBe(expected);
+  });
+
   test('each attendee sees their own plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
     await expect(page.getByRole('heading', { name: /Sofia’s agenda/ })).toBeVisible();

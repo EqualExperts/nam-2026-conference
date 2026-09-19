@@ -33,3 +33,11 @@ export const relativeDate = (iso, clock) => {
 };
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * Whole hours of content. My Agenda shows this per day and again as a total
+ * across the conference, so both round through here and a total is the sum of
+ * the days — rounding the combined minutes instead would drift from the day
+ * headings and read as a bug.
+ */
+export const hours = (minutes) => Math.round(minutes / 60);
