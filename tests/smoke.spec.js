@@ -41,7 +41,7 @@ test('unknown routes show the not-found page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toBeVisible();
 });
 
-test('the not-found page offers a route home as well as the schedule', async ({ page }) => {
+test('the not-found page leads with a route home, then the schedule', async ({ page }) => {
   await visit(page, '/definitely-not-a-page');
 
   const actions = page.getByTestId('not-found-actions');
@@ -49,6 +49,9 @@ test('the not-found page offers a route home as well as the schedule', async ({ 
   const home = actions.getByRole('link', { name: /home/i });
   await expect(schedule).toBeVisible();
   await expect(home).toBeVisible();
+
+  // Home comes first: a mistyped URL is usually someone trying to get back.
+  await expect(actions.getByRole('link')).toHaveText([/home/i, /schedule/i]);
 
   // Keyboard, not just the mouse: focus the link and press Enter.
   await home.focus();

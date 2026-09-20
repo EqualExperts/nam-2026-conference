@@ -11,8 +11,8 @@ export function NotFoundPage() {
         description="That page is not on the programme. Try the schedule instead."
         action={
           <div className="flex flex-wrap justify-center gap-2" data-testid="not-found-actions">
-            <Button to="/schedule" variant="primary" size="sm">Browse the schedule</Button>
             <Button to="/" variant="ghost" size="sm">Go to the home page</Button>
+            <Button to="/schedule" variant="primary" size="sm">Browse the schedule</Button>
           </div>
         }
       />
