@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
-import { timeRange } from '../lib/format.js';
+import { plural, timeRange } from '../lib/format.js';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, Chip, SeatButton, Rating, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
@@ -193,13 +193,22 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
         <span className="text-overlay">·</span>
         <span className="text-faint">{session.level}</span>
         <div className="ml-auto flex items-center gap-2.5">
-          {isFull ? (
-            <span className="font-bold text-rose-300">
-              Full{waiting > 0 && ` · ${waiting} waiting`}
-            </span>
-          ) : seatsLeft <= 10 ? (
-            <span className="font-bold text-amber-300">{seatsLeft} seats left</span>
-          ) : null}
+          {/* How full it is, so the list answers "can I still get in?" without a
+              click. Keynotes say it on their cover strip already, and a session
+              with no capacity says nothing rather than reading as sold out. */}
+          {!feature && session.capacity > 0 && (
+            isFull ? (
+              <span data-testid="card-seats"
+                className="rounded-full bg-rose-500/15 px-2 py-0.5 font-bold text-rose-200">
+                Full{waiting > 0 && ` · ${waiting} waiting`}
+              </span>
+            ) : (
+              <span data-testid="card-seats"
+                className={cx('font-semibold', seatsLeft <= 10 ? 'text-amber-300' : 'text-faint')}>
+                {plural(seatsLeft, 'seat')} left
+              </span>
+            )
+          )}
           {session.isRecorded && <Icon name="play" className="size-3 text-faint" />}
           <Rating value={session.avgRating} count={session.ratingCount} />
         </div>
