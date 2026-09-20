@@ -41,6 +41,24 @@ test('unknown routes show the not-found page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toBeVisible();
 });
 
+test('the not-found page offers a route home as well as the schedule', async ({ page }) => {
+  await visit(page, '/definitely-not-a-page');
+
+  const actions = page.getByTestId('not-found-actions');
+  const schedule = actions.getByRole('link', { name: /schedule/i });
+  const home = actions.getByRole('link', { name: /home/i });
+  await expect(schedule).toBeVisible();
+  await expect(home).toBeVisible();
+
+  // Keyboard, not just the mouse: focus the link and press Enter.
+  await home.focus();
+  await expect(home).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toHaveCount(0);
+});
+
 test('the API is reachable and seeded', async ({ request }) => {
   const res = await request.get(`${API}/health`);
   expect(res.ok()).toBeTruthy();
