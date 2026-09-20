@@ -9,12 +9,7 @@ export function NotFoundPage() {
         icon="search"
         title="Nothing scheduled here"
         description="That page is not on the programme. Try the schedule instead."
-        action={
-          <div className="flex flex-wrap justify-center gap-2" data-testid="not-found-actions">
-            <Button to="/" variant="ghost" size="sm">Go to the home page</Button>
-            <Button to="/schedule" variant="primary" size="sm">Browse the schedule</Button>
-          </div>
-        }
+        action={<Button to="/schedule" variant="primary" size="sm">Schedule</Button>}
       />
     </div>
   );

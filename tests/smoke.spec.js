@@ -41,24 +41,20 @@ test('unknown routes show the not-found page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toBeVisible();
 });
 
-test('the not-found page leads with a route home, then the schedule', async ({ page }) => {
+test('the not-found page offers the schedule as its only way out', async ({ page }) => {
   await visit(page, '/definitely-not-a-page');
 
-  const actions = page.getByTestId('not-found-actions');
-  const schedule = actions.getByRole('link', { name: /schedule/i });
-  const home = actions.getByRole('link', { name: /home/i });
-  await expect(schedule).toBeVisible();
-  await expect(home).toBeVisible();
-
-  // Home comes first: a mistyped URL is usually someone trying to get back.
-  await expect(actions.getByRole('link')).toHaveText([/home/i, /schedule/i]);
+  // One action, not a menu of them: the nav already carries everywhere else.
+  const actions = page.locator('#main').getByRole('link');
+  await expect(actions).toHaveText(['Schedule']);
 
   // Keyboard, not just the mouse: focus the link and press Enter.
-  await home.focus();
-  await expect(home).toBeFocused();
+  const schedule = actions.first();
+  await schedule.focus();
+  await expect(schedule).toBeFocused();
   await page.keyboard.press('Enter');
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/schedule/);
   await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toHaveCount(0);
 });
 
