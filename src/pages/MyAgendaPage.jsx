@@ -195,6 +195,9 @@ export function MyAgendaPage() {
   const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
   const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
   const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
+  // Sum the hours each day *heading* shows, not the minutes behind them: round
+  // once per day and the tile can never read an hour off from the days under it.
+  const totalHours = days.reduce((n, d) => n + Math.round(d.totalMinutes / 60), 0);
   const crossVenueDays = days.filter((d) => d.venuesVisited.length > 1).length;
 
   return (
@@ -229,8 +232,9 @@ export function MyAgendaPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
+            <Stat value={totalHours} label="Hours booked" accent="violet" data-testid="stat-hours-booked" />
             <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />

@@ -24,6 +24,23 @@ test.describe('My Agenda', () => {
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
+  /*
+   * Read-only, so it needs no lane: the tile and the day headings are rendered
+   * from one fetch, so they agree whatever another test books in the meantime.
+   */
+  test('the hours booked tile totals the per-day headings', async ({ page }) => {
+    await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
+
+    const headings = await page.locator('[data-testid^="plan-day-"]')
+      .getByText(/^\d+h of content$/).allInnerTexts();
+    expect(headings.length, 'this attendee should be booked on several days').toBeGreaterThan(1);
+    const expected = headings.reduce((n, t) => n + Number(t.match(/\d+/)[0]), 0);
+
+    const tile = page.getByTestId('stat-hours-booked');
+    await expect(tile).toContainText('Hours booked');
+    await expect(tile.locator('div').first()).toHaveText(String(expected));
+  });
+
   test('each attendee sees their own plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
     await expect(page.getByRole('heading', { name: /Sofia’s agenda/ })).toBeVisible();
