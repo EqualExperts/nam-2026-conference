@@ -142,8 +142,9 @@ export async function claim({
 }
 
 /** Release this worktree's lane, or one named by port. Returns what it freed. */
-export function release({ root = laneRoot(), worktree = worktreeOf(), port = null } = {}) {
-  const lane = list(root).find((l) => (port ? l.port === Number(port) : l.worktree === worktree));
+export function release({ root = laneRoot(), worktree = worktreeOf(), port = null, label = null } = {}) {
+  const lane = list(root).find((l) =>
+    port ? l.port === Number(port) : label ? String(l.label) === String(label) : l.worktree === worktree);
   if (!lane) return null;
   rmSync(lockPath(root, lane.port), { force: true });
   return lane;
@@ -158,6 +159,23 @@ export function release({ root = laneRoot(), worktree = worktreeOf(), port = nul
  * tests pin that, because it is exactly the sort of thing that silently
  * stops guarding anything.
  */
+/**
+ * The lane this worktree already holds, or null — a lookup, never a claim.
+ * Playwright's config calls it so a worktree that claimed a lane uses it on
+ * every run, not only when the shell that runs it remembered to export it:
+ * shell state does not survive between an agent's commands, and a run that
+ * forgot fell back to the default ports and another worktree's app.
+ */
+export function heldLane({ cwd = process.cwd(), root, worktree } = {}) {
+  try {
+    const r = root ?? laneRoot(cwd);
+    const w = worktree ?? worktreeOf(cwd);
+    return list(r).find((lane) => lane.worktree === w) ?? null;
+  } catch {
+    return null;   // not a git checkout, or no registry yet
+  }
+}
+
 export function asEnv(lane) {
   return [
     `export ORBIT_LANE=${lane.lane}`,
@@ -179,8 +197,14 @@ if (invokedDirectly) {
     console.log(asEnv(lane));
     console.error(`  lane ${lane.lane} → api ${lane.port}, web ${lane.webPort}${lane.label ? ` (${lane.label})` : ''}`);
   } else if (command === 'release') {
-    const lane = release({ port: arg ?? null });
-    console.log(lane ? `  released lane ${lane.lane} (api ${lane.port})` : '  nothing to release');
+    // A number is a port; anything else is the label it was claimed with —
+    // `claim 29` then `release 29` used to print "nothing to release" and
+    // leave the lane held.
+    const byPort = arg && /^\d{4,5}$/.test(arg) && Number(arg) >= FIRST_PORT;
+    const lane = release(byPort ? { port: arg } : arg ? { label: arg } : {});
+    if (lane) console.log(`  released lane ${lane.lane} (api ${lane.port})`);
+    else if (arg) { console.error(`  no lane held for ${arg}`); process.exitCode = 1; }
+    else console.log('  nothing to release');
   } else if (command === 'list') {
     const lanes = list(laneRoot());
     if (!lanes.length) console.log('  no lanes held');
@@ -189,7 +213,7 @@ if (invokedDirectly) {
       console.log(`  lane ${lane.lane}  api ${lane.port}  web ${lane.webPort}  ${lane.name}${lane.label ? `  ${lane.label}` : ''}${stale}`);
     }
   } else {
-    console.error('usage: lane.mjs [claim <label> | release [port] | list]');
+    console.error('usage: lane.mjs [claim <label> | release [port|label] | list]');
     process.exitCode = 1;
   }
 }

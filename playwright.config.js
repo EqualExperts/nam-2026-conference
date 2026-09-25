@@ -1,4 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
+import { heldLane } from './scripts/lane.mjs';
+
+// A worktree that claimed a lane runs on it even when nobody exported it —
+// the webServer below inherits these, and ORBIT_LANE turns off reuse.
+if (!process.env.ORBIT_LANE && !process.env.CI) {
+  const lane = heldLane();
+  if (lane) {
+    process.env.ORBIT_LANE = String(lane.lane);
+    process.env.PORT = String(lane.port);
+    process.env.WEB_PORT = String(lane.webPort);
+  }
+}
 
 /**
  * Verification harness.

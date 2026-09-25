@@ -31,6 +31,10 @@ concurrency:
 
 jobs:
   fresh-context:
+    # A draft is what `ship` opens when it hands a ticket back: it already
+    # knows what is wrong, and says so on the pull request. Marking it ready
+    # is what asks for this pass.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -71,22 +75,13 @@ jobs:
           # comments, and never opens a pull request or pushes. Without this
           # line it simply never runs on anybody who has not set a PAT.
           allowed_bots: "github-actions[bot]"
-          prompt: |
-            /code-review ${{ github.event.pull_request.number }}
-
-            Finish by writing one line to /tmp/review-verdict, in exactly this shape:
-              PASS <high|medium|low> <what you were able to judge>
-            or
-              FAIL <the blocker>
-            The confidence word is required — without it this run publishes as
-            unproven rather than as your verdict, and so does no file at all.
-          # Opus, deliberately. Every finding that mattered here was a
-          # judgement call — a trigger that could not fire, a prompt
-          # contradicting its own parser — and this is the wrong place to
-          # save money.
+          # A saved workflow, run as a slash command. It composes the
+          # comment and writes /tmp/review-verdict itself, so the shape of both
+          # no longer depends on a model remembering it.
+          prompt: "/code-review ${{ github.event.pull_request.number }}"
           claude_args: >-
-            --model claude-opus-5 --max-turns 40
-            --allowedTools "Bash,Read,Glob,Grep"
+            --model claude-opus-5 --max-turns 20
+            --allowedTools "Workflow,Bash,Read,Glob,Grep"
 
       # Red means a blocker was found, not that merging is forbidden — nothing
       # here is a required check. It puts the blocker where a skim-reader sees

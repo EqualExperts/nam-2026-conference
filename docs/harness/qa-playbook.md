@@ -1,12 +1,10 @@
----
-name: qa
-description: >-
-  Drive the running app in a browser and try to break a change that already
-  passed its tests — the cases nobody wrote a test for. Reports findings on the
-  pull request and can fail the check. Use when asked to QA or exploratory-test
-  a pull request in this repo, or when told "/qa 42".
-allowed-tools: Read, Write, Glob, Grep, Bash
----
+<!--
+The rules a QA pass follows. Not a command: `/qa <pr>` runs the workflow
+(.claude/workflows/qa.js) — plan, probe, reproduce on the branch and its base,
+publish — and its agents are pointed at the numbered sections here. The
+workflow composes the comment and the verdict line (§4–§5) from what
+reproduced, so where this says "you" write them, it does.
+-->
 
 # QA a change
 
@@ -25,7 +23,9 @@ QA pass becomes a fishing trip.
 ## 1. Decide what is worth probing
 
 Read the ticket's **Done when:**, the diff, and the tests it added. The tests
-say where *not* to spend time — what they assert is already proven.
+say where *not* to spend time — what they assert is already proven. The
+`docs/context/` doc for the area (`node scripts/context.mjs index`) names its
+callers and test ids, which is most of what you need to aim a probe.
 
 Then pick from these, in this order:
 

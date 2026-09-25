@@ -1,17 +1,21 @@
----
-name: build
-description: >-
-  Take one GitHub issue from this repo to a verified pull request:
-  claim it, work it in an isolated workspace, prove it in the browser, and
-  hand it back to a human — or stop and say why. Use when asked to build,
-  implement or pick up an issue, when told "/build 42", or when a ticket is
-  labelled ready-for-ai.
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
----
+# Ship playbook
 
-# Build an issue
+How each step of a build is done. **This is not a command** — `/ship <n>`
+runs the loop (`.claude/workflows/ship.js`), and each of its phase agents is
+told which numbered sections here are theirs. Do those and nothing else: the
+workflow owns the order, the loops and when to stop.
 
-One issue in, one reviewable pull request out, with the evidence attached.
+| Phase | Sections |
+| --- | --- |
+| Setup | §1–§3 |
+| Spec | §3b |
+| Implement | §4–§6 |
+| Verify | §7 |
+| Fix | §5's rules still hold |
+| PR | §8 |
+| Hand-back | §9 |
+| Cleanup (laptop) | §10 |
+
 `CLAUDE.md` is the specification for this repo — most of what looks like a
 judgement call is settled there.
 
@@ -23,19 +27,25 @@ question, and never run a command twice to grep it the second time.
 
 ```bash
 gh issue view <n> --json number,title,body,labels,state
-gh pr list --state open --json number,headRefName \
+gh pr list --state open --json number,headRefName,isDraft \
   --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
 ```
 
 The **Done when:** clause is what you build, and later what you prove. Go to
-step 8 and stop if the issue is closed, already has a pull request, states no
-outcome you could write a check against, or asks for two unrelated things.
+step 9 and stop if the issue is closed, already has a **ready** (non-draft)
+pull request, states no outcome you could write a check against, or asks for
+two unrelated things. A **draft** on an `issue-<n>-*` branch is an earlier
+attempt handed back: this run continues on that branch, and §8 turns the draft
+into the pull request.
 
 ## 2. Claim it
 
 ```bash
-gh issue edit <n> --add-label ai-working --remove-label ready-for-ai
+gh issue edit <n> --add-label ai-working --remove-label ready-for-ai --remove-label needs-human
 ```
+
+`needs-human` goes too: on a retry it is left from the attempt that was
+handed back, and a ticket that ships should not still say it is stuck.
 
 ## 3. Get a workspace
 
@@ -76,11 +86,17 @@ it true: a spec that disagrees with its own pull request is worse than none.
 
 ## 4. Find the change site
 
-Grep for the behaviour the ticket names; read only the file or two that own
-it. **`CLAUDE.md` already describes the layout, the conventions and the three
-test layers — take its word rather than re-deriving any of it from source.**
-Reading the Playwright config, the test helpers or the seed to work out how
-this repo is organised is the expensive mistake here.
+```bash
+node scripts/context.mjs index
+```
+
+That is the map: one entry per area of the app, saying what it covers and when
+to read it. Read the one or two docs in `docs/context/` your ticket touches;
+they name the functions, payloads and test ids, so you open source only for
+the lines you will change. **Take their word, and `CLAUDE.md`'s, rather than
+re-deriving how the repo is organised from source** — reading the Playwright
+config, the test helpers or the seed to work that out is the expensive mistake
+here. A doc that turns out to be wrong is a finding: fix it on your branch.
 
 It also carries the reasoning behind decisions that look arbitrary and are
 not. A change contradicting a stated decision is wrong even when it is green.
@@ -107,16 +123,19 @@ describes.
 ## 7. Prove it
 
 ```bash
-npm test          # green
-npm run verify    # the gate: real browser, desktop and mobile
+node scripts/gate.mjs         # npm test + the whole browser suite → one JSON line
 npm run shot -- /the-route    # only if something visual moved
 ```
 
-**Once each.** Read what you need from the first run. In a runner Chromium is
+The Verify phase runs this and returns its last line verbatim — nothing
+else. It is `npm test` plus the whole Playwright suite, with the verdict read
+from Playwright's JSON report, one retry for a flaky browser test, and a list
+of any assertions the branch removed. Run it once; in a runner Chromium is
 already installed — never run `playwright install`.
 
-**No green `verify`, no pull request.** Not "probably fine", not "that failure
-looks unrelated". If you cannot get it green, go to step 9.
+**Do not interpret a red result or try to fix it.** Return the line. The loop
+decides what happens next: red goes to a fix round, and only the workflow
+hands a ticket back.
 
 ## 8. Open the pull request
 
@@ -187,8 +206,10 @@ shows something the one before it did not**:
 Five is the hard limit and `pr-media.mjs` enforces it per pull request, but
 it is a backstop, not a target.
 
-```bash
-```
+Write the body to `/tmp/pr-body.md`, in the shape below. If a draft already
+exists for this branch — an earlier attempt that was handed back — do not
+create a second one: `gh pr edit <draft> --body-file /tmp/pr-body.md` and then
+`gh pr ready <draft>`.
 
 ```bash
 git push -u origin HEAD
@@ -221,8 +242,7 @@ table so they sit side by side>
 | Check | Result |
 | --- | --- |
 | `<the test that proves the ticket>` | red before, green after |
-| `npm test` | 161 passed |
-| `npm run verify` | 155 passed · desktop + mobile |
+| `node scripts/gate.mjs` | unit 178 passed · browser 155 passed, at `abc1234` |
 
 <details>
 <summary>Worth a closer look</summary>
@@ -235,14 +255,22 @@ entirely if there is nothing.>
 
 ## 9. If you cannot finish
 
-A normal outcome, not a failure.
+A normal outcome, not a failure. Push what is committed and open a **draft**
+pull request so the work is not lost — `Refs #<n>`, never `Closes`, and a
+*Why this stopped* section listing what is still open. Skip the draft if
+nothing beyond the spec is committed.
+
+If a draft from an earlier attempt is already open on this branch, update it
+(`gh pr edit <draft> --body-file /tmp/pr-body.md`) rather than creating one.
 
 ```bash
-gh issue comment <n> --body "<what you tried, the output that stopped you, what it needs from a person>"
+gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
+gh issue comment <n> --body "<what you tried, what stopped it, what it needs from a person, the draft>"
 gh issue edit <n> --add-label needs-human --remove-label ai-working
 ```
 
-No pull request. **Do not narrow the ticket to something you can finish and
+A draft never presents itself as done: code review and QA skip it until a
+person marks it ready. **Do not narrow the ticket to something you can finish and
 present that as done** — a half-built ticket that looks complete costs more
 than one that is honestly stuck.
 

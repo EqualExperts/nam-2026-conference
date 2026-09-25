@@ -16,6 +16,18 @@ npm install && npm run dev     # seeds, starts API + web on :5173
 
 No login — pick an attendee from the switcher. Two of them are also speaking.
 
+> [!IMPORTANT]
+> **Forked or copied this repo? The agents will not run until you do this.**
+> A fork copies the workflows but **not the labels**, and has **no API key** —
+> so labelling an issue `ready-for-ai` silently does nothing.
+>
+> 1. **Settings → Secrets and variables → Actions →** add `ANTHROPIC_API_KEY`
+>    (a key scoped to a *workspace* — an org-level key is refused).
+> 2. **Actions → Set up the harness → Run workflow.** Creates the labels and
+>    tells you in its summary anything else that is missing.
+>
+> Five minutes, once. [Full checklist ↓](#set-up-your-fork)
+
 ## The pipeline
 
 ```mermaid
@@ -23,30 +35,43 @@ flowchart TB
     V["🎙️ transcript · voice note · screenshot"]
     P["proposal"]
     I["GitHub Issue<br/><i>why · what · Done when…</i>"]
-    B(["build<br/><i>spec → failing test → code</i>"])
-    G{"npm run verify<br/>desktop + mobile"}
-    NH["🔴 needs-human<br/><i>says what stopped it</i>"]
-    PR["pull request<br/><i>screenshot · red→green · spec</i>"]
+    NH["🔴 needs-human<br/><i>draft PR · what is still open</i>"]
+    PR["pull request<br/><i>spec · proof · audit rounds</i>"]
     V2["verdict + <b>confidence</b><br/><i>coverage, not conviction</i>"]
     H{"you merge"}
     M["main"]
 
     V -->|process-requirements| P
     P -->|create-tasks| I
-    I -->|"you label <b>ready-for-ai</b>"| B
-    B --> G
-    G -->|red| NH
+    I -->|"you label <b>ready-for-ai</b> → <b>/ship</b>"| SP
+
+    subgraph ship["ship · every step a fresh agent"]
+        direction TB
+        SP(["spec"]) --> SA{"spec audit"}
+        SA -->|blockers| SP
+        SA -->|clean| IM(["implement<br/><i>failing check first</i>"])
+        IM --> VF{"gate<br/>unit + browser, desktop + mobile"}
+        VF -->|green| CA{"independent audit<br/><i>criteria · rules · browser<br/>each blocker vs a skeptic</i>"}
+        VF -->|red| FX(["fix"])
+        CA -->|confirmed blocker| FX
+        FX --> VF
+        CA -->|clean| CX(["context<br/><i>update docs/context</i>"])
+        CX --> LN(["learn<br/><i>what the audits caught → docs</i>"])
+    end
+
+    SA -.->|3 rounds| NH
+    FX -.->|"4 rounds, or stuck"| NH
     NH -.->|you answer, relabel| I
-    G -->|green| PR
+    LN --> PR
     PR --> gates
     gates --> V2
     V2 --> H
     H --> M
 
-    subgraph gates["both run on every pull request · neither can block a merge"]
+    subgraph gates["both run on every ready pull request · neither can block a merge"]
         direction LR
-        CR(["code review · Opus<br/><i>starts from the criteria,<br/>not the diff</i>"])
-        QA(["qa · Sonnet<br/><i>drives Chromium for what<br/>no test covers</i>"])
+        CR(["code-review workflow · Opus<br/><i>4 lenses → skeptic →<br/>verdict + confidence</i>"])
+        QA(["qa workflow · Sonnet<br/><i>probes both viewports,<br/>reproduces on branch + base</i>"])
     end
 
     style V fill:#8250DF,color:#fff
@@ -57,10 +82,12 @@ flowchart TB
     style M fill:#1A7F37,color:#fff
 ```
 
-## Two harnesses, eight skills
+## Two harnesses
 
 **Product** decides what to build. **Engineering** builds it. They meet at a
-GitHub Issue. All of it is markdown in `.claude/skills/` — that is the harness.
+GitHub Issue. The product skills are markdown in `.claude/skills/`; the
+engineering side is three workflow scripts in `.claude/workflows/`, each
+following a playbook in `docs/harness/` — together, that is the harness.
 
 | | Skill | What it does |
 | --- | --- | --- |
@@ -69,9 +96,9 @@ GitHub Issue. All of it is markdown in `.claude/skills/` — that is the harness
 | 📋 | `process-requirements` | Distils a transcript into durable knowledge and actionable work; surfaces conflicts |
 | 📋 | `create-tasks` | Raises the tickets — goal first, deduplicated, one goal each |
 | 📋 | `update-context` | Folds agreed knowledge back into the project's docs |
-| ⚙️ | `build` | Ticket → spec → failing test → code → green gate → pull request |
-| ⚙️ | `code-review` | Fresh context, starts from the acceptance criteria, blockers only |
-| ⚙️ | `qa` | Boots the app, drives Chromium, hunts what no test covers |
+| ⚙️ | `ship` *(workflow)* | Ticket → spec ⟲ audit → code → verify ⇄ independent audit ⟲ → context → learn → PR |
+| ⚙️ | `code-review` *(workflow)* | Four independent lenses → a skeptic per blocker → one comment, verdict with a confidence |
+| ⚙️ | `qa` *(workflow)* | Plans probes → drives Chromium on both viewports → reproduces each failure on the branch and its base |
 
 ## How a ticket moves
 
@@ -80,17 +107,25 @@ stateDiagram-v2
     direction LR
     [*] --> ready_for_ai: you label it
     ready_for_ai --> ai_working: agent claims it
-    ai_working --> ready_for_human: PR open, suite green
-    ai_working --> needs_human: it stopped, and said why
+    ai_working --> ready_for_human: audit clean, PR open
+    ai_working --> needs_human: would not converge — draft PR
     ready_for_human --> [*]: you merge
     needs_human --> ready_for_ai: you answer, relabel
 ```
 
-**The build agent will not skip a step.** It writes a spec into `specs/` as the
-branch's first commit, so you read what it intends before the diff. It writes a
-check that fails first. It gates on `npm run verify` and **opens no pull request
-without a green one** — not "probably fine". If it cannot finish honestly it
-says what stopped it and opens nothing.
+**`ship` loops until it is satisfied, then stops.** It writes a spec into
+`specs/` as the branch's first commit, and two agents that did not write it
+audit it before any code exists. It writes a check that fails first. Then,
+round after round: the gate (`scripts/gate.mjs` — every test, desktop and
+mobile), three independent
+auditors — the ticket's criteria, `CLAUDE.md`'s rules, a browser — and a
+skeptic that tries to refute each blocker before it costs a fix. **No pull
+request until a round comes back clean.** Four rounds without converging, or
+one finding surviving two fixes, and it hands you a **draft** saying what is
+still open, rather than burning another round. Every agent starts from
+[`docs/context/`](./docs/context/README.md), a map of the app, instead of
+reading the source to find its way; `ship` keeps those docs current and writes
+what its audits caught back into them.
 
 **Then two agents read it**, neither having seen the reasoning that produced it
 — the agent who wrote it cannot see its own misreading. Each publishes a
@@ -102,16 +137,23 @@ You still merge.
 
 ## Set up your fork
 
-1. **Check the labels exist.** A new repository sets them up on its own — the
-   *Set up the harness* workflow runs on the first commit. If it did not, run
-   it by hand from the Actions tab. Neither a fork nor a template copies
-   labels, and `ready-for-ai` is what starts everything.
-2. **Settings → Actions → General → Workflow permissions → tick *Allow GitHub
+Once per fork, in this order. Step 3 tells you if you missed 1, 2 or 4.
+
+1. **Turn on Issues.** Settings → General → Features → tick *Issues*. GitHub
+   switches them off on a fork, and issues are where every ticket lives.
+2. **Add the API key.** Settings → Secrets and variables → Actions → New
+   repository secret, named `ANTHROPIC_API_KEY`. **It must be scoped to a
+   workspace** — an org-level key is refused, and the error does not say why.
+3. **Create the labels: Actions → *Set up the harness* → Run workflow.**
+   Neither a fork nor a template copy brings labels with it, and
+   `ready-for-ai` is what starts everything. The run's summary checks the key,
+   the token and Issues, and says what is still missing.
+   (On a repository made *from the template* it runs by itself on the first
+   commit; on a fork it does not.)
+4. **Settings → Actions → General → Workflow permissions → tick *Allow GitHub
    Actions to create and approve pull requests*.** Off by default on every new
    repository. Without it the agent does all the work, pushes a green branch,
    and then cannot open the pull request.
-3. Add `ANTHROPIC_API_KEY` as a repository secret. **It must be scoped to a
-   workspace** — an org-level key is refused, and the error does not say why.
 
 That is all. Each agent pull request opens with **"workflows awaiting
 approval"** — click it once and its checks run. That is GitHub's behaviour for
@@ -122,13 +164,16 @@ agent work executes.
 <details>
 <summary>Running this repeatedly, and tired of clicking?</summary>
 
-Add `AGENT_GITHUB_TOKEN` — a classic token with `repo` and `workflow` scope.
+Add `AGENT_GITHUB_TOKEN` — a **fine-grained** token for this repository only,
+with Contents, Issues and Pull requests set to read and write. Not a classic
+token: the agent reads issue text anyone can edit, and a classic `repo` token
+reaches every repository you own.
 The pull request is then authored by you rather than the bot, so nothing waits
-for approval and CI re-runs on the agent's own pushes. It also covers step 2
+for approval and CI re-runs on the agent's own pushes. It also covers step 4
 on its own.
 
 Worth it if you are demonstrating this. Not worth handing to a room of people:
-a `repo`-scoped token is a real credential, and one click is cheaper than
+even a fine-grained token is a real credential, and one click is cheaper than
 forty of them.
 </details>
 
@@ -141,7 +186,7 @@ watch the Actions tab.
 | --- | --- |
 | `npm run dev` | Seed, then API + web together |
 | `npm test` | Unit + API — no browser, under a second |
-| `npm run verify` | The gate: Playwright, desktop and mobile |
+| `npm run verify` | Playwright, desktop and mobile (`node scripts/gate.mjs` is both suites, as the agents run them) |
 | `npm run shot -- /schedule` | Screenshot a route |
 | `npm run db:reset` | Rebuild the database — Day 1 becomes today |
 | `node scripts/lane.mjs claim 42` | A port pair, so several agents can work at once |
@@ -157,6 +202,8 @@ you arrive mid-conference and the clock ticks while you watch. Pin it with
 
 - **[CLAUDE.md](./CLAUDE.md)** — architecture, conventions, and *why*. What the
   review agent checks a change against.
+- **[docs/context/](./docs/context/README.md)** — one doc per area of the app;
+  what agents read instead of the source.
 - **[specs/](./specs/)** — one file per ticket, written before the code.
   Together, the record of how this codebase got this way.
 - **[docs/DATA_MODEL.md](./docs/DATA_MODEL.md)** — the schema.
