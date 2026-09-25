@@ -79,6 +79,23 @@ export function progressOf(session, nowHHMM) {
   return (now - start) / (end - start);
 }
 
+/**
+ * What the attendee is in now, what is next and how many are done today. Only
+ * a confirmed seat counts: a waitlist place is not somewhere they can walk
+ * into, so it is never live, never next and never done.
+ */
+export function rightNow(sessions, nowHHMM, statusOf) {
+  const now = toMinutes(nowHHMM);
+  const mine = sessions
+    .filter((s) => statusOf(s.id) === 'confirmed')
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  return {
+    current: mine.find((s) => now >= toMinutes(s.startsAt) && now < toMinutes(s.endsAt)) ?? null,
+    next: mine.find((s) => toMinutes(s.startsAt) > now) ?? null,
+    done: mine.filter((s) => now >= toMinutes(s.endsAt)).length,
+  };
+}
+
 /** "in 12 min" / "started 8 min ago" / "in 2h 5m" */
 export function relativeToNow(hhmm, nowHHMM) {
   const delta = toMinutes(hhmm) - toMinutes(nowHHMM);

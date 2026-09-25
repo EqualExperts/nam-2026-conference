@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { accent } from '../lib/accents.js';
 import { time as fmtTime } from '../lib/format.js';
-import { toMinutes, relativeToNow } from '../lib/clock.js';
+import { toMinutes, relativeToNow, rightNow } from '../lib/clock.js';
 import { Chip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 import { LiveBadge } from './LiveNow.jsx';
@@ -49,19 +49,16 @@ function Row({ session, live, clock }) {
 /**
  * "What am I doing right now, and what is next?" — the most-asked question of
  * any conference app, and the one My Agenda could not answer. Reads the
- * attendee's own booked sessions against the conference clock.
+ * attendee's confirmed sessions against the conference clock.
  */
 export function NextUpCard({ days }) {
-  const { clock } = useConference();
+  const { clock, reservationFor } = useConference();
 
   const today = days.find((d) => d.date === clock.day);
   if (!today) return null;
 
-  const now = toMinutes(clock.time);
-  const sessions = [...today.sessions].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  const current = sessions.find((s) => now >= toMinutes(s.startsAt) && now < toMinutes(s.endsAt));
-  const next = sessions.find((s) => toMinutes(s.startsAt) > now);
-  const done = sessions.filter((s) => now >= toMinutes(s.endsAt)).length;
+  // Confirmed seats only — the store, not the fetched payload, says which.
+  const { current, next, done } = rightNow(today.sessions, clock.time, reservationFor);
 
   if (!current && !next) {
     return (
