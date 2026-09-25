@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { accent } from '../lib/accents.js';
-import { time as fmtTime } from '../lib/format.js';
+import { time as fmtTime, plural } from '../lib/format.js';
 import { toMinutes, relativeToNow } from '../lib/clock.js';
 import { Chip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
@@ -69,7 +69,7 @@ export function NextUpCard({ days }) {
         <Icon name="check" className="size-5 shrink-0 text-emerald-400" />
         <p className="text-[13px] text-muted">
           {done > 0
-            ? `That is your day — ${done} sessions done. Nothing else booked today.`
+            ? `That is your day — ${plural(done, 'session')} done. Nothing else booked today.`
             : 'Nothing booked today.'}
         </p>
       </div>
