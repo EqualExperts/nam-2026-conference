@@ -22,8 +22,9 @@ if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa nee
 // against whatever this checkout happens to be on.
 const WORKDIR = typeof args === 'object' && args && args.workdir
 const HERE = WORKDIR
-  ? `Work in ${WORKDIR}, a checkout of the pull request: cd there at the start of every Bash command, and ` +
-    `prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim qa-${pr})" &&\`.\n\n`
+  ? `Work in ${WORKDIR}, a checkout of the pull request: cd there at the start of every Bash command. ` +
+    `Read docs/harness/ and scripts/context.mjs from the directory you started in — the harness may be newer ` +
+    `than the pull request's base. Prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim qa-${pr})" &&\`.\n\n`
   : ''
 
 const PLAYBOOK = 'docs/harness/qa-playbook.md'
