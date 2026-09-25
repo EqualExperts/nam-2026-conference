@@ -69,6 +69,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - uses: anthropics/claude-code-action@v1
+        # Leaves the job's last twenty minutes for the re-check below, which
+        # runs the whole suite again.
+        timeout-minutes: 100
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Without a token here the action authenticates as the Claude GitHub
@@ -129,7 +132,13 @@ jobs:
           fi
 
           git fetch -q origin "$branch" && git checkout -q FETCH_HEAD
-          if node scripts/gate.mjs > /tmp/gate.out; then verdict=green; else verdict=red; fi
+          # The gate and the config that decides what it runs come from main,
+          # not from the branch being judged — a fixer told to make the gate
+          # green could otherwise have edited the gate. (Until main has one,
+          # the branch's is all there is.) No token in its environment either.
+          git checkout -q origin/main -- scripts/gate.mjs playwright.config.js 2>/dev/null || true
+          if env -u GH_TOKEN node scripts/gate.mjs > /tmp/gate.out; then verdict=green; else verdict=red; fi
+          git checkout -q FETCH_HEAD -- . 2>/dev/null || true
           {
             echo "### Gate re-run on #$pr: $verdict"
             echo

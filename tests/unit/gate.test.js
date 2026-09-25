@@ -35,6 +35,11 @@ describe('reading the Playwright report', () => {
     assert.deepEqual(s.failed.map(f => f.test), ['[desktop] plan.spec.js:27 › the hours tile totals the hours']);
   });
 
+  test('a run-level error — a spec that will not compile — is a named failure', () => {
+    const s = summarise({ stats: {}, suites: [], errors: [{ message: 'SyntaxError: Unexpected token', location: { file: 'tests/x.spec.js', line: 3 } }] });
+    assert.deepEqual(s.failed, [{ test: 'tests/x.spec.js:3', error: 'SyntaxError: Unexpected token' }]);
+  });
+
   test('the error has its colour codes stripped', () => {
     assert.equal(summarise(report).failed[0].error, 'Expected: 3\nReceived: 0');
   });
@@ -60,6 +65,20 @@ describe('spotting a weakened suite', () => {
   });
 
   test('adding a test is not tampering', () => {
-    assert.deepEqual(tampered(`+++ b/tests/x.spec.js\n+  test('new', () => { expect(1).toBe(1) });`), []);
+    assert.deepEqual(tampered(`diff --git a/tests/x.spec.js b/tests/x.spec.js\n+++ b/tests/x.spec.js\n+  test('new', () => { expect(1).toBe(1) });`), []);
+  });
+
+  test('a diff inside a fixture string is not the test file being weakened', () => {
+    assert.deepEqual(tampered(`diff --git a/tests/unit/g.test.js b/tests/unit/g.test.js\n++  test.skip('fixture')`), []);
+  });
+
+  test('any change to what decides the run is listed', () => {
+    const t = tampered(`diff --git a/playwright.config.js b/playwright.config.js\n--- a/playwright.config.js\n+++ b/playwright.config.js\n+  testIgnore: ['seats.spec.js'],\n-  retries: 0,`);
+    assert.deepEqual(t, ['playwright.config.js: changed — it decides what the gate runs']);
+  });
+
+  test('a deleted test file is named from the diff header, not /dev/null', () => {
+    const t = tampered(`diff --git a/tests/old.spec.js b/tests/old.spec.js\n--- a/tests/old.spec.js\n+++ /dev/null\n-test('gone', () => {});`);
+    assert.deepEqual(t, [`tests/old.spec.js: -test('gone', () => {});`]);
   });
 });
