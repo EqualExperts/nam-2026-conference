@@ -25,7 +25,9 @@ QA pass becomes a fishing trip.
 ## 1. Decide what is worth probing
 
 Read the ticket's **Done when:**, the diff, and the tests it added. The tests
-say where *not* to spend time — what they assert is already proven.
+say where *not* to spend time — what they assert is already proven. The
+`docs/context/` doc for the area (`node scripts/context.mjs index`) names its
+callers and test ids, which is most of what you need to aim a probe.
 
 Then pick from these, in this order:
 

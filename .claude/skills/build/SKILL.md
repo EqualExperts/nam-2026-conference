@@ -15,6 +15,23 @@ One issue in, one reviewable pull request out, with the evidence attached.
 `CLAUDE.md` is the specification for this repo — most of what looks like a
 judgement call is settled there.
 
+## How this runs
+
+**Asked to build an issue? Run the saved `ship` workflow with the issue
+number — `/ship <n>` — and report what it returns.** Do not work the steps
+below yourself.
+
+`ship` (`.claude/workflows/ship.js`) is the loop: setup, spec, a spec audit by
+agents that did not write it, implement, then **verify → independent code
+audit → fix** until a round comes back clean, then context, the pull request
+and a write-up of what the audits caught. Each phase is a fresh
+agent, and a finding only costs a fix round after a skeptic has failed to
+refute it. A loop that does not converge — four rounds, or one finding
+surviving two fixes — hands the ticket to a person as a draft pull request.
+
+**If you are an agent inside `ship`, this section is not for you.** Your
+prompt names the sections below that are yours; do those and nothing else.
+
 Every step re-reads the whole conversation, so anything you pull in early is
 paid for on every step after it. Ask for the narrowest thing that answers the
 question, and never run a command twice to grep it the second time.
@@ -28,7 +45,7 @@ gh pr list --state open --json number,headRefName \
 ```
 
 The **Done when:** clause is what you build, and later what you prove. Go to
-step 8 and stop if the issue is closed, already has a pull request, states no
+step 9 and stop if the issue is closed, already has a pull request, states no
 outcome you could write a check against, or asks for two unrelated things.
 
 ## 2. Claim it
@@ -76,11 +93,17 @@ it true: a spec that disagrees with its own pull request is worse than none.
 
 ## 4. Find the change site
 
-Grep for the behaviour the ticket names; read only the file or two that own
-it. **`CLAUDE.md` already describes the layout, the conventions and the three
-test layers — take its word rather than re-deriving any of it from source.**
-Reading the Playwright config, the test helpers or the seed to work out how
-this repo is organised is the expensive mistake here.
+```bash
+node scripts/context.mjs index
+```
+
+That is the map: one entry per area of the app, saying what it covers and when
+to read it. Read the one or two docs in `docs/context/` your ticket touches;
+they name the functions, payloads and test ids, so you open source only for
+the lines you will change. **Take their word, and `CLAUDE.md`'s, rather than
+re-deriving how the repo is organised from source** — reading the Playwright
+config, the test helpers or the seed to work that out is the expensive mistake
+here. A doc that turns out to be wrong is a finding: fix it on your branch.
 
 It also carries the reasoning behind decisions that look arbitrary and are
 not. A change contradicting a stated decision is wrong even when it is green.

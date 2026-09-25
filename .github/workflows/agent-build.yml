@@ -1,6 +1,13 @@
 ## Label an issue `ready-for-ai` and it becomes a verified pull request.
 ## Nobody opens a terminal.
 ##
+## The job runs one thing: the `ship` workflow (`.claude/workflows/ship.js`).
+## That is a deterministic script, not a prompt — spec, spec audit, implement,
+## then verify → independent code audit → fix, round after round, until a
+## round comes back clean. Only then does it open the pull request and write
+## up what the audits caught. A loop that will not converge hands the
+## ticket to a person as a draft pull request instead.
+##
 ## The runner is the isolation — it is a fresh machine per run, so there are no
 ## ports to allocate and no worktree to make. `scripts/lane.mjs` is for a laptop
 ## running several agents at once; here the agent has the whole machine.
@@ -31,7 +38,9 @@ jobs:
     # dispatch rather than a nuisance.
     if: github.event.label.name == 'ready-for-ai'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A clean ticket takes one audit round; a hard one takes four. Past this
+    # it is not converging.
+    timeout-minutes: 120
 
     permissions:
       contents: write        # push the branch
@@ -72,9 +81,16 @@ jobs:
           # it, because the bot is not a collaborator. A PAT in
           # AGENT_GITHUB_TOKEN removes that click, and nothing else needs it.
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          # The same skill a laptop runs. One file to maintain, one to explain.
-          prompt: "/build ${{ github.event.issue.number }}"
-          claude_args: "--model claude-opus-5 --max-turns 80"
+          # The same workflow a laptop runs through `/build`. A saved workflow
+          # is invoked as a slash command, which is what lets it run headless.
+          prompt: "/ship ${{ github.event.issue.number }}"
+          # The main loop only starts the workflow and reads its result, so it
+          # needs few turns — each phase agent has its own. `Workflow` must be
+          # allowed or the run stops at a permission prompt nobody can click;
+          # the phase agents inherit the rest.
+          claude_args: >-
+            --model claude-opus-5 --max-turns 30
+            --allowedTools "Workflow,Bash,Read,Write,Edit,Glob,Grep"
 
       # A run that times out, is cancelled, or dies leaves the issue on
       # `ai-working` with nobody aware it was abandoned — and relabelling

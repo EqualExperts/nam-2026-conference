@@ -27,7 +27,10 @@ gh issue view <issue> --json number,title,body      # the whole body
 gh pr diff <pr>
 ```
 
-Then the branch's `specs/` file and the parts of `CLAUDE.md` the diff touches.
+Then the branch's `specs/` file, the parts of `CLAUDE.md` the diff touches, and
+the `docs/context/` docs that own the changed files
+(`node scripts/context.mjs for $(git diff --name-only origin/main...HEAD)`) —
+they say how the area works, so you read source only to check a line.
 Work out for yourself whether each **Done when:** criterion is met.
 
 **Only then** read the conversation:

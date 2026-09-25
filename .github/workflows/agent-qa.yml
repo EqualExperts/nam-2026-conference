@@ -33,6 +33,10 @@ concurrency:
 
 jobs:
   exploratory:
+    # A draft is what `ship` opens when it hands a ticket back: it already
+    # knows what is wrong, and says so on the pull request. Marking it ready
+    # is what asks for this pass.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 

@@ -75,8 +75,24 @@ public/
   images/            optional hero photography — see that folder's README
 tests/               Playwright specs + helpers.js
 scripts/shot.mjs     screenshot tool
+docs/context/        one doc per area of the app — read these before the source
+.claude/workflows/   ship.js, the build loop
 data/orbit.db        generated, gitignored
 ```
+
+## Start from the context docs
+
+`node scripts/context.mjs index` prints one entry per area of the app — seats,
+attendance, agenda, schedule, the clock, the seed, testing, the harness … —
+with what it covers and when to read it. The docs in `docs/context/` name the
+functions, payloads and test ids for their area, so a change should need the
+source only for the lines it edits. This file says what was decided and why;
+those say where it lives and how it works.
+
+They are read *instead of* the code, so they change with it: a pull request
+that changes what a doc describes updates that doc, and
+`node scripts/context.mjs for <file…>` says which ones. `npm test` fails if a
+doc names a file that no longer exists.
 
 ## Conventions
 
@@ -479,12 +495,27 @@ the error does not say which kind to make), and optionally an
 
 Four stages, each its own GitHub Actions workflow, each in a fresh process:
 
-1. **Build** — `ready-for-ai` on an issue starts a runner. It writes the spec,
-   writes a failing check, implements, and gates on `npm run verify`. No green,
-   no pull request.
-2. **Code review** — a second agent reads the issue's acceptance criteria *first*,
-   then the diff. It has not seen the reasoning that produced the change, which
-   is the point. Blockers only, three findings at most.
+1. **Build** — `ready-for-ai` on an issue starts a runner, which runs the
+   `ship` workflow (`.claude/workflows/ship.js`; `/build 42` runs the same on a
+   laptop). It is a script, not a prompt, and every phase is a fresh agent:
+
+   *Setup → Spec → Spec Audit → Implement → Verify ⇄ Code Audit → Context →
+   PR → Learn*
+
+   Nothing is opened until a round comes back clean: `npm run verify` green,
+   then independent auditors — the ticket's criteria, CLAUDE.md's rules, and a
+   browser — whose blockers must each survive a skeptic before they cost a fix
+   round. The spec gets the same treatment before any code exists. Four rounds
+   without converging, or one finding surviving two fixes, and the ticket goes
+   to a person as a **draft** pull request with what is still open.
+   *Context* updates the docs the change touched; *Learn* turns what the
+   audits caught into `docs/context/` gotchas on the same branch, so whoever
+   merges reviews the lesson with the code. The loop's control flow is tested
+   in `tests/unit/ship.test.js` with every agent stubbed.
+2. **Code review** — a second agent reads the issue's acceptance criteria
+   *first*, then the diff. It has not seen the reasoning that produced the
+   change, which is the point. Blockers only, three findings at most. Neither
+   this nor QA runs on a draft; marking it ready asks for them.
 3. **QA** — a third agent boots the app and drives it in a browser, looking for
    what nobody wrote a test for: the empty agenda, the phone viewport, day four,
    the second click. Its verdict also goes back on the **issue** as one line:
