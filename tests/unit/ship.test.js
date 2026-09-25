@@ -188,11 +188,46 @@ describe('ship', () => {
     assert.equal(result.outcome, 'shipped');
   });
 
-  test('a flaky desktop+mobile pair of the same test is one finding, not an early stuck', async () => {
-    const pair = [{ test: '[desktop] home.spec.js:4 › x', error: 'x' }, { test: '[desktop] home.spec.js:4 › x', error: 'x' }];
-    const { result, calls } = await run({ verify: (n) => (n === 1 ? RED(pair) : GREEN) });
+  test('one test failing on both viewports is two findings in one fix round, not an early stuck', async () => {
+    const pair = [{ test: '[desktop] home.spec.js:4 › x', error: 'x' }, { test: '[mobile] home.spec.js:4 › x', error: 'x' }];
+    const { result, calls, prompts } = await run({ verify: (n) => (n <= 2 ? RED(pair) : GREEN) });
     assert.equal(result.outcome, 'shipped');
-    assert.equal(calls.filter(c => c.startsWith('fix')).length, 1);
+    assert.equal(calls.filter(c => c.startsWith('fix')).length, 2);
+    assert.match(prompts['fix#1'], /\[desktop\][\s\S]*\[mobile\]/);
+  });
+
+  test('two unmet criteria citing the same file with no line are both fixed', async () => {
+    const unmet = (claim) => ({ ...blocker(claim), category: 'criterion-unmet', file: 'specs/7-hours.md', line: undefined });
+    const { prompts } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [unmet('no test for the waitlist case'), unmet('done count includes waitlist')] : [] }),
+    });
+    assert.match(prompts['fix#1'], /no test for the waitlist case/);
+    assert.match(prompts['fix#1'], /done count includes waitlist/);
+  });
+
+  test('a gate run on uncommitted changes is not green', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? { json: JSON.stringify(gateResult({ dirty: true })) } : GREEN) });
+    assert.ok(calls.includes('fix#1'));
+    assert.ok(!calls.includes('audit:rules#1'));
+  });
+
+  test('gate JSON missing a field hands back instead of crashing', async () => {
+    const { result } = await run({ verify: { json: JSON.stringify({ ok: true, unit: {}, browser: {} }) } });
+    assert.equal(result.outcome, 'needs-human');
+  });
+
+  test('a context agent that dies hands back rather than shipping', async () => {
+    const { result, calls } = await run({ context: null });
+    assert.equal(result.outcome, 'needs-human');
+    assert.ok(!calls.includes('open-pr'));
+  });
+
+  test('a PR agent that fails learns once, not twice', async () => {
+    const { calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('x')] : [] }),
+      'open-pr': { ok: false, summary: 'no permission' },
+    });
+    assert.equal(calls.filter(c => c === 'learn').length, 1);
   });
 
   test('a red gate that names no failing test hands back instead of burning rounds', async () => {

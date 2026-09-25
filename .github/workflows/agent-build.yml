@@ -62,8 +62,9 @@ jobs:
 
       - run: npm ci
 
-      # `/ship` gates itself on `npm run verify`, which drives a real browser.
-      # Without this the agent cannot prove anything and will stop.
+      # `/ship` gates itself on `scripts/gate.mjs`, which drives a real
+      # browser — and so does the re-check after it. Without this nothing can
+      # be proved and every round is red.
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
@@ -78,7 +79,9 @@ jobs:
           # github-actions[bot]. `pull_request` still fires for it — verified —
           # but the first run waits at `action_required` for someone to approve
           # it, because the bot is not a collaborator. A PAT in
-          # AGENT_GITHUB_TOKEN removes that click, and nothing else needs it.
+          # AGENT_GITHUB_TOKEN removes that click, lets the agent open pull
+          # requests without the repository setting, and makes the respond
+          # workflow's pushes trigger CI.
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           # The same command a laptop runs. A saved workflow is invoked as a
           # slash command, which is what lets it run headless.

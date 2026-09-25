@@ -64,12 +64,6 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Without a token here the action authenticates as the Claude GitHub
-          # App, which has to be installed on the repository. Supplying one
-          # skips that entirely. AGENT_GITHUB_TOKEN should be a PAT: GitHub
-          # does not trigger workflows on commits pushed with GITHUB_TOKEN, so
-          # on the fallback the agent's pull request shows no verify run of its
-          # own until someone pushes to it.
           # This one pushes, so it takes the build's token: a push made with
           # GITHUB_TOKEN triggers no workflow, and the change made in answer to
           # a review would land with no CI run at all.

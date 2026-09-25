@@ -27,13 +27,16 @@ question, and never run a command twice to grep it the second time.
 
 ```bash
 gh issue view <n> --json number,title,body,labels,state
-gh pr list --state open --json number,headRefName \
+gh pr list --state open --json number,headRefName,isDraft \
   --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
 ```
 
 The **Done when:** clause is what you build, and later what you prove. Go to
-step 9 and stop if the issue is closed, already has a pull request, states no
-outcome you could write a check against, or asks for two unrelated things.
+step 9 and stop if the issue is closed, already has a **ready** (non-draft)
+pull request, states no outcome you could write a check against, or asks for
+two unrelated things. A **draft** on an `issue-<n>-*` branch is an earlier
+attempt handed back: this run continues on that branch, and §8 turns the draft
+into the pull request.
 
 ## 2. Claim it
 
@@ -121,16 +124,15 @@ node scripts/gate.mjs         # npm test + the whole browser suite → one JSON 
 npm run shot -- /the-route    # only if something visual moved
 ```
 
-The Verify phase runs this, not you: return its last line verbatim. It is
-`npm test` and `npm run verify` with the verdict read from Playwright's JSON
-report, one retry for a flaky browser test, and a list of any assertions the
-branch removed.
-
-**Once each.** Read what you need from the first run. In a runner Chromium is
+The Verify phase runs this and returns its last line verbatim — nothing
+else. It is `npm test` plus the whole Playwright suite, with the verdict read
+from Playwright's JSON report, one retry for a flaky browser test, and a list
+of any assertions the branch removed. Run it once; in a runner Chromium is
 already installed — never run `playwright install`.
 
-**No green `verify`, no pull request.** Not "probably fine", not "that failure
-looks unrelated". If you cannot get it green, go to step 9.
+**Do not interpret a red result or try to fix it.** Return the line. The loop
+decides what happens next: red goes to a fix round, and only the workflow
+hands a ticket back.
 
 ## 8. Open the pull request
 
@@ -201,6 +203,11 @@ shows something the one before it did not**:
 Five is the hard limit and `pr-media.mjs` enforces it per pull request, but
 it is a backstop, not a target.
 
+Write the body to `/tmp/pr-body.md`, in the shape below. If a draft already
+exists for this branch — an earlier attempt that was handed back — do not
+create a second one: `gh pr edit <draft> --body-file /tmp/pr-body.md` and then
+`gh pr ready <draft>`.
+
 ```bash
 git push -u origin HEAD
 gh pr create --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
@@ -232,8 +239,7 @@ table so they sit side by side>
 | Check | Result |
 | --- | --- |
 | `<the test that proves the ticket>` | red before, green after |
-| `npm test` | 161 passed |
-| `npm run verify` | 155 passed · desktop + mobile |
+| `node scripts/gate.mjs` | unit 178 passed · browser 155 passed, at `abc1234` |
 
 <details>
 <summary>Worth a closer look</summary>

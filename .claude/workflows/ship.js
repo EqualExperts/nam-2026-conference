@@ -7,7 +7,7 @@ export const meta = {
     { title: 'Spec', detail: 'write specs/<n>-<slug>.md' },
     { title: 'Spec Audit', detail: 'fresh-context auditors, revise until clean' },
     { title: 'Implement', detail: 'failing check first, then the change' },
-    { title: 'Verify', detail: 'npm test + npm run verify, every round' },
+    { title: 'Verify', detail: 'scripts/gate.mjs, every round' },
     { title: 'Code Audit', detail: 'independent reviewers, skeptic-verified, fix, repeat' },
     { title: 'Context', detail: 'update the docs/context files this change touched' },
     { title: 'Learn', detail: 'turn what the audits caught into context, on the branch' },
@@ -144,7 +144,9 @@ const LESSON = {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 // Where a finding is, not how it is worded: a fresh auditor rewords the same
 // bug every round, so a key built from the claim never repeats.
-const key = f => `${f.category}|${f.file}|${f.line ? Math.floor(f.line / 10) : '-'}`
+// With no line to place it, the claim is all that tells two findings apart —
+// two unmet criteria both cite the spec file.
+const key = f => `${f.category}|${f.file}|${f.line ? Math.floor(f.line / 10) : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
 const dedupe = fs => [...new Map(fs.map(f => [key(f), f])).values()]
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
@@ -152,7 +154,12 @@ const dedupe = fs => [...new Map(fs.map(f => [key(f), f])).values()]
 function readGate(g) {
   try {
     const r = JSON.parse(g.json)
-    if (typeof r.ok !== 'boolean' || !r.browser || !r.unit) throw new Error('not a gate result')
+    if (typeof r.ok !== 'boolean' || typeof r.sha !== 'string' || !r.unit || !r.browser ||
+        !Array.isArray(r.browser.failed) || !Array.isArray(r.tampered)) throw new Error('not a gate result')
+    // Green on a tree with uncommitted changes is green on code the PR will
+    // not contain.
+    if (r.dirty) return { ...r, ok: false, browser: { ...r.browser, failed: [...r.browser.failed,
+      { test: 'git status', error: 'the gate ran on uncommitted changes — commit or discard them' }] } }
     return r
   } catch (e) {
     return { ok: false, sha: '?', unit: { passed: 0, failed: 0 }, tampered: [],
@@ -210,7 +217,7 @@ async function handBack(stage, why, open) {
   log(`handing #${issue} back at ${stage}: ${why}`)
   // A run that could not converge is the one with the most to teach, so it
   // learns before it pushes — the lessons land on the draft with the work.
-  const lessons = setup && setup.branch ? await learn(`stopped at ${stage}: ${why}`) : []
+  const lessons = setup && setup.branch && !learned ? await learn(`stopped at ${stage}: ${why}`) : []
   phase('Learn')
   await agent(
     `Hand GitHub issue #${issue} back to a person. The automated build stopped at "${stage}" because: ${why}\n\n` +
@@ -228,10 +235,12 @@ async function handBack(stage, why, open) {
   return { outcome: 'needs-human', issue, stage, reason: why, open: open || [], lessons }
 }
 
+let learned = false
 async function learn(how) {
+  learned = true
   phase('Learn')
   if (!history.length) return []
-  const learned = await agent(
+  const result = await agent(
     `${inTree()}\n\nThe build of issue #${issue} ${how}. Along the way independent audits confirmed these ` +
     `problems the builder had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
     `would recur on a different ticket — not this ticket's specifics. For each, decide where the knowledge ` +
@@ -243,17 +252,18 @@ async function learn(how) {
     `If nothing generalises, change nothing and return an empty list.`,
     { phase: 'Learn', label: 'learn', schema: LESSON, effort: 'medium' },
   )
-  return learned ? learned.lessons : []
+  return result ? result.lessons : []
 }
 
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
 phase('Setup')
 setup = await agent(
   `Set up to build GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly: read the ticket, decide whether ` +
-  `it is buildable (stop if it is closed, already has an open PR, states no outcome a check could be written ` +
-  `against, or asks for two unrelated things), claim it, and make the workspace — branch in a runner, ` +
+  `it is buildable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
+  `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
+  `ready-for-ai whether or not you proceed — and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop. If an issue-${issue}-* branch is already on origin from an earlier ` +
-  `attempt, continue on it rather than making a new one. Do not write the spec or any code. Return proceed=false with the ` +
+  `attempt, continue on it rather than making a new one, and say so in reason. Do not write the spec or any code. Return proceed=false with the ` +
   `reason if it is not buildable, and in that case also do §9 (comment and label needs-human).`,
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low' },
 )
@@ -451,7 +461,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
 // The docs are read instead of the code, so they change in the same pull
 // request as the code they describe — never in a follow-up nobody writes.
 phase('Context')
-await agent(
+const context = await agent(
   `${inTree()}\n\nThe change on this branch is done and audited. Keep what describes it true:\n` +
   `1. \`node scripts/context.mjs for $(git diff --name-only origin/main...HEAD)\` lists the docs/context/ ` +
   `docs that own the changed files. Update each where the change made it wrong or incomplete — a new ` +
@@ -463,6 +473,7 @@ await agent(
   `\`npm test\` (the context check runs there), commit as "docs(context): …" and push.`,
   { phase: 'Context', label: 'context', schema: DONE, effort: 'low' },
 )
+if (!context || !context.ok) return handBack('Context', context ? context.summary : 'the context agent died')
 
 // ── 8. Learn ────────────────────────────────────────────────────────────────
 // What the audits kept catching is context the builder did not have. It goes

@@ -75,7 +75,8 @@ agent, or one missing `doneWhen`/`branch`/`workdir`, hands back too.
 
 **The runner checks behind it.** After the agent step, `agent-build.yml`
 reads the issue's label. Still `ai-working` → the run died: hand back, naming
-the branch. `ready-for-human` → it re-runs `gate.mjs` itself on the PR head,
+the branch. Otherwise, if the branch has an open non-draft PR, it re-runs
+`gate.mjs` itself on the PR head,
 writes the JSON to the job summary, and on red puts the PR back to draft.
 
 **Context docs.** `MAP` is the sentence every reading agent gets. The Context
@@ -86,7 +87,8 @@ before the PR opens, so reviewers see them.
 **After the PR.** `agent-code-review.yml` and `agent-qa.yml` fire on
 `pull_request` `opened | reopened | ready_for_review`, skip drafts, and turn
 the verdict file into a check run. `agent-respond.yml` handles `@claude` and
-pushes with the build's token, so its commits trigger CI.
+pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits
+trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 
 ## Invariants
 

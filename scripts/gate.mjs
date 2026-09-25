@@ -67,7 +67,10 @@ function main() {
   mkdirSync(OUT, { recursive: true });
   const json = join(OUT, 'gate-playwright.json');
   const sha = git('rev-parse', 'HEAD');
-  const dirty = git('status', '--porcelain', '--untracked-files=no') !== '';
+  // Untracked files count when they are tests: a spec nobody committed can
+  // turn the gate green on code the pull request will not contain.
+  const dirty = git('status', '--porcelain', '--untracked-files=all')
+    .split('\n').some(l => l && (!l.startsWith('??') || l.slice(3).startsWith('tests/')));
 
   const unit = spawnSync('npm', ['test', '--silent'], { cwd: ROOT, encoding: 'utf8' });
   const unitCounts = /# pass (\d+)[\s\S]*?# fail (\d+)/.exec(unit.stdout || '') || [];
@@ -86,7 +89,7 @@ function main() {
 
   const unitFailed = unit.status !== 0;
   const result = {
-    ok: !unitFailed && pw.status === 0 && browser.failed.length === 0,
+    ok: !unitFailed && pw.status === 0 && browser.failed.length === 0 && !dirty,
     sha,
     dirty,
     unit: unitFailed

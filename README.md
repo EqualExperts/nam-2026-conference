@@ -50,7 +50,7 @@ flowchart TB
         SP(["spec"]) --> SA{"spec audit"}
         SA -->|blockers| SP
         SA -->|clean| IM(["implement<br/><i>failing check first</i>"])
-        IM --> VF{"npm run verify<br/>desktop + mobile"}
+        IM --> VF{"gate<br/>unit + browser, desktop + mobile"}
         VF -->|green| CA{"independent audit<br/><i>criteria · rules · browser<br/>each blocker vs a skeptic</i>"}
         VF -->|red| FX(["fix"])
         CA -->|confirmed blocker| FX
@@ -115,7 +115,8 @@ stateDiagram-v2
 **`ship` loops until it is satisfied, then stops.** It writes a spec into
 `specs/` as the branch's first commit, and two agents that did not write it
 audit it before any code exists. It writes a check that fails first. Then,
-round after round: `npm run verify` on desktop and mobile, three independent
+round after round: the gate (`scripts/gate.mjs` — every test, desktop and
+mobile), three independent
 auditors — the ticket's criteria, `CLAUDE.md`'s rules, a browser — and a
 skeptic that tries to refute each blocker before it costs a fix. **No pull
 request until a round comes back clean.** Four rounds without converging, or
@@ -167,7 +168,7 @@ with Contents, Issues and Pull requests set to read and write. Not a classic
 token: the agent reads issue text anyone can edit, and a classic `repo` token
 reaches every repository you own.
 The pull request is then authored by you rather than the bot, so nothing waits
-for approval and CI re-runs on the agent's own pushes. It also covers step 2
+for approval and CI re-runs on the agent's own pushes. It also covers step 4
 on its own.
 
 Worth it if you are demonstrating this. Not worth handing to a room of people:
@@ -184,7 +185,7 @@ watch the Actions tab.
 | --- | --- |
 | `npm run dev` | Seed, then API + web together |
 | `npm test` | Unit + API — no browser, under a second |
-| `npm run verify` | The gate: Playwright, desktop and mobile |
+| `npm run verify` | Playwright, desktop and mobile (`node scripts/gate.mjs` is both suites, as the agents run them) |
 | `npm run shot -- /schedule` | Screenshot a route |
 | `npm run db:reset` | Rebuild the database — Day 1 becomes today |
 | `node scripts/lane.mjs claim 42` | A port pair, so several agents can work at once |
