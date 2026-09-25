@@ -95,4 +95,23 @@ test.describe('Schedule grid', () => {
 
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
+
+  test('a card shows the seats left, and a full one says Full instead', async ({ page, request }, testInfo) => {
+    // Read-only: it books nothing, so it needs no cleanup. Seat counts are
+    // global though, so it asserts the shape of the count and not a number
+    // another lane is free to move while this runs.
+    const lane = await laneFor('schedule.seats', testInfo);
+    const all = await (await request.get(`${API}/sessions?day=${lane.day}`)).json();
+    const roomy = all.find((s) => !s.isKeynote && s.seatsLeft > 50);
+    const full = all.find((s) => !s.isKeynote && s.isFull);
+    expect(roomy, 'no session with room to spare').toBeTruthy();
+    expect(full, 'no sold-out session on this day').toBeTruthy();
+
+    await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user });
+    await waitForResults(page);
+    const cardFor = (title) => page.locator('article').filter({ hasText: title }).first();
+
+    await expect(cardFor(roomy.title).getByTestId('card-seats')).toHaveText(/^\d+ seats left$/);
+    await expect(cardFor(full.title).getByTestId('card-seats')).toContainText('Full');
+  });
 });

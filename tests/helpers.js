@@ -113,6 +113,8 @@ const LANES = {
   'conflict.ui':      { desktop: { user: kenji, day: 3, clean: true },    mobile: { user: amara, day: 3, clean: true } },
   'conflict.api':     { desktop: { user: priya, day: 3 },                 mobile: { user: jonas, day: 3 } },
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
+  // read-only: it books nothing, and needs a day the seed sells sessions out on
+  'schedule.seats':   { desktop: { user: kenji, day: 1 },                 mobile: { user: marcus, day: 0 } },
   'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
 };
