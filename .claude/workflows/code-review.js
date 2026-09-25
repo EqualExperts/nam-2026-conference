@@ -54,7 +54,7 @@ const FINDINGS = {
   required: ['confidence', 'covered', 'findings'],
   properties: {
     confidence: { enum: ['high', 'medium', 'low'], description: 'how much of the change you could evaluate in your lens — coverage, not certainty' },
-    covered: { type: 'string', description: 'what you judged, in a few words' },
+    covered: { type: 'string', description: 'what you judged — under 12 words' },
     findings: {
       type: 'array',
       maxItems: 3,

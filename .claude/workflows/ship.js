@@ -72,7 +72,7 @@ const FINDINGS = {
   type: 'object',
   required: ['findings', 'covered'],
   properties: {
-    covered: { type: 'string', description: 'what you were able to judge, in a few words' },
+    covered: { type: 'string', description: 'what you were able to judge — under 12 words; it is a table cell' },
     findings: {
       type: 'array',
       // Unbounded, one auditor can fan out a skeptic per nit. Five blockers
@@ -151,6 +151,9 @@ const LESSON = {
 // With no line to place it, the claim is all that tells two findings apart —
 // two unmet criteria both cite the spec file.
 const key = f => `${f.category}|${f.file}|${f.line ? Math.floor(f.line / 10) : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
+// A table cell, not a report: the second live run's auditors each wrote a
+// paragraph here and the PR's audit table became a wall.
+const brief = s => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > 90 ? t.slice(0, 87).replace(/\s\S*$/, '') + '…' : t }
 const dedupe = fs => [...new Map(fs.map(f => [key(f), f])).values()]
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
@@ -430,7 +433,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     open = await confirm(raised.filter(f => f.severity === 'blocker'), 'the change')
     history.push(...open)
     rounds.push({ round, gate: gateLine(gate), raised: raised.length, confirmed: open.length,
-      covered: reports.map(r => r.covered).join(' · ') })
+      covered: reports.map(r => brief(r.covered)).join(' · ') })
     log(`build round ${round}: green, ${raised.length} raised, ${open.length} confirmed`)
     if (!open.length) {
       // About to ship: the minor notes go in the PR body, so they face a

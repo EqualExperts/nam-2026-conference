@@ -315,4 +315,12 @@ describe('ship', () => {
     const { prompts } = await run();
     assert.match(prompts.implement, /commit it on its own, red/);
   });
+
+  test('what an auditor covered is cut to a table cell', async () => {
+    const long = 'I read the ticket, the spec and the full diff and checked every criterion against the code and the tests in detail';
+    const { result } = await run({ 'audit:rules': { covered: long, findings: [] } });
+    const cell = result.rounds[0].covered.split(' · ')[1];
+    assert.ok(cell.length <= 90, cell);
+    assert.match(cell, /…$/);
+  });
 });
