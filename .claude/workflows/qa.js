@@ -50,6 +50,7 @@ const PLAN = {
           what: { type: 'string', description: 'the steps: route, attendee, clock, clicks' },
           expect: { type: 'string', description: 'what should happen' },
           why: { enum: ['empty-or-extreme', 'other-viewport', 'other-day', 'second-interaction', 'callers', 'console'] },
+          viewport: { enum: ['both', 'desktop', 'mobile'], description: 'both unless the probe is about one layout' },
         },
       },
     },
@@ -114,7 +115,7 @@ const ran = await agent(
   `Do not start the app yourself. Run it once per project — \`npx playwright test ${PROBE_FILE} ` +
   `--project=desktop --reporter=json\`, then mobile — and report each probe's result from the JSON. Leave ` +
   `the file in place; a later phase needs it.\n\n` +
-  plan.probes.map(p => `- ${p.id}: ${p.what} — expect: ${p.expect}`).join('\n'),
+  plan.probes.map(p => `- ${p.id}${p.viewport && p.viewport !== 'both' ? ` (${p.viewport} only)` : ''}: ${p.what} — expect: ${p.expect}`).join('\n'),
   { phase: 'Probe', label: 'probe', schema: RAN },
 )
 if (!ran) return publish({ verdict: 'none', why: 'the probes never ran', cleanup: true })
@@ -150,15 +151,18 @@ for (const p of failing) {
 }
 
 // ── Publish ─────────────────────────────────────────────────────────────────
-// Confidence is how much of the plan actually ran, on both viewports.
-const bothRan = plan.probes.filter(p => { const r = byId.get(p.id); return r && r.desktop !== 'not-run' && r.mobile !== 'not-run' }).length
+// Confidence is how much of the plan actually ran, on the viewports each
+// probe was planned for — a probe about the phone layout is not "missing" on
+// desktop.
+const wants = p => (p.viewport && p.viewport !== 'both' ? [p.viewport] : ['desktop', 'mobile'])
+const bothRan = plan.probes.filter(p => { const r = byId.get(p.id); return r && wants(p).every(v => r[v] !== 'not-run') }).length
 const ratio = plan.probes.length ? bothRan / plan.probes.length : 0
 const confidence = ratio === 1 && plan.probes.length >= 4 ? 'high' : ratio >= 0.5 ? 'medium' : 'low'
 const bugs = findings.filter(f => f.kind === 'bug')
 return publish({
   verdict: bugs.length ? 'fail' : 'pass',
   confidence,
-  covered: `${bothRan}/${plan.probes.length} probes on both viewports: ${plan.probes.map(p => p.id).join(', ')}`,
+  covered: `${bothRan}/${plan.probes.length} probes ran as planned: ${plan.probes.map(p => p.id).join(', ')}`,
   probes: plan.probes,
   findings,
   cleanup: true,

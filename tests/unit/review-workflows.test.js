@@ -125,7 +125,7 @@ describe('qa', () => {
     const { result, verdictLine, calls } = await run();
     assert.equal(result.verdict, 'pass');
     assert.equal(result.confidence, 'high');
-    assert.match(verdictLine, /^PASS high 4\/4 probes/);
+    assert.match(verdictLine, /^PASS high 4\/4 probes ran as planned/);
     assert.ok(!calls.some(c => c.startsWith('repro')));
   });
 
@@ -184,5 +184,12 @@ describe('qa', () => {
     });
     assert.equal(calls.filter(c => c.startsWith('repro')).length, 2);
     assert.equal(peak, 1);
+  });
+
+  test('a probe planned for one viewport is not counted as missing on the other', async () => {
+    const plan = { ...PLAN, probes: PLAN.probes.map((p, i) => (i === 0 ? { ...p, viewport: 'mobile' } : p)) };
+    const ran = { results: allPass.results.map((r, i) => (i === 0 ? { ...r, desktop: 'not-run' } : r)) };
+    const { result } = await run({ plan, probe: ran });
+    assert.equal(result.confidence, 'high');
   });
 });
