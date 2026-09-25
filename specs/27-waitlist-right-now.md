@@ -77,3 +77,12 @@ so it never touches the waitlisted slot these checks read.
 - The "Hours booked" tile (same shape of problem, its own ticket).
 - The home page's `TodayPanel` — already correct.
 - The API, `agenda.js` and how waitlists work.
+
+## Audit
+
+One round, on the implementation.
+
+- Round 1 — confirmed `rightNow` filters on the store's `reservationFor`
+  rather than the fetched payload, that the unit tests cover every criterion
+  (plus an ordering case), and that the browser checks are read-only so they
+  need no lane. Nothing to resolve.
