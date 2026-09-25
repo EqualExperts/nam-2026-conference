@@ -65,7 +65,8 @@ describe('ship', () => {
     assert.equal(result.outcome, 'shipped');
     assert.equal(result.pr, 'https://github.com/o/r/pull/9');
     assert.deepEqual(result.rounds, [{
-      round: 1, gate: 'unit 178 passed · browser 155 passed', raised: 0, confirmed: 0, covered: 'all · all · all',
+      round: 1, gate: 'unit 178 passed · browser 155 passed', raised: 0, confirmed: 0,
+      covered: 'ran nothing: all · ran nothing: all · ran nothing: all',
     }]);
     assert.ok(!calls.some(c => c.startsWith('fix') || c.startsWith('revise-spec') || c === 'hand-back'));
     // Nothing was caught, so there is nothing to learn and no agent is spent on it.
@@ -320,7 +321,28 @@ describe('ship', () => {
     const long = 'I read the ticket, the spec and the full diff and checked every criterion against the code and the tests in detail';
     const { result } = await run({ 'audit:rules': { covered: long, findings: [] } });
     const cell = result.rounds[0].covered.split(' · ')[1];
-    assert.ok(cell.length <= 90, cell);
+    assert.match(cell, /^ran nothing: /, 'what was run survives the cut — it is a field, not prose');
+    assert.ok(cell.replace('ran nothing: ', '').length <= 90, cell);
     assert.match(cell, /…$/);
+  });
+
+  test('a spec round that confirmed something is in the spec and the PR table, not just the build rounds', async () => {
+    const { prompts } = await run({
+      'spec-audit:fit': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('the lane books into the slot lanes')] : [] }),
+    });
+    assert.match(prompts.context, /spec round 1: 1 raised, 1 confirmed — the lane books into the slot lanes/);
+    assert.match(prompts['open-pr'], /\| spec 1 \| — \| 1 raised · 1 confirmed \|/);
+  });
+
+  test('a flaky test is named to the criteria auditor', async () => {
+    const g = gateResult({ browser: { passed: 155, failed: [], flaky: 1, flakyTests: ['[mobile] plan.spec.js:40 › one done'], skipped: 1 } });
+    const { prompts } = await run({ verify: { json: JSON.stringify(g) } });
+    assert.match(prompts['audit:criteria#1'], /plan\.spec\.js:40 › one done/);
+  });
+
+  test('on a laptop the run releases its own lane at the end, and tells agents not to', async () => {
+    const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
+    assert.equal(calls.at(-1), 'release-lane');
+    assert.match(prompts.implement, /Never release the lane/);
   });
 });

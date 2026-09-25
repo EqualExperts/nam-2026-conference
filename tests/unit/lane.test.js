@@ -171,3 +171,10 @@ describe('finding the lane a worktree already holds', () => {
     assert.equal(heldLane({ cwd: tmpdir() }), null);
   });
 });
+
+test('a lane can be released by the label it was claimed with', async () => {
+  await claimFor('wt-a', { label: '29' });
+  const freed = release({ root, worktree: tree('elsewhere'), label: '29' });
+  assert.equal(freed.label, '29');
+  assert.equal(list(root).length, 0);
+});

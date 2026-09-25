@@ -31,6 +31,7 @@ describe('reading the Playwright report', () => {
     const s = summarise(report);
     assert.equal(s.passed, 150);
     assert.equal(s.flaky, 2);
+    assert.deepEqual(s.flakyTests, ['[mobile] plan.spec.js:27 › the hours tile totals the hours']);
     assert.equal(s.skipped, 1);
     assert.deepEqual(s.failed.map(f => f.test), ['[desktop] plan.spec.js:27 › the hours tile totals the hours']);
   });

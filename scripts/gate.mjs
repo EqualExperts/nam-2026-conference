@@ -33,9 +33,13 @@ const OUT = join(ROOT, 'test-results');
 /** Playwright's JSON report → counts and the tests that failed. */
 export function summarise(report) {
   const failed = [];
+  // Named, not just counted: a flake in the test the branch just added is a
+  // finding, and a count cannot say which one it was.
+  const flakyTests = [];
   const walk = (suite, file) => {
     for (const spec of suite.specs || []) {
       for (const t of spec.tests || []) {
+        if (t.status === 'flaky') { flakyTests.push(`[${t.projectName}] ${spec.file || file}:${spec.line} › ${spec.title}`); continue; }
         if (t.status !== 'unexpected') continue;
         const last = (t.results || []).at(-1) || {};
         const error = (last.error?.message || '').replace(/\u001b\[[0-9;]*m/g, '').split('\n').slice(0, 6).join('\n');
@@ -52,7 +56,7 @@ export function summarise(report) {
     failed.push({ test: e.location ? `${e.location.file}:${e.location.line}` : 'playwright', error: msg.split('\n').slice(0, 6).join('\n') });
   }
   const st = report.stats || {};
-  return { passed: st.expected || 0, failed, flaky: st.flaky || 0, skipped: st.skipped || 0 };
+  return { passed: st.expected || 0, failed, flaky: st.flaky || 0, flakyTests, skipped: st.skipped || 0 };
 }
 
 /** A unified diff of tests/ → the lines that weaken the suite. */

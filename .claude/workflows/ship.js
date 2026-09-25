@@ -70,8 +70,9 @@ const SPEC_WRITTEN = {
 
 const FINDINGS = {
   type: 'object',
-  required: ['findings', 'covered'],
+  required: ['findings', 'covered', 'ran'],
   properties: {
+    ran: { enum: ['nothing', 'unit', 'browser', 'unit+browser'], description: 'which suites or probes YOU executed — reading is not running' },
     covered: { type: 'string', description: 'what you were able to judge — under 12 words; it is a table cell' },
     findings: {
       type: 'array',
@@ -186,7 +187,7 @@ const listFindings = fs =>
 async function confirm(findings, where) {
   const judged = await parallel(dedupe(findings).map(f => () =>
     agent(
-      `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. An auditor claims this blocker in ${where}. Try to ` +
+      `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. An auditor claims this ${f.severity === 'minor' ? 'minor problem' : 'blocker'} in ${where}. Try to ` +
       `REFUTE it. Open the cited file and line yourself; \`npm test\` is fine, but do not boot the app or run ` +
       `Playwright — other agents are using the ports. Refute if the line does not say what is claimed, if the ` +
       `behaviour is already on origin/${BASE}, if the finding is style rather than a defect, if its suggested fix ` +
@@ -219,7 +220,8 @@ const inTree = () =>
   (setup.runner
     ? ''
     : ` This is a laptop with other agents on it, so prefix anything that boots the app or runs Playwright with ` +
-      `\`eval "$(node scripts/lane.mjs claim ${issue})" &&\` — shell state does not persist between commands.`)
+      `\`eval "$(node scripts/lane.mjs claim ${issue})" &&\` — shell state does not persist between commands. ` +
+      `Never release the lane: it belongs to the whole run, and the workflow releases it at the end.`)
 
 async function handBack(stage, why, open) {
   log(`handing #${issue} back at ${stage}: ${why}`)
@@ -241,7 +243,19 @@ async function handBack(stage, why, open) {
     `PR link if there is one — and run: gh issue edit ${issue} --add-label needs-human --remove-label ai-working`,
     { phase: 'Learn', label: 'hand-back', schema: DONE, effort: 'low' },
   )
+  await cleanup()
   return { outcome: 'needs-human', issue, stage, reason: why, open: open || [], lessons }
+}
+
+// On a laptop the run holds a lane (a port pair) for its worktree. It is the
+// run's, not any one agent's, so it is released here — once, at the end.
+async function cleanup() {
+  if (!setup || setup.runner || !setup.workdir) return
+  await agent(
+    `cd ${setup.workdir} && node scripts/lane.mjs release ${issue} — then \`node scripts/lane.mjs list\` and ` +
+    `confirm no lane is held for ${setup.workdir}. Leave the worktree itself; a person may want it.`,
+    { phase: 'PR', label: 'release-lane', schema: DONE, effort: 'low' },
+  )
 }
 
 let learned = false
@@ -321,6 +335,10 @@ const SPEC_LENSES = [
 ]
 
 let specOpen = []
+// Recorded like the build rounds: the spec audit's catches are the cheapest
+// the loop makes, and the first live run's spec said "no findings" about a
+// round that had confirmed and fixed one.
+const specRounds = []
 for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   phase('Spec Audit')
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
@@ -336,6 +354,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   const blockers = found.filter(f => f.severity === 'blocker')
   specOpen = blockers.length ? await confirm(blockers, 'the spec') : []
   history.push(...specOpen)
+  specRounds.push({ round, raised: found.length, confirmed: specOpen.length, what: specOpen.map(f => f.claim) })
   log(`spec round ${round}: ${found.length} raised, ${specOpen.length} confirmed`)
   if (!specOpen.length) break
   if (round === MAX_SPEC_ROUNDS) return handBack('Spec Audit', `spec still has blockers after ${round} rounds`, specOpen)
@@ -418,6 +437,10 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
       (l.key === 'criteria' && gate.tampered.length
         ? `The gate flagged these lines in tests/ as removed assertions or added skips:\n${gate.tampered.join('\n')}\n\n`
         : '') +
+      (l.key === 'criteria' && gate.browser.flakyTests && gate.browser.flakyTests.length
+        ? `These tests failed once and passed on retry: ${gate.browser.flakyTests.join(', ')}. One this branch added ` +
+          `is a blocker (test-proves-nothing) — a flaky proof proves nothing. One it did not touch is not.\n\n`
+        : '') +
       `Blockers only for something that would change a merge decision; everything else is minor. Change no ` +
       `code. Empty is a good answer.`,
       { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model },
@@ -433,7 +456,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     open = await confirm(raised.filter(f => f.severity === 'blocker'), 'the change')
     history.push(...open)
     rounds.push({ round, gate: gateLine(gate), raised: raised.length, confirmed: open.length,
-      covered: reports.map(r => brief(r.covered)).join(' · ') })
+      covered: reports.map(r => `ran ${r.ran || 'nothing'}: ${brief(r.covered)}`).join(' · ') })
     log(`build round ${round}: green, ${raised.length} raised, ${open.length} confirmed`)
     if (!open.length) {
       // About to ship: the minor notes go in the PR body, so they face a
@@ -488,8 +511,11 @@ const context = await agent(
   `docs that own the changed files. Update each where the change made it wrong or incomplete — a new ` +
   `function, a changed payload, a new testid. A file the branch added that no doc owns goes into the ` +
   `\`files\` of the doc for its area. Most changes move a line or two; none is fine.\n` +
-  `2. Make ${spec.path} true of what shipped, and add a short *Audit* section: ${rounds.length} round(s), ` +
-  `what each confirmed and how it was resolved, a line each.\n` +
+  `2. Make ${spec.path} true of what shipped, and add a short *Audit* section — a line per round, what it ` +
+  `confirmed and how that was resolved (\`git log\` shows the fix commits). These are the rounds; do not ` +
+  `describe any other:\n` +
+  specRounds.map(r => `   spec round ${r.round}: ${r.raised} raised, ${r.confirmed} confirmed${r.what.length ? ` — ${r.what.join('; ')}` : ''}`).join('\n') + '\n' +
+  rounds.map(r => `   build round ${r.round}: ${r.gate}; ${r.raised} raised, ${r.confirmed} confirmed`).join('\n') + '\n' +
   `3. Only if the change made a *decision* a future builder must respect, add it to CLAUDE.md.\n` +
   `\`npm test\` (the context check runs there), commit as "docs(context): …" and push.`,
   { phase: 'Context', label: 'context', schema: DONE, effort: 'low' },
@@ -504,15 +530,21 @@ const lessons = await learn('passed its audit')
 
 // ── 9. PR ────────────────────────────────────────────────────────────────────
 phase('PR')
-const auditTable = rounds.map(r => `| ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`).join('\n')
+const auditTable = [
+  ...specRounds.map(r => `| spec ${r.round} | — | ${r.raised} raised · ${r.confirmed} confirmed | ${r.what.map(brief).join('; ') || '—'} |`),
+  ...rounds.map(r => `| build ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`),
+].join('\n')
 const pr = await agent(
   `${ticket}\n\n${inTree()}\n\nOpen the pull request against ${BASE}, following §8 of ${SKILL} — ready for review, screenshots ` +
   `only if something visible changed, the body in the shape given there. In the *Proof* table use: ` +
   `\`node scripts/gate.mjs\` → ${gateLine(gate)}, at ${gate.sha.slice(0, 7)}. If \`git log ${gate.sha}..HEAD\` ` +
   `shows later commits, say in one line that they touch only docs — and if any touches code, stop and ` +
   `return ok=false instead. After it, add this section verbatim:\n\n` +
-  `### Audit loop\n| Round | Gate | Independent audit | Covered |\n| --- | --- | --- | --- |\n${auditTable}\n\n` +
-  (lessons.length ? `And a *Lessons* line listing what Learn wrote: ${lessons.map(l => l.proposal).join('; ')}\n\n` : '') +
+  `### Audit loop\n| Round | Gate | Independent audit | Confirmed / covered |\n| --- | --- | --- | --- |\n${auditTable}\n\n` +
+  (gate.browser.flakyTests && gate.browser.flakyTests.length ? `Under the table, one line: flaky on retry — ${gate.browser.flakyTests.join(', ')}.\n\n` : '') +
+  `Link the spec as a full URL to the file on this branch (https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path}) — a ` +
+  `relative link does not resolve from a PR body. List every test the change added in the Proof table.\n\n` +
+  (lessons.length ? `And a *Lessons* line listing what Learn wrote: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n\n` : '') +
   (minors.length
     ? `Put these unconfirmed minor notes inside the "Worth a closer look" block, one line each, only if a ` +
       `reviewer would want them:\n${listFindings(minors)}\n\n`
@@ -521,6 +553,8 @@ const pr = await agent(
   { phase: 'PR', label: 'open-pr', schema: DONE },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
+
+await cleanup()
 
 return {
   outcome: 'shipped',
