@@ -56,32 +56,34 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: anthropics/claude-code-action@v1
+      # claude-code-action drives the Agent SDK, which stops at the first
+      # result — and a saved workflow's first result is its launcher saying
+      # "running in the background". The action ended there and the workflow
+      # died unstarted, reporting success. The CLI waits; see agent-run.sh.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run /code-review
         # The agent crashing is not the same as the change being wrong; its
         # verdict is the signal, and the step below is what acts on it.
         continue-on-error: true
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # GITHUB_TOKEN deliberately, not AGENT_GITHUB_TOKEN. This pass only
-          # comments; it never opens a pull request or pushes, so it gains
-          # nothing from a personal token — and with one its comments are
-          # attributed to the person whose token it is, which on their own
-          # pull request reads as them reviewing their own work.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Without AGENT_GITHUB_TOKEN the pull request is opened by
-          # github-actions[bot], so this run's triggering actor is a bot — and
-          # the action rejects bot actors by default, to stop a bot triggering
-          # Claude in a loop. This pass cannot cause that loop: it only
-          # comments, and never opens a pull request or pushes. Without this
-          # line it simply never runs on anybody who has not set a PAT.
-          allowed_bots: "github-actions[bot]"
-          # A saved workflow, run as a slash command. It composes the
-          # comment and writes /tmp/review-verdict itself, so the shape of both
-          # no longer depends on a model remembering it.
-          prompt: "/code-review ${{ github.event.pull_request.number }}"
-          claude_args: >-
-            --model claude-opus-5 --max-turns 20
-            --allowedTools "Workflow,Bash,Read,Glob,Grep"
+        timeout-minutes: 18
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # GITHUB_TOKEN deliberately: this pass only comments, and with a
+          # personal token its comments would read as the author reviewing
+          # their own pull request.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE: ${{ github.base_ref }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # The harness must not review itself: a pull request that edits the
+          # review workflow, its playbook or CLAUDE.md would otherwise be
+          # judged by its own version of them. Run the base branch's.
+          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs; do
+            git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
+          done
+          scripts/agent-run.sh "/code-review $PR" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
 
       # Red means a blocker was found, not that merging is forbidden — nothing
       # here is a required check. It puts the blocker where a skim-reader sees

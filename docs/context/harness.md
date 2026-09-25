@@ -18,6 +18,8 @@ files:
   - scripts/pr-media.mjs
   - scripts/context.mjs
   - scripts/gate.mjs
+  - scripts/agent-run.sh
+  - scripts/agent-summary.mjs
   - docs/context/README.md
   - specs/README.md
 tests:
@@ -25,6 +27,7 @@ tests:
   - tests/unit/review-workflows.test.js
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
+  - tests/unit/agent-summary.test.js
 related: [testing]
 ---
 
@@ -141,6 +144,13 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 
 ## Gotchas
 
+- **CI runs the CLI, not `claude-code-action`.** The action drives the
+  Agent SDK and stops at the first `result`; a saved workflow's first result
+  is its launcher's "running in the background", so every workflow died
+  unstarted while the step went green. `scripts/agent-run.sh` runs `claude -p`
+  (which waits), keeps the transcript, writes it to the job summary, and fails
+  the step when a launched workflow never reported back. Only
+  `agent-respond.yml` still uses the action — interactive mode needs it.
 - **A session caches saved workflows when it starts.** `/ship` in a session
   that has since edited `ship.js` runs the version it loaded, silently. The
   first live run of the loop did exactly that and ran a week-old script. After

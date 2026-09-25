@@ -70,6 +70,9 @@ jobs:
           # The agent branches off origin/main, so it needs more than a
           # single-commit checkout.
           fetch-depth: 0
+          # The push token is set on the remote in the Run /ship step; a
+          # persisted GITHUB_TOKEN header would silently win over it.
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -84,35 +87,31 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - uses: anthropics/claude-code-action@v1
-        # Leaves the job's last twenty minutes for the re-check below, which
-        # runs the whole suite again.
+      # claude-code-action drives the Agent SDK, which stops at the first
+      # result — and a saved workflow's first result is its launcher saying
+      # "running in the background". The action ended there and the workflow
+      # died unstarted, reporting success. The CLI waits; see agent-run.sh.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run /ship
         timeout-minutes: 100
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Without a token here the action authenticates as the Claude GitHub
-          # App, which has to be installed on the repository. Supplying one
-          # skips that entirely.
-          #
-          # On the GITHUB_TOKEN fallback the pull request is opened by
-          # github-actions[bot]. `pull_request` still fires for it — verified —
-          # but the first run waits at `action_required` for someone to approve
-          # it, because the bot is not a collaborator. A PAT in
-          # AGENT_GITHUB_TOKEN removes that click, lets the agent open pull
-          # requests without the repository setting, and makes the respond
-          # workflow's pushes trigger CI.
-          github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          # The same command a laptop runs. A saved workflow is invoked as a
-          # slash command, which is what lets it run headless.
-          # From a comment, what the person wrote rides along as notes.
-          prompt: "/ship ${{ github.event.issue.number }}${{ github.event.comment.body && format(' {0}', github.event.comment.body) || '' }}"
-          # The main loop only starts the workflow and reads its result, so it
-          # needs few turns — each phase agent has its own. `Workflow` must be
-          # allowed or the run stops at a permission prompt nobody can click;
-          # the phase agents inherit the rest.
-          claude_args: >-
-            --model claude-opus-5 --max-turns 30
-            --allowedTools "Workflow,Bash,Read,Write,Edit,Glob,Grep"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # With AGENT_GITHUB_TOKEN the pull request is authored by a person,
+          # so its checks run without an Approve click; see github.md.
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          N: ${{ github.event.issue.number }}
+          # From an @claude comment, what the person wrote rides along as
+          # notes. An environment variable, never interpolated into the
+          # script, so the comment cannot become shell.
+          NOTES: ${{ github.event.comment.body }}
+        run: |
+          git config user.name "claude[bot]"
+          git config user.email "noreply@anthropic.com"
+          # Pushes use the same token as gh.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          scripts/agent-run.sh "/ship $N $NOTES" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
 
       # What the run left behind is read from the issue, not from how the
       # step exited: the agent step succeeds even when ship returned an error,
@@ -132,6 +131,18 @@ jobs:
         run: |
           labels=$(gh issue view "$N" --json labels --jq '.labels[].name')
           branch=$(git ls-remote --heads origin "issue-$N-*" | awk '{print $2}' | sed 's#refs/heads/##' | head -1)
+
+          # Still `ready-for-ai`: the run never claimed the ticket, so it never
+          # started. The first Actions runs did exactly this and reported
+          # success; say so instead.
+          if printf '%s\n' "$labels" | grep -qx ready-for-ai; then
+            gh issue edit "$N" --add-label needs-human --remove-label ready-for-ai || true
+            gh issue comment "$N" --body "The build run ended without starting — the ticket was never claimed. The job summary has the transcript.
+
+          [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
+            echo "### Build never started — handed back" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           if printf '%s\n' "$labels" | grep -qx ai-working; then
             gh issue edit "$N" --add-label needs-human --remove-label ai-working || true
