@@ -224,7 +224,8 @@ async function handBack(stage, why, open) {
     (open && open.length ? `Still open when it stopped:\n${listFindings(open)}\n\n` : '') +
     (setup && setup.branch
       ? `${inTree()}\nPush whatever is committed (git push -u origin HEAD), then open a DRAFT pull request so the ` +
-        `work is not lost: \`gh pr create --draft --base main\`, titled with the issue title, body opening ` +
+        `work is not lost — or, if a draft from an earlier attempt is already open on this branch, update its ` +
+        `body with \`gh pr edit\` instead: \`gh pr create --draft --base main\`, titled with the issue title, body opening ` +
         `"Refs #${issue}" (not Closes), then a short "Why this stopped" section and the open list above. ` +
         `Skip the draft if nothing beyond the spec is committed.\n`
       : '') +
@@ -261,7 +262,7 @@ setup = await agent(
   `Set up to build GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly: read the ticket, decide whether ` +
   `it is buildable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
-  `ready-for-ai whether or not you proceed — and make the workspace — branch in a runner, ` +
+  `ready-for-ai (and any needs-human left by an earlier attempt) whether or not you proceed — and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop. If an issue-${issue}-* branch is already on origin from an earlier ` +
   `attempt, continue on it rather than making a new one, and say so in reason. Do not write the spec or any code. Return proceed=false with the ` +
   `reason if it is not buildable, and in that case also do §9 (comment and label needs-human).`,
@@ -340,7 +341,7 @@ phase('Implement')
 const built = await agent(
   `${ticket}\n\n${inTree()}\n\n${MAP}\n\nImplement ${spec.path}, following §4–§6 of ${SKILL}: write the check first and ` +
   `confirm it fails for the reason you expect, then implement, running \`npm test\` after every edit. Commit ` +
-  `in Conventional Commits and push. Do NOT run \`npm run verify\` — the next phase does, once. Return ok=false ` +
+  `in Conventional Commits and push. Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed.`,
   { phase: 'Implement', label: 'implement', schema: DONE },
 )

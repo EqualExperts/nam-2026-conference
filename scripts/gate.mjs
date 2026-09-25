@@ -79,6 +79,18 @@ export function tampered(diff) {
   return out;
 }
 
+/**
+ * Does `git status --porcelain` show work the pull request will not contain?
+ * Any tracked change counts; an untracked file only under tests/. `pinned`
+ * names files the caller swapped in on purpose — the build job runs main's
+ * gate and config against the branch — which are not the branch's work.
+ */
+export function isDirty(porcelain, pinned = []) {
+  return porcelain.split('\n')
+    .filter(l => l && !pinned.includes(l.slice(3)))
+    .some(l => !l.startsWith('??') || l.slice(3).startsWith('tests/'));
+}
+
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 
 function main() {
@@ -87,8 +99,8 @@ function main() {
   const sha = git('rev-parse', 'HEAD');
   // Untracked files count when they are tests: a spec nobody committed can
   // turn the gate green on code the pull request will not contain.
-  const dirty = git('status', '--porcelain', '--untracked-files=all')
-    .split('\n').some(l => l && (!l.startsWith('??') || l.slice(3).startsWith('tests/')));
+  const pinned = (process.env.GATE_PINNED || '').split(',').filter(Boolean);
+  const dirty = isDirty(git('status', '--porcelain', '--untracked-files=all'), pinned);
 
   const unit = spawnSync('npm', ['test', '--silent'], { cwd: ROOT, encoding: 'utf8' });
   const unitCounts = /# pass (\d+)[\s\S]*?# fail (\d+)/.exec(unit.stdout || '') || [];

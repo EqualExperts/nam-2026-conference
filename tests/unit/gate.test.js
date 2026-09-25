@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -80,5 +80,20 @@ describe('spotting a weakened suite', () => {
   test('a deleted test file is named from the diff header, not /dev/null', () => {
     const t = tampered(`diff --git a/tests/old.spec.js b/tests/old.spec.js\n--- a/tests/old.spec.js\n+++ /dev/null\n-test('gone', () => {});`);
     assert.deepEqual(t, [`tests/old.spec.js: -test('gone', () => {});`]);
+  });
+});
+
+describe('a tree with work the pull request will not contain', () => {
+  test('a modified tracked file is dirty; an untracked file is only dirty under tests/', () => {
+    assert.equal(isDirty(' M server/lib/seats.js'), true);
+    assert.equal(isDirty('?? notes.txt'), false);
+    assert.equal(isDirty('?? tests/probe.spec.js'), true);
+    assert.equal(isDirty(''), false);
+  });
+
+  test("files the build job swapped in from main are not the branch's work", () => {
+    const status = ' M playwright.config.js\n M scripts/gate.mjs';
+    assert.equal(isDirty(status, ['playwright.config.js', 'scripts/gate.mjs']), false);
+    assert.equal(isDirty(status + '\n M src/App.jsx', ['playwright.config.js', 'scripts/gate.mjs']), true);
   });
 });

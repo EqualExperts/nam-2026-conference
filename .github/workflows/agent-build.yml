@@ -134,11 +134,20 @@ jobs:
           git fetch -q origin "$branch" && git checkout -q FETCH_HEAD
           # The gate and the config that decides what it runs come from main,
           # not from the branch being judged — a fixer told to make the gate
-          # green could otherwise have edited the gate. (Until main has one,
-          # the branch's is all there is.) No token in its environment either.
-          git checkout -q origin/main -- scripts/gate.mjs playwright.config.js 2>/dev/null || true
-          if env -u GH_TOKEN node scripts/gate.mjs > /tmp/gate.out; then verdict=green; else verdict=red; fi
-          git checkout -q FETCH_HEAD -- . 2>/dev/null || true
+          # green could otherwise have edited the gate. Each file separately,
+          # so one main does not have yet cannot stop the other; GATE_PINNED
+          # tells the gate those two differences are ours, not the branch's
+          # uncommitted work. (This limits what the branch can change about
+          # the gate, not what its code can reach: the checkout's credentials
+          # are still on disk.)
+          pinned=""
+          for f in scripts/gate.mjs playwright.config.js; do
+            if git cat-file -e "origin/main:$f" 2>/dev/null; then
+              git show "origin/main:$f" > "$f" && pinned="$pinned,$f"
+            fi
+          done
+          if env -u GH_TOKEN GATE_PINNED="$pinned" node scripts/gate.mjs > /tmp/gate.out; then verdict=green; else verdict=red; fi
+          git checkout -q -- . 2>/dev/null || true
           {
             echo "### Gate re-run on #$pr: $verdict"
             echo

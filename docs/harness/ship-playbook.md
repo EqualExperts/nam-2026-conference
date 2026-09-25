@@ -41,8 +41,11 @@ into the pull request.
 ## 2. Claim it
 
 ```bash
-gh issue edit <n> --add-label ai-working --remove-label ready-for-ai
+gh issue edit <n> --add-label ai-working --remove-label ready-for-ai --remove-label needs-human
 ```
+
+`needs-human` goes too: on a retry it is left from the attempt that was
+handed back, and a ticket that ships should not still say it is stuck.
 
 ## 3. Get a workspace
 
@@ -256,6 +259,9 @@ A normal outcome, not a failure. Push what is committed and open a **draft**
 pull request so the work is not lost — `Refs #<n>`, never `Closes`, and a
 *Why this stopped* section listing what is still open. Skip the draft if
 nothing beyond the spec is committed.
+
+If a draft from an earlier attempt is already open on this branch, update it
+(`gh pr edit <draft> --body-file /tmp/pr-body.md`) rather than creating one.
 
 ```bash
 gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
