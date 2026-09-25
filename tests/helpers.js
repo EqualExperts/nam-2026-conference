@@ -96,7 +96,8 @@ export async function clearAgendaFor(request, userId, day) {
  * another's click into a conflict dialog.
  *
  * Lanes with a `slot` also count seats exactly, so on top of that they own a
- * whole time slot on day 3 — no other lane books anything on day 3.
+ * whole time slot on day 3 — no other lane books in those slots on day 3;
+ * `agenda.oneDone` books only at 17:15.
  *
  * Read-only fixtures to leave alone: Jonas on day 1 (home page), Jonas and
  * Kenji on day 2 (the promotion fixture), Marcus on day 4 (must stay empty).
@@ -115,6 +116,7 @@ const LANES = {
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
   'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
+  'agenda.oneDone':   { desktop: { user: kenji, day: 2, slot: '17:15', clean: true }, mobile: { user: marcus, day: 2, slot: '17:15', clean: true } },
 };
 
 /** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */

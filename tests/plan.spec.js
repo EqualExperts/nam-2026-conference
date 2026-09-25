@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, clearAgendaFor, conferenceDays, ATTENDEES } from './helpers.js';
 
 
 test.describe('My Agenda', () => {
@@ -22,6 +22,36 @@ test.describe('My Agenda', () => {
 
     // release only what this test booked — the rest of the day is seeded
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
+  });
+
+  test('the end-of-day card counts one session in the singular', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('agenda.oneDone', testInfo);
+    await clearAgendaFor(request, lane.user, lane.day);
+    const target = (await bookableFor(request, lane.user, lane.day))
+      .find((s) => s.startsAt === lane.slot && s.seatsLeft > 0);
+    expect(target, `nothing with a free seat at ${lane.slot}`).toBeTruthy();
+
+    const url = `${API}/users/${lane.user}/reservations/${target.id}`;
+    expect((await request.put(url, { data: {} })).ok()).toBe(true);
+    try {
+      await visit(page, '/my-agenda', { as: lane.user, at: await momentOn(2, '22:00') });
+      const card = page.getByTestId('next-up');
+      await expect(card).toContainText('1 session done');
+      await expect(card).not.toContainText('1 sessions');
+    } finally {
+      await clearAgendaFor(request, lane.user, lane.day);
+    }
+  });
+
+  test('the end-of-day card still counts several sessions in the plural', async ({ page, request }) => {
+    const [day] = await conferenceDays();
+    const plan = await (await request.get(`${API}/users/${ATTENDEES.jonas}/schedule`)).json();
+    const sessions = plan.days.find((d) => d.date === day)?.sessions ?? [];
+    expect(sessions.length, 'the home-page fixture books several sessions on day 1').toBeGreaterThanOrEqual(2);
+    expect(sessions.every((s) => s.endsAt <= '22:00'), 'every session has ended by 22:00').toBe(true);
+
+    await visit(page, '/my-agenda', { as: ATTENDEES.jonas, at: await momentOn(0, '22:00') });
+    await expect(page.getByTestId('next-up')).toContainText(`${sessions.length} sessions done`);
   });
 
   test('the hours tile totals the hours shown on each day', async ({ page }) => {
