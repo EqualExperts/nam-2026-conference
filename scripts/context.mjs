@@ -7,7 +7,7 @@
  *
  * Each file in `docs/context/` describes one area of the app, with YAML front
  * matter saying what it covers, which files it owns and when to read it. An
- * agent starts from `index` — a few hundred tokens — picks the one or two docs
+ * agent starts from `index` — about a thousand tokens — picks the one or two docs
  * its ticket touches, and opens source only for the lines it will change.
  * Scanning the tree to find out how the app fits together is the expensive
  * thing this replaces.
@@ -15,11 +15,13 @@
  * `for` is how the docs stay true: the ship workflow passes it the files a
  * branch changed and updates exactly the docs that come back. `check` runs in
  * `npm test`, so a doc naming a file that has been moved fails the build rather
- * than quietly misleading the next agent.
+ * than quietly misleading the next agent — and so does a source file no doc
+ * owns, because `for` cannot route a change to a doc that does not list it.
  *
  * The front matter is a deliberate subset of YAML — `key: value` scalars and
  * `- item` lists — so this needs no parser dependency.
  */
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +29,8 @@ import { fileURLToPath } from 'node:url';
 export const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 export const DIR = 'docs/context';
 const LISTS = ['files', 'tests', 'related'];
+/** Every tracked file under these must be owned by some doc. */
+export const OWNED = ['server/', 'src/', 'scripts/', 'tests/'];
 
 /** Parse the front matter block at the top of a markdown string. */
 export function frontMatter(text) {
@@ -78,6 +82,7 @@ export function docsFor(docs, files) {
 }
 
 /** Paths a doc names that do not exist, and `related` areas that are not docs. */
+export { tracked };
 export function problems(docs, root = ROOT) {
   const areas = new Set(docs.map(d => d.area));
   const out = [];
@@ -89,6 +94,17 @@ export function problems(docs, root = ROOT) {
   return out;
 }
 
+/** Tracked source files no doc lists in `files` or `tests`. */
+export function unowned(docs, tracked) {
+  const entries = docs.flatMap(d => [...d.files, ...d.tests]);
+  return tracked
+    .filter(f => OWNED.some(p => f.startsWith(p)))
+    .filter(f => !entries.some(e => covers(e, f)));
+}
+
+const tracked = (root = ROOT) =>
+  execFileSync('git', ['ls-files', ...OWNED], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+
 function main([cmd, ...rest]) {
   const docs = load();
   if (cmd === 'index') {
@@ -97,7 +113,7 @@ function main([cmd, ...rest]) {
     const files = rest.map(f => relative(ROOT, resolve(f)));
     for (const d of docsFor(docs, files)) console.log(d.path);
   } else if (cmd === 'check') {
-    const bad = problems(docs);
+    const bad = [...problems(docs), ...unowned(docs, tracked()).map(f => `${f}: no context doc owns it`)];
     for (const p of bad) console.error(p);
     if (bad.length) process.exit(1);
     console.log(`${docs.length} context docs, every path resolves`);

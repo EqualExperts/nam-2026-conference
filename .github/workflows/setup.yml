@@ -89,8 +89,11 @@ jobs:
               echo
               echo "Everything works, with one difference: an agent's pull request is"
               echo "opened by \`github-actions[bot]\`, which is not a collaborator, so its"
-              echo "checks wait at **Approve and run** until you click. A classic personal"
-              echo "access token with \`repo\` and \`workflow\` scope removes that click."
+              echo "checks wait at **Approve and run** until you click. A **fine-grained**"
+              echo "personal access token for this repository only — Contents, Issues and"
+              echo "Pull requests, read and write — removes that click. Not a classic token:"
+              echo "the agent reads issue text anyone can edit, and a classic \`repo\` token"
+              echo "reaches every repository you own."
               echo
             fi
 

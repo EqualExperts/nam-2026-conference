@@ -143,7 +143,10 @@ agent work executes.
 <details>
 <summary>Running this repeatedly, and tired of clicking?</summary>
 
-Add `AGENT_GITHUB_TOKEN` — a classic token with `repo` and `workflow` scope.
+Add `AGENT_GITHUB_TOKEN` — a **fine-grained** token for this repository only,
+with Contents, Issues and Pull requests set to read and write. Not a classic
+token: the agent reads issue text anyone can edit, and a classic `repo` token
+reaches every repository you own.
 The pull request is then authored by you rather than the bot, so nothing waits
 for approval and CI re-runs on the agent's own pushes. It also covers step 2
 on its own.

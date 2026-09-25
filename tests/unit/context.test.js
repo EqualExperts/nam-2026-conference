@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { frontMatter, load, docsFor, problems } from '../../scripts/context.mjs';
+import { frontMatter, load, docsFor, problems, unowned, tracked } from '../../scripts/context.mjs';
 
 /**
  * The context docs are what an agent reads instead of the source, so a doc
@@ -58,4 +58,13 @@ test('every real context doc names only paths and areas that exist', () => {
   const docs = load();
   assert.ok(docs.length > 0, 'docs/context has no docs');
   assert.deepEqual(problems(docs), []);
+});
+
+test('every tracked source file is owned by a doc, so a change to it reaches one', () => {
+  assert.deepEqual(unowned(load(), tracked()), []);
+});
+
+test('an unowned file is reported; one outside the owned trees is not', () => {
+  const docs = [{ files: ['src/'], tests: [] }];
+  assert.deepEqual(unowned(docs, ['src/a.js', 'server/b.js', 'README.md']), ['server/b.js']);
 });

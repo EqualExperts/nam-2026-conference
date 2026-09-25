@@ -117,10 +117,14 @@ describes.
 ## 7. Prove it
 
 ```bash
-npm test          # green
-npm run verify    # the gate: real browser, desktop and mobile
+node scripts/gate.mjs         # npm test + the whole browser suite → one JSON line
 npm run shot -- /the-route    # only if something visual moved
 ```
+
+The Verify phase runs this, not you: return its last line verbatim. It is
+`npm test` and `npm run verify` with the verdict read from Playwright's JSON
+report, one retry for a flaky browser test, and a list of any assertions the
+branch removed.
 
 **Once each.** Read what you need from the first run. In a runner Chromium is
 already installed — never run `playwright install`.

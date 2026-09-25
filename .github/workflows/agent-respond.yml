@@ -70,12 +70,10 @@ jobs:
           # does not trigger workflows on commits pushed with GITHUB_TOKEN, so
           # on the fallback the agent's pull request shows no verify run of its
           # own until someone pushes to it.
-          # GITHUB_TOKEN deliberately, not AGENT_GITHUB_TOKEN. This pass only
-          # comments; it never opens a pull request or pushes, so it gains
-          # nothing from a personal token — and with one its comments are
-          # attributed to the person whose token it is, which on their own
-          # pull request reads as them reviewing their own work.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # This one pushes, so it takes the build's token: a push made with
+          # GITHUB_TOKEN triggers no workflow, and the change made in answer to
+          # a review would land with no CI run at all.
+          github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           # Interactive mode runs no skill, so it never picks up a skill's
           # `allowed-tools` grant — without this the agent can read and edit
           # files but cannot run a test, boot the app or touch the GitHub API. It answers review comments it has no way to verify.

@@ -12,9 +12,8 @@
 ## ports to allocate and no worktree to make. `scripts/lane.mjs` is for a laptop
 ## running several agents at once; here the agent has the whole machine.
 ##
-## Needs two things set up once:
-##   - the Claude GitHub App installed on the repository
-##   - an ANTHROPIC_API_KEY repository secret
+## Needs an ANTHROPIC_API_KEY repository secret; `Set up the harness` says
+## what else, and none of it is the Claude GitHub App.
 name: Agent · build
 
 on:
@@ -92,18 +91,54 @@ jobs:
             --model claude-opus-5 --max-turns 30
             --allowedTools "Workflow,Bash,Read,Write,Edit,Glob,Grep"
 
-      # A run that times out, is cancelled, or dies leaves the issue on
-      # `ai-working` with nobody aware it was abandoned — and relabelling
-      # `ready-for-ai` is the only thing that starts a build, so it sits there
-      # indefinitely. Hand it back instead.
-      - name: Hand the ticket back if this run died
-        if: ${{ failure() || cancelled() }}
+      # What the run left behind is read from the issue, not from how the
+      # step exited: the agent step succeeds even when ship returned an error,
+      # and a timeout or crash leaves the ticket on `ai-working`. So this runs
+      # always, and acts on the label.
+      #
+      # When ship says it shipped, the gate is run once more here, by the
+      # runner, on the pull request's head. ship already ran it — this is the
+      # difference between an agent reporting green and a machine seeing it.
+      - name: Check what the run left behind
+        if: ${{ always() }}
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh issue edit "$N" --add-label needs-human --remove-label ai-working || true
-          gh issue comment "$N" --body "The build run did not finish — it timed out, was cancelled, or failed before handing back. No pull request was opened.
+          labels=$(gh issue view "$N" --json labels --jq '.labels[].name')
+          branch=$(git ls-remote --heads origin "issue-$N-*" | awk '{print $2}' | sed 's#refs/heads/##' | head -1)
 
-          [Run]($GITHUB_SERVER_URL/$GH_REPO/actions/runs/$GITHUB_RUN_ID) · relabel \`ready-for-ai\` to try again." || true
+          if printf '%s\n' "$labels" | grep -qx ai-working; then
+            gh issue edit "$N" --add-label needs-human --remove-label ai-working || true
+            gh issue comment "$N" --body "The build run did not finish — it timed out, was cancelled, or stopped without handing back.${branch:+ Its work so far is on \`$branch\`.}
+
+          [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
+            echo "### Build did not finish — handed back" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          pr=$(gh pr list --state open --head "$branch" --json number,isDraft --jq '.[] | select(.isDraft | not) | .number' | head -1)
+          if [ -z "$branch" ] || [ -z "$pr" ]; then
+            echo "### No ready pull request — nothing to re-check" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git fetch -q origin "$branch" && git checkout -q FETCH_HEAD
+          if node scripts/gate.mjs > /tmp/gate.out; then verdict=green; else verdict=red; fi
+          {
+            echo "### Gate re-run on #$pr: $verdict"
+            echo
+            echo '```json'
+            cat test-results/gate.json 2>/dev/null || tail -c 2000 /tmp/gate.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$verdict" = red ]; then
+            gh pr ready "$pr" --undo || true
+            gh issue edit "$N" --add-label needs-human --remove-label ready-for-human || true
+            gh pr comment "$pr" --body "> [!CAUTION]
+          > ### The gate is red on this branch
+          > ship reported it green, but the runner's own re-run of \`node scripts/gate.mjs\` failed, so this is back to draft. [Run]($RUN)" || true
+          fi

@@ -38,7 +38,7 @@ related: [attendance, agenda]
 ```
 
 Sections are a guide, not a form — leave one out when it would be empty. Keep a
-doc under about 120 lines; one that needs more is two areas.
+doc under about 150 lines; one that needs more is two areas.
 
 ## Keeping them true
 

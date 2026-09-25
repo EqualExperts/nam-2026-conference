@@ -481,83 +481,34 @@ what drives the speaking panel on My Agenda and the home page. See
 
 ## Setting this up on a fork
 
-A fork inherits the workflows and the skills but **not the labels**, and
-`ready-for-ai` is what starts everything — so on a fresh fork, labelling an
-issue does nothing and nothing says why.
-
-Actions → **Set up the harness** → Run workflow. It creates the four labels and
-writes a summary saying what else the fork needs: an `ANTHROPIC_API_KEY`
-secret **scoped to a workspace** (an organisation-level key is rejected, and
-the error does not say which kind to make), and optionally an
-`AGENT_GITHUB_TOKEN`.
+Actions → **Set up the harness** → Run workflow. A fork inherits the workflows
+but not the labels, and `ready-for-ai` is what starts everything; that
+workflow creates them and says what else the fork needs.
+`docs/harness/github.md` has the rest — keys, tokens, and why each trigger is
+the way it is.
 
 ## What happens to a ticket
 
-Four stages, each its own GitHub Actions workflow, each in a fresh process:
-
-1. **Build** — `ready-for-ai` on an issue starts a runner, which runs the
-   `ship` workflow (`.claude/workflows/ship.js`; `/ship 42` runs the same on a
-   laptop). How each step is done lives in `docs/harness/ship-playbook.md`. It is a script, not a prompt, and every phase is a fresh agent:
+1. **Build** — `ready-for-ai` on an issue runs the `ship` workflow
+   (`.claude/workflows/ship.js`; `/ship 42` on a laptop). It is a script, not
+   a prompt, and every phase is a fresh agent:
 
    *Setup → Spec → Spec Audit → Implement → Verify ⇄ Code Audit → Context →
-   PR → Learn*
+   Learn → PR*
 
-   Nothing is opened until a round comes back clean: `npm run verify` green,
-   then independent auditors — the ticket's criteria, CLAUDE.md's rules, and a
-   browser — whose blockers must each survive a skeptic before they cost a fix
-   round. The spec gets the same treatment before any code exists. Four rounds
-   without converging, or one finding surviving two fixes, and the ticket goes
-   to a person as a **draft** pull request with what is still open.
-   *Context* updates the docs the change touched; *Learn* turns what the
-   audits caught into `docs/context/` gotchas on the same branch, so whoever
-   merges reviews the lesson with the code. The loop's control flow is tested
-   in `tests/unit/ship.test.js` with every agent stubbed.
-2. **Code review** — a second agent reads the issue's acceptance criteria
-   *first*, then the diff. It has not seen the reasoning that produced the
-   change, which is the point. Blockers only, three findings at most. Neither
-   this nor QA runs on a draft; marking it ready asks for them.
-3. **QA** — a third agent boots the app and drives it in a browser, looking for
-   what nobody wrote a test for: the empty agenda, the phone viewport, day four,
-   the second click. Its verdict also goes back on the **issue** as one line:
-   the ticket asked for something, and whether it works is the ticket's
-   business. The code review's findings stay on the pull request, because they
-   are about the diff.
-4. **A human merges.** Nothing here is a required check, so a red one informs
-   the decision rather than making it.
-
-They run when a pull request **opens**, and again if it is marked ready for
-review — but never on a push. One pull request costs one pass of each.
-`synchronize` was the expensive part: it charged for a full review on every
-commit, so a fourteen-commit branch paid fourteen times over for one change.
-To ask for another look after pushing fixes, put the pull request back to
-draft and mark it ready again.
-
-Both passes publish a verdict carrying a **confidence**, which means coverage
-rather than feeling: how much of the change the agent could actually exercise
-or judge. A high-confidence pass is green, a low-confidence one publishes as
-*unproven* — a pass nobody could earn should not read like one.
-
-Code review and QA trigger on the pull request itself. An earlier design keyed
-off the build workflow finishing, which cannot work: a build started by an
-`issues` event reports its `head_branch` as `main`, so looking up the pull
-request by branch found nothing and neither pass ever ran.
-
-**`pull_request` does fire for a pull request the agent opened**, even though
-that pull request is created with `GITHUB_TOKEN`. This gets re-derived wrongly
-about once a week, because the well-known rule — GitHub does not trigger
-workflows from `GITHUB_TOKEN` actions — sounds like it should apply and does
-not. Verified on PR #22, opened by `github-actions[bot]` with no
-`AGENT_GITHUB_TOKEN` set: `verify` ran on it twice, `event=pull_request`.
-
-What does happen is that every run on it sits at **`action_required`** until
-somebody clicks *Approve workflows to run*. Verified on a brand-new repository
-in a personal account with no organisation policy of any kind: three workflows
-waiting. This is GitHub's behaviour for anything `github-actions[bot]` opens
-and there is no setting that turns it off.
-
-`AGENT_GITHUB_TOKEN` is the only way around it — the pull request is then
-authored by a person, so nothing is gated. Keeping the click instead is a
-defensible choice: it is a human checkpoint before any agent work runs.
+   Nothing is opened until a round comes back clean: `scripts/gate.mjs` green,
+   then independent auditors — the ticket's criteria, this file's rules, a
+   browser — whose blockers must each survive a skeptic before they cost a fix.
+   Four rounds without converging, or one finding surviving two fixes, and the
+   ticket goes to a person as a **draft** pull request. The runner then re-runs
+   the gate itself on what was shipped. How each step is done is
+   `docs/harness/ship-playbook.md`; the machinery is `docs/context/harness.md`.
+2. **Code review** and 3. **QA** — fresh agents on the opened pull request,
+   one reading the criteria then the diff, one driving a browser. Each
+   publishes a verdict with a **confidence** meaning coverage, not feeling; a
+   low one reads as *unproven*. Neither runs on a draft.
+4. **A human merges.** Nothing is a required check, so a red one informs the
+   decision rather than making it.
 
 ## Every change starts with a spec
 

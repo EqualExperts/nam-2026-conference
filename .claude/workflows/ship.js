@@ -1,6 +1,6 @@
 export const meta = {
   name: 'ship',
-  description: 'Issue → spec → spec audit loop → implement → verify + code audit loop → context → PR → learn',
+  description: 'Issue → spec → spec audit loop → implement → verify + code audit loop → context → learn → PR',
   whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label.',
   phases: [
     { title: 'Setup', detail: 'read the ticket, gate it, claim it, branch' },
@@ -10,8 +10,8 @@ export const meta = {
     { title: 'Verify', detail: 'npm test + npm run verify, every round' },
     { title: 'Code Audit', detail: 'independent reviewers, skeptic-verified, fix, repeat' },
     { title: 'Context', detail: 'update the docs/context files this change touched' },
-    { title: 'PR', detail: 'push, screenshots, open it' },
     { title: 'Learn', detail: 'turn what the audits caught into context, on the branch' },
+    { title: 'PR', detail: 'push, screenshots, open it' },
   ],
 }
 
@@ -71,13 +71,16 @@ const FINDINGS = {
     covered: { type: 'string', description: 'what you were able to judge, in a few words' },
     findings: {
       type: 'array',
+      // Unbounded, one auditor can fan out a skeptic per nit. Five blockers
+      // in one lens means the build is wrong, not that it needs five fixes.
+      maxItems: 5,
       items: {
         type: 'object',
         required: ['severity', 'category', 'file', 'claim', 'evidence', 'fix'],
         properties: {
           severity: { enum: ['blocker', 'minor'] },
           category: {
-            enum: ['criterion-unmet', 'claude-md', 'logic', 'test-proves-nothing', 'browser', 'spec-gap', 'scope'],
+            enum: ['criterion-unmet', 'claude-md', 'logic', 'test-proves-nothing', 'test-weakened', 'browser', 'spec-gap', 'scope', 'gate'],
           },
           file: { type: 'string' },
           line: { type: 'integer' },
@@ -99,21 +102,14 @@ const REFUTATION = {
   },
 }
 
+// The verify agent only runs `node scripts/gate.mjs` and hands back the JSON
+// line it printed. The script decides green from Playwright's own report; the
+// agent's opinion of the run is never asked for.
 const GATE = {
   type: 'object',
-  required: ['green', 'unit', 'browser', 'failures'],
+  required: ['json'],
   properties: {
-    green: { type: 'boolean' },
-    unit: { type: 'string', description: 'e.g. "164 passed" or "2 failed"' },
-    browser: { type: 'string', description: 'e.g. "158 passed · desktop + mobile"' },
-    failures: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['test', 'error'],
-        properties: { test: { type: 'string' }, error: { type: 'string' } },
-      },
-    },
+    json: { type: 'string', description: 'the last line gate.mjs printed, verbatim' },
   },
 }
 
@@ -146,7 +142,26 @@ const LESSON = {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-const key = f => `${f.category}|${f.file}|${f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
+// Where a finding is, not how it is worded: a fresh auditor rewords the same
+// bug every round, so a key built from the claim never repeats.
+const key = f => `${f.category}|${f.file}|${f.line ? Math.floor(f.line / 10) : '-'}`
+const dedupe = fs => [...new Map(fs.map(f => [key(f), f])).values()]
+
+// Parse what gate.mjs printed. Anything that is not its JSON is a red gate
+// with a reason, never a green one.
+function readGate(g) {
+  try {
+    const r = JSON.parse(g.json)
+    if (typeof r.ok !== 'boolean' || !r.browser || !r.unit) throw new Error('not a gate result')
+    return r
+  } catch (e) {
+    return { ok: false, sha: '?', unit: { passed: 0, failed: 0 }, tampered: [],
+      browser: { passed: 0, flaky: 0, skipped: 0, failed: [{ test: 'gate.mjs', error: `unreadable gate output: ${String(g.json).slice(0, 200)}` }] } }
+  }
+}
+const gateLine = r =>
+  `unit ${r.unit.passed} passed${r.unit.failed ? ` · ${r.unit.failed} failed` : ''} · browser ${r.browser.passed} passed` +
+  (r.browser.failed.length ? ` · ${r.browser.failed.length} failed` : '') + (r.browser.flaky ? ` · ${r.browser.flaky} flaky` : '')
 
 const listFindings = fs =>
   fs.map((f, i) => `${i + 1}. [${f.category}] ${f.file}${f.line ? ':' + f.line : ''} — ${f.claim}\n   evidence: ${f.evidence}\n   fix: ${f.fix}`).join('\n')
@@ -155,19 +170,33 @@ const listFindings = fs =>
 // positive here is worse than on a PR comment: the fixer will obediently
 // "fix" correct code, and the next audit will flag the damage.
 async function confirm(findings, where) {
-  const judged = await parallel(findings.map(f => () =>
+  const judged = await parallel(dedupe(findings).map(f => () =>
     agent(
-      `An auditor claims this blocker in ${where}. Try to REFUTE it. Open the cited file and line yourself; ` +
-      `run the code or a test if that settles it. Refute if the line does not say what is claimed, if the ` +
-      `behaviour is already on origin/main, if CLAUDE.md or the spec shows it was deliberate, or if the ` +
-      `finding is style rather than a defect. If you cannot tell, it is refuted.\n\n` +
+      `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. An auditor claims this blocker in ${where}. Try to ` +
+      `REFUTE it. Open the cited file and line yourself; \`npm test\` is fine, but do not boot the app or run ` +
+      `Playwright — other agents are using the ports. Refute if the line does not say what is claimed, if the ` +
+      `behaviour is already on origin/main, if the finding is style rather than a defect, or if CLAUDE.md or ` +
+      `the spec *as first committed* (\`git log --diff-filter=A --format=%H -- ${spec.path}\`, then \`git show\`) ` +
+      `shows it was deliberate. A later edit to the spec does not make a missed Done-when criterion deliberate. ` +
+      `If you cannot tell, it is NOT refuted.\n\n` +
       listFindings([f]),
       { phase: where === 'the spec' ? 'Spec Audit' : 'Code Audit', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium' },
-    ).then(v => (v && !v.refuted ? f : null))))
+    // A skeptic that died refuted nothing. Dropping its finding would let a
+    // crash read as a clean audit.
+    ).then(v => (v && v.refuted ? null : f))))
   return judged.filter(Boolean)
 }
 
-let setup
+// Run every lens; a lens that died is run once more, and one that dies twice
+// hands the ticket back. An audit nobody finished is not a clean audit.
+async function audit(lenses, run) {
+  const first = await parallel(lenses.map(l => () => run(l, '')))
+  const again = await parallel(lenses.map((l, i) => async () => first[i] || run(l, '-retry')))
+  const missing = lenses.filter((l, i) => !again[i]).map(l => l.key)
+  return { reports: again.filter(Boolean), missing }
+}
+
+let setup, ticket, spec
 // Everything any audit confirmed, across every loop — what Learn works from.
 const history = []
 const inTree = () =>
@@ -223,20 +252,27 @@ setup = await agent(
   `Set up to build GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly: read the ticket, decide whether ` +
   `it is buildable (stop if it is closed, already has an open PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things), claim it, and make the workspace — branch in a runner, ` +
-  `worktree + npm install on a laptop. Do not write the spec or any code. Return proceed=false with the ` +
+  `worktree + npm install on a laptop. If an issue-${issue}-* branch is already on origin from an earlier ` +
+  `attempt, continue on it rather than making a new one. Do not write the spec or any code. Return proceed=false with the ` +
   `reason if it is not buildable, and in that case also do §9 (comment and label needs-human).`,
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low' },
 )
-if (!setup) return { outcome: 'error', issue, reason: 'setup agent died' }
+if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.reason }
+const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
+if (missingSetup.length) {
+  const partial = setup
+  setup = partial.branch && partial.workdir ? partial : null
+  return handBack('Setup', `setup returned no ${missingSetup.join(', ')}`)
+}
 log(`#${issue} ${setup.title} → ${setup.branch}`)
 
-const ticket =
+ticket =
   `GitHub issue #${issue}: ${setup.title}\nDone when:\n` + setup.doneWhen.map(c => `- ${c}`).join('\n')
 
 // ── 2. Spec ──────────────────────────────────────────────────────────────────
 phase('Spec')
-const spec = await agent(
+spec = await agent(
   `${ticket}\n\n${inTree()}\n\nWrite the spec, following §3b of ${SKILL}: specs/${issue}-${setup.slug}.md, ` +
   `commit it as the branch's first commit, push, and comment the link on the issue. ${MAP} Every Done-when ` +
   `criterion must map to a named check at a named layer.`,
@@ -263,13 +299,15 @@ const SPEC_LENSES = [
 let specOpen = []
 for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   phase('Spec Audit')
-  const found = (await parallel(SPEC_LENSES.map(l => () =>
+  const specAudit = await audit(SPEC_LENSES, (l, retry) =>
     agent(
       `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
       `(in ${setup.workdir}) and the code it names. ${MAP} ${l.ask}\n\nBlockers only for something that would make ` +
       `the build wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
-      { phase: 'Spec Audit', label: `spec-audit:${l.key}#${round}`, schema: FINDINGS },
-    )))).filter(Boolean).flatMap(r => r.findings)
+      { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS },
+    ))
+  if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
+  const found = specAudit.reports.flatMap(r => r.findings)
 
   const blockers = found.filter(f => f.severity === 'blocker')
   specOpen = blockers.length ? await confirm(blockers, 'the spec') : []
@@ -278,12 +316,13 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   if (!specOpen.length) break
   if (round === MAX_SPEC_ROUNDS) return handBack('Spec Audit', `spec still has blockers after ${round} rounds`, specOpen)
 
-  await agent(
+  const revised = await agent(
     `${ticket}\n\n${inTree()}\n\nIndependent auditors confirmed these problems with ${spec.path}:\n\n` +
     `${listFindings(specOpen)}\n\nRevise the spec to resolve each one — or, if the ticket itself is wrong, ` +
     `record that under *Decisions*. Commit ("docs(spec): …") and push.`,
     { phase: 'Spec Audit', label: `revise-spec#${round}`, schema: SPEC_WRITTEN },
   )
+  if (!revised) return handBack('Spec Audit', 'the spec reviser died', specOpen)
 }
 
 // ── 4. Implement ─────────────────────────────────────────────────────────────
@@ -305,7 +344,8 @@ const CODE_LENSES = [
     key: 'criteria',
     ask: `Read the ticket first, then \`git diff origin/main...HEAD\`. For each Done-when criterion, find what ` +
       `satisfies it and the test that proves it. A criterion with nothing satisfying it is a blocker. So is a ` +
-      `test that would pass before the change, or asserts the implementation against itself.`,
+      `test that would pass before the change, or asserts the implementation against itself, or an existing ` +
+      `test weakened (category test-weakened) when the ticket did not ask for that behaviour to change.`,
   },
   {
     key: 'rules',
@@ -317,9 +357,14 @@ const CODE_LENSES = [
     key: 'browser',
     ask: `Drive the change in a real browser and try to break it, following .claude/skills/qa/SKILL.md §1–§3 ` +
       `(probes in tests/qa-probe.spec.js, both projects, re-run before calling anything a bug, delete the probe ` +
-      `after). Budget: six probes. A reproduced bug in this change is a blocker; pre-existing is minor. If ` +
-      `nothing visible changed, say so in covered and return no findings.`,
+      `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
+      `probe on main, \`git worktree add ../orbit-main-${issue} origin/main\`, symlink node_modules into it, and ` +
+      `remove it after. Budget: six probes. A reproduced bug in this change is a blocker; pre-existing is ` +
+      `minor. If nothing visible changed, say so in covered and return no findings.`,
     model: 'sonnet',
+    // Boots the app and runs Playwright, so it runs after the readers rather
+    // than beside the skeptics and the gate that need the same ports.
+    alone: true,
   },
 ]
 
@@ -331,36 +376,54 @@ let minors = []
 
 for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   phase('Verify')
-  gate = await agent(
-    `${inTree()}\n\nRun \`npm test\`, then \`npm run verify\` — once each, reading what you need from that one ` +
-    `run. In a runner Chromium is installed; never run playwright install. Report; change nothing.`,
+  const ran = await agent(
+    `${inTree()}\n\nRun \`node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
+    `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
+    `install. Change nothing and interpret nothing.`,
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low' },
   )
-  if (!gate) return handBack('Verify', 'the verify agent died')
+  if (!ran) return handBack('Verify', 'the verify agent died')
+  gate = readGate(ran)
 
-  if (gate.green) {
+  if (gate.ok) {
     phase('Code Audit')
-    const reports = (await parallel(CODE_LENSES.map(l => () =>
-      agent(
-        `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ` +
-        `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\nBlockers only for something that would change a ` +
-        `merge decision; everything else is minor. Change no code. Empty is a good answer.`,
-        { phase: 'Code Audit', label: `audit:${l.key}#${round}`, schema: FINDINGS, model: l.model },
-      )))).filter(Boolean)
+    const run = (l, retry) => agent(
+      `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ` +
+      `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
+      (l.key === 'criteria' && gate.tampered.length
+        ? `The gate flagged these lines in tests/ as removed assertions or added skips:\n${gate.tampered.join('\n')}\n\n`
+        : '') +
+      `Blockers only for something that would change a merge decision; everything else is minor. Change no ` +
+      `code. Empty is a good answer.`,
+      { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model },
+    )
+    const readers = await audit(CODE_LENSES.filter(l => !l.alone), run)
+    const driver = await audit(CODE_LENSES.filter(l => l.alone), run)
+    const missing = [...readers.missing, ...driver.missing]
+    if (missing.length) return handBack('Code Audit', `the ${missing.join(', ')} auditor could not finish`)
+    const reports = [...readers.reports, ...driver.reports]
 
     const raised = reports.flatMap(r => r.findings)
     minors = raised.filter(f => f.severity === 'minor')
     open = await confirm(raised.filter(f => f.severity === 'blocker'), 'the change')
     history.push(...open)
-    rounds.push({ round, gate: `${gate.unit} · ${gate.browser}`, raised: raised.length, confirmed: open.length })
+    rounds.push({ round, gate: gateLine(gate), raised: raised.length, confirmed: open.length,
+      covered: reports.map(r => r.covered).join(' · ') })
     log(`build round ${round}: green, ${raised.length} raised, ${open.length} confirmed`)
     if (!open.length) break
   } else {
-    open = gate.failures.map(f => ({
-      severity: 'blocker', category: 'browser', file: f.test, claim: `gate red: ${f.test}`, evidence: f.error,
+    const failures = [
+      ...(gate.unit.failed ? [{ test: 'npm test', error: gate.unit.output || `${gate.unit.failed} failed` }] : []),
+      ...gate.browser.failed,
+    ]
+    // Red with nothing to point at — the app never booted, the report never
+    // got written — is not something another fix round can aim at.
+    if (!failures.length) return handBack('Verify', 'the gate is red but names no failing test')
+    open = dedupe(failures.map(f => ({
+      severity: 'blocker', category: 'gate', file: f.test, claim: `gate red: ${f.test}`, evidence: f.error,
       fix: 'make the gate green without editing, skipping or deleting an existing test',
-    }))
-    rounds.push({ round, gate: `red — ${gate.unit} · ${gate.browser}`, raised: open.length, confirmed: open.length })
+    })))
+    rounds.push({ round, gate: `red — ${gateLine(gate)}`, raised: open.length, confirmed: open.length, covered: '' })
     log(`build round ${round}: gate red, ${open.length} failing`)
   }
 
@@ -373,13 +436,15 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
   if (round === MAX_BUILD_ROUNDS) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
 
-  await agent(
+  const fixed = await agent(
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
     `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} still hold: never ` +
     `edit an existing test to make it pass, never skip or delete one. If a finding shows the spec was wrong, ` +
-    `fix the spec too. \`npm test\` after every edit; do not run \`npm run verify\`. Commit and push.`,
+    `fix the spec too and say so in the summary. \`npm test\` after every edit; do not run the Playwright ` +
+    `suite. Leave \`git status\` clean. Commit and push.`,
     { phase: 'Code Audit', label: `fix#${round}`, schema: DONE },
   )
+  if (!fixed) return handBack('Code Audit', 'the fixer died', open)
 }
 
 // ── 7. Context ───────────────────────────────────────────────────────────────
@@ -399,14 +464,23 @@ await agent(
   { phase: 'Context', label: 'context', schema: DONE, effort: 'low' },
 )
 
-// ── 8. PR ────────────────────────────────────────────────────────────────────
+// ── 8. Learn ────────────────────────────────────────────────────────────────
+// What the audits kept catching is context the builder did not have. It goes
+// into the docs before the pull request opens, so the reviewers and the person
+// merging see the lesson with the code — never in a push after they looked.
+const lessons = await learn('passed its audit')
+
+// ── 9. PR ────────────────────────────────────────────────────────────────────
 phase('PR')
-const auditTable = rounds.map(r => `| ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed |`).join('\n')
+const auditTable = rounds.map(r => `| ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`).join('\n')
 const pr = await agent(
   `${ticket}\n\n${inTree()}\n\nOpen the pull request, following §8 of ${SKILL} — ready for review, screenshots ` +
   `only if something visible changed, the body in the shape given there. In the *Proof* table use: ` +
-  `\`npm test\` ${gate.unit}, \`npm run verify\` ${gate.browser}. After it, add this section verbatim:\n\n` +
-  `### Audit loop\n| Round | Gate | Independent audit |\n| --- | --- | --- |\n${auditTable}\n\n` +
+  `\`node scripts/gate.mjs\` → ${gateLine(gate)}, at ${gate.sha.slice(0, 7)}. If \`git log ${gate.sha}..HEAD\` ` +
+  `shows later commits, say in one line that they touch only docs — and if any touches code, stop and ` +
+  `return ok=false instead. After it, add this section verbatim:\n\n` +
+  `### Audit loop\n| Round | Gate | Independent audit | Covered |\n| --- | --- | --- | --- |\n${auditTable}\n\n` +
+  (lessons.length ? `And a *Lessons* line listing what Learn wrote: ${lessons.map(l => l.proposal).join('; ')}\n\n` : '') +
   (minors.length
     ? `Put these unconfirmed minor notes inside the "Worth a closer look" block, one line each, only if a ` +
       `reviewer would want them:\n${listFindings(minors)}\n\n`
@@ -415,11 +489,6 @@ const pr = await agent(
   { phase: 'PR', label: 'open-pr', schema: DONE },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
-
-// ── 9. Learn ────────────────────────────────────────────────────────────────
-// What the audits keep catching is context the builder did not have. It goes
-// into the docs on this branch, so the person merging reviews it with the code.
-const lessons = await learn(`shipped as ${pr.url}`)
 
 return {
   outcome: 'shipped',
