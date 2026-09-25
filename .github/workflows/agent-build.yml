@@ -19,6 +19,12 @@ name: Agent · build
 on:
   issues:
     types: [labeled]
+  # `@claude` on an issue — "do this again", "build this" — is a request to
+  # build the ticket, so it runs the same loop as the label, with the comment
+  # passed along as notes. `@claude` on a pull request is a request to change
+  # that diff, and stays with agent-respond.yml.
+  issue_comment:
+    types: [created]
 
 # One agent per ticket. Relabelling while a run is in flight must not start a
 # second agent on the same issue.
@@ -27,15 +33,25 @@ on:
 # so that swap fires `issues: labeled` too. The job's `if` skips it in a
 # second, but a shared group would leave it queued behind the real build for
 # the whole run, looking like a duplicate.
+# A comment shares the label's group, so a comment and a label on the same
+# ticket queue behind each other rather than building it twice at once.
 concurrency:
-  group: agent-build-${{ github.event.issue.number }}-${{ github.event.label.name }}
+  group: agent-build-${{ github.event.issue.number }}-${{ github.event.label.name || 'ready-for-ai' }}
   cancel-in-progress: false
 
 jobs:
   build:
     # `labeled` fires for every label, so the filter is what makes this a
-    # dispatch rather than a nuisance.
-    if: github.event.label.name == 'ready-for-ai'
+    # dispatch rather than a nuisance. A comment counts only on an issue (not
+    # a pull request), only from someone with write access — it becomes part
+    # of the agent's instructions — and never from the agent's own replies.
+    if: |
+      github.event.label.name == 'ready-for-ai' ||
+      (github.event_name == 'issue_comment' &&
+       !github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude') &&
+       !contains(github.event.comment.body, 'Claude finished') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     runs-on: ubuntu-latest
     # A clean ticket takes one audit round; a hard one takes four. Past this
     # it is not converging.
@@ -88,7 +104,8 @@ jobs:
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           # The same command a laptop runs. A saved workflow is invoked as a
           # slash command, which is what lets it run headless.
-          prompt: "/ship ${{ github.event.issue.number }}"
+          # From a comment, what the person wrote rides along as notes.
+          prompt: "/ship ${{ github.event.issue.number }}${{ github.event.comment.body && format(' {0}', github.event.comment.body) || '' }}"
           # The main loop only starts the workflow and reads its result, so it
           # needs few turns — each phase agent has its own. `Workflow` must be
           # allowed or the run stops at a permission prompt nobody can click;

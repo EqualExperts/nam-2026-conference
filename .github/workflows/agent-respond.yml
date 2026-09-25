@@ -30,10 +30,13 @@ jobs:
     # comments as a person, so the action's own bot-actor protection does not
     # apply — and a reply of its own that quoted `@claude` would trigger
     # another reply. Its reports all carry this marker.
+    # On a plain issue `@claude` means "build this", which agent-build.yml
+    # handles with the ship loop; this job answers on pull requests only.
     if: |
       (contains(github.event.comment.body, '@claude') ||
        contains(github.event.review.body, '@claude')) &&
-      !contains(github.event.comment.body, 'Claude finished')
+      !contains(github.event.comment.body, 'Claude finished') &&
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

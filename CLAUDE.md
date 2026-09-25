@@ -489,7 +489,8 @@ the way it is.
 
 ## What happens to a ticket
 
-1. **Build** — `ready-for-ai` on an issue runs the `ship` workflow
+1. **Build** — `ready-for-ai` on an issue, or an `@claude` comment on one
+   ("do this again, smaller"), runs the `ship` workflow
    (`.claude/workflows/ship.js`; `/ship 42` on a laptop). It is a script, not
    a prompt, and every phase is a fresh agent:
 
