@@ -23,27 +23,40 @@ flowchart TB
     V["🎙️ transcript · voice note · screenshot"]
     P["proposal"]
     I["GitHub Issue<br/><i>why · what · Done when…</i>"]
-    B(["build<br/><i>spec → failing test → code</i>"])
-    G{"npm run verify<br/>desktop + mobile"}
-    NH["🔴 needs-human<br/><i>says what stopped it</i>"]
-    PR["pull request<br/><i>screenshot · red→green · spec</i>"]
+    NH["🔴 needs-human<br/><i>draft PR · what is still open</i>"]
+    PR["pull request<br/><i>spec · proof · audit rounds</i>"]
     V2["verdict + <b>confidence</b><br/><i>coverage, not conviction</i>"]
     H{"you merge"}
     M["main"]
 
     V -->|process-requirements| P
     P -->|create-tasks| I
-    I -->|"you label <b>ready-for-ai</b>"| B
-    B --> G
-    G -->|red| NH
+    I -->|"you label <b>ready-for-ai</b> → <b>/ship</b>"| SP
+
+    subgraph ship["ship · every step a fresh agent"]
+        direction TB
+        SP(["spec"]) --> SA{"spec audit"}
+        SA -->|blockers| SP
+        SA -->|clean| IM(["implement<br/><i>failing check first</i>"])
+        IM --> VF{"npm run verify<br/>desktop + mobile"}
+        VF -->|green| CA{"independent audit<br/><i>criteria · rules · browser<br/>each blocker vs a skeptic</i>"}
+        VF -->|red| FX(["fix"])
+        CA -->|confirmed blocker| FX
+        FX --> VF
+        CA -->|clean| CX(["context<br/><i>update docs/context</i>"])
+        CX --> LN(["learn<br/><i>what the audits caught → docs</i>"])
+    end
+
+    SA -.->|3 rounds| NH
+    FX -.->|"4 rounds, or stuck"| NH
     NH -.->|you answer, relabel| I
-    G -->|green| PR
+    LN --> PR
     PR --> gates
     gates --> V2
     V2 --> H
     H --> M
 
-    subgraph gates["both run on every pull request · neither can block a merge"]
+    subgraph gates["both run on every ready pull request · neither can block a merge"]
         direction LR
         CR(["code review · Opus<br/><i>starts from the criteria,<br/>not the diff</i>"])
         QA(["qa · Sonnet<br/><i>drives Chromium for what<br/>no test covers</i>"])
@@ -57,10 +70,11 @@ flowchart TB
     style M fill:#1A7F37,color:#fff
 ```
 
-## Two harnesses, eight skills
+## Two harnesses
 
 **Product** decides what to build. **Engineering** builds it. They meet at a
-GitHub Issue. All of it is markdown in `.claude/skills/` — that is the harness.
+GitHub Issue. The skills are markdown in `.claude/skills/`; `ship` is a
+workflow script in `.claude/workflows/` — together, that is the harness.
 
 | | Skill | What it does |
 | --- | --- | --- |
@@ -69,7 +83,7 @@ GitHub Issue. All of it is markdown in `.claude/skills/` — that is the harness
 | 📋 | `process-requirements` | Distils a transcript into durable knowledge and actionable work; surfaces conflicts |
 | 📋 | `create-tasks` | Raises the tickets — goal first, deduplicated, one goal each |
 | 📋 | `update-context` | Folds agreed knowledge back into the project's docs |
-| ⚙️ | `ship` | Ticket → spec → spec audit → code → verify ⇄ independent audit → pull request |
+| ⚙️ | `ship` *(workflow)* | Ticket → spec ⟲ audit → code → verify ⇄ independent audit ⟲ → context → learn → PR |
 | ⚙️ | `code-review` | Fresh context, starts from the acceptance criteria, blockers only |
 | ⚙️ | `qa` | Boots the app, drives Chromium, hunts what no test covers |
 
@@ -80,17 +94,24 @@ stateDiagram-v2
     direction LR
     [*] --> ready_for_ai: you label it
     ready_for_ai --> ai_working: agent claims it
-    ai_working --> ready_for_human: PR open, suite green
-    ai_working --> needs_human: it stopped, and said why
+    ai_working --> ready_for_human: audit clean, PR open
+    ai_working --> needs_human: would not converge — draft PR
     ready_for_human --> [*]: you merge
     needs_human --> ready_for_ai: you answer, relabel
 ```
 
-**The build agent will not skip a step.** It writes a spec into `specs/` as the
-branch's first commit, so you read what it intends before the diff. It writes a
-check that fails first. It gates on `npm run verify` and **opens no pull request
-without a green one** — not "probably fine". If it cannot finish honestly it
-says what stopped it and opens nothing.
+**`ship` loops until it is satisfied, then stops.** It writes a spec into
+`specs/` as the branch's first commit, and two agents that did not write it
+audit it before any code exists. It writes a check that fails first. Then,
+round after round: `npm run verify` on desktop and mobile, three independent
+auditors — the ticket's criteria, `CLAUDE.md`'s rules, a browser — and a
+skeptic that tries to refute each blocker before it costs a fix. **No pull
+request until a round comes back clean.** Four rounds without converging, or
+one finding surviving two fixes, and it hands you a **draft** saying what is
+still open, rather than burning another round. Every agent starts from
+[`docs/context/`](./docs/context/README.md), a map of the app, instead of
+reading the source to find its way; `ship` keeps those docs current and writes
+what its audits caught back into them.
 
 **Then two agents read it**, neither having seen the reasoning that produced it
 — the agent who wrote it cannot see its own misreading. Each publishes a
@@ -157,6 +178,8 @@ you arrive mid-conference and the clock ticks while you watch. Pin it with
 
 - **[CLAUDE.md](./CLAUDE.md)** — architecture, conventions, and *why*. What the
   review agent checks a change against.
+- **[docs/context/](./docs/context/README.md)** — one doc per area of the app;
+  what agents read instead of the source.
 - **[specs/](./specs/)** — one file per ticket, written before the code.
   Together, the record of how this codebase got this way.
 - **[docs/DATA_MODEL.md](./docs/DATA_MODEL.md)** — the schema.
