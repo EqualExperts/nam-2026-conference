@@ -54,6 +54,7 @@ const SETUP = {
     branch: { type: 'string', description: 'issue-<n>-<slug>' },
     workdir: { type: 'string', description: 'absolute path every later agent works in' },
     runner: { type: 'boolean', description: 'true when $GITHUB_ACTIONS is set' },
+    harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and docs/harness/ship-playbook.md' },
     doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
   },
 }
@@ -185,7 +186,8 @@ async function confirm(findings, where) {
       `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. An auditor claims this blocker in ${where}. Try to ` +
       `REFUTE it. Open the cited file and line yourself; \`npm test\` is fine, but do not boot the app or run ` +
       `Playwright — other agents are using the ports. Refute if the line does not say what is claimed, if the ` +
-      `behaviour is already on origin/${BASE}, if the finding is style rather than a defect, or if CLAUDE.md or ` +
+      `behaviour is already on origin/${BASE}, if the finding is style rather than a defect, if its suggested fix ` +
+      `would contradict CLAUDE.md, or if CLAUDE.md or ` +
       `the spec *as first committed* (\`git log --diff-filter=A --format=%H -- ${spec.path}\`, then \`git show\`) ` +
       `shows it was deliberate. A later edit to the spec does not make a missed Done-when criterion deliberate. ` +
       `If you cannot tell, it is NOT refuted.\n\n` +
@@ -267,12 +269,17 @@ setup = await agent(
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human left by an earlier attempt) whether or not you proceed — and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop — from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
-  `attempt, continue on it rather than making a new one, and say so in reason. Do not write the spec or any code. Return proceed=false with the ` +
+  `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
+  `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
+  `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
+  `later phase would run commands that do not exist in the worktree. Do not write the spec or any code. Return proceed=false with the ` +
   `reason if it is not buildable, and in that case also do §9 (comment and label needs-human).`,
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low' },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
-if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.reason }
+if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
+  ? `origin/${BASE} has no harness (scripts/gate.mjs, docs/harness/) — pass { issue, base } with a branch that does`
+  : setup.reason }
 const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
 if (missingSetup.length) {
   const partial = setup
@@ -343,7 +350,8 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
 phase('Implement')
 const built = await agent(
   `${ticket}\n\n${inTree()}\n\n${MAP}\n\nImplement ${spec.path}, following §4–§6 of ${SKILL}: write the check first and ` +
-  `confirm it fails for the reason you expect, then implement, running \`npm test\` after every edit. Commit ` +
+  `confirm it fails for the reason you expect — then commit it on its own, red, as "test(…)", before any fix; ` +
+  `that commit is the evidence the check proves something. Then implement, running \`npm test\` after every edit. Commit ` +
   `in Conventional Commits and push. Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed.`,
   { phase: 'Implement', label: 'implement', schema: DONE },
@@ -424,7 +432,13 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     rounds.push({ round, gate: gateLine(gate), raised: raised.length, confirmed: open.length,
       covered: reports.map(r => r.covered).join(' · ') })
     log(`build round ${round}: green, ${raised.length} raised, ${open.length} confirmed`)
-    if (!open.length) break
+    if (!open.length) {
+      // About to ship: the minor notes go in the PR body, so they face a
+      // skeptic too — a plausible-but-wrong note is still wrong, and a
+      // reviewer acts on it.
+      minors = await confirm(dedupe(minors).slice(0, 3), 'the change')
+      break
+    }
   } else {
     const failures = [
       ...(gate.unit.failed ? [{ test: 'npm test', error: gate.unit.output || `${gate.unit.failed} failed` }] : []),

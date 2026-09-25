@@ -158,6 +158,23 @@ export function release({ root = laneRoot(), worktree = worktreeOf(), port = nul
  * tests pin that, because it is exactly the sort of thing that silently
  * stops guarding anything.
  */
+/**
+ * The lane this worktree already holds, or null — a lookup, never a claim.
+ * Playwright's config calls it so a worktree that claimed a lane uses it on
+ * every run, not only when the shell that runs it remembered to export it:
+ * shell state does not survive between an agent's commands, and a run that
+ * forgot fell back to the default ports and another worktree's app.
+ */
+export function heldLane({ cwd = process.cwd(), root, worktree } = {}) {
+  try {
+    const r = root ?? laneRoot(cwd);
+    const w = worktree ?? worktreeOf(cwd);
+    return list(r).find((lane) => lane.worktree === w) ?? null;
+  } catch {
+    return null;   // not a git checkout, or no registry yet
+  }
+}
+
 export function asEnv(lane) {
   return [
     `export ORBIT_LANE=${lane.lane}`,

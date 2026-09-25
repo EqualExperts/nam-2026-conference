@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { claim, release, list, sweep, isStale, asEnv, FIRST_PORT } from '../../scripts/lane.mjs';
+import { claim, release, list, sweep, isStale, asEnv, heldLane, FIRST_PORT } from '../../scripts/lane.mjs';
 
 /**
  * The lane allocator is what keeps ten agents off each other's ports, so the
@@ -156,5 +156,18 @@ describe('the environment a lane exports', () => {
 
   test('it does not pin ORBIT_DB, because each worktree seeds its own', async () => {
     assert.doesNotMatch(asEnv(await claimFor('wt-a')), /ORBIT_DB/);
+  });
+});
+
+describe('finding the lane a worktree already holds', () => {
+  test('returns the claim for this worktree, and never makes one', async () => {
+    await claimFor('wt-a');
+    assert.equal(heldLane({ root, worktree: tree('wt-a') }).port, FIRST_PORT);
+    assert.equal(heldLane({ root, worktree: tree('wt-b') }), null);
+    assert.equal(list(root).length, 1);
+  });
+
+  test('outside a git checkout it is null, not an error', () => {
+    assert.equal(heldLane({ cwd: tmpdir() }), null);
   });
 });

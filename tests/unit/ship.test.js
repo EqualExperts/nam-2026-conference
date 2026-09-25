@@ -288,4 +288,31 @@ describe('ship', () => {
     assert.match(prompts['open-pr'], /against harness\/ship-loop/);
     assert.doesNotMatch(Object.values(prompts).join('\n'), /origin\/main/);
   });
+
+  test('a base with no harness is declined before anything is built', async () => {
+    const { result, calls } = await run({ setup: { ...SETUP, proceed: false, harnessOnBase: false, reason: 'x' } });
+    assert.equal(result.outcome, 'declined');
+    assert.match(result.reason, /has no harness/);
+    assert.deepEqual(calls, ['setup']);
+  });
+
+  test('a minor note the skeptic refutes never reaches the PR body', async () => {
+    const note = { ...blocker('the card flashes Nothing booked while loading'), severity: 'minor' };
+    const { prompts } = await run({
+      'audit:rules': { covered: 'all', findings: [note] },
+      skeptic: { refuted: true, why: 'the card is not rendered in that window' },
+    });
+    assert.doesNotMatch(prompts['open-pr'], /flashes Nothing booked/);
+  });
+
+  test('a minor note that survives the skeptic is offered to the reviewer', async () => {
+    const note = { ...blocker('the done count wording is singular-unaware'), severity: 'minor' };
+    const { prompts } = await run({ 'audit:rules': { covered: 'all', findings: [note] } });
+    assert.match(prompts['open-pr'], /singular-unaware/);
+  });
+
+  test('the failing check is committed red before the fix, so history proves it', async () => {
+    const { prompts } = await run();
+    assert.match(prompts.implement, /commit it on its own, red/);
+  });
 });
