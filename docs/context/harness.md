@@ -40,7 +40,11 @@ rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
 step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
-**`ship.js`** is plain JS run by the Workflow tool. Every `agent()` call is a
+**`ship.js`** takes `args` as an issue number (`/ship 42`) or
+`{ issue, base }` — `base` (default `main`) is the branch the work starts
+from, is judged against (`GATE_BASE` for the gate) and targets, for a ticket
+stacked on a pull request that has not landed. It is plain JS run by the
+Workflow tool. Every `agent()` call is a
 fresh context; the script holds all state between them. In order:
 
 | Phase | Agent label(s) | Returns | Loops |

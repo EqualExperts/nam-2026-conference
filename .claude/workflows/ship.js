@@ -26,6 +26,9 @@ const MAX_BUILD_ROUNDS = 4
 const STUCK_AFTER = 2
 
 const issue = Number(typeof args === 'object' && args ? args.issue : args)
+// The branch the work starts from and the pull request targets. `main`
+// unless this ticket stacks on another pull request that has not landed.
+const BASE = (typeof args === 'object' && args && args.base) || 'main'
 if (!Number.isInteger(issue) || issue <= 0) {
   return { outcome: 'error', reason: `ship needs an issue number, got ${JSON.stringify(args)}` }
 }
@@ -182,7 +185,7 @@ async function confirm(findings, where) {
       `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. An auditor claims this blocker in ${where}. Try to ` +
       `REFUTE it. Open the cited file and line yourself; \`npm test\` is fine, but do not boot the app or run ` +
       `Playwright — other agents are using the ports. Refute if the line does not say what is claimed, if the ` +
-      `behaviour is already on origin/main, if the finding is style rather than a defect, or if CLAUDE.md or ` +
+      `behaviour is already on origin/${BASE}, if the finding is style rather than a defect, or if CLAUDE.md or ` +
       `the spec *as first committed* (\`git log --diff-filter=A --format=%H -- ${spec.path}\`, then \`git show\`) ` +
       `shows it was deliberate. A later edit to the spec does not make a missed Done-when criterion deliberate. ` +
       `If you cannot tell, it is NOT refuted.\n\n` +
@@ -207,7 +210,7 @@ let setup, ticket, spec
 // Everything any audit confirmed, across every loop — what Learn works from.
 const history = []
 const inTree = () =>
-  `Work in ${setup.workdir} on branch ${setup.branch}: cd there at the start of every Bash command.` +
+  `Work in ${setup.workdir} on branch ${setup.branch} (based on ${BASE}): cd there at the start of every Bash command.` +
   (setup.runner
     ? ''
     : ` This is a laptop with other agents on it, so prefix anything that boots the app or runs Playwright with ` +
@@ -225,7 +228,7 @@ async function handBack(stage, why, open) {
     (setup && setup.branch
       ? `${inTree()}\nPush whatever is committed (git push -u origin HEAD), then open a DRAFT pull request so the ` +
         `work is not lost — or, if a draft from an earlier attempt is already open on this branch, update its ` +
-        `body with \`gh pr edit\` instead: \`gh pr create --draft --base main\`, titled with the issue title, body opening ` +
+        `body with \`gh pr edit\` instead: \`gh pr create --draft --base ${BASE}\`, titled with the issue title, body opening ` +
         `"Refs #${issue}" (not Closes), then a short "Why this stopped" section and the open list above. ` +
         `Skip the draft if nothing beyond the spec is committed.\n`
       : '') +
@@ -263,7 +266,7 @@ setup = await agent(
   `it is buildable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human left by an earlier attempt) whether or not you proceed — and make the workspace — branch in a runner, ` +
-  `worktree + npm install on a laptop. If an issue-${issue}-* branch is already on origin from an earlier ` +
+  `worktree + npm install on a laptop — from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
   `attempt, continue on it rather than making a new one, and say so in reason. Do not write the spec or any code. Return proceed=false with the ` +
   `reason if it is not buildable, and in that case also do §9 (comment and label needs-human).`,
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low' },
@@ -353,14 +356,14 @@ if (!built || !built.ok) return handBack('Implement', built ? built.summary : 't
 const CODE_LENSES = [
   {
     key: 'criteria',
-    ask: `Read the ticket first, then \`git diff origin/main...HEAD\`. For each Done-when criterion, find what ` +
+    ask: `Read the ticket first, then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
       `satisfies it and the test that proves it. A criterion with nothing satisfying it is a blocker. So is a ` +
       `test that would pass before the change, or asserts the implementation against itself, or an existing ` +
       `test weakened (category test-weakened) when the ticket did not ask for that behaviour to change.`,
   },
   {
     key: 'rules',
-    ask: `Read \`git diff origin/main...HEAD\` against CLAUDE.md. A blocker is a decision it records being ` +
+    ask: `Read \`git diff origin/${BASE}...HEAD\` against CLAUDE.md. A blocker is a decision it records being ` +
       `contradicted — quote the rule and the line. Also: a logic error, with an input and the wrong output it ` +
       `produces. Follow .claude/skills/code-review/SKILL.md §2–§4 for what not to flag.`,
   },
@@ -369,7 +372,7 @@ const CODE_LENSES = [
     ask: `Drive the change in a real browser and try to break it, following .claude/skills/qa/SKILL.md §1–§3 ` +
       `(probes in tests/qa-probe.spec.js, both projects, re-run before calling anything a bug, delete the probe ` +
       `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
-      `probe on main, \`git worktree add ../orbit-main-${issue} origin/main\`, symlink node_modules into it, and ` +
+      `probe on main, \`git worktree add ../orbit-main-${issue} origin/${BASE}\`, symlink node_modules into it, and ` +
       `remove it after. Budget: six probes. A reproduced bug in this change is a blocker; pre-existing is ` +
       `minor. If nothing visible changed, say so in covered and return no findings.`,
     model: 'sonnet',
@@ -388,7 +391,7 @@ let minors = []
 for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   phase('Verify')
   const ran = await agent(
-    `${inTree()}\n\nRun \`node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
+    `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
     `install. Change nothing and interpret nothing.`,
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low' },
@@ -464,7 +467,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
 phase('Context')
 const context = await agent(
   `${inTree()}\n\nThe change on this branch is done and audited. Keep what describes it true:\n` +
-  `1. \`node scripts/context.mjs for $(git diff --name-only origin/main...HEAD)\` lists the docs/context/ ` +
+  `1. \`node scripts/context.mjs for $(git diff --name-only origin/${BASE}...HEAD)\` lists the docs/context/ ` +
   `docs that own the changed files. Update each where the change made it wrong or incomplete — a new ` +
   `function, a changed payload, a new testid. A file the branch added that no doc owns goes into the ` +
   `\`files\` of the doc for its area. Most changes move a line or two; none is fine.\n` +
@@ -486,7 +489,7 @@ const lessons = await learn('passed its audit')
 phase('PR')
 const auditTable = rounds.map(r => `| ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`).join('\n')
 const pr = await agent(
-  `${ticket}\n\n${inTree()}\n\nOpen the pull request, following §8 of ${SKILL} — ready for review, screenshots ` +
+  `${ticket}\n\n${inTree()}\n\nOpen the pull request against ${BASE}, following §8 of ${SKILL} — ready for review, screenshots ` +
   `only if something visible changed, the body in the shape given there. In the *Proof* table use: ` +
   `\`node scripts/gate.mjs\` → ${gateLine(gate)}, at ${gate.sha.slice(0, 7)}. If \`git log ${gate.sha}..HEAD\` ` +
   `shows later commits, say in one line that they touch only docs — and if any touches code, stop and ` +

@@ -117,7 +117,10 @@ function main() {
   catch { browser = { passed: 0, failed: [{ test: 'playwright', error: (pw.stderr || 'no report written').slice(-600) }], flaky: 0, skipped: 0 }; }
 
   let diff = '';
-  try { diff = git('diff', 'origin/main...HEAD', '--', ...WATCHED); } catch { /* no origin/main: nothing to compare */ }
+  // GATE_BASE: what the branch is judged against — main, unless it stacks on
+  // another pull request.
+  const base = process.env.GATE_BASE || 'origin/main';
+  try { diff = git('diff', `${base}...HEAD`, '--', ...WATCHED); } catch { /* no base to compare with */ }
 
   const unitFailed = unit.status !== 0;
   const result = {

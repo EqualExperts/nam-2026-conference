@@ -267,4 +267,25 @@ describe('ship', () => {
     assert.ok(calls.indexOf('audit:browser#1') > calls.indexOf('audit:rules#1'));
     assert.ok(calls.indexOf('audit:browser#1') > calls.indexOf('audit:criteria#1'));
   });
+
+  test('a stacked ticket branches from, is judged against and targets its base', async () => {
+    const calls = [], prompts = {};
+    const agent = async (prompt, opts) => {
+      calls.push(opts.label); prompts[opts.label] = prompt;
+      if (opts.label === 'setup') return SETUP;
+      if (opts.label.startsWith('verify')) return GREEN;
+      if (opts.label.includes('audit')) return { covered: 'all', findings: [] };
+      if (opts.label === 'write-spec') return { path: 'specs/7-hours.md', summary: 's' };
+      if (opts.label === 'open-pr') return { ok: true, summary: 'ok', url: 'u' };
+      return { ok: true, summary: 'done' };
+    };
+    const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
+    const result = await script({ issue: 7, base: 'harness/ship-loop' }, agent, parallel, () => {}, () => {});
+    assert.equal(result.outcome, 'shipped');
+    assert.match(prompts.setup, /origin\/harness\/ship-loop/);
+    assert.match(prompts['verify#1'], /GATE_BASE=origin\/harness\/ship-loop/);
+    assert.match(prompts['audit:criteria#1'], /git diff origin\/harness\/ship-loop\.\.\.HEAD/);
+    assert.match(prompts['open-pr'], /against harness\/ship-loop/);
+    assert.doesNotMatch(Object.values(prompts).join('\n'), /origin\/main/);
+  });
 });
