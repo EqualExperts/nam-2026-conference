@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, conferenceDays, ATTENDEES } from './helpers.js';
 
 
 test.describe('My Agenda', () => {
@@ -73,5 +73,50 @@ test.describe('Speaker view', () => {
   test('a non-speaking attendee sees no speaker panel', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.kenji });
     await expect(page.getByTestId('speaking-panel')).toHaveCount(0);
+  });
+});
+
+test.describe('Right now card', () => {
+  const minutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+  const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+  // Read-only against the seed: Amara is queued on Day 1 sessions in slots
+  // where she holds no seat. Pick one whose moment we can pin without a
+  // confirmed session of hers getting in the way of the assertion.
+  async function waitlistedOnDayOne(request, fits) {
+    const [day] = await conferenceDays();
+    const res = await request.get(`${API}/users/${ATTENDEES.amara}/schedule`);
+    const sessions = (await res.json()).days.find((d) => d.date === day)?.sessions ?? [];
+    const confirmed = sessions.filter((s) => s.reservation === 'confirmed');
+    return sessions.find((s) => s.reservation === 'waitlisted' && fits(s, confirmed));
+  }
+
+  test('the Right now card ignores a waitlisted session in the current slot', async ({ page, request }) => {
+    const target = await waitlistedOnDayOne(request, (w, confirmed) => {
+      const mid = Math.floor((minutes(w.startsAt) + minutes(w.endsAt)) / 2);
+      return !confirmed.some((c) => minutes(c.startsAt) <= mid && mid < minutes(c.endsAt));
+    });
+    expect(target, 'the seed should queue Amara on a Day 1 session she holds no seat against').toBeTruthy();
+    const mid = Math.floor((minutes(target.startsAt) + minutes(target.endsAt)) / 2);
+
+    await visit(page, '/my-agenda', { as: ATTENDEES.amara, at: await momentOn(0, hhmm(mid)) });
+    const card = page.getByTestId('next-up');
+    await expect(card).toBeVisible();
+    await expect(card).not.toContainText(target.title);
+    await expect(card).toContainText(/Nothing on right now\.|Nothing booked today\.|Nothing else booked today\./);
+  });
+
+  test('the Right now card ignores a waitlisted session as the next session', async ({ page, request }) => {
+    const target = await waitlistedOnDayOne(request, (w, confirmed) => {
+      const at = minutes(w.startsAt) - 15;
+      // nothing confirmed starts between the pinned moment and the waitlisted one
+      return !confirmed.some((c) => minutes(c.startsAt) > at && minutes(c.startsAt) <= minutes(w.startsAt));
+    });
+    expect(target, 'the seed should queue Amara on a Day 1 session').toBeTruthy();
+
+    await visit(page, '/my-agenda', { as: ATTENDEES.amara, at: await momentOn(0, hhmm(minutes(target.startsAt) - 15)) });
+    const card = page.getByTestId('next-up');
+    await expect(card).toBeVisible();
+    await expect(card).not.toContainText(target.title);
   });
 });

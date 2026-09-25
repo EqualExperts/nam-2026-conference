@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 // Safe to import outside a browser: nothing in this module touches `window`
 // until a hook is actually called.
-import { toMinutes, progressOf, relativeToNow, isOpenAt } from '../../src/lib/clock.js';
+import { toMinutes, progressOf, relativeToNow, isOpenAt, rightNow } from '../../src/lib/clock.js';
 
 const session = { startsAt: '14:30', endsAt: '15:30' };
 
@@ -87,5 +87,54 @@ describe('Opening hours', () => {
     assert.equal(isOpenAt('08:00', '01:00', '01:00'), false);
     assert.equal(isOpenAt('08:00', '01:00', '04:00'), false);
     assert.equal(isOpenAt('08:00', '01:00', '07:59'), false);
+  });
+});
+
+describe('rightNow', () => {
+  const at = (id, startsAt, endsAt) => ({ id, startsAt, endsAt });
+  const statuses = (map) => (id) => map[id] ?? null;
+
+  test('a waitlisted session in the current slot is not current', () => {
+    const sessions = [at(1, '10:15', '11:00')];
+    const r = rightNow(sessions, '10:30', statuses({ 1: 'waitlisted' }));
+    assert.equal(r.current, null);
+  });
+
+  test('a confirmed session wins the slot over a waitlisted one', () => {
+    const sessions = [at(1, '10:15', '11:00'), at(2, '10:15', '11:00')];
+    const r = rightNow(sessions, '10:30', statuses({ 1: 'waitlisted', 2: 'confirmed' }));
+    assert.equal(r.current?.id, 2);
+  });
+
+  test('a waitlisted session is skipped for next', () => {
+    const sessions = [at(1, '10:15', '11:00'), at(2, '11:30', '12:15')];
+    const r = rightNow(sessions, '09:00', statuses({ 1: 'waitlisted', 2: 'confirmed' }));
+    assert.equal(r.next?.id, 2);
+  });
+
+  test('nothing confirmed ahead → next is null', () => {
+    const sessions = [at(1, '09:00', '09:45'), at(2, '11:30', '12:15')];
+    const r = rightNow(sessions, '10:00', statuses({ 1: 'confirmed', 2: 'waitlisted' }));
+    assert.equal(r.next, null);
+  });
+
+  test('done counts confirmed sessions only', () => {
+    const sessions = [at(1, '09:00', '09:45'), at(2, '10:15', '11:00')];
+    const r = rightNow(sessions, '12:00', statuses({ 1: 'confirmed', 2: 'waitlisted' }));
+    assert.equal(r.done, 1);
+  });
+
+  test('an all-waitlisted day has no current, no next, nothing done', () => {
+    const sessions = [at(1, '09:00', '09:45'), at(2, '10:15', '11:00'), at(3, '14:00', '14:45')];
+    const r = rightNow(sessions, '10:30', statuses({ 1: 'waitlisted', 2: 'waitlisted', 3: 'waitlisted' }));
+    assert.deepEqual(r, { current: null, next: null, done: 0 });
+  });
+
+  test('confirmed sessions keep today\'s rules, whatever order they arrive in', () => {
+    const sessions = [at(3, '14:00', '14:45'), at(1, '09:00', '09:45'), at(2, '10:15', '11:00')];
+    const r = rightNow(sessions, '10:30', () => 'confirmed');
+    assert.equal(r.current?.id, 2);
+    assert.equal(r.next?.id, 3);
+    assert.equal(r.done, 1);
   });
 });
