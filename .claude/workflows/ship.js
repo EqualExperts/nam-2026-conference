@@ -1,7 +1,7 @@
 export const meta = {
   name: 'ship',
   description: 'Issue → spec → spec audit loop → implement → verify + code audit loop → context → PR → learn',
-  whenToUse: 'Taking one GitHub issue to a pull request. /build runs this; so does the ready-for-ai label.',
+  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label.',
   phases: [
     { title: 'Setup', detail: 'read the ticket, gate it, claim it, branch' },
     { title: 'Spec', detail: 'write specs/<n>-<slug>.md' },
@@ -30,7 +30,7 @@ if (!Number.isInteger(issue) || issue <= 0) {
   return { outcome: 'error', reason: `ship needs an issue number, got ${JSON.stringify(args)}` }
 }
 
-const SKILL = '.claude/skills/build/SKILL.md'
+const SKILL = 'docs/harness/ship-playbook.md'
 
 // Every agent is a fresh context. Without this line each one re-reads the
 // source to learn how the app fits together, and that is most of the bill.

@@ -69,7 +69,7 @@ GitHub Issue. All of it is markdown in `.claude/skills/` — that is the harness
 | 📋 | `process-requirements` | Distils a transcript into durable knowledge and actionable work; surfaces conflicts |
 | 📋 | `create-tasks` | Raises the tickets — goal first, deduplicated, one goal each |
 | 📋 | `update-context` | Folds agreed knowledge back into the project's docs |
-| ⚙️ | `build` | Ticket → spec → failing test → code → green gate → pull request |
+| ⚙️ | `ship` | Ticket → spec → spec audit → code → verify ⇄ independent audit → pull request |
 | ⚙️ | `code-review` | Fresh context, starts from the acceptance criteria, blockers only |
 | ⚙️ | `qa` | Boots the app, drives Chromium, hunts what no test covers |
 

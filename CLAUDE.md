@@ -496,8 +496,8 @@ the error does not say which kind to make), and optionally an
 Four stages, each its own GitHub Actions workflow, each in a fresh process:
 
 1. **Build** — `ready-for-ai` on an issue starts a runner, which runs the
-   `ship` workflow (`.claude/workflows/ship.js`; `/build 42` runs the same on a
-   laptop). It is a script, not a prompt, and every phase is a fresh agent:
+   `ship` workflow (`.claude/workflows/ship.js`; `/ship 42` runs the same on a
+   laptop). How each step is done lives in `docs/harness/ship-playbook.md`. It is a script, not a prompt, and every phase is a fresh agent:
 
    *Setup → Spec → Spec Audit → Implement → Verify ⇄ Code Audit → Context →
    PR → Learn*

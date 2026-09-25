@@ -20,7 +20,7 @@
  * reader's session. `raw.githubusercontent.com` returns 404 to a browser and
  * the image silently breaks, so this prints the `/raw/` form.
  *
- * This exists as a script rather than a few lines in the build skill because
+ * This exists as a script rather than a few lines in the ship playbook because
  * an agent pays for every step it takes: one command that always works costs
  * less than four that have to be got right.
  */

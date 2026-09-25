@@ -1,36 +1,23 @@
----
-name: build
-description: >-
-  Take one GitHub issue from this repo to a verified pull request:
-  claim it, work it in an isolated workspace, prove it in the browser, and
-  hand it back to a human — or stop and say why. Use when asked to build,
-  implement or pick up an issue, when told "/build 42", or when a ticket is
-  labelled ready-for-ai.
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
----
+# Ship playbook
 
-# Build an issue
+How each step of a build is done. **This is not a command** — `/ship <n>`
+runs the loop (`.claude/workflows/ship.js`), and each of its phase agents is
+told which numbered sections here are theirs. Do those and nothing else: the
+workflow owns the order, the loops and when to stop.
 
-One issue in, one reviewable pull request out, with the evidence attached.
+| Phase | Sections |
+| --- | --- |
+| Setup | §1–§3 |
+| Spec | §3b |
+| Implement | §4–§6 |
+| Verify | §7 |
+| Fix | §5's rules still hold |
+| PR | §8 |
+| Hand-back | §9 |
+| Cleanup (laptop) | §10 |
+
 `CLAUDE.md` is the specification for this repo — most of what looks like a
 judgement call is settled there.
-
-## How this runs
-
-**Asked to build an issue? Run the saved `ship` workflow with the issue
-number — `/ship <n>` — and report what it returns.** Do not work the steps
-below yourself.
-
-`ship` (`.claude/workflows/ship.js`) is the loop: setup, spec, a spec audit by
-agents that did not write it, implement, then **verify → independent code
-audit → fix** until a round comes back clean, then context, the pull request
-and a write-up of what the audits caught. Each phase is a fresh
-agent, and a finding only costs a fix round after a skeptic has failed to
-refute it. A loop that does not converge — four rounds, or one finding
-surviving two fixes — hands the ticket to a person as a draft pull request.
-
-**If you are an agent inside `ship`, this section is not for you.** Your
-prompt names the sections below that are yours; do those and nothing else.
 
 Every step re-reads the whole conversation, so anything you pull in early is
 paid for on every step after it. Ask for the narrowest thing that answers the
@@ -211,9 +198,6 @@ Five is the hard limit and `pr-media.mjs` enforces it per pull request, but
 it is a backstop, not a target.
 
 ```bash
-```
-
-```bash
 git push -u origin HEAD
 gh pr create --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
 gh issue comment <n> --body "Ready for review: <pr url>"
@@ -258,14 +242,19 @@ entirely if there is nothing.>
 
 ## 9. If you cannot finish
 
-A normal outcome, not a failure.
+A normal outcome, not a failure. Push what is committed and open a **draft**
+pull request so the work is not lost — `Refs #<n>`, never `Closes`, and a
+*Why this stopped* section listing what is still open. Skip the draft if
+nothing beyond the spec is committed.
 
 ```bash
-gh issue comment <n> --body "<what you tried, the output that stopped you, what it needs from a person>"
+gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
+gh issue comment <n> --body "<what you tried, what stopped it, what it needs from a person, the draft>"
 gh issue edit <n> --add-label needs-human --remove-label ai-working
 ```
 
-No pull request. **Do not narrow the ticket to something you can finish and
+A draft never presents itself as done: code review and QA skip it until a
+person marks it ready. **Do not narrow the ticket to something you can finish and
 present that as done** — a half-built ticket that looks complete costs more
 than one that is honestly stuck.
 

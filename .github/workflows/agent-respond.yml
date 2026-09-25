@@ -76,10 +76,9 @@ jobs:
           # attributed to the person whose token it is, which on their own
           # pull request reads as them reviewing their own work.
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Interactive mode never invokes the build skill, so it never picks
-          # up that skill's `allowed-tools` grant — without this the agent can
-          # read and edit files but cannot run a test, boot the app or touch
-          # the GitHub API. It answers review comments it has no way to verify.
+          # Interactive mode runs no skill, so it never picks up a skill's
+          # `allowed-tools` grant — without this the agent can read and edit
+          # files but cannot run a test, boot the app or touch the GitHub API. It answers review comments it has no way to verify.
           claude_args: >-
             --model claude-opus-5 --max-turns 60
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"

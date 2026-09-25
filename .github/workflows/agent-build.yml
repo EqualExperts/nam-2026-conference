@@ -63,7 +63,7 @@ jobs:
 
       - run: npm ci
 
-      # `/build` gates itself on `npm run verify`, which drives a real browser.
+      # `/ship` gates itself on `npm run verify`, which drives a real browser.
       # Without this the agent cannot prove anything and will stop.
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -81,8 +81,8 @@ jobs:
           # it, because the bot is not a collaborator. A PAT in
           # AGENT_GITHUB_TOKEN removes that click, and nothing else needs it.
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          # The same workflow a laptop runs through `/build`. A saved workflow
-          # is invoked as a slash command, which is what lets it run headless.
+          # The same command a laptop runs. A saved workflow is invoked as a
+          # slash command, which is what lets it run headless.
           prompt: "/ship ${{ github.event.issue.number }}"
           # The main loop only starts the workflow and reads its result, so it
           # needs few turns — each phase agent has its own. `Workflow` must be

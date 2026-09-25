@@ -4,7 +4,7 @@ summary: The agents that turn a labelled issue into a pull request, review it an
 read_when: changing how tickets are built, audited, reviewed or QA'd; a workflow that did not run; the context docs themselves
 files:
   - .claude/workflows/ship.js
-  - .claude/skills/build/SKILL.md
+  - docs/harness/ship-playbook.md
   - .claude/skills/code-review/SKILL.md
   - .claude/skills/qa/SKILL.md
   - .github/workflows/agent-build.yml
@@ -33,8 +33,9 @@ the way they are. This is the machinery.
 `ready-for-ai`. Its one step runs `claude-code-action` with the prompt
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
-rest. On a laptop `/build <n>` loads the build skill, whose first section says
-to run `/ship <n>`.
+rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
+step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
+phase prompts point at by section, so it cannot be run on its own.
 
 **`ship.js`** is plain JS run by the Workflow tool. Every `agent()` call is a
 fresh context; the script holds all state between them. In order:
@@ -104,5 +105,5 @@ docs that come back; Learn writes to their *Gotchas*.
   `ship.test.js`.
 - What an auditor looks for → `CODE_LENSES` / `SPEC_LENSES` in `ship.js`; the
   detail they defer to lives in the code-review and qa skills.
-- The PR body → §8 of the build skill; `ship.js` only adds the audit table.
+- The PR body → §8 of the playbook; `ship.js` only adds the audit table.
 - The context format → `docs/context/README.md` and `scripts/context.mjs`.
