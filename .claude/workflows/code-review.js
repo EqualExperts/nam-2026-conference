@@ -63,7 +63,7 @@ const FINDINGS = {
         required: ['severity', 'category', 'file', 'line', 'claim', 'evidence'],
         properties: {
           severity: { enum: ['blocker', 'note'] },
-          category: { enum: ['criterion-unmet', 'claude-md', 'logic', 'test-proves-nothing'] },
+          category: { enum: ['criterion-unmet', 'claude-md', 'logic', 'test-proves-nothing', 'actions', 'docs-truth', 'orchestration'] },
           file: { type: 'string' },
           line: { type: 'integer' },
           claim: { type: 'string', description: 'what breaks, and when — one sentence' },
@@ -105,31 +105,89 @@ const ticket = ctx.issue
 // ── Review ──────────────────────────────────────────────────────────────────
 // No lens sees the thread. A stated opinion pulls a reader towards it; the
 // amendments go to the skeptic, who reconciles.
+// Which lenses run is decided by what the diff touches, not by a model. A
+// fixed set of app lenses read this repo's own harness PRs — YAML, workflow
+// scripts, context docs — said "nothing to flag", and missed triggers that
+// could not fire and a loop that passed when its agents died.
+function kindsOf(files) {
+  const kinds = new Set()
+  for (const f of files) {
+    if (f.startsWith('.github/workflows/')) kinds.add('actions')
+    else if (f.startsWith('.claude/workflows/') || /^scripts\/(gate|context|lane|pr-media)\.mjs$/.test(f)) kinds.add('orchestration')
+    else if (f === 'CLAUDE.md' || f === 'README.md' || f.startsWith('docs/') || f.startsWith('.claude/skills/') || f.startsWith('specs/')) kinds.add('context')
+    else if (f.startsWith('tests/') || f === 'playwright.config.js') kinds.add('tests')
+    else if (f !== 'package-lock.json') kinds.add('app')
+  }
+  return kinds
+}
+
 const LENSES = [
   {
     key: 'criteria',
+    when: () => true,
     ask: `For each Done-when criterion, find what satisfies it in the diff and the test that proves it. One ` +
       `with nothing satisfying it is a blocker (criterion-unmet) — quote the criterion. This is the category ` +
-      `most often got wrong by reading a criterion too literally: hold it to the highest bar.`,
+      `most often got wrong by reading a criterion too literally: hold it to the highest bar. With no ticket, ` +
+      `hold the diff to what its description says it does.`,
   },
   {
     key: 'rules',
+    when: k => k.has('app'),
     ask: `Does the diff contradict a decision CLAUDE.md records? Quote the rule exactly and the line that ` +
       `breaks it (claude-md). The decisions that were tried and rejected matter most: one action rather than ` +
       `bookmark-plus-reserve, no invented links, no map coordinates, nothing claiming to be true that is not.`,
   },
   {
     key: 'logic',
+    when: k => k.has('app') || k.has('orchestration') || k.size === 0,
     ask: `Find logic errors the diff introduces. Each needs an input and the wrong output it produces (logic). ` +
       `Not "this looks wrong". A bug already on the base branch is not this PR's.`,
   },
   {
     key: 'tests',
+    when: k => k.has('app') || k.has('tests') || k.has('orchestration'),
     ask: `Read the tests the diff adds or changes. A blocker is a test that would pass before the change, ` +
       `asserts the implementation against itself, or an existing test weakened without the ticket asking ` +
-      `(test-proves-nothing). Run a test if that settles it.`,
+      `(test-proves-nothing). Code that changes behaviour with no test that would catch it breaking is one ` +
+      `too. Run a test if that settles it.`,
+  },
+  {
+    key: 'actions',
+    when: k => k.has('actions'),
+    ask: `Review the GitHub Actions changes as someone who has been burned by them (actions). For each changed ` +
+      `workflow: can every trigger actually fire as intended — \`issues\` events run the default branch's file; ` +
+      `a pull request a bot opened sits at action_required; a push made with GITHUB_TOKEN triggers nothing; ` +
+      `drafts? Evaluate each changed \`if:\` against a concrete payload and say what it does. Does untrusted ` +
+      `text — an issue, comment or PR body, a branch name — reach a \`run:\` script through \`\${{ }}\` (script ` +
+      `injection), or reach an agent that holds write tools and a token? Least-privilege permissions, which ` +
+      `token each step uses, concurrency groups that queue or cancel the right runs, timeouts against the ` +
+      `worst case, \`always()\` steps after a timeout. docs/harness/github.md records what this repo learned ` +
+      `the hard way — a change that contradicts it is a blocker.`,
+  },
+  {
+    key: 'docs',
+    when: k => k.has('context'),
+    ask: `Review the changed AI-context and docs — CLAUDE.md, docs/context/, docs/harness/ playbooks, README, ` +
+      `specs — as text agents will read INSTEAD of the code (docs-truth). Check every changed factual claim ` +
+      `against the code it describes: file:function names, payload fields, test ids, commands and flags, ` +
+      `section numbers that the workflow scripts cite. A blocker is a claim that is false, two documents that ` +
+      `now contradict each other, or an instruction an agent would follow into a wrong action. Where a fact ` +
+      `belongs is set by docs/context/README.md: decisions in CLAUDE.md, where-and-how in docs/context.`,
+  },
+  {
+    key: 'orchestration',
+    when: k => k.has('orchestration'),
+    ask: `Review the changed workflow scripts and harness scripts (orchestration). agent() returns null when an ` +
+      `agent dies and parallel() turns a failed thunk into null: does every new path fail closed, or can a ` +
+      `dead agent read as a pass? Is every loop bounded and every escalation reachable? Do agents that run at ` +
+      `once share a worktree, a port or a file? Does a prompt contradict the playbook section it cites? Is a ` +
+      `schema field read that is not required? Do tests/unit's stub tests exercise the new branches?`,
   },
 ]
+
+const kinds = kindsOf(ctx.files)
+const ACTIVE = LENSES.filter(l => l.when(kinds))
+log(`kinds: ${[...kinds].join(', ') || 'none'} → lenses: ${ACTIVE.map(l => l.key).join(', ')}`)
 
 phase('Review')
 const lens = (l, retry) => agent(
@@ -140,9 +198,9 @@ const lens = (l, retry) => agent(
   `name. Change nothing, post nothing. Nothing to flag is the usual correct answer.`,
   { phase: 'Review', label: `review:${l.key}${retry}`, schema: FINDINGS },
 )
-const first = await parallel(LENSES.map(l => () => lens(l, '')))
-const reports = await parallel(LENSES.map((l, i) => async () => first[i] || lens(l, '-retry')))
-const missing = LENSES.filter((l, i) => !reports[i]).map(l => l.key)
+const first = await parallel(ACTIVE.map(l => () => lens(l, '')))
+const reports = await parallel(ACTIVE.map((l, i) => async () => first[i] || lens(l, '-retry')))
+const missing = ACTIVE.filter((l, i) => !reports[i]).map(l => l.key)
 const done = reports.filter(Boolean)
 
 // ── Verify ──────────────────────────────────────────────────────────────────
@@ -161,7 +219,7 @@ const judged = await parallel(blockers.map(f => () =>
     `[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}`,
     { phase: 'Verify', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium' },
   ).then(v => (v && v.refuted ? null : f))))   // a skeptic that died refuted nothing
-const RANK = ['criterion-unmet', 'logic', 'claude-md', 'test-proves-nothing']
+const RANK = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-truth', 'claude-md', 'test-proves-nothing']
 const confirmed = judged.filter(Boolean).sort((a, b) => RANK.indexOf(a.category) - RANK.indexOf(b.category))
 const shown = confirmed.slice(0, MAX_FINDINGS)
 if (confirmed.length > shown.length) log(`${confirmed.length - shown.length} confirmed blocker(s) not shown — capped at ${MAX_FINDINGS}`)

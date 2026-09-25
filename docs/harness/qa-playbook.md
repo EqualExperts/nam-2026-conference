@@ -44,6 +44,21 @@ Then pick from these, in this order:
 - **The console.** A page that renders correctly while throwing is broken, and
   nobody looks.
 
+**No browser surface is not "nothing to test".** A change to a script, a
+workflow, the Actions YAML or a doc is probed by running it:
+
+- **A script** — with an empty, huge or malformed input, and with what it
+  reads missing.
+- **A workflow script** — under the stubs `tests/unit` already uses, with an
+  agent returning `null` at the new step. A dead agent must never read as a
+  pass.
+- **An Actions `if:` or expression** — evaluated in a few lines of node
+  against a realistic payload: an issue comment, a bot's pull request, a
+  draft.
+- **A doc** — every command it tells an agent to run, run as written.
+
+Nothing that touches GitHub, and nothing that changes a tracked file.
+
 ## 2. Write probes where Playwright will find them
 
 **Do not start the app yourself.** `playwright.config.js` has a `webServer`

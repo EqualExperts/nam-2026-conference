@@ -102,6 +102,48 @@ describe('code-review', () => {
     assert.doesNotMatch(prompts['review:logic'], /drop the badge/);
   });
 
+  const lensesFor = async (files) => {
+    const { calls } = await run({ context: { ...CTX, files } });
+    return calls.filter(c => c.startsWith('review:')).map(c => c.slice(7)).sort();
+  };
+
+  test('lenses follow what the diff touches — app code gets the app lenses', async () => {
+    assert.deepEqual(await lensesFor(['src/components/NextUpCard.jsx']), ['criteria', 'logic', 'rules', 'tests']);
+  });
+
+  test('a GitHub Actions change gets the Actions lens, not the app ones', async () => {
+    assert.deepEqual(await lensesFor(['.github/workflows/agent-build.yml']), ['actions', 'criteria']);
+  });
+
+  test('an AI-context change gets the docs-truth lens', async () => {
+    assert.deepEqual(await lensesFor(['CLAUDE.md', 'docs/context/seats.md']), ['criteria', 'docs']);
+  });
+
+  test('a workflow-script change gets orchestration, logic and tests', async () => {
+    assert.deepEqual(await lensesFor(['.claude/workflows/ship.js', 'tests/unit/ship.test.js']), ['criteria', 'logic', 'orchestration', 'tests']);
+  });
+
+  test('a mixed change gets the union', async () => {
+    assert.deepEqual(await lensesFor(['server/lib/seats.js', '.github/workflows/verify.yml', 'docs/context/seats.md']),
+      ['actions', 'criteria', 'docs', 'logic', 'rules', 'tests']);
+  });
+
+  test('the Actions lens is pointed at what this repo learned the hard way', async () => {
+    const { prompts } = await run({ context: { ...CTX, files: ['.github/workflows/agent-build.yml'] } });
+    assert.match(prompts['review:actions'], /script injection/);
+    assert.match(prompts['review:actions'], /docs\/harness\/github\.md/);
+  });
+
+  test('an Actions blocker outranks a docs one', async () => {
+    const f = (category, line, claim) => ({ severity: 'blocker', category, file: 'x', line, claim, evidence: 'e' });
+    const { result } = await run({
+      context: { ...CTX, files: ['.github/workflows/a.yml', 'CLAUDE.md'] },
+      'review:docs': { ...clean(), findings: [f('docs-truth', 10, 'doc wrong')] },
+      'review:actions': { ...clean(), findings: [f('actions', 50, 'trigger cannot fire')] },
+    });
+    assert.deepEqual(result.findings.map(x => x.claim), ['trigger cannot fire', 'doc wrong']);
+  });
+
   test('no pull request readable → no verdict file, which publishes as unproven', async () => {
     const { result, prompts } = await run({ context: null });
     assert.equal(result.verdict, 'none');
@@ -190,6 +232,36 @@ describe('qa', () => {
     const plan = { ...PLAN, probes: PLAN.probes.map((p, i) => (i === 0 ? { ...p, viewport: 'mobile' } : p)) };
     const ran = { results: allPass.results.map((r, i) => (i === 0 ? { ...r, desktop: 'not-run' } : r)) };
     const { result } = await run({ plan, probe: ran });
+    assert.equal(result.confidence, 'high');
+  });
+
+  const cmd = (id) => ({ id, kind: 'command', run: `node scripts/gate.mjs --x ${id}`, what: `run ${id}`, expect: 'exit 0', why: 'failure-path' });
+  const CMD_PLAN = { issue: 0, base: 'main', surface: true, probes: ['c1', 'c2', 'c3', 'c4'].map(cmd) };
+  const cmdPass = { results: CMD_PLAN.probes.map(p => ({ id: p.id, command: 'pass' })) };
+
+  test('a change with no browser surface is probed by running it, not passed unexamined', async () => {
+    const { result, calls } = await run({ plan: CMD_PLAN, 'probe-commands': cmdPass });
+    assert.ok(calls.includes('probe-commands'));
+    assert.ok(!calls.includes('probe'), 'no browser run when no browser probe was planned');
+    assert.equal(result.verdict, 'pass');
+    assert.equal(result.confidence, 'high');
+  });
+
+  test('a failing command probe is reproduced as a command, on the branch and the base', async () => {
+    const fail = { results: cmdPass.results.map(r => (r.id === 'c2' ? { ...r, command: 'fail', happened: 'exit 1' } : r)) };
+    const { result, prompts } = await run({
+      plan: CMD_PLAN, 'probe-commands': fail,
+      repro: { onBranch: 'fails-again', onBase: 'not-applicable', happened: 'exit 1' },
+    });
+    assert.equal(result.verdict, 'fail');
+    assert.match(prompts['repro:c2'], /command probe failed/);
+    assert.match(prompts['repro:c2'], /node scripts\/gate\.mjs --x c2/);
+  });
+
+  test('browser and command probes in one plan both run', async () => {
+    const mixed = { ...PLAN, probes: [...PLAN.probes, cmd('c1')] };
+    const { calls, result } = await run({ plan: mixed, 'probe-commands': { results: [{ id: 'c1', command: 'pass' }] } });
+    assert.ok(calls.includes('probe') && calls.includes('probe-commands'));
     assert.equal(result.confidence, 'high');
   });
 });
