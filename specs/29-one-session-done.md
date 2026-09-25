@@ -62,3 +62,8 @@ first against the unchanged component to see it fail on "1 sessions done".
 ## Out of scope
 
 Any other wording on the card; the home page's Today panel.
+
+## Audit
+
+1 round. The code audit confirmed the component change, the `agenda.oneDone`
+lane and both tests match this spec; no findings needed resolving.

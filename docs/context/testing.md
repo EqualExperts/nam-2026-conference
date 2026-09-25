@@ -74,7 +74,8 @@ instead of silently testing another worktree's app.
 `LANES` is **not exported**; it is the table inside `helpers.js` that `laneFor` reads.
 Entry shape: `'area.case': { desktop: { user, day, slot?, clean? }, mobile: {…} }`, with
 `day` a 0-based index. Its comment lists read-only fixtures and the rule that lanes with a
-`slot` own that slot on day index 2.
+`slot` own that slot on day index 2 (09:00–16:00); `agenda.oneDone` books only at 17:15,
+the one regular slot none of them owns.
 
 **Port lanes** (`scripts/lane.mjs`). `claim()` sweeps stale claims (worktree gone), returns
 this worktree's existing claim if any, else writes `<git-common-dir>/orbit-lanes/<port>.json`

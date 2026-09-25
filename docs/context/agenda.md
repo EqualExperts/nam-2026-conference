@@ -72,7 +72,8 @@ Export button `export-calendar` → `api.agendaCalendarUrl`.
 
 **`NextUpCard`** (`next-up`, My Agenda only) derives current/next/done in the
 browser from the already-filtered `days` for `clock.day`; it warns when current and
-next are at different venues ≤ 30 min apart. **`TodayPanel`** (home) uses the
+next are at different venues ≤ 30 min apart. With nothing left today it reads
+"That is your day — N session(s) done", counted with `plural()`. **`TodayPanel`** (home) uses the
 server payload and the richer `assessTravel` check from `src/lib/travel.js`
 (`travel-warning`), comparing `next` with `current ?? last finished`.
 
