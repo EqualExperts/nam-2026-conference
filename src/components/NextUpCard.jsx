@@ -52,13 +52,25 @@ function Row({ session, live, clock }) {
  * attendee's own booked sessions against the conference clock.
  */
 export function NextUpCard({ days }) {
-  const { clock } = useConference();
+  const { clock, reservationFor } = useConference();
 
   const today = days.find((d) => d.date === clock.day);
   if (!today) return null;
 
   const now = toMinutes(clock.time);
-  const sessions = [...today.sessions].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  /*
+   * Confirmed seats only. This card says where to walk next, and a waitlist
+   * place is not somewhere to walk to — fourth in the queue for a full room is
+   * a wasted trip across the venue and a turn away at the door. The queue place
+   * still shows in the day below; it just does not occupy a slot here, which is
+   * the line /today has always drawn for the home page.
+   *
+   * The status comes from the store rather than the fetched payload, so
+   * releasing a seat from the list below re-settles this card immediately.
+   */
+  const sessions = today.sessions
+    .filter((s) => reservationFor(s.id) === 'confirmed')
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const current = sessions.find((s) => now >= toMinutes(s.startsAt) && now < toMinutes(s.endsAt));
   const next = sessions.find((s) => toMinutes(s.startsAt) > now);
   const done = sessions.filter((s) => now >= toMinutes(s.endsAt)).length;

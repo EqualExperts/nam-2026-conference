@@ -71,8 +71,11 @@ renders `ConflictBanner` (`conflict-banner`, max 3 listed) and `SessionCard vari
 Export button `export-calendar` → `api.agendaCalendarUrl`.
 
 **`NextUpCard`** (`next-up`, My Agenda only) derives current/next/done in the
-browser from the already-filtered `days` for `clock.day`; it warns when current and
-next are at different venues ≤ 30 min apart. **`TodayPanel`** (home) uses the
+browser from the already-filtered `days` for `clock.day`, narrowed again to the
+seats the store calls `'confirmed'` — the card says where to walk next, and a
+queue place is not somewhere to walk to. No confirmed seat now or later gives
+the empty branch ("Nothing booked today" / "N sessions done"). It warns when
+current and next are at different venues ≤ 30 min apart. **`TodayPanel`** (home) uses the
 server payload and the richer `assessTravel` check from `src/lib/travel.js`
 (`travel-warning`), comparing `next` with `current ?? last finished`.
 
@@ -102,7 +105,9 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
 ## Invariants
 
 - `current`/`next`/`finished`/`openSlot` consider **confirmed** seats only; waitlist
-  places never occupy a slot.
+  places never occupy a slot. `NextUpCard` draws the same line client-side, so
+  neither surface ever sends an attendee to a room they are only queued for
+  (`plan.spec.js` § Right now).
 - Everything on `/` keys off `clock.day`/`clock.time` (`useConference().clock`), never `days[0]` or `new Date()`.
 - The hours tile equals the sum of the per-day "Nh of content" headings (`plan.spec.js`).
 - Agenda feed = confirmed only; `calendar.test.js` asserts waitlist places are absent.
@@ -112,8 +117,9 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
 - `openSlot` matches exact start times, not overlap, and `slotsOnDay` includes
   keynote/social slots. If the first free slot is a keynote slot, `openInSlot`
   returns nothing and the suggestions block silently hides.
-- `NextUpCard` works from `reservationFor(...)` truthy, so a **waitlisted**
-  session can show as "Right now"/next there, unlike `TodayPanel`.
+- `NextUpCard` filters on `reservationFor(...) === 'confirmed'`, so the day it
+  reasons over is *not* the day rendered below it — a queue place shows in the
+  list and in the tiles, but never as "Right now", as next, or in "N done today".
 - The server's `conflicts`/`totalMinutes` are overwritten on My Agenda; change the
   client `useMemo` too if you change `scheduleFor`'s shape.
 - `ical.js` prepares its statements per call (not module scope) and hard-codes
