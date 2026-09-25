@@ -106,6 +106,10 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 
 ## Gotchas
 
+- A free `user`+`day` pair is not enough on day index 2: the `slot` lanes own its
+  09:00–16:00 slots for **every** attendee, because they count seats exactly. A lane on
+  day 2 must book outside those slots — `bookableFor(...)[0]` starts at 09:00, so filter
+  it by start time first (as `agenda.oneDone` does, at 17:15).
 - Tests that mutate one shared fixture run on one project only:
   `test.skip(testInfo.project.name !== 'desktop', …)` — see the promotion test in `tests/seats.spec.js`.
 - Only `momentOn`/full `THH:MM` values pin the clock; a bare date in `at` is ignored.
@@ -117,7 +121,8 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 ## Where to change…
 
 - **Add a data lane**: add an entry to `LANES` in `tests/helpers.js` with a `desktop` and a
-  `mobile` pair whose `user`+`day` no other lane uses; mark `clean: true` only if the seed
+  `mobile` pair whose `user`+`day` no other lane uses, and on day index 2 no `slot` lane's
+  time either (see Gotchas); mark `clean: true` only if the seed
   books nothing for that attendee that day (seed doc lists who has which days). Read it
   with `const { user, day } = await laneFor('area.case', testInfo)`.
 - New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex.
