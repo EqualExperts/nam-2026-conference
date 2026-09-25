@@ -503,10 +503,11 @@ the way it is.
    ticket goes to a person as a **draft** pull request. The runner then re-runs
    the gate itself on what was shipped. How each step is done is
    `docs/harness/ship-playbook.md`; the machinery is `docs/context/harness.md`.
-2. **Code review** and 3. **QA** — fresh agents on the opened pull request,
-   one reading the criteria then the diff, one driving a browser. Each
-   publishes a verdict with a **confidence** meaning coverage, not feeling; a
-   low one reads as *unproven*. Neither runs on a draft.
+2. **Code review** and 3. **QA** — the `code-review` and `qa` workflows on
+   the opened pull request: four independent review lenses and a skeptic; a
+   planned set of browser probes, each failure reproduced on the branch and its
+   base. Each publishes a verdict with a **confidence** meaning coverage, not
+   feeling; a low one reads as *unproven*. Neither runs on a draft.
 4. **A human merges.** Nothing is a required check, so a red one informs the
    decision rather than making it.
 

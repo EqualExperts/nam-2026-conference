@@ -70,8 +70,8 @@ flowchart TB
 
     subgraph gates["both run on every ready pull request · neither can block a merge"]
         direction LR
-        CR(["code review · Opus<br/><i>starts from the criteria,<br/>not the diff</i>"])
-        QA(["qa · Sonnet<br/><i>drives Chromium for what<br/>no test covers</i>"])
+        CR(["code-review workflow · Opus<br/><i>4 lenses → skeptic →<br/>verdict + confidence</i>"])
+        QA(["qa workflow · Sonnet<br/><i>probes both viewports,<br/>reproduces on branch + base</i>"])
     end
 
     style V fill:#8250DF,color:#fff
@@ -85,8 +85,9 @@ flowchart TB
 ## Two harnesses
 
 **Product** decides what to build. **Engineering** builds it. They meet at a
-GitHub Issue. The skills are markdown in `.claude/skills/`; `ship` is a
-workflow script in `.claude/workflows/` — together, that is the harness.
+GitHub Issue. The product skills are markdown in `.claude/skills/`; the
+engineering side is three workflow scripts in `.claude/workflows/`, each
+following a playbook in `docs/harness/` — together, that is the harness.
 
 | | Skill | What it does |
 | --- | --- | --- |
@@ -96,8 +97,8 @@ workflow script in `.claude/workflows/` — together, that is the harness.
 | 📋 | `create-tasks` | Raises the tickets — goal first, deduplicated, one goal each |
 | 📋 | `update-context` | Folds agreed knowledge back into the project's docs |
 | ⚙️ | `ship` *(workflow)* | Ticket → spec ⟲ audit → code → verify ⇄ independent audit ⟲ → context → learn → PR |
-| ⚙️ | `code-review` | Fresh context, starts from the acceptance criteria, blockers only |
-| ⚙️ | `qa` | Boots the app, drives Chromium, hunts what no test covers |
+| ⚙️ | `code-review` *(workflow)* | Four independent lenses → a skeptic per blocker → one comment, verdict with a confidence |
+| ⚙️ | `qa` *(workflow)* | Plans probes → drives Chromium on both viewports → reproduces each failure on the branch and its base |
 
 ## How a ticket moves
 

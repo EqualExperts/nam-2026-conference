@@ -365,11 +365,11 @@ const CODE_LENSES = [
     key: 'rules',
     ask: `Read \`git diff origin/${BASE}...HEAD\` against CLAUDE.md. A blocker is a decision it records being ` +
       `contradicted — quote the rule and the line. Also: a logic error, with an input and the wrong output it ` +
-      `produces. Follow .claude/skills/code-review/SKILL.md §2–§4 for what not to flag.`,
+      `produces. Follow docs/harness/code-review-playbook.md §2–§4 for what not to flag.`,
   },
   {
     key: 'browser',
-    ask: `Drive the change in a real browser and try to break it, following .claude/skills/qa/SKILL.md §1–§3 ` +
+    ask: `Drive the change in a real browser and try to break it, following docs/harness/qa-playbook.md §1–§3 ` +
       `(probes in tests/qa-probe.spec.js, both projects, re-run before calling anything a bug, delete the probe ` +
       `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
       `probe on main, \`git worktree add ../orbit-main-${issue} origin/${BASE}\`, symlink node_modules into it, and ` +

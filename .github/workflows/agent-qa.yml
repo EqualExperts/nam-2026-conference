@@ -87,20 +87,13 @@ jobs:
           # comments, and never opens a pull request or pushes. Without this
           # line it simply never runs on anybody who has not set a PAT.
           allowed_bots: "github-actions[bot]"
-          prompt: |
-            /qa ${{ github.event.pull_request.number }}
-
-            Finish by writing one line to /tmp/qa-verdict, in exactly this shape:
-              PASS <high|medium|low> <what you covered>
-            or
-              FAIL <what breaks, and when>
-            The confidence word is required — without it this run publishes as
-            unproven rather than as your verdict, and so does no file at all.
-          # Sonnet: this pass is coverage, not insight. It drives routes and
-          # reports what happened, and it runs on every pull request.
+          # A saved workflow, run as a slash command. It composes the
+          # comment and writes /tmp/qa-verdict itself, so the shape of both
+          # no longer depends on a model remembering it.
+          prompt: "/qa ${{ github.event.pull_request.number }}"
           claude_args: >-
-            --model claude-sonnet-5 --max-turns 60
-            --allowedTools "Bash,Read,Write,Glob,Grep"
+            --model claude-sonnet-5 --max-turns 20
+            --allowedTools "Workflow,Bash,Read,Write,Glob,Grep"
         env:
           NO_OPEN: "1"
 

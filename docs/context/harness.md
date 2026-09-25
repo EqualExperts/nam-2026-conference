@@ -4,10 +4,12 @@ summary: The agents that turn a labelled issue into a pull request, review it an
 read_when: changing how tickets are built, audited, reviewed or QA'd; a workflow that did not run; the context docs themselves
 files:
   - .claude/workflows/ship.js
+  - .claude/workflows/code-review.js
+  - .claude/workflows/qa.js
   - docs/harness/ship-playbook.md
   - docs/harness/github.md
-  - .claude/skills/code-review/SKILL.md
-  - .claude/skills/qa/SKILL.md
+  - docs/harness/code-review-playbook.md
+  - docs/harness/qa-playbook.md
   - .github/workflows/agent-build.yml
   - .github/workflows/agent-code-review.yml
   - .github/workflows/agent-qa.yml
@@ -20,6 +22,7 @@ files:
   - specs/README.md
 tests:
   - tests/unit/ship.test.js
+  - tests/unit/review-workflows.test.js
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
 related: [testing]
@@ -89,8 +92,24 @@ updates the docs that come back; Learn writes to their *Gotchas* — both
 before the PR opens, so reviewers see them.
 
 **After the PR.** `agent-code-review.yml` and `agent-qa.yml` fire on
-`pull_request` `opened | reopened | ready_for_review`, skip drafts, and turn
-the verdict file into a check run. `agent-respond.yml` handles `@claude` and
+`pull_request` `opened | reopened | ready_for_review`, skip drafts, run the
+`code-review` and `qa` **workflows**, and turn the verdict file into a check
+run. Both are built like ship's audit, and neither lets a model shape its own
+verdict — the script composes the comment and the verdict line from what
+survived:
+
+- **`code-review.js`** — *Context* (the PR, its Done-when, and human comments
+  that amend the ticket) → four lenses in parallel (`review:{criteria,rules,
+  logic,tests}`, retried once if one dies) → a `skeptic` per blocker, who alone
+  sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
+  that never finished makes it `low`. At most three findings, criteria first.
+- **`qa.js`** — *Plan* (≤ 8 probes, or `surface: false` for a change nothing
+  in a browser can reach → a low-confidence pass) → *Probe* (one spec, both
+  viewports) → *Reproduce*, one failing probe at a time: again on the branch,
+  then on the base in a separate worktree → *Publish*. Only a failure that
+  reproduces on the branch and not on the base is a bug; one that did not
+  reproduce is a question. Confidence is the share of the plan that ran on
+  both viewports. `agent-respond.yml` handles `@claude` and
 pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits
 trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 
@@ -129,6 +148,6 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 - Round caps or escalation → the knobs at the top of `ship.js`, then
   `ship.test.js`.
 - What an auditor looks for → `CODE_LENSES` / `SPEC_LENSES` in `ship.js`; the
-  detail they defer to lives in the code-review and qa skills.
+  detail they defer to lives in the code-review and qa playbooks.
 - The PR body → §8 of the playbook; `ship.js` only adds the audit table.
 - The context format → `docs/context/README.md` and `scripts/context.mjs`.
