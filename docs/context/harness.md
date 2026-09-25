@@ -103,13 +103,17 @@ verdict — the script composes the comment and the verdict line from what
 survived:
 
 - **`code-review.js`** — *Context* (the PR, its Done-when, and human comments
-  that amend the ticket) → four lenses in parallel (`review:{criteria,rules,
-  logic,tests}`, retried once if one dies) → a `skeptic` per blocker, who alone
+  that amend the ticket) → lenses in parallel, chosen by `kindsOf(files)`:
+  app code gets `criteria, rules, logic, tests`; `.github/workflows/` adds
+  `actions`; CLAUDE.md, `docs/`, skills and specs add `docs` (docs-truth);
+  `.claude/workflows/` and the harness scripts add `orchestration, logic,
+  tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
-- **`qa.js`** — *Plan* (≤ 8 probes, or `surface: false` for a change nothing
-  in a browser can reach → a low-confidence pass) → *Probe* (one spec, both
-  viewports) → *Reproduce*, one failing probe at a time: again on the branch,
+- **`qa.js`** — *Plan* (≤ 8 probes, each `browser` or `command`: a script,
+  a workflow under stubs or an `if:` against a payload is probed by running
+  it; `surface: false` only when nothing can be exercised → a low-confidence
+  pass) → *Probe* (commands first, then one browser spec, both viewports) → *Reproduce*, one failing probe at a time: again on the branch,
   then on the base in a separate worktree → *Publish*. Only a failure that
   reproduces on the branch and not on the base is a bug; one that did not
   reproduce is a question. Confidence is the share of the plan that ran on

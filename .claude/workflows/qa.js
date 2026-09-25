@@ -37,19 +37,21 @@ const PLAN = {
   properties: {
     issue: { type: 'integer', description: 'the linked issue; 0 if none' },
     base: { type: 'string' },
-    surface: { type: 'boolean', description: 'false when nothing that changed is reachable from a browser' },
+    surface: { type: 'boolean', description: 'false only when nothing that changed can be exercised at all — not by a browser, not by running anything' },
     reason: { type: 'string', description: 'if surface is false, why' },
     probes: {
       type: 'array',
       maxItems: MAX_PROBES,
       items: {
         type: 'object',
-        required: ['id', 'what', 'expect', 'why'],
+        required: ['id', 'kind', 'what', 'expect', 'why'],
         properties: {
           id: { type: 'string', description: 'kebab-case, unique — becomes the test title' },
+          kind: { enum: ['browser', 'command'], description: 'browser: a Playwright probe. command: run something — a script with an edge input, a workflow under stubs, a YAML if: evaluated against a payload' },
+          run: { type: 'string', description: 'command probes: the exact shell command(s)' },
           what: { type: 'string', description: 'the steps: route, attendee, clock, clicks' },
           expect: { type: 'string', description: 'what should happen' },
-          why: { enum: ['empty-or-extreme', 'other-viewport', 'other-day', 'second-interaction', 'callers', 'console'] },
+          why: { enum: ['empty-or-extreme', 'other-viewport', 'other-day', 'second-interaction', 'callers', 'console', 'trigger', 'failure-path', 'doc-claim'] },
           viewport: { enum: ['both', 'desktop', 'mobile'], description: 'both unless the probe is about one layout' },
         },
       },
@@ -65,11 +67,12 @@ const RAN = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['id', 'desktop', 'mobile'],
+        required: ['id'],
         properties: {
           id: { type: 'string' },
           desktop: { enum: ['pass', 'fail', 'not-run'] },
           mobile: { enum: ['pass', 'fail', 'not-run'] },
+          command: { enum: ['pass', 'fail', 'not-run'] },
           happened: { type: 'string', description: 'on a fail: the assertion or error, one line' },
         },
       },
@@ -100,30 +103,48 @@ const plan = await agent(
   `${HERE}Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
   `issue), \`gh pr diff ${pr}\`, and the tests it adds — what they assert is already proven, so spend nothing ` +
   `there. \`node scripts/context.mjs for <changed files>\` names the docs with the callers and test ids. ` +
-  `Pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives. If nothing that changed can be ` +
-  `reached from a browser, return surface=false and no probes. Write nothing.`,
+  `Pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives. What a browser cannot reach, probe ` +
+  `by running it (kind: command): a changed script with an empty, huge or malformed input; a changed ` +
+  `workflow script under the stubs tests/unit already uses, with an agent returning null at the new step; a ` +
+  `changed GitHub Actions \`if:\` or expression evaluated in a few lines of node against a realistic payload ` +
+  `(an issue comment, a bot's pull request, a draft); every command a changed doc tells an agent to run, run ` +
+  `as written. Commands must not touch GitHub or change tracked files. Return surface=false only when there ` +
+  `is genuinely nothing to exercise. Write nothing.`,
   { phase: 'Plan', label: 'plan', schema: PLAN },
 )
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
-if (!plan.surface) return publish({ verdict: 'pass', confidence: 'low', covered: `no browser surface — ${plan.reason || 'nothing visible changed'}`, probes: [] })
+if (!plan.surface || !plan.probes.length) return publish({ verdict: 'pass', confidence: 'low', covered: `nothing to exercise — ${plan.reason || 'no probe could be planned'}`, probes: [] })
 
 // ── Probe ───────────────────────────────────────────────────────────────────
+// Browser probes share one spec and one Playwright run per viewport; command
+// probes run separately and first, since they need no app.
+const browserProbes = plan.probes.filter(p => (p.kind || 'browser') === 'browser')
+const commandProbes = plan.probes.filter(p => p.kind === 'command')
 phase('Probe')
-const ran = await agent(
+const ranCommands = commandProbes.length ? await agent(
+  `${HERE}Run each of these command probes for pull request #${pr} in this checkout, exactly as written, ` +
+  `and report each id's result as \`command\`: pass if what happened is what was expected, fail if not (say ` +
+  `what happened), not-run if it could not be run. Put scratch files under a mktemp -d directory; change no ` +
+  `tracked file; touch nothing on GitHub.\n\n` +
+  commandProbes.map(p => `- ${p.id}: \`${p.run || p.what}\` — ${p.what}; expect: ${p.expect}`).join('\n'),
+  { phase: 'Probe', label: 'probe-commands', schema: RAN },
+) : { results: [] }
+const ranBrowser = browserProbes.length ? await agent(
   `${HERE}Write ${PROBE_FILE} with one Playwright test per probe below, titled with its id, following §2 of ` +
   `${PLAYBOOK}: \`visit(page, path, { as, at })\` from tests/helpers.js, roles and test ids, a pinned clock. ` +
   `Do not start the app yourself. Run it once per project — \`npx playwright test ${PROBE_FILE} ` +
   `--project=desktop --reporter=json\`, then mobile — and report each probe's result from the JSON. Leave ` +
   `the file in place; a later phase needs it.\n\n` +
-  plan.probes.map(p => `- ${p.id}${p.viewport && p.viewport !== 'both' ? ` (${p.viewport} only)` : ''}: ${p.what} — expect: ${p.expect}`).join('\n'),
+  browserProbes.map(p => `- ${p.id}${p.viewport && p.viewport !== 'both' ? ` (${p.viewport} only)` : ''}: ${p.what} — expect: ${p.expect}`).join('\n'),
   { phase: 'Probe', label: 'probe', schema: RAN },
-)
-if (!ran) return publish({ verdict: 'none', why: 'the probes never ran', cleanup: true })
+) : { results: [] }
+if (!ranCommands || !ranBrowser) return publish({ verdict: 'none', why: 'the probes never ran', cleanup: true })
+const ran = { results: [...ranCommands.results, ...ranBrowser.results] }
 
 const byId = new Map(ran.results.map(r => [r.id, r]))
 const failing = plan.probes.filter(p => {
   const r = byId.get(p.id)
-  return r && (r.desktop === 'fail' || r.mobile === 'fail')
+  return r && (r.desktop === 'fail' || r.mobile === 'fail' || r.command === 'fail')
 })
 
 // ── Reproduce ───────────────────────────────────────────────────────────────
@@ -132,8 +153,15 @@ phase('Reproduce')
 const findings = []
 for (const p of failing) {
   const r = byId.get(p.id)
-  const project = r.desktop === 'fail' ? 'desktop' : 'mobile'
-  const repro = await agent(
+  const project = r.command === 'fail' ? 'command' : r.desktop === 'fail' ? 'desktop' : 'mobile'
+  const repro = p.kind === 'command' ? await agent(
+    `${HERE}A command probe failed on pull request #${pr}: "${p.id}" — \`${p.run || p.what}\`; expected ${p.expect}; ` +
+    `got ${r.happened || 'a failure'}. Follow §3 of ${PLAYBOOK}. Run it again here. Then on the base: \`git ` +
+    `worktree add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, run the same command there, and ` +
+    `remove the worktree — never check out another commit in this tree. onBase is not-applicable when what it ` +
+    `runs does not exist on the base.`,
+    { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO },
+  ) : await agent(
     `${HERE}A QA probe failed on pull request #${pr}: "${p.id}" (${project}) — ${p.what}; expected ${p.expect}; got ` +
     `${r.happened || 'a failure'}. Follow §3 of ${PLAYBOOK}. Run it again on this checkout: ` +
     `\`npx playwright test ${PROBE_FILE} -g "${p.id}" --project=${project}\`. Then on the base: \`git worktree ` +
@@ -154,7 +182,7 @@ for (const p of failing) {
 // Confidence is how much of the plan actually ran, on the viewports each
 // probe was planned for — a probe about the phone layout is not "missing" on
 // desktop.
-const wants = p => (p.viewport && p.viewport !== 'both' ? [p.viewport] : ['desktop', 'mobile'])
+const wants = p => (p.kind === 'command' ? ['command'] : p.viewport && p.viewport !== 'both' ? [p.viewport] : ['desktop', 'mobile'])
 const bothRan = plan.probes.filter(p => { const r = byId.get(p.id); return r && wants(p).every(v => r[v] !== 'not-run') }).length
 const ratio = plan.probes.length ? bothRan / plan.probes.length : 0
 const confidence = ratio === 1 && plan.probes.length >= 4 ? 'high' : ratio >= 0.5 ? 'medium' : 'low'

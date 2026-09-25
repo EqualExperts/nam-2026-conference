@@ -56,6 +56,21 @@ raising is a pull request that would close an issue it no longer satisfies.
 - **A test that proves nothing** — one asserting the implementation's output
   against itself, or one that would pass before the change.
 
+The harness is code too, and reviewed as such — the workflow picks these
+lenses when the diff touches it:
+
+- **A GitHub Actions defect.** A trigger that cannot fire as intended, an
+  `if:` that is wrong for a concrete payload (say which), untrusted text
+  reaching a `run:` script or an agent with a token, a permission or token
+  broader than the step needs. `docs/harness/github.md` is what this repo
+  already learned; contradicting it is a finding.
+- **A doc that is false.** CLAUDE.md, `docs/context/` and the playbooks are
+  read *instead of* the code. A claim the code does not bear out, two docs that
+  now disagree, or an instruction an agent would follow into a wrong action.
+- **An orchestration defect.** A workflow path where a dead agent reads as a
+  pass, an unbounded loop, agents sharing a worktree or port at once, a
+  prompt contradicting the playbook section it cites.
+
 Every finding cites `file:line`, read from the line. Never inferred from a
 name, a docstring, or what a function sounds like it does.
 
