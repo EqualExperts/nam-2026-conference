@@ -50,6 +50,8 @@ jobs:
         env:
           HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
           HAS_PAT: ${{ secrets.AGENT_GITHUB_TOKEN != '' }}
+          # A fork starts with Issues switched off, and every ticket is one.
+          HAS_ISSUES: ${{ github.event.repository.has_issues }}
         run: |
           {
             echo "## Harness setup"
@@ -69,6 +71,12 @@ jobs:
               echo "| \`AGENT_GITHUB_TOKEN\` secret | ✅ set |"
             else
               echo "| \`AGENT_GITHUB_TOKEN\` secret | ⚪ optional |"
+            fi
+
+            if [ "$HAS_ISSUES" = "true" ]; then
+              echo "| Issues | ✅ on |"
+            else
+              echo "| Issues | ❌ **off — Settings → General → Features → Issues** |"
             fi
 
             echo "| Actions may open pull requests | can't be checked from here — see below |"

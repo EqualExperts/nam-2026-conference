@@ -16,6 +16,18 @@ npm install && npm run dev     # seeds, starts API + web on :5173
 
 No login — pick an attendee from the switcher. Two of them are also speaking.
 
+> [!IMPORTANT]
+> **Forked or copied this repo? The agents will not run until you do this.**
+> A fork copies the workflows but **not the labels**, and has **no API key** —
+> so labelling an issue `ready-for-ai` silently does nothing.
+>
+> 1. **Settings → Secrets and variables → Actions →** add `ANTHROPIC_API_KEY`
+>    (a key scoped to a *workspace* — an org-level key is refused).
+> 2. **Actions → Set up the harness → Run workflow.** Creates the labels and
+>    tells you in its summary anything else that is missing.
+>
+> Five minutes, once. [Full checklist ↓](#set-up-your-fork)
+
 ## The pipeline
 
 ```mermaid
@@ -123,16 +135,23 @@ You still merge.
 
 ## Set up your fork
 
-1. **Check the labels exist.** A new repository sets them up on its own — the
-   *Set up the harness* workflow runs on the first commit. If it did not, run
-   it by hand from the Actions tab. Neither a fork nor a template copies
-   labels, and `ready-for-ai` is what starts everything.
-2. **Settings → Actions → General → Workflow permissions → tick *Allow GitHub
+Once per fork, in this order. Step 3 tells you if you missed 1, 2 or 4.
+
+1. **Turn on Issues.** Settings → General → Features → tick *Issues*. GitHub
+   switches them off on a fork, and issues are where every ticket lives.
+2. **Add the API key.** Settings → Secrets and variables → Actions → New
+   repository secret, named `ANTHROPIC_API_KEY`. **It must be scoped to a
+   workspace** — an org-level key is refused, and the error does not say why.
+3. **Create the labels: Actions → *Set up the harness* → Run workflow.**
+   Neither a fork nor a template copy brings labels with it, and
+   `ready-for-ai` is what starts everything. The run's summary checks the key,
+   the token and Issues, and says what is still missing.
+   (On a repository made *from the template* it runs by itself on the first
+   commit; on a fork it does not.)
+4. **Settings → Actions → General → Workflow permissions → tick *Allow GitHub
    Actions to create and approve pull requests*.** Off by default on every new
    repository. Without it the agent does all the work, pushes a green branch,
    and then cannot open the pull request.
-3. Add `ANTHROPIC_API_KEY` as a repository secret. **It must be scoped to a
-   workspace** — an org-level key is refused, and the error does not say why.
 
 That is all. Each agent pull request opens with **"workflows awaiting
 approval"** — click it once and its checks run. That is GitHub's behaviour for
@@ -152,7 +171,7 @@ for approval and CI re-runs on the agent's own pushes. It also covers step 2
 on its own.
 
 Worth it if you are demonstrating this. Not worth handing to a room of people:
-a `repo`-scoped token is a real credential, and one click is cheaper than
+even a fine-grained token is a real credential, and one click is cheaper than
 forty of them.
 </details>
 
