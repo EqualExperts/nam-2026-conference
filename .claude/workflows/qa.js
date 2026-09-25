@@ -17,6 +17,14 @@ export const meta = {
 
 const pr = Number(typeof args === 'object' && args ? args.pr : args)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa needs a PR number, got ${JSON.stringify(args)}` }
+// In Actions the job has already checked the pull request out. On a laptop,
+// pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
+// against whatever this checkout happens to be on.
+const WORKDIR = typeof args === 'object' && args && args.workdir
+const HERE = WORKDIR
+  ? `Work in ${WORKDIR}, a checkout of the pull request: cd there at the start of every Bash command, and ` +
+    `prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim qa-${pr})" &&\`.\n\n`
+  : ''
 
 const PLAYBOOK = 'docs/harness/qa-playbook.md'
 const PROBE_FILE = 'tests/qa-probe.spec.js'
@@ -87,7 +95,7 @@ const POSTED = {
 // ── Plan ────────────────────────────────────────────────────────────────────
 phase('Plan')
 const plan = await agent(
-  `Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
+  `${HERE}Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
   `issue), \`gh pr diff ${pr}\`, and the tests it adds — what they assert is already proven, so spend nothing ` +
   `there. \`node scripts/context.mjs for <changed files>\` names the docs with the callers and test ids. ` +
   `Pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives. If nothing that changed can be ` +
@@ -100,7 +108,7 @@ if (!plan.surface) return publish({ verdict: 'pass', confidence: 'low', covered:
 // ── Probe ───────────────────────────────────────────────────────────────────
 phase('Probe')
 const ran = await agent(
-  `Write ${PROBE_FILE} with one Playwright test per probe below, titled with its id, following §2 of ` +
+  `${HERE}Write ${PROBE_FILE} with one Playwright test per probe below, titled with its id, following §2 of ` +
   `${PLAYBOOK}: \`visit(page, path, { as, at })\` from tests/helpers.js, roles and test ids, a pinned clock. ` +
   `Do not start the app yourself. Run it once per project — \`npx playwright test ${PROBE_FILE} ` +
   `--project=desktop --reporter=json\`, then mobile — and report each probe's result from the JSON. Leave ` +
@@ -124,7 +132,7 @@ for (const p of failing) {
   const r = byId.get(p.id)
   const project = r.desktop === 'fail' ? 'desktop' : 'mobile'
   const repro = await agent(
-    `A QA probe failed on pull request #${pr}: "${p.id}" (${project}) — ${p.what}; expected ${p.expect}; got ` +
+    `${HERE}A QA probe failed on pull request #${pr}: "${p.id}" (${project}) — ${p.what}; expected ${p.expect}; got ` +
     `${r.happened || 'a failure'}. Follow §3 of ${PLAYBOOK}. Run it again on this checkout: ` +
     `\`npx playwright test ${PROBE_FILE} -g "${p.id}" --project=${project}\`. Then on the base: \`git worktree ` +
     `add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, copy the probe file in, run it there, and ` +
@@ -179,7 +187,7 @@ async function publish(r) {
 
   phase('Publish')
   const posted = await agent(
-    (r.cleanup ? `First delete ${PROBE_FILE} and any ../orbit-qa-base worktree, and leave \`git status\` clean.\n\n` : '') +
+    HERE + (r.cleanup ? `First delete ${PROBE_FILE} and any ../orbit-qa-base worktree, and leave \`git status\` clean.\n\n` : '') +
     `Post this as ONE comment on pull request #${pr}, exactly as written — write it to a file and use ` +
     `\`gh pr comment ${pr} --body-file <file>\`:\n\n${body}\n\n` +
     (plan && plan.issue

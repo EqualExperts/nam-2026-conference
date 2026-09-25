@@ -19,6 +19,14 @@ export const meta = {
 
 const pr = Number(typeof args === 'object' && args ? args.pr : args)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `code-review needs a PR number, got ${JSON.stringify(args)}` }
+// In Actions the job has already checked the pull request out. On a laptop,
+// pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
+// against whatever this checkout happens to be on.
+const WORKDIR = typeof args === 'object' && args && args.workdir
+const HERE = WORKDIR
+  ? `Work in ${WORKDIR}, a checkout of the pull request: cd there at the start of every Bash command, and ` +
+    `prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim code-review-${pr})" &&\`.\n\n`
+  : ''
 
 const PLAYBOOK = 'docs/harness/code-review-playbook.md'
 const MAX_FINDINGS = 3
@@ -80,7 +88,7 @@ const POSTED = {
 // ── Context ─────────────────────────────────────────────────────────────────
 phase('Context')
 const ctx = await agent(
-  `Gather what a review of pull request #${pr} needs, and nothing more. \`gh pr view ${pr} --json ` +
+  `${HERE}Gather what a review of pull request #${pr} needs, and nothing more. \`gh pr view ${pr} --json ` +
   `title,body,baseRefName,files,additions,deletions,closingIssuesReferences\`; find the issue it closes or ` +
   `refs, and \`gh issue view\` it for its Done-when criteria, verbatim. Then read the human comments on both ` +
   `(\`gh api repos/{owner}/{repo}/issues/<n>/comments\`), skipping bots, and return only those that amend the ` +
@@ -124,7 +132,7 @@ const LENSES = [
 
 phase('Review')
 const lens = (l, retry) => agent(
-  `You are reviewing a pull request you did not write. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
+  `${HERE}You are reviewing a pull request you did not write. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
   `\`gh pr diff ${pr}\`, the spec in specs/ if the branch has one, and the docs/context/ docs that own the ` +
   `changed files (\`node scripts/context.mjs for <files>\`). Your lens only: ${l.ask}\n\n` +
   `§2–§4 of ${PLAYBOOK} say what never to flag. Cite file:line read from the line, never inferred from a ` +
@@ -144,7 +152,7 @@ const blockers = raised.filter(f => f.severity === 'blocker')
 phase('Verify')
 const judged = await parallel(blockers.map(f => () =>
   agent(
-    `${ticket}\n\n${ctx.amendments.length ? `A human amended the ticket on the thread:\n${ctx.amendments.map(a => `- ${a}`).join('\n')}\n\n` : ''}` +
+    `${HERE}${ticket}\n\n${ctx.amendments.length ? `A human amended the ticket on the thread:\n${ctx.amendments.map(a => `- ${a}`).join('\n')}\n\n` : ''}` +
     `A reviewer claims this blocker on pull request #${pr}. Try to REFUTE it: open ${f.file}:${f.line} in ` +
     `\`gh pr diff ${pr}\` or the checkout and check it says what is claimed. Refute if it does not, if the ` +
     `behaviour is already on ${ctx.base}, if a human amendment above asked for exactly this, or if it is ` +

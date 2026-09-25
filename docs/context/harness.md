@@ -43,7 +43,8 @@ rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
 step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
-**`ship.js`** takes `args` as an issue number (`/ship 42`) or
+`code-review.js` and `qa.js` take a PR number, or `{ pr, workdir }` on a
+laptop — a worktree of the PR branch to run in. **`ship.js`** takes `args` as an issue number (`/ship 42`) or
 `{ issue, base }` — `base` (default `main`) is the branch the work starts
 from, is judged against (`GATE_BASE` for the gate) and targets, for a ticket
 stacked on a pull request that has not landed. It is plain JS run by the
@@ -133,6 +134,12 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 
 ## Gotchas
 
+- **A session caches saved workflows when it starts.** `/ship` in a session
+  that has since edited `ship.js` runs the version it loaded, silently. The
+  first live run of the loop did exactly that and ran a week-old script. After
+  editing a workflow, start a new session, or run it by file:
+  `Workflow({ scriptPath: '.claude/workflows/ship.js', args })`. Actions is
+  unaffected — every job is a fresh session.
 - `tests/unit/ship.test.js` runs the script with `agent` stubbed **by label**
   (`-retry` is stripped before matching). Renaming a label breaks those tests —
   change both together.
