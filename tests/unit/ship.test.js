@@ -36,7 +36,7 @@ const blocker = (claim) => ({
  * of the round number (the `#n` suffix). Returns the result and every label
  * that ran, in order.
  */
-async function run(answers = {}) {
+async function run(answers = {}, args = 7) {
   const calls = [];
   const prompts = {};
   const agent = async (prompt, opts) => {
@@ -55,7 +55,7 @@ async function run(answers = {}) {
     return { ok: true, summary: 'done' };
   };
   const parallel = async (thunks) => Promise.all(thunks.map(t => t().catch(() => null)));
-  const result = await script(7, agent, parallel, () => {}, () => {});
+  const result = await script(args, agent, parallel, () => {}, () => {});
   return { result, calls, prompts };
 }
 
@@ -344,5 +344,25 @@ describe('ship', () => {
     const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
     assert.equal(calls.at(-1), 'release-lane');
     assert.match(prompts.implement, /Never release the lane/);
+  });
+
+  test('a comment that asked for the run reaches the spec writer and the auditors as notes', async () => {
+    const { result, prompts } = await run({}, '7 @claude I closed the first PR — do it again, and keep it to the card');
+    assert.equal(result.outcome, 'shipped');
+    assert.match(prompts['write-spec'], /The person who asked for this run wrote: "I closed the first PR — do it again, and keep it to the card"/);
+    assert.match(prompts['audit:criteria#1'], /keep it to the card/);
+    assert.doesNotMatch(prompts['write-spec'], /@claude/);
+    assert.match(prompts.setup, /closed pull request from an earlier attempt is not a reason to stop/);
+  });
+
+  test('a bare issue number carries no notes', async () => {
+    const { prompts } = await run({}, '7');
+    assert.doesNotMatch(prompts['write-spec'], /asked for this run/);
+  });
+
+  test('text that names no issue is refused before any agent runs', async () => {
+    const { result, calls } = await run({}, 'please build the waitlist thing');
+    assert.equal(result.outcome, 'error');
+    assert.deepEqual(calls, []);
   });
 });

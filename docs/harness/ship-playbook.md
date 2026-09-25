@@ -41,7 +41,7 @@ into the pull request.
 ## 2. Claim it
 
 ```bash
-gh issue edit <n> --add-label ai-working --remove-label ready-for-ai --remove-label needs-human
+gh issue edit <n> --add-label ai-working --remove-label ready-for-ai --remove-label needs-human --remove-label ready-for-human
 ```
 
 `needs-human` goes too: on a retry it is left from the attempt that was

@@ -35,8 +35,11 @@ the way they are. This is the machinery.
 
 ## How it works
 
-**Trigger.** `agent-build.yml` fires on `issues: labeled` and filters to
-`ready-for-ai`. Its one step runs `claude-code-action` with the prompt
+**Trigger.** `agent-build.yml` fires on `issues: labeled` filtered to
+`ready-for-ai`, and on an `@claude` comment on a plain issue from someone with
+write access — that comment rides along as `/ship <n> <comment>`, and reaches
+the spec writer and every auditor as notes that amend the ticket. `@claude` on
+a pull request is `agent-respond.yml`'s: a change to that diff, not a build. Its one step runs `claude-code-action` with the prompt
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
 rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
