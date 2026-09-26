@@ -138,14 +138,25 @@ describe('ship', () => {
     assert.equal(calls.filter(c => c.startsWith('fix')).length, 3);
   });
 
-  test('a spec that will not converge stops before any code is written', async () => {
+  test('a spec whose ticket is in question after every round stops before any code is written', async () => {
     const { result, calls } = await run({
-      'spec-audit:fit': { covered: 'all', findings: [blocker('names a file that does not exist')] },
+      'spec-audit:fit': { covered: 'all', findings: [{ ...blocker('the ticket asks for two contradictory outcomes'), category: 'scope' }] },
     });
     assert.equal(result.outcome, 'needs-human');
     assert.equal(result.stage, 'Spec Audit');
     assert.ok(!calls.includes('implement'));
     assert.equal(calls.filter(c => c.startsWith('revise-spec')).length, 2);
+  });
+
+  test('a technical spec problem still open after every round is decided and carried into the build — not handed back', async () => {
+    const { result, calls, prompts } = await run({
+      'spec-audit:fit': { covered: 'all', findings: [blocker('the gh call does not pin --repo')] },
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(calls.filter(c => c.startsWith('revise-spec')).length, 3);
+    assert.match(prompts['revise-spec#3'], /yours to decide/);
+    assert.match(prompts.implement, /the gh call does not pin --repo/);
+    assert.match(prompts['audit:criteria#1'], /left these for the build to resolve/);
   });
 
   test('an auditor that dies is retried, and one that dies twice hands back rather than passing', async () => {
