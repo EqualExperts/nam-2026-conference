@@ -83,7 +83,7 @@ handed back. **The gate is a command, not an opinion**: the verify agent runs
 `node scripts/gate.mjs` and returns its JSON, and `readGate()` decides from
 that — anything unparseable is red. `gate.mjs` retries a failing browser test
 once (a pass on retry is `flaky`, not a failure) and lists removed assertions
-or added skips in `tests/` as `tampered`, which only the criteria lens sees.
+or added skips in `tests/` as `tampered`, which only the lens that traces the criteria sees (`criteria`, or `combined` on a small ticket).
 
 A build round is: gate; if red, its failures become the findings and go
 straight to `fix` (red code is not audited, and red with no named failure

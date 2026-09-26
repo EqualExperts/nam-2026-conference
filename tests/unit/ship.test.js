@@ -417,6 +417,16 @@ describe('ship', () => {
       assert.doesNotMatch(prompts['write-spec'], /asked for this run/);
     });
 
+    test('on a small ticket, weakened and flaky tests reach the combined auditor', async () => {
+      const g = gateResult({
+        tampered: ['tests/seats.spec.js: -    await expect(seat).toHaveText("Taken")'],
+        browser: { passed: 155, failed: [], flaky: 1, flakyTests: ['[mobile] tests/a.spec.js:3 › t'], skipped: 1 },
+      });
+      const { prompts } = await run({ setup: SMALL, verify: { json: JSON.stringify(g) } });
+      assert.match(prompts['audit:combined#1'], /toHaveText\("Taken"\)/);
+      assert.match(prompts['audit:combined#1'], /tests\/a\.spec\.js:3/);
+    });
+
     test('running a command and copying its output uses the cheapest model in every tier', async () => {
       for (const setup of [SMALL, SETUP]) {
         const { models } = await run({ setup });

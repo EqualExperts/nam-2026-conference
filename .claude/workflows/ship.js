@@ -474,6 +474,10 @@ const CODE_LENSES_ALL = [
     alone: true,
   },
 ]
+// The lenses that trace the ticket's criteria to tests — the ones the gate's
+// weakened-test and flaky-test evidence must reach. Keyed by role, not by one
+// lens name: the small tier's `combined` lens once missed it entirely.
+const TRACES_CRITERIA = new Set(['criteria', 'combined'])
 // Small tickets only get a browser pass when something visible changed.
 const CODE_LENSES = CODE_LENSES_ALL.filter(l =>
   T.codeLenses.includes(l.key) && (l.key !== 'browser' || SIZE === 'full' || built.ui !== false))
@@ -500,10 +504,10 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
-      (l.key === 'criteria' && gate.tampered.length
+      (TRACES_CRITERIA.has(l.key) && gate.tampered.length
         ? `The gate flagged these lines in tests/ as removed assertions or added skips:\n${gate.tampered.join('\n')}\n\n`
         : '') +
-      (l.key === 'criteria' && gate.browser.flakyTests && gate.browser.flakyTests.length
+      (TRACES_CRITERIA.has(l.key) && gate.browser.flakyTests && gate.browser.flakyTests.length
         ? `These tests failed once and passed on retry: ${gate.browser.flakyTests.join(', ')}. One this branch added ` +
           `is a blocker (test-proves-nothing) — a flaky proof proves nothing. One it did not touch is not.\n\n`
         : '') +
