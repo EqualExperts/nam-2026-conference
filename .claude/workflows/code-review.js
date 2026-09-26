@@ -214,7 +214,9 @@ const done = reports.filter(Boolean)
 // different categories (on #39 the same missing hand-off was posted twice).
 // Keyed by where it is, keeping the most severe reading of it.
 const SEVERITY = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-truth', 'claude-md', 'test-proves-nothing']
-const where = f => `${f.file}|${f.line ? Math.floor(f.line / 10) : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
+// The exact line, not a window: two different problems ten lines apart are
+// two findings, and merging them left one that no skeptic ever judged.
+const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
 const raised = [...done.flatMap(r => r.findings)
   .sort((a, b) => (a.severity === 'blocker' ? 0 : 1) - (b.severity === 'blocker' ? 0 : 1) || SEVERITY.indexOf(a.category) - SEVERITY.indexOf(b.category))
   .reduce((m, f) => (m.has(where(f)) ? m : m.set(where(f), f)), new Map()).values()]
