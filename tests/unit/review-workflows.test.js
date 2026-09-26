@@ -322,14 +322,21 @@ describe('qa', () => {
       assert.match(prompts.publish, /relabels the Add button/);
     });
 
-    test('too many changed lines is explored whatever the planner says', async () => {
-      const { calls } = await run({ plan: { ...cosmetic, appLines: 120, probes: PLAN.probes } });
+    test('too many changed lines is re-planned and explored — "enough" plans no probes', async () => {
+      const { calls, result } = await run({ plan: { ...cosmetic, appLines: 120 }, 'plan-again': PLAN });
+      assert.ok(calls.includes('plan-again'));
       assert.ok(calls.includes('probe'));
+      assert.notEqual(result.confidence, 'low');
     });
 
-    test('no line count, no skip', async () => {
-      const { calls } = await run({ plan: { ...cosmetic, appLines: undefined, probes: PLAN.probes } });
-      assert.ok(calls.includes('probe'));
+    test('no line count, no skip — re-planned and explored', async () => {
+      const { calls } = await run({ plan: { ...cosmetic, appLines: undefined }, 'plan-again': PLAN });
+      assert.ok(calls.includes('plan-again') && calls.includes('probe'));
+    });
+
+    test('a re-planner that dies publishes no verdict rather than a pass', async () => {
+      const { result } = await run({ plan: { ...cosmetic, appLines: 120 }, 'plan-again': null });
+      assert.equal(result.verdict, 'none');
     });
 
     test('with --no-publish the job still gets a verdict line for the check', async () => {

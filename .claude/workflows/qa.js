@@ -141,7 +141,24 @@ if (plan.enough === true && Number.isInteger(plan.appLines) && plan.appLines <= 
   return publish({ verdict: 'pass', confidence: 'medium', skipped: true,
     covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${plan.appLines} app lines)`, probes: [] })
 }
-if (plan.enough === true) log(`QA triage: the planner called it enough, but ${plan.appLines} app lines is over ${TRIVIAL_LINES} — exploring anyway`)
+// Over the cap, or no count: the planner said "enough" and so planned no
+// probes. Ask again for a real plan — logging "exploring anyway" and then
+// falling through to "nothing to exercise" explored nothing.
+if (plan.enough === true) {
+  log(`QA triage: the planner called it enough, but ${plan.appLines ?? 'an unknown number of'} app lines is over ${TRIVIAL_LINES} — exploring anyway`)
+  const again = await agent(
+    `${HERE}Plan exploratory QA for pull request #${pr}. It is too large to skip: ${plan.appLines ?? 'an unknown number of'} ` +
+    `lines of app code changed, over the ${TRIVIAL_LINES}-line limit for calling a change covered by its tests. ` +
+    `Do not return enough=true. Otherwise plan exactly as before: read the ticket's Done when, \`gh pr diff ${pr}\` ` +
+    `and the tests it adds, then pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives — ` +
+    `browser probes, or command probes for what a browser cannot reach. Write nothing.`,
+    { phase: 'Plan', label: 'plan-again', schema: PLAN },
+  )
+  if (!again) return publish({ verdict: 'none', why: 'the planner did not finish' })
+  plan.surface = again.surface
+  plan.reason = again.reason
+  plan.probes = again.probes
+}
 if (!plan.surface || !plan.probes.length) return publish({ verdict: 'pass', confidence: 'low', covered: `nothing to exercise — ${plan.reason || 'no probe could be planned'}`, probes: [] })
 
 // ── Probe ───────────────────────────────────────────────────────────────────
