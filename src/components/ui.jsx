@@ -216,7 +216,8 @@ export function ErrorState({ error, onRetry }) {
 }
 
 /* ---------------------------------- Stat --------------------------------- */
-export function Stat({ value, label, accent: accentName = 'violet', testId }) {
+/** `note` is a second, quieter line under the label — a caveat on the number. */
+export function Stat({ value, label, accent: accentName = 'violet', testId, note = null }) {
   const a = accent(accentName);
   return (
     <div className="card px-4 py-3.5">
@@ -224,6 +225,7 @@ export function Stat({ value, label, accent: accentName = 'violet', testId }) {
         {typeof value === 'number' ? <CountUp value={value} /> : value}
       </div>
       <div className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
+      {note && <div className="mt-1 text-[11px] font-medium text-amber-300">{note}</div>}
     </div>
   );
 }

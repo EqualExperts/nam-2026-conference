@@ -90,8 +90,14 @@ function SpeakingPanel({ user }) {
 
 const MAX_LISTED_CONFLICTS = 3;
 
-/** The hours a day heading shows. The total tile sums these, so the two agree. */
+/**
+ * The hours a day heading shows. The total tile sums these, so the two agree.
+ * Hours are hours you hold a chair for; a waitlist place is counted, and
+ * shown, apart — it may never come good, so adding it to "booked" overstates
+ * the day.
+ */
 const hoursOn = (day) => Math.round(day.totalMinutes / 60);
+const waitlistedHoursOn = (day) => Math.round(day.waitlistedMinutes / 60);
 
 function ConflictBanner({ day, conflicts }) {
   if (!conflicts.length) return null;
@@ -152,6 +158,10 @@ function DayPlan({ day, isToday }) {
           <span>{plural(day.sessions.length, 'session')}</span>
           <span className="text-faint">·</span>
           <span>{hoursOn(day)}h of content</span>
+          {/* without this a day of nothing but queues reads "0h of content" */}
+          {day.waitlistedMinutes > 0 && (
+            <span className="text-amber-300">+{waitlistedHoursOn(day)}h waitlisted</span>
+          )}
           {venues.length > 1 && (
             <Chip accent="amber" className="!py-0.5">
               <Icon name="car" className="size-3" /> {venues.join(' + ')}
@@ -184,11 +194,15 @@ export function MyAgendaPage() {
     .map((d) => {
       const sessions = d.sessions.filter((s) => reservationFor(s.id));
       const keptIds = new Set(sessions.map((s) => s.id));
+      const minutesHeld = (status) => sessions
+        .filter((s) => reservationFor(s.id) === status)
+        .reduce((n, s) => n + s.durationMins, 0);
       return {
         ...d,
         sessions,
         conflicts: d.conflicts.filter((c) => c.sessionIds.every((id) => keptIds.has(id))),
-        totalMinutes: sessions.reduce((n, s) => n + s.durationMins, 0),
+        totalMinutes: minutesHeld('confirmed'),
+        waitlistedMinutes: minutesHeld('waitlisted'),
         venuesVisited: [...new Set(sessions.map((s) => s.venue.shortName))],
       };
     })
@@ -205,6 +219,8 @@ export function MyAgendaPage() {
    * a bug rather than as an answer.
    */
   const totalHours = days.reduce((n, d) => n + hoursOn(d), 0);
+  const waitlistedHours = days.reduce((n, d) => n + waitlistedHoursOn(d), 0);
+  const waitlistedMinutes = days.reduce((n, d) => n + d.waitlistedMinutes, 0);
   const crossVenueDays = days.filter((d) => d.venuesVisited.length > 1).length;
 
   return (
@@ -241,7 +257,15 @@ export function MyAgendaPage() {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
-            <Stat value={totalHours} label="Hours booked" accent="cyan" testId="stat-hours-booked" />
+            <Stat
+              value={totalHours}
+              label="Hours booked"
+              accent="cyan"
+              testId="stat-hours-booked"
+              note={waitlistedMinutes > 0 && (
+                <span data-testid="stat-hours-waitlisted">+{waitlistedHours}h waitlisted</span>
+              )}
+            />
             <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />

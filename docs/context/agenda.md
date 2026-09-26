@@ -12,6 +12,7 @@ files:
 tests:
   - tests/home.spec.js
   - tests/plan.spec.js
+  - tests/api/agenda.test.js
   - tests/api/calendar.test.js
   - tests/unit/ical.test.js
 related: [seats, attendance, clock, venues, schedule, speakers]
@@ -56,17 +57,23 @@ its topic tags in that set; sort `affinity` desc then `avgRating` desc; top
 
 **`GET /api/users/:id/schedule`** → `{ user: toUser(row), days: scheduleFor(id) }`.
 `agenda.js:scheduleFor` returns one entry per day that has any reservation:
-`{ date, sessions (each with reservation), conflicts, totalMinutes, venuesVisited }`.
+`{ date, sessions (each with reservation), conflicts, totalMinutes, waitlistedMinutes,
+venuesVisited }`. The two minute totals split by status — `totalMinutes` counts
+**confirmed seats only**, `waitlistedMinutes` the queued time — because hours
+mean hours you hold a chair for.
 `clashesIn` is an O(n²) pairwise overlap test over that day's sessions (both
 statuses) → `{ type: 'overlap', sessionIds: [a, b] }`. `venuesVisited` is venue
 `shortName`s.
 
 **My Agenda** (`MyAgendaPage`) fetches `api.getSchedule` once, then in a `useMemo`
 re-filters every day through `reservationFor(s.id)` from the store and
-**recomputes** `conflicts`, `totalMinutes` and `venuesVisited` client-side, dropping
+**recomputes** `conflicts`, both minute totals and `venuesVisited` client-side, dropping
 empty days — so a removal disappears immediately and Undo restores it. Stat tiles:
 seats booked, hours (`stat-hours-booked` = sum of per-day `hoursOn`, i.e. rounded
-per day), waitlisted, clashes, cross-town days. `DayPlan` (`plan-day-<date>`)
+per day), waitlisted, clashes, cross-town days. Any waitlisted time adds a
+`Stat note` under the hours label — `stat-hours-waitlisted`, `+Nh waitlisted`,
+rounded and summed the same way — and a matching note beside that day's hours
+line; with none, neither renders. `DayPlan` (`plan-day-<date>`)
 renders `ConflictBanner` (`conflict-banner`, max 3 listed) and `SessionCard variant="row"`.
 Export button `export-calendar` → `api.agendaCalendarUrl`.
 
@@ -104,7 +111,8 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
 - `current`/`next`/`finished`/`openSlot` consider **confirmed** seats only; waitlist
   places never occupy a slot.
 - Everything on `/` keys off `clock.day`/`clock.time` (`useConference().clock`), never `days[0]` or `new Date()`.
-- The hours tile equals the sum of the per-day "Nh of content" headings (`plan.spec.js`).
+- The hours tile equals the sum of the per-day "Nh of content" headings, and both
+  count confirmed seats only (`plan.spec.js`, `api/agenda.test.js`).
 - Agenda feed = confirmed only; `calendar.test.js` asserts waitlist places are absent.
 
 ## Gotchas
@@ -114,7 +122,7 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
   returns nothing and the suggestions block silently hides.
 - `NextUpCard` works from `reservationFor(...)` truthy, so a **waitlisted**
   session can show as "Right now"/next there, unlike `TodayPanel`.
-- The server's `conflicts`/`totalMinutes` are overwritten on My Agenda; change the
+- The server's `conflicts`/`totalMinutes`/`waitlistedMinutes` are overwritten on My Agenda; change the
   client `useMemo` too if you change `scheduleFor`'s shape.
 - `ical.js` prepares its statements per call (not module scope) and hard-codes
   `URL:http://localhost:5173/...`; `DTSTAMP` uses real `new Date()`.
