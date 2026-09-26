@@ -163,35 +163,54 @@ jobs:
             exit 0
           fi
 
-          git fetch -q origin "$branch" && git checkout -q FETCH_HEAD
+          # A fresh worktree of the pushed branch, with its own ports and
+          # database. The first version re-ran the gate in the workspace ship
+          # had just used: whatever it left running held the ports, Playwright
+          # died on startup, and a green PR (#41) was sent back to draft nine
+          # seconds later as "red".
+          git fetch -q origin "$branch" main
+          dir="$RUNNER_TEMP/recheck"
+          git worktree add -q --detach "$dir" FETCH_HEAD 2>/dev/null || git worktree add -q --detach "$dir" "origin/$branch"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$dir/node_modules"
+          cd "$dir"
           # The gate and the config that decides what it runs come from main,
           # not from the branch being judged — a fixer told to make the gate
-          # green could otherwise have edited the gate. Each file separately,
-          # so one main does not have yet cannot stop the other; GATE_PINNED
-          # tells the gate those two differences are ours, not the branch's
-          # uncommitted work. (This limits what the branch can change about
-          # the gate, not what its code can reach: the checkout's credentials
-          # are still on disk.)
+          # green could otherwise have edited the gate. GATE_PINNED tells the
+          # gate those differences are ours, not the branch's uncommitted work.
+          # (This limits what the branch can change about the gate, not what
+          # its code can reach: credentials are still on disk.)
           pinned=""
           for f in scripts/gate.mjs playwright.config.js; do
             if git cat-file -e "origin/main:$f" 2>/dev/null; then
               git show "origin/main:$f" > "$f" && pinned="$pinned,$f"
             fi
           done
-          if env -u GH_TOKEN GATE_PINNED="$pinned" node scripts/gate.mjs > /tmp/gate.out; then verdict=green; else verdict=red; fi
-          git checkout -q -- . 2>/dev/null || true
+          if env -u GH_TOKEN GATE_PINNED="$pinned" PORT=4460 WEB_PORT=4461 ORBIT_LANE=recheck \
+               ORBIT_DB="$RUNNER_TEMP/recheck.db" node scripts/gate.mjs > "$RUNNER_TEMP/gate.out" 2>&1; then
+            verdict=green
+          else
+            verdict=red
+          fi
+          report="$dir/test-results/gate.json"
+          # In the log as well as the summary: the summary is not reachable
+          # through the API, and the last red could not be diagnosed from it.
+          echo "gate re-run: $verdict"; cat "$report" 2>/dev/null || tail -c 3000 "$RUNNER_TEMP/gate.out"
           {
             echo "### Gate re-run on #$pr: $verdict"
             echo
             echo '```json'
-            cat test-results/gate.json 2>/dev/null || tail -c 2000 /tmp/gate.out
+            cat "$report" 2>/dev/null || tail -c 2000 "$RUNNER_TEMP/gate.out"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          cd "$GITHUB_WORKSPACE"
 
           if [ "$verdict" = red ]; then
+            why=$(jq -r '[(.browser.failed // [])[].test, (if (.unit.failed // 0) > 0 then "npm test" else empty end), (if .dirty then "uncommitted changes" else empty end)] | map("- " + .) | join("\n")' "$report" 2>/dev/null)
             gh pr ready "$pr" --undo || true
             gh issue edit "$N" --add-label needs-human --remove-label ready-for-human || true
             gh pr comment "$pr" --body "> [!CAUTION]
           > ### The gate is red on this branch
-          > ship reported it green, but the runner's own re-run of \`node scripts/gate.mjs\` failed, so this is back to draft. [Run]($RUN)" || true
+          > ship reported it green, but the runner's own re-run of \`node scripts/gate.mjs\` failed, so this is back to draft. [Run]($RUN)
+
+          ${why:-The gate did not report which test failed — see the run log.}" || true
           fi
