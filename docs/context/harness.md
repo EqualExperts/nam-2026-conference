@@ -101,6 +101,14 @@ hands back); if green, the criteria and rules lenses run in parallel, then
 the browser lens alone (it needs the ports), each blocker goes to a
 `skeptic`, and only unrefuted blockers reach `fix`. Minor findings never loop.
 
+**Spec audit hands back only on scope.** When the spec rounds run out, a
+finding in category `scope` — the ticket itself contradictory, unclear or
+unbuildable as written — goes to a person. Anything technical is revised once
+more, decided by the reviser under *Decisions*, and `carried` into the build:
+the implementer must resolve it and the criteria lens is told to check it did.
+(#52 went to a person over a missing `--repo` flag; #53, rightly, over a
+criterion the ticket got wrong.)
+
 **Stopping.** `handBack(stage, why, open)` runs `learn`, then an agent that
 pushes the branch, opens a **draft** PR (`Refs #n`, not `Closes`) listing what
 is open, comments on the issue and labels it `needs-human`. A dead setup
