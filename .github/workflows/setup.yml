@@ -56,7 +56,7 @@ jobs:
           {
             echo "## Harness setup"
             echo
-            echo "The four labels exist. \`ready-for-ai\` on an issue starts a build."
+            echo "The four labels exist. \`ready-for-ai\` on an issue starts a ship run."
             echo
             echo "| Needs | State |"
             echo "| --- | --- |"

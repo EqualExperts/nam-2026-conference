@@ -76,7 +76,7 @@ public/
 tests/               Playwright specs + helpers.js
 scripts/shot.mjs     screenshot tool
 docs/context/        one doc per area of the app — read these before the source
-.claude/workflows/   ship.js, the build loop
+.claude/workflows/   ship.js, the ship loop
 data/orbit.db        generated, gitignored
 ```
 
@@ -489,7 +489,7 @@ the way it is.
 
 ## What happens to a ticket
 
-1. **Build** — `ready-for-ai` on an issue, or an `@claude` comment on one
+1. **Ship** — `ready-for-ai` on an issue, or an `@claude` comment on one
    ("do this again, smaller"), runs the `ship` workflow
    (`.claude/workflows/ship.js`; `/ship 42` on a laptop). It is a script, not
    a prompt, and every phase is a fresh agent:

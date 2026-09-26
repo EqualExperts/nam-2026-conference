@@ -6,8 +6,8 @@
 ##
 ## It comments and never blocks. A human merges.
 ##
-## Triggered by the pull request itself. An earlier version keyed off the build
-## workflow finishing, which does not work: a build started by an `issues`
+## Triggered by the pull request itself. An earlier version keyed off the ship
+## workflow finishing, which does not work: a run started by an `issues`
 ## event reports `head_branch` as `main`, so the lookup for its pull request
 ## found nothing and these passes never ran.
 name: Agent · code review

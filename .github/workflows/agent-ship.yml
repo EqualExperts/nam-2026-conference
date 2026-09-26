@@ -14,13 +14,13 @@
 ##
 ## Needs an ANTHROPIC_API_KEY repository secret; `Set up the harness` says
 ## what else, and none of it is the Claude GitHub App.
-name: Agent · build
+name: Agent · ship
 
 on:
   issues:
     types: [labeled]
   # `@claude` on an issue — "do this again", "build this" — is a request to
-  # build the ticket, so it runs the same loop as the label, with the comment
+  # ship the ticket, so it runs the same loop as the label, with the comment
   # passed along as notes. `@claude` on a pull request is a request to change
   # that diff, and stays with agent-respond.yml.
   issue_comment:
@@ -31,16 +31,16 @@ on:
 # Keyed by label as well as issue. The agent claims its ticket by swapping
 # `ready-for-ai` for `ai-working`, and with a PAT it does that as a person —
 # so that swap fires `issues: labeled` too. The job's `if` skips it in a
-# second, but a shared group would leave it queued behind the real build for
+# second, but a shared group would leave it queued behind the real ship run for
 # the whole run, looking like a duplicate.
 # A comment shares the label's group, so a comment and a label on the same
-# ticket queue behind each other rather than building it twice at once.
+# ticket queue behind each other rather than shipping it twice at once.
 concurrency:
-  group: agent-build-${{ github.event.issue.number }}-${{ github.event.label.name || 'ready-for-ai' }}
+  group: agent-ship-${{ github.event.issue.number }}-${{ github.event.label.name || 'ready-for-ai' }}
   cancel-in-progress: false
 
 jobs:
-  build:
+  ship:
     # `labeled` fires for every label, so the filter is what makes this a
     # dispatch rather than a nuisance. A comment counts only on an issue (not
     # a pull request), only from someone with write access — it becomes part
@@ -141,19 +141,19 @@ jobs:
           # success; say so instead.
           if printf '%s\n' "$labels" | grep -qx ready-for-ai; then
             gh issue edit "$N" --add-label needs-human --remove-label ready-for-ai || true
-            gh issue comment "$N" --body "The build run ended without starting — the ticket was never claimed. The job summary has the transcript.
+            gh issue comment "$N" --body "The ship run ended without starting — the ticket was never claimed. The job summary has the transcript.
 
           [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
-            echo "### Build never started — handed back" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Ship never started — handed back" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
           if printf '%s\n' "$labels" | grep -qx ai-working; then
             gh issue edit "$N" --add-label needs-human --remove-label ai-working || true
-            gh issue comment "$N" --body "The build run did not finish — it timed out, was cancelled, or stopped without handing back.${branch:+ Its work so far is on \`$branch\`.}
+            gh issue comment "$N" --body "The ship run did not finish — it timed out, was cancelled, or stopped without handing back.${branch:+ Its work so far is on \`$branch\`.}
 
           [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
-            echo "### Build did not finish — handed back" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Ship did not finish — handed back" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 

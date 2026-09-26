@@ -235,7 +235,7 @@ async function handBack(stage, why, open) {
   const lessons = setup && setup.branch && !learned ? await learn(`stopped at ${stage}: ${why}`) : []
   phase('Learn')
   await agent(
-    `Hand GitHub issue #${issue} back to a person. The automated build stopped at "${stage}" because: ${why}\n\n` +
+    `Hand GitHub issue #${issue} back to a person. The automated ship run stopped at "${stage}" because: ${why}\n\n` +
     (open && open.length ? `Still open when it stopped:\n${listFindings(open)}\n\n` : '') +
     (setup && setup.branch
       ? `${inTree()}\nPush whatever is committed (git push -u origin HEAD), then open a DRAFT pull request so the ` +
@@ -269,7 +269,7 @@ async function learn(how) {
   phase('Learn')
   if (!history.length) return []
   const result = await agent(
-    `${inTree()}\n\nThe build of issue #${issue} ${how}. Along the way independent audits confirmed these ` +
+    `${inTree()}\n\nThe ship run for issue #${issue} ${how}. Along the way independent audits confirmed these ` +
     `problems the builder had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
     `would recur on a different ticket — not this ticket's specifics. For each, decide where the knowledge ` +
     `would have been seen in time: the *Gotchas* of the docs/context/ doc for that area (usually), CLAUDE.md ` +

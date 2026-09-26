@@ -31,7 +31,7 @@ or judge. A high-confidence pass is green, a low-confidence one publishes as
 *unproven* — a pass nobody could earn should not read like one.
 
 Code review and QA trigger on the pull request itself. An earlier design keyed
-off the build workflow finishing, which cannot work: a build started by an
+off the ship workflow finishing, which cannot work: a run started by an
 `issues` event reports its `head_branch` as `main`, so looking up the pull
 request by branch found nothing and neither pass ever ran.
 
