@@ -160,7 +160,7 @@ function FromSpeakersYouFollow() {
   return (
     <section data-testid="followed-sessions">
       <SectionHeader
-        eyebrow={`${followingIds.size} speakers followed`}
+        eyebrow={`${plural(followingIds.size, 'speaker')} followed`}
         title="From speakers you follow"
         action={<Button to="/speakers?show=following" size="sm">
           Manage <Icon name="chevronRight" className="size-3.5" />

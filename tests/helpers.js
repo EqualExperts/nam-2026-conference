@@ -95,8 +95,10 @@ export async function clearAgendaFor(request, userId, day) {
  * guard is per attendee, so that is what keeps one test's booking from turning
  * another's click into a conflict dialog.
  *
- * Lanes with a `slot` also count seats exactly, so on top of that they own a
- * whole time slot on day 3 — no other lane books anything on day 3.
+ * Lanes with a `slot` and an exact seat-count assertion own that whole slot on
+ * day 3 — nothing else may book the six slots `seats.count`/`seats.reload`/
+ * `seats.twice` use there. A lane that only needs a clean day (no count
+ * assertion) may take day 3's one remaining slot instead, same as any other day.
  *
  * Read-only fixtures to leave alone: Jonas on day 1 (home page), Jonas and
  * Kenji on day 2 (the promotion fixture), Marcus on day 4 (must stay empty).
@@ -119,6 +121,12 @@ const LANES = {
   'schedule.seats':   { desktop: { user: kenji, day: 1 },                 mobile: { user: marcus, day: 0 } },
   'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
+  // Kenji and Marcus only attend days 1–2, so day index 2 is unbooked for both —
+  // a clean day to book exactly one session on, distinct from the day-4 lanes above.
+  // No exact seat-count assertion here, so this owns 17:15 — the one slot on
+  // day index 2 the seats.* lanes above leave alone — rather than a dynamic
+  // pick that could otherwise land on one of their sessions.
+  'agenda.next-up-done': { desktop: { user: marcus, day: 2, slot: '17:15', clean: true }, mobile: { user: kenji, day: 2, slot: '17:15', clean: true } },
 };
 
 /** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */
