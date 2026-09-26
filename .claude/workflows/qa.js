@@ -204,7 +204,7 @@ for (const p of failing) {
       { phase: 'Reproduce', label: `skeptic:${p.id}`, schema: REFUTATION, effort: 'medium' },
     )
     // A skeptic that died refuted nothing.
-    if (v && v.refuted) { kind = 'question'; doubt = v.why }
+    if (v && v.refuted === true) { kind = 'question'; doubt = String(v.why || '').trim() || 'the skeptic refuted it without giving a reason' }
   }
   findings.push({ probe: p, project, kind, happened: repro ? repro.happened : r.happened, image: repro && repro.image, doubt })
 }

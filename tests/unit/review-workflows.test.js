@@ -296,6 +296,12 @@ describe('qa', () => {
       assert.equal(result.verdict, 'fail');
     });
 
+    test('a refutation with no reason still says something where the reason goes', async () => {
+      const { result, prompts } = await run({ probe: withFail('b'), skeptic: { refuted: true, why: '  ' } });
+      assert.equal(result.verdict, 'pass');
+      assert.match(prompts.publish, /Why it is not a blocker: the skeptic refuted it without giving a reason/);
+    });
+
     test('a skeptic that dies refutes nothing', async () => {
       const { result } = await run({ probe: withFail('b'), skeptic: null });
       assert.equal(result.verdict, 'fail');
