@@ -210,8 +210,36 @@ const missing = ACTIVE.filter((l, i) => !reports[i]).map(l => l.key)
 const done = reports.filter(Boolean)
 
 // ── Verify ──────────────────────────────────────────────────────────────────
-const key = f => `${f.category}|${f.file}|${Math.floor((f.line || 0) / 10)}`
-const raised = [...new Map(done.flatMap(r => r.findings).map(f => [key(f), f])).values()]
+// One problem, one finding: two lenses often report the same line under
+// different categories (on #39 the same missing hand-off was posted twice).
+// Keyed by where it is, keeping the most severe reading of it.
+const SEVERITY = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-truth', 'claude-md', 'test-proves-nothing']
+// The exact line, not a window: two different problems ten lines apart are
+// two findings, and merging them left one that no skeptic ever judged.
+// Without a line only an identical claim merges: a 60-character prefix once
+// merged "…more than three" with "…fewer than three". Judging a duplicate
+// twice costs a skeptic; dropping a different problem costs a blocker.
+// Merge, never drop: a reading this key already holds joins it in `also`,
+// and the skeptic may refute the location only if every reading is wrong. A
+// kept-first merge let a refuted criterion take a real logic blocker on the
+// same line down with it, unjudged.
+// Severity is part of the key: a true note grouped under a false blocker,
+// with "refute only if every reading is wrong", kept the blocker alive.
+const group = (m, f) => {
+  const k = `${f.severity}|${where(f)}`
+  // Grouping twice (ship's minors are grouped, then confirmed) must keep
+  // the readings the first pass gathered.
+  if (!m.has(k)) return m.set(k, { ...f, also: [...(f.also || [])] })
+  const g = m.get(k)
+  for (const r of [f, ...(f.also || [])]) {
+    if (g.claim !== r.claim && !g.also.some(a => a.claim === r.claim)) g.also.push({ category: r.category, claim: r.claim, evidence: r.evidence })
+  }
+  return m
+}
+const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
+const raised = [...done.flatMap(r => r.findings)
+  .sort((a, b) => (a.severity === 'blocker' ? 0 : 1) - (b.severity === 'blocker' ? 0 : 1) || SEVERITY.indexOf(a.category) - SEVERITY.indexOf(b.category))
+  .reduce(group, new Map()).values()]
 const blockers = raised.filter(f => f.severity === 'blocker')
 
 phase('Verify')
@@ -221,8 +249,10 @@ const judged = await parallel(blockers.map(f => () =>
     `A reviewer claims this blocker on pull request #${pr}. Try to REFUTE it: open ${f.file}:${f.line} in ` +
     `\`gh pr diff ${pr}\` or the checkout and check it says what is claimed. Refute if it does not, if the ` +
     `behaviour is already on ${ctx.base}, if a human amendment above asked for exactly this, or if it is ` +
-    `style rather than a defect. If you cannot tell, it is NOT refuted.\n\n` +
-    `[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}`,
+    `style rather than a defect. If you cannot tell, it is NOT refuted.` +
+    (f.also && f.also.length ? ` Several reviewers read this line differently ("also" below): refute only if EVERY reading is wrong.` : '') +
+    `\n\n[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}` +
+    (f.also || []).map(a => `\nalso, [${a.category}]: ${a.claim} — ${a.evidence}`).join(''),
     { phase: 'Verify', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium' },
   ).then(v => (v && v.refuted ? null : f))))   // a skeptic that died refuted nothing
 const RANK = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-truth', 'claude-md', 'test-proves-nothing']
@@ -247,7 +277,8 @@ async function publish(r) {
   let body, line
   if (r.verdict === 'fail') {
     body = `> [!CAUTION]\n> ### Code review · blocker\n> ${r.findings.length} confirmed by a second reader. Judged: ${r.covered}\n\n` +
-      r.findings.map(f => `**\`${f.file}:${f.line}\`** — ${f.claim}\n${f.evidence}`).join('\n\n')
+      r.findings.map(f => `**\`${f.file}:${f.line}\`** — ${f.claim}\n${f.evidence}` +
+        (f.also || []).map(a => `\n\nThe same line, read as ${a.category}: ${a.claim}\n${a.evidence}`).join('')).join('\n\n')
     line = `FAIL ${r.findings[0].claim}`
   } else if (r.verdict === 'pass') {
     const [kind, meter] = CALLOUT[r.confidence]

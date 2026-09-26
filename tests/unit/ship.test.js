@@ -472,4 +472,62 @@ describe('ship', () => {
       assert.ok(calls.indexOf('red-check#1') < calls.indexOf('audit:criteria#1'));
     });
   });
+
+  test('one line flagged by two auditors under different categories costs one skeptic', async () => {
+    const f = (category) => ({ ...blocker('the total ignores waitlist places'), category });
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [f('criterion-unmet')] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [f('logic')] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+  });
+
+  test('two different findings a few lines apart in one file are both judged', async () => {
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [{ ...blocker('the total ignores waitlist places'), line: 12 }] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [{ ...blocker('the note renders for zero hours'), line: 15 }] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+  });
+
+  test('several findings sharing a stuck key count once per round, not once each', async () => {
+    const near = (line, claim) => ({ ...blocker(claim), line });
+    const { calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [near(11, 'a'), near(13, 'b'), near(15, 'c')] : [] }),
+    });
+    assert.ok(calls.includes('fix#1'), 'a fix is attempted before anything is called stuck');
+  });
+
+  test('two findings with no line whose claims only share a beginning are both judged', async () => {
+    const long = 'the hours tile counts waitlisted sessions when the attendee has ';
+    const unmet = (claim, category) => ({ ...blocker(claim), category, file: 'specs/7-hours.md', line: undefined });
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [unmet(long + 'more than three', 'criterion-unmet'), unmet(long + 'fewer than three', 'logic')] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+  });
+
+  test('a second reading of the same line goes to the skeptic with the first, never dropped', async () => {
+    const f = (category, claim) => ({ ...blocker(claim), category });
+    const { prompts, calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [f('criterion-unmet', 'criterion 2 has no test')] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [f('logic', 'the total counts waitlisted sessions')] : [] }),
+    });
+    const skeptic = prompts['skeptic:criterion-unmet'];
+    assert.match(skeptic, /criterion 2 has no test/);
+    assert.match(skeptic, /also, \[logic\]: the total counts waitlisted sessions/);
+    assert.match(skeptic, /refute only if EVERY reading is wrong/);
+    assert.match(prompts['fix#1'], /the total counts waitlisted sessions/);
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+  });
+
+  test('minor readings of one line reach the PR body together — grouping twice keeps them', async () => {
+    const minor = (category, claim) => ({ ...blocker(claim), category, line: 42, severity: 'minor' });
+    const { prompts } = await run({
+      'audit:criteria': { covered: 'all', findings: [minor('criterion-unmet', 'the note has no test')] },
+      'audit:rules': { covered: 'all', findings: [minor('logic', 'the note rounds down')] },
+    });
+    assert.match(prompts['open-pr'], /the note has no test/);
+    assert.match(prompts['open-pr'], /the note rounds down/);
+  });
 });

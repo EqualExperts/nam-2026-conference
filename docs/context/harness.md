@@ -165,9 +165,19 @@ cannot start another round.
 - The skeptic gets the ticket, the worktree and the spec, and judges against
   the spec *as first committed* — a fixer cannot make a missed criterion
   "deliberate" by editing the spec.
-- `STUCK_AFTER` (2): findings are keyed by category, file and line bucket
-  (`line / 10`), never by wording, and deduplicated per round. The same key
-  confirmed three rounds running hands back.
+- **Deduplication** (`where()` and `group()`, in `ship.js` and
+  `code-review.js`): findings on the same exact line — or with an identical
+  claim when there is no line — are **grouped, never dropped**, and only
+  with findings of the same severity: blockers with blockers, notes with notes
+  (ship separates minors before grouping; code review keys on severity), so a
+  note never shields a blocker. The first — in code review, the highest-ranked
+  category — leads; the others ride along in `also`, the skeptic sees every
+  reading and may refute the location only if every one is wrong, and the
+  fixer and the review comment see them all. Findings on different lines are
+  never grouped.
+- `STUCK_AFTER` (2): stuck detection keys on category, file and line bucket
+  (`line / 10`), never on wording. The same key confirmed three rounds running
+  hands back.
 - No `Date.now()`, `Math.random()` or filesystem in `ship.js` — the Workflow
   runtime forbids them. Anything that touches the machine goes through an
   agent; anything that decides goes through the script.

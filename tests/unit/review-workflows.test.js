@@ -87,6 +87,67 @@ describe('code-review', () => {
     assert.deepEqual(result.findings.map(f => f.claim), ['d', 'b', 'c']);
   });
 
+  test('one line reported by two lenses under different categories is one finding, the more severe kept', async () => {
+    const { calls, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx', 'CLAUDE.md'] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      'review:logic': { ...clean(), findings: [blocker('drops the waitlist place', 'logic', 12)] },
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+    assert.deepEqual(result.findings.map(f => f.category), ['logic']);
+  });
+
+  test('two readings of one line reach one skeptic together, and a confirmed one publishes both', async () => {
+    const { prompts, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx', 'CLAUDE.md'] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      'review:logic': { ...clean(), findings: [blocker('drops the waitlist place', 'logic', 12)] },
+    });
+    const skeptic = Object.entries(prompts).find(([k]) => k.startsWith('skeptic'))[1];
+    assert.match(skeptic, /drops the waitlist place/);
+    assert.match(skeptic, /breaks the one-action rule/);
+    assert.match(skeptic, /refute only if EVERY reading is wrong/);
+    assert.match(prompts.publish, /The same line, read as claude-md: breaks the one-action rule/);
+    assert.equal(result.verdict, 'fail');
+  });
+
+  test('a note on the same line never shields a blocker from its skeptic', async () => {
+    const note = { severity: 'note', category: 'logic', file: 'src/a.jsx', line: 12, claim: 'the toast has no aria-label', evidence: 'e' };
+    const { prompts, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx'] },
+      'review:logic': { ...clean(), findings: [note] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      skeptic: { refuted: true, why: 'the rule is not broken' },
+    });
+    const skeptic = Object.entries(prompts).find(([k]) => k.startsWith('skeptic'))[1];
+    assert.doesNotMatch(skeptic, /aria-label/);
+    assert.doesNotMatch(skeptic, /EVERY reading/);
+    assert.equal(result.verdict, 'pass');
+  });
+
+  test('on one line, a blocker beats a note from another lens', async () => {
+    const note = { severity: 'note', category: 'logic', file: 'src/a.jsx', line: 12, claim: 'minor', evidence: 'e' };
+    const { result } = await run({
+      context: { ...CTX, files: ['src/a.jsx'] },
+      'review:logic': { ...clean(), findings: [note] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+    });
+    assert.equal(result.verdict, 'fail');
+    assert.deepEqual(result.findings.map(f => f.claim), ['breaks the one-action rule']);
+  });
+
+  test('two different problems a few lines apart are both judged — merging them hid one', async () => {
+    const { calls, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx', 'CLAUDE.md'] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      'review:logic': { ...clean(), findings: [blocker('drops the waitlist place', 'logic', 15)] },
+      skeptic: (label, prompt) => ({ refuted: /drops the waitlist place/.test(prompt), why: 'x' }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+    assert.equal(result.verdict, 'fail');
+    assert.deepEqual(result.findings.map(f => f.claim), ['breaks the one-action rule']);
+  });
+
   test('the same finding from two lenses is judged once', async () => {
     const f = blocker('same');
     const { calls } = await run({ 'review:logic': { ...clean(), findings: [f] }, 'review:tests': { ...clean(), findings: [f] } });

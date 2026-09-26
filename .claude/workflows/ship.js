@@ -187,7 +187,30 @@ const key = f => `${f.category}|${f.file}|${f.line ? Math.floor(f.line / 10) : f
 // A table cell, not a report: the second live run's auditors each wrote a
 // paragraph here and the PR's audit table became a wall.
 const brief = s => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > 90 ? t.slice(0, 87).replace(/\s\S*$/, '') + '…' : t }
-const dedupe = fs => [...new Map(fs.map(f => [key(f), f])).values()]
+// One problem, one finding, whatever category each lens filed it under —
+// keyed by where it is, first report kept. Stuck detection still uses key().
+// The exact line, not a window: two different problems ten lines apart are
+// two findings, and merging them left one that no skeptic ever judged.
+// Without a line only an identical claim merges: a 60-character prefix once
+// merged "…more than three" with "…fewer than three". Judging a duplicate
+// twice costs a skeptic; dropping a different problem costs a blocker.
+const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
+// Merge, never drop: a reading this key already holds joins it in `also`,
+// and the skeptic may refute the location only if every reading is wrong. A
+// kept-first merge let a refuted criterion take a real logic blocker on the
+// same line down with it, unjudged.
+const group = (m, f) => {
+  const k = where(f)
+  // Grouping twice (ship's minors are grouped, then confirmed) must keep
+  // the readings the first pass gathered.
+  if (!m.has(k)) return m.set(k, { ...f, also: [...(f.also || [])] })
+  const g = m.get(k)
+  for (const r of [f, ...(f.also || [])]) {
+    if (g.claim !== r.claim && !g.also.some(a => a.claim === r.claim)) g.also.push({ category: r.category, claim: r.claim, evidence: r.evidence })
+  }
+  return m
+}
+const dedupe = fs => [...fs.reduce(group, new Map()).values()]
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
 // with a reason, never a green one.
@@ -211,7 +234,8 @@ const gateLine = r =>
   (r.browser.failed.length ? ` · ${r.browser.failed.length} failed` : '') + (r.browser.flaky ? ` · ${r.browser.flaky} flaky` : '')
 
 const listFindings = fs =>
-  fs.map((f, i) => `${i + 1}. [${f.category}] ${f.file}${f.line ? ':' + f.line : ''} — ${f.claim}\n   evidence: ${f.evidence}\n   fix: ${f.fix}`).join('\n')
+  fs.map((f, i) => `${i + 1}. [${f.category}] ${f.file}${f.line ? ':' + f.line : ''} — ${f.claim}\n   evidence: ${f.evidence}\n   fix: ${f.fix}` +
+    (f.also && f.also.length ? f.also.map(a => `\n   also, [${a.category}]: ${a.claim} — ${a.evidence}`).join('') : '')).join('\n')
 
 // Every finding goes past a skeptic before it costs a fix round. A false
 // positive here is worse than on a PR comment: the fixer will obediently
@@ -226,8 +250,9 @@ async function confirm(findings, where) {
       `would contradict CLAUDE.md, or if CLAUDE.md or ` +
       `the spec *as first committed* (\`git log --diff-filter=A --format=%H -- ${spec.path}\`, then \`git show\`) ` +
       `shows it was deliberate. A later edit to the spec does not make a missed Done-when criterion deliberate. ` +
-      `If you cannot tell, it is NOT refuted.\n\n` +
-      listFindings([f]),
+      `If you cannot tell, it is NOT refuted.` +
+      (f.also && f.also.length ? ` Several auditors read this location differently ("also" below): refute only if EVERY reading is wrong.` : '') +
+      `\n\n` + listFindings([f]),
       { phase: where === 'the spec' ? 'Spec Audit' : 'Code Audit', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium', model: T.think },
     // A skeptic that died refuted nothing. Dropping its finding would let a
     // crash read as a clean audit.
@@ -581,11 +606,12 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     log(`build round ${round}: gate red, ${open.length} failing`)
   }
 
-  const stuck = open.filter(f => {
-    const n = (streak.get(key(f)) || 0) + 1
-    streak.set(key(f), n)
-    return n > STUCK_AFTER
-  })
+  // Once per key per round: several distinct findings inside one ten-line
+  // window share a key, and counting each of them handed tickets back as
+  // "survived 2 fix attempts" before a single fix had run.
+  const roundKeys = new Set(open.map(key))
+  for (const k of roundKeys) streak.set(k, (streak.get(k) || 0) + 1)
+  const stuck = open.filter(f => streak.get(key(f)) > STUCK_AFTER)
   for (const k of [...streak.keys()]) if (!open.some(f => key(f) === k)) streak.delete(k)
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
   if (round === MAX_BUILD_ROUNDS) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
