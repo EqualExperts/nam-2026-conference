@@ -101,11 +101,18 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           DEPTH: ${{ vars.REVIEW_DEPTH || 'balanced' }}
           NO_OPEN: "1"
+          # Neither ticket needing this asks for a pre-checkout post — there
+          # is no "within about a minute" criterion here — so these three are
+          # what let agent-run.sh start the follower at all, and what it
+          # needs to find the one-line status it maintains on the PR.
+          SHIP_PROGRESS_PR: ${{ github.event.pull_request.number }}
+          SHIP_PROGRESS_KIND: qa
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # The harness must not review itself: a pull request that edits the
           # review workflow, its playbook or CLAUDE.md would otherwise be
           # judged by its own version of them. Run the base branch's.
-          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs; do
+          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs scripts/ship-progress.mjs; do
             git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
           done
           # Sonnet: this pass is coverage, not insight.
@@ -114,6 +121,20 @@ jobs:
           # of the harness, so a PR cannot change how its own facts are made).
           facts=$(node scripts/qa-facts.mjs "origin/$BASE")
           scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
+
+      # A killed step takes the follower with it, mid-line — this is what
+      # settles the one-line status afterwards. See agent-ship.yml and
+      # docs/context/harness.md.
+      - name: 🏁 Finish the progress comment
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHIP_PROGRESS_PR: ${{ github.event.pull_request.number }}
+          SHIP_PROGRESS_KIND: qa
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ship-progress.mjs finish
 
       # A FAIL on a pull request that ship built (branch issue-<n>-…) is an
       # escape: the independent pass caught what ship's own loop let through.

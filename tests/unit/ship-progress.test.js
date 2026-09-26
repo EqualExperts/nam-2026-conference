@@ -401,7 +401,7 @@ describe('agent-run.sh starts and reaps the follower without joining the CLI’s
   const src = readFileSync(new URL('../../scripts/agent-run.sh', import.meta.url), 'utf8');
 
   test('the follower is backgrounded, guarded by SHIP_PROGRESS_ISSUE or SHIP_PROGRESS_PR, and reaped with || true', () => {
-    assert.match(src, /ship-progress\.mjs follow/);
+    assert.match(src, /ship-progress\.mjs["']?\s+follow/);
     assert.match(src, /SHIP_PROGRESS_ISSUE|SHIP_PROGRESS_PR/);
     assert.match(src, /&\s*$/m);
     assert.match(src, /wait.*\|\|\s*true|kill.*\|\|\s*true/);
@@ -431,13 +431,19 @@ describe('the workflows actually call it, with an environment', () => {
     assert.match(post, /SHIP_PROGRESS_STARTED/);
     assert.match(post, /SHIP_PROGRESS_COMMENT_ID/);
     assert.match(post, /GITHUB_ENV/);
-    // Nothing in it can fail the step or hold up checkout.
-    assert.doesNotMatch(post.replace(/\|\|\s*true/g, ''), /gh api[^\n]*\n(?!.*\|\|)/);
+    // Nothing in it can fail the step or hold up checkout: every `gh api`
+    // call this step makes is a guarded assignment, and the script's own
+    // last line cannot itself be a bare test that can come out false.
+    const ghCalls = post.match(/^\s*\w+=\$\(gh api.*$/gm) || [];
+    assert.ok(ghCalls.length >= 2, 'expected at least two gh api calls');
+    for (const line of ghCalls) assert.match(line, /\)\s*\|\|\s*true\s*$/, line);
+    const scriptLines = (/run:\s*\|\n([\s\S]*)/.exec(post) || [])[1]?.split('\n').map((l) => l.trim()).filter(Boolean) || [];
+    assert.equal(scriptLines.at(-1), 'true', 'the step’s last line must not itself be a fallible test');
   });
 
   test('the Run /ship step’s own env carries what the follower needs to start at all', () => {
     const s = steps(ship);
-    const run = s.find((x) => x.includes('Run /ship'));
+    const run = s.find((x) => /^\s*- name: .*Run \/ship\s*$/m.test(x));
     assert.match(run, /SHIP_PROGRESS_ISSUE/);
     assert.match(run, /SHIP_PROGRESS_RUN/);
     assert.match(run, /GH_REPO/);
@@ -461,7 +467,7 @@ describe('the workflows actually call it, with an environment', () => {
   test('code review and QA get SHIP_PROGRESS_PR/KIND/RUN and GH_REPO on their Run step, not just the finish step', () => {
     for (const [name, yaml, kind] of [['code review', review, 'review'], ['qa', qa, 'qa']]) {
       const s = steps(yaml);
-      const run = s.find((x) => /Run \/(code-review|qa)/.test(x));
+      const run = s.find((x) => /^\s*- name: .*Run \/(code-review|qa)\s*$/m.test(x));
       assert.match(run, /SHIP_PROGRESS_PR/, name);
       assert.match(run, new RegExp(`SHIP_PROGRESS_KIND:\\s*${kind}`), name);
       assert.match(run, /SHIP_PROGRESS_RUN/, name);

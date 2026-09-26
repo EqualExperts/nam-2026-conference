@@ -23,6 +23,7 @@ files:
   - scripts/qa-facts.mjs
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
+  - scripts/ship-progress.mjs
   - docs/context/README.md
   - specs/README.md
 tests:
@@ -33,6 +34,7 @@ tests:
   - tests/unit/red-check.test.js
   - tests/unit/qa-facts.test.js
   - tests/unit/agent-summary.test.js
+  - tests/unit/ship-progress.test.js
 related: [testing]
 ---
 
@@ -198,6 +200,54 @@ survived:
 pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits
 trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 
+**Progress on the issue.** A run is up to two hours long; nothing appeared on
+the issue while it worked until this. `agent-ship.yml`'s job's *very first*
+step — before checkout, `npm ci`, Chromium or Claude Code — is plain `gh`:
+it reads the run's own start (`gh api …/actions/runs/$GITHUB_RUN_ID --jq
+.run_started_at` — the job's `actions: read` already covers it, never the
+CLI's own idea of when it began, which is three or four minutes late on a
+cold cache) and posts `🚢 Ship · starting… · 0m elapsed · Run`, with the run
+link and an HTML marker, needing nothing checkout would provide. That is what
+makes "within about a minute" true regardless of setup time. It hands the new
+comment's id and the run's start down through `$GITHUB_ENV` — written once,
+so it outlives whatever happens to the step after it — and every later step
+falls back to searching for the marker, then creating, only if that post
+itself failed.
+
+Once `claude -p` is streaming, `scripts/agent-run.sh` backgrounds
+`node scripts/ship-progress.mjs follow` beside it (gated on
+`SHIP_PROGRESS_ISSUE`/`SHIP_PROGRESS_PR`, so a laptop run is unchanged) and
+reaps it after — never in the CLI's pipe, so a follower that died mid-write
+cannot take the run down with it (`EPIPE`). It tails the transcript
+`claude -p --output-format stream-json` writes, and turns two things it
+reports into markdown: `system/task_progress`'s cumulative
+`workflow_progress` (every phase from `meta.phases`, and every agent tried, so
+the follower is stateless and only ever needs the *last* such event) into the
+phase table, done / running / not started; and each agent's `resultPreview` —
+capped at 400 characters, so read by regex, never `JSON.parse`, because the
+one that matters (the verify agent's gate line) arrives cut mid-string on a
+red round — into the tier, the branch, the spec link and each round's gate
+and audit result. It patches one comment in place, found by the id from
+`$GITHUB_ENV`, never by searching, unless that id is missing.
+
+Because a step's `timeout-minutes` or a cancellation kills its whole process
+tree — the commonest way a run ends — the follower dies with it, mid-render.
+A separate `🏁 Finish the progress comment` step, `if: always()` and
+`continue-on-error: true`, runs after and settles the comment from whatever
+transcript is left on disk: **shipped**, with the pull request link;
+**handed back**, with the stage and reason; or **the run died**, naming the
+step timing out or being cancelled — never left reading "running". In a
+healthy run the follower already wrote the right thing, so this reads one
+file and patches nothing. The same pair of steps, without a pre-checkout
+post (neither ticket needing this has a "within about a minute" criterion),
+keeps one line — `Reviewing…` / `Running QA…`, replaced by the verdict —
+on the pull request while `agent-code-review.yml` and `agent-qa.yml` run;
+`scripts/ship-progress.mjs` is one of the harness paths both check out from
+the base branch, beside `agent-run.sh`. None of this is a model call: it is
+`gh` and a script reading text `claude -p` already prints, and every `gh`
+call is wrapped so a rate limit or a malformed reply leaves the run
+untouched.
+
 **Escapes.** A code review or QA **FAIL** on a pull request ship built
 (branch `issue-<n>-…`) is something ship's own loop let through. The job's
 *🧯 Flag a harness escape* step labels the PR `harness-escape` — `gh pr list
@@ -316,6 +366,13 @@ cannot start another round.
 - `tests/unit/ship.test.js` runs the script with `agent` stubbed **by label**
   (`-retry` is stripped before matching). Renaming a label breaks those tests —
   change both together.
+- **A workflow's `log()` output is not live** — it only ever shows up in the
+  task's output file, after the run ends. A throwaway workflow run under
+  `claude -p --output-format stream-json --verbose` settled this: the obvious
+  design for the progress comment was to have `ship.js` log milestones for
+  `ship-progress.mjs` to read, and that recording is what ruled it out. What
+  *is* live is each agent's `resultPreview` on `system/task_progress` — that
+  is what the follower reads instead.
 - Every tracked file under `server/`, `src/`, `scripts/` and `tests/` must be
   owned by a doc; a new script fails `npm test` until it is listed here or in
   its area's doc.
