@@ -42,7 +42,7 @@ the way they are. This is the machinery.
 `ready-for-ai`, and on an `@claude` comment on a plain issue from someone with
 write access — that comment rides along as `/ship <n> <comment>`, and reaches
 the spec writer and every auditor as notes that amend the ticket. `@claude` on
-a pull request is `agent-respond.yml`'s: a change to that diff, not a build. Its one step runs `claude-code-action` with the prompt
+a pull request is `agent-respond.yml`'s: a change to that diff, not a ship run. Its one step runs `claude-code-action` with the prompt
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
 rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
@@ -149,7 +149,7 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 - No `Date.now()`, `Math.random()` or filesystem in `ship.js` — the Workflow
   runtime forbids them. Anything that touches the machine goes through an
   agent; anything that decides goes through the script.
-- The audit lenses never receive the builder's reasoning.
+- The audit lenses never receive the implementer's reasoning.
 
 ## Gotchas
 
@@ -160,7 +160,7 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
   (which waits), keeps the transcript, writes it to the job summary, and fails
   the step when a launched workflow never reported back. It sets
   `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`: by default `claude -p` kills a
-  background workflow after 600s, which killed `/ship` mid-build. Only
+  background workflow after 600s, which killed `/ship` mid-run. Only
   `agent-respond.yml` still uses the action — interactive mode needs it.
 - **In CI, review and QA do not publish — the job does.** They run with
   `--no-publish` and return `{ comment, verdictLine }` (QA adds `issue`,
