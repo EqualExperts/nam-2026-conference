@@ -19,10 +19,14 @@ required check:
 - **A re-review says what it re-checked.** On a pull request that was put back
   to draft and marked ready again, code review re-opens each previous blocker
   and says resolved or not, and hunts for new problems only in what has been
-  pushed since. QA re-runs every previous bug's probe before spending any of
-  its five-probe budget on new ground. Neither is forbidden from raising
-  something outside that range — but only if it is bad enough to have blocked
-  a first review.
+  pushed since. QA re-runs every previous bug's probe first — the script puts
+  those back by id and tells the planner not to plan them again, so each runs
+  once and they come out of the same five-probe budget. Neither pass is
+  forbidden from raising something outside that range — but only if it is bad
+  enough to have blocked a first review.
+- **Fixing what you were told converges.** A re-review whose previous blockers
+  are all resolved and whose delta is clean publishes a pass. That is the
+  point of the ticket: a round that addresses everything raised ends green.
 - **A blocker has to name how it happens and what it costs.** A finding whose
   author cannot say a realistic path through normal use and the harm at the end
   of it is published as a follow-up, not a blocker. The skeptic gains a second
@@ -32,6 +36,9 @@ required check:
   listed in the comment, and one GitHub issue per follow-up — labelled
   `follow-up`, linking the pull request — so nothing is lost by not being red.
   A re-review does not re-file a follow-up its predecessor already filed.
+  **Follow-ups are filed whatever the verdict**: a failing review files its
+  follow-ups too, because only blockers decide the colour of the check and a
+  finding worth tracking should not depend on what else was found that round.
 
 ## Where
 
@@ -64,7 +71,9 @@ required check:
 - `publish()` composes the marker (`pass: 'code-review'`, `commit: ctx.head`,
   the blockers, the follow-up keys), a **Follow-ups** section listing each one,
   and `followUps: [{ key, title, body }]` on the returned object (at most 3,
-  minus any key in `previous.followUps`). The marker is composed **only for a
+  minus any key in `previous.followUps`) — on a `fail` exactly as on a `pass`,
+  since a follow-up worth tracking does not depend on what else was found that
+  round. Both the marker and the follow-up list are composed **only for a
   `pass` or `fail` verdict**: `publish()` is also the did-not-finish path
   (`if (!ctx) return publish({ verdict: 'none', … })`, code-review.js:103),
   where there is no `ctx` to read a head from — and a pass that did not finish
@@ -92,10 +101,17 @@ required check:
   plan.issue`, qa.js:252), so `plan` becomes a `let` initialised to `null`
   above the Plan phase and assigned from the planner — otherwise the stop is a
   ReferenceError instead of a comment.
-- The script prepends every `scope.previous` bug's probe to `plan.probes` and
-  truncates to `MAX_PROBES`, so a planner that forgets one cannot drop it. A
-  recheck probe that fails and reproduces is a bug without a skeptic; one that
-  passes is reported as resolved.
+- **The recheck probes are the script's, and the planner is told to leave them
+  alone.** `SCOPE` names each previous bug's probe id and says: do not plan
+  these, pick at most `MAX_PROBES − <recheck count>` new ones. The script then
+  builds the run list as `[...recheck, ...plan.probes]`, drops any repeat of an
+  id (the recheck copy wins), truncates to `MAX_PROBES` and **assigns it back
+  to `plan.probes`** — so the budget, `bothRan`, `covered` and the published
+  probe list all count each id exactly once, without touching anything
+  downstream. Each recheck probe comes from the marker, which records the
+  probe that found each bug, so it can be re-run verbatim. A recheck probe that
+  fails and reproduces is a bug without a skeptic — it already survived one;
+  one that passes is a resolved bug and leaves the verdict.
 - The skeptic's `contrived` turns a reproduced failure into a follow-up rather
   than a question — `LABEL` gains the wording.
 - `publish()` emits the marker (`pass: 'qa'`, `commit: scope.head`, the bugs
@@ -104,10 +120,14 @@ required check:
   returns (dead `scope`, dead planner, probes that never ran) record no commit.
 
 **`.github/workflows/agent-code-review.yml`, `agent-qa.yml`** — a *📌 File
-follow-ups* step after *Publish the verdict*, reading `.followUps` from
-`workflow-result.json` and calling `gh issue create --label follow-up`, falling
-back to an unlabelled issue rather than losing one. Code review's job needs
-`issues: write` for it (it has `read` today).
+follow-ups* step after *Publish the verdict*, `if: ${{ !cancelled() }}` like
+the step above it and **gated on nothing else**: it reads `.followUps` from
+`workflow-result.json` and calls `gh issue create --label follow-up` for each,
+falling back to an unlabelled issue rather than losing one. An empty or absent
+array is a no-op, which is what makes "run on every verdict" safe — a `fail`
+carries its follow-ups in the same field a `pass` does, and a pass that did not
+finish carries none. Code review's job needs `issues: write` for it (it has
+`read` today).
 
 **`.github/workflows/setup.yml`** — `label follow-up …`, and the step title and
 summary line stop claiming there are four labels.
@@ -120,8 +140,11 @@ and for `HEAD` being the merge commit in a `pull_request` job.
 
 **`docs/harness/code-review-playbook.md`**, **`qa-playbook.md`** — §2 gains the
 "name the path and the harm" bar and what a follow-up is; a new section on
-re-reviewing the delta and re-checking previous blockers; §5's comment shape
-shows the follow-up section.
+re-reviewing the delta and re-checking previous blockers, saying plainly that a
+re-review whose previous blockers are all resolved and whose delta is clean is
+a pass; §5's comment shape shows the follow-up section. QA's §1 adds that the
+recheck probes are handed to the planner as already spent and must not be
+planned again.
 
 **`tests/unit/review-workflows.test.js`** — the checks below.
 
@@ -141,11 +164,15 @@ agents return, which is exactly what that harness exercises.
 | Rebase: limit to the PR's files since that commit | `a previous commit no longer in history scopes the review to the files the PR touches` — `inHistory: false` puts `git fetch origin <sha>`, `git diff <sha> <head-sha>` and `-- <files>` in the prompts, from `ctx.files` for code review and `scope.files` for QA |
 | A pass that dies still publishes, and claims no commit | `a dead context publishes did-not-finish with no marker` — code review's `context` returning nothing gives `verdict: 'none'`, a comment, and no `orbit-verdict:` marker; the QA twin does the same for a dead `scope`, having run no planner or probe |
 | A still-unresolved previous blocker stays a blocker | `an unresolved previous blocker still fails the review` — verdict `fail`, the claim in the verdict line, and no `skeptic:` call for it |
+| **Resolved blockers leave the verdict** — a re-review converges | `a re-review whose only previous blocker is resolved publishes a pass` — the single `recheck:*` agent returns `{ resolved: true }`, the lenses on the delta are clean, and the result is `verdict: 'pass'` with the old claim absent from `result.comment`'s findings; the QA twin gives the one previous bug's recheck probe a passing result and asserts `verdict: 'pass'` with no `repro:` call |
+| QA re-runs the previous failing probes itself, each id once | `a re-review re-runs each previous bug's probe exactly once, inside the budget` — a `previous` with two bugs and a planner that returns four fresh probes (and, in a second run, a planner that returns one of the recheck ids anyway) yields a probe list of `MAX_PROBES` with no repeated id, the two recheck ids first, and `covered` counting `5/5`; the plan prompt names those ids and the reduced budget |
 | Severe new problem outside the delta may still block | `a blocker outside the delta is still published` — the lens returns one and the verdict is `fail`; the prompt's escape clause is asserted as text |
 | A blocker names how and what harm, or it is a follow-up | `a blocker with no path through normal use publishes as a follow-up` — `how`/`harm` blank → verdict `pass`, the finding in `result.followUps` |
 | The skeptic downgrades a contrived blocker | `a contrived-input finding becomes a follow-up, not a refutation` — skeptic `{ refuted: false, contrived: true }` → verdict `pass`, one follow-up, and the reason in the comment; the QA twin asserts the same for a reproduced failure |
 | Follow-up-only review passes, lists them, files one issue each | `a follow-up-only review publishes as a pass and files its issues` — verdict `pass`, `PASS` verdict line, the claims in `result.comment`, and one `{ title, body }` per follow-up in `result.followUps`, each linking the PR |
 | …and none is lost or duplicated | `a follow-up the last review already filed is not filed again` — a key in `previous.followUps` is listed but not re-filed |
+| A failing review files its follow-ups too | `a failing review still returns its follow-ups` — one confirmed blocker and one contrived finding → `verdict: 'fail'` *and* the follow-up in `result.followUps`; the QA twin does the same with one reproduced bug and one contrived one |
+| …and the job files them on either verdict | `the follow-up step is not gated on the verdict` — reads both review workflows and asserts the *File follow-ups* step's `if:` is `!cancelled()` and names no verdict; a YAML `if:` cannot be executed here, so this is the honest limit of the layer |
 | `setup.yml` creates the `follow-up` label | `setup.yml creates the follow-up label the reviews file against` — a new test reading `.github/workflows/setup.yml` for a `label follow-up` line, beside the existing file-reading harness in this file (the label itself is made by Actions, which no test can run) |
 | The playbooks and `harness.md` describe the rules | The docs-truth lens on this PR, plus `npm test`'s doc-ownership check; the prose changes are reviewed, not asserted |
 
@@ -153,6 +180,11 @@ agents return, which is exactly what that harness exercises.
 touches `.github/` and `.claude/`, but no Playwright spec changes.
 
 ## Decisions
+
+The first three come from the ticket's author, answering what an earlier draft
+of this spec left open: a resolved blocker leaves the verdict, the script
+re-runs the previous failing probes inside the same budget, and follow-ups are
+filed on a fail as well as a pass.
 
 - **The marker is JSON inside an HTML comment**, not a rendered line. A human
   reading the thread should not have to scroll past a commit hash, and the next
@@ -192,10 +224,25 @@ touches `.github/` and `.claude/`, but no Playwright spec changes.
   blocker bar will keep calling its finding realistic. An empty `how` or `harm`
   is a machine-checkable fact, so the script checks it — the same reason the
   comment and the verdict line are composed rather than written.
-- **QA's recheck probes are prepended by the script**, so a planner that
-  forgets a previous bug cannot quietly close it.
+- **QA's recheck probes are the script's, and they cost budget.** The script
+  re-runs the previous verdict's failing probes by id, so a planner that forgets
+  one cannot quietly close it; the planner is told those ids and told not to
+  plan them, so each id appears once and the merged list still obeys
+  `MAX_PROBES`. Letting them run *on top of* the five was the alternative, and
+  it makes the slowest job in the harness slower every round — while the reason
+  to re-run them is that they are the probes most likely to matter, so they
+  deserve the budget ahead of new ground. Deduping by id in the script as well
+  as asking the planner is belt and braces: the prompt is an instruction, the
+  dedupe is what the test asserts.
+- **A resolved blocker is gone, not archived.** When every previous blocker
+  comes back resolved and the delta is clean, the re-review publishes a pass —
+  no "previously raised" section keeping the check amber. A round that fixed
+  what it was told to fix has to be able to end green, or nothing converges.
 - **The job files the follow-up issues, not an agent** — the same rule that
   keeps a model out of the verdict, and CI already runs with `--no-publish`.
+  The step is ungated on the verdict for the same reason: a `fail` and a `pass`
+  hand it the same field, so "file whatever is there" needs no branch, and the
+  only way a follow-up gets lost is a condition somebody has to remember.
 - **Three follow-ups per pass, at most**, matching `MAX_FINDINGS`. A pass that
   wants to file ten has gone back to listing.
 
