@@ -42,10 +42,12 @@ used by the header, toasts, menus), `hide-scrollbar`. Dark only
 
 **Motion utilities** (all in `index.css`, all neutralised by the
 `prefers-reduced-motion` block at the bottom, which also forces `.reveal`
-visible): `animate-rise`, `stagger` (children delay by `--i` × 40ms — set
-`style={{ '--i': i }}`, capped by callers at ~12), `animate-pulse-dot`,
-`animate-ken-burns`, `animate-slide-in`, `animate-fade-zoom`, `animate-fill`
-(duration set inline), `reveal` (+ `data-visible="true"`), `animate-marquee`.
+visible): `animate-rise` (dialogs, menus, toasts), `stagger` (list entrance; children
+delay by `--i` × 40ms — set `style={{ '--i': i }}`, capped by callers at ~12),
+`animate-pulse-dot` (live indicators), `animate-ken-burns`, `animate-slide-in`,
+`animate-fade-zoom` and `animate-fill` (the speaker spotlight and its autoplay progress;
+duration set inline), `reveal` (scroll-triggered, + `data-visible="true"`),
+`animate-marquee` (sponsor logos).
 JS-driven motion (`SpeakerSpotlight`, `HeroMedia`, `CountUp`) checks
 `matchMedia('(prefers-reduced-motion: reduce)')` itself.
 
@@ -94,9 +96,10 @@ default 4s, 10s when there is an action; keeps the newest 3. Container is
 
 **Generated art.** `GeneratedAvatar({ name })` — SVG face hashed from the name
 (12 palettes); only used through `Avatar`. `GeneratedCover({ seed, accent,
-variant, className })` — FNV hash of `seed`, colours from `accentHex(accent)`;
-variants `orbit` (default), `mesh`, `strata`, `mark` (where each is used: CLAUDE.md §
-Imagery). SVG ids derive from the hash, so two covers with the same seed on one
+variant, className })` — FNV hash of `seed` (same seed, same art on every machine,
+which keeps screenshots and tests stable), colours from `accentHex(accent)`;
+variants `orbit` (default; keynote cards, session heroes), `mesh` (vendor tiles, the
+spotlight backdrop), `strata` (wide banners), `mark` (sponsor logos). SVG ids derive from the hash, so two covers with the same seed on one
 page share gradient ids (harmless — same art).
 
 **Hooks and small components.** `useDocumentTitle(title)` → `"<title> · ORBIT '26"`,

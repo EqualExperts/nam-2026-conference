@@ -25,7 +25,8 @@ CLAUDE.md § The conference clock.
   returns `null` (the override is ignored). Otherwise `{ day, time:
   time.slice(0, 5) }`. There is **no other validation**: the day is not checked
   against `days`, and the time is not checked for shape.
-- `currentMoment(anchorDay)` — the override if any; otherwise `anchorDay` plus
+- `currentMoment(anchorDay)` — so opening the app at 10:40 stands you in the
+  10:15 slot on Day 1, watching it run. The override if any; otherwise `anchorDay` plus
   the browser's local `HH:MM`, or `FALLBACK_TIME` `'10:40'` when the real time
   is outside `DAY_START` 08:00 – `DAY_END` 22:30 (inclusive).
 - `useConferenceClock(days)` — anchor is `days[0]?.date`, or `DEFAULT_DAY`
@@ -85,6 +86,7 @@ and `VenueBoard`. Testid: `live-now`.
 - A malformed `?at=2026-10-12T` or `?at=2026-10-12` is silently ignored; a
   well-formed timestamp for a day outside the conference is accepted and shows
   an empty day.
+- `npm run shot -- / --at=YYYY-MM-DDTHH:MM` pins screenshots the same way.
 - Tests pin via `visit(page, path, { at })`, which writes `orbit:clockAt` in
   an init script — build `at` with `momentOn(dayIndex, time)` from
   `tests/helpers.js`.
