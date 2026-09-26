@@ -59,3 +59,12 @@ test('a renamed app file is reverted to its old name, not checked out under the 
 test('a copied app file is removed, like an added one', () => {
   assert.deepEqual(plan('C100\tsrc/a.js\tsrc/b.js\nM\ttests/unit/a.test.js').added, ['src/b.js']);
 });
+
+test('a base it cannot diff against still prints one JSON line, saying why', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync('node', ['scripts/red-check.mjs'], { env: { ...process.env, GATE_BASE: 'origin/no-such-ref-for-red-check' }, encoding: 'utf8' });
+  const last = JSON.parse(r.stdout.trim().split('\n').at(-1));
+  assert.equal(last.checked, false);
+  assert.equal(last.reason, 'could not run');
+  assert.match(last.error, /no-such-ref-for-red-check|unknown revision|bad revision/i);
+});

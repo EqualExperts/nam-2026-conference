@@ -102,4 +102,12 @@ function main() {
   console.log(JSON.stringify(verdict(p, runs)));
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+// Always exactly one JSON line: ship relays the last line it printed, and a
+// stack trace in its place (an unfetched base, a git error) read as nothing
+// and skipped the check silently. Now it says why it could not check.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { main(); }
+  catch (e) {
+    console.log(JSON.stringify({ checked: false, reason: 'could not run', error: String(e.message || e).split('\n')[0].slice(0, 300) }));
+  }
+}
