@@ -20,6 +20,7 @@ files:
   - scripts/context.mjs
   - scripts/gate.mjs
   - scripts/red-check.mjs
+  - scripts/qa-facts.mjs
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
   - docs/context/README.md
@@ -30,6 +31,7 @@ tests:
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
   - tests/unit/red-check.test.js
+  - tests/unit/qa-facts.test.js
   - tests/unit/agent-summary.test.js
 related: [testing]
 ---

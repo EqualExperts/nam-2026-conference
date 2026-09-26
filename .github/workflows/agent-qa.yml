@@ -99,22 +99,15 @@ jobs:
           # The harness must not review itself: a pull request that edits the
           # review workflow, its playbook or CLAUDE.md would otherwise be
           # judged by its own version of them. Run the base branch's.
-          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs; do
+          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs; do
             git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
           done
           # Sonnet: this pass is coverage, not insight.
-          # Facts for QA's triage, from git — never the planner's word: how much
-          # app code changed, and whether the change is UI-only.
-          # A binary file shows as "-" and would count as nothing; it counts as
-          # over the cap instead, so an added image can never hide in a skip.
-          app=$(git diff --numstat "origin/$BASE...HEAD" -- src server | awk '$1 == "-" {n += 1000; next} {n += $1 + $2} END {print n + 0}')
-          files=$(git diff --name-only "origin/$BASE...HEAD")
-          ui=no
-          # docs/harness/ is the harness, not documentation of the app — a
-          # playbook change must never ride a small UI change into a skip.
-          if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '^(src/|tests/|docs/|specs/)' \
-             && ! printf '%s\n' "$files" | grep -q '^docs/harness/' && printf '%s\n' "$files" | grep -q '^src/'; then ui=yes; fi
-          scripts/agent-run.sh "/qa $PR --no-publish --app-lines=$app --ui-only=$ui" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
+          # Facts for QA's triage, from git — never the planner's word; see
+          # scripts/qa-facts.mjs (restored from the base above, like the rest
+          # of the harness, so a PR cannot change how its own facts are made).
+          facts=$(node scripts/qa-facts.mjs "origin/$BASE")
+          scripts/agent-run.sh "/qa $PR --no-publish $facts" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
 
       # A FAIL on a pull request that ship built (branch issue-<n>-…) is an
       # escape: the independent pass caught what ship's own loop let through.
