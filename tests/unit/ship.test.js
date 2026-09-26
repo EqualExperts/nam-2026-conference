@@ -396,6 +396,16 @@ describe('ship', () => {
       assert.ok(!calls.some(c => c.startsWith('audit:browser')));
     });
 
+    test('a small ticket whose ticket is in question goes to a person after its one spec round — at any size', async () => {
+      const { result, calls } = await run({
+        setup: SMALL,
+        'spec-audit:combined': { covered: 'all', ran: 'nothing', findings: [{ ...blocker('the ticket asks for two contradictory labels'), category: 'scope' }] },
+      });
+      assert.equal(result.outcome, 'needs-human');
+      assert.equal(result.stage, 'Spec Audit');
+      assert.ok(!calls.includes('implement'));
+    });
+
     test('a small spec with a confirmed blocker is revised once and built — not handed back', async () => {
       const { result, calls } = await run({
         setup: SMALL,
