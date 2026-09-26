@@ -97,6 +97,20 @@ describe('code-review', () => {
     assert.deepEqual(result.findings.map(f => f.category), ['logic']);
   });
 
+  test('two readings of one line reach one skeptic together, and a confirmed one publishes both', async () => {
+    const { prompts, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx', 'CLAUDE.md'] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      'review:logic': { ...clean(), findings: [blocker('drops the waitlist place', 'logic', 12)] },
+    });
+    const skeptic = Object.entries(prompts).find(([k]) => k.startsWith('skeptic'))[1];
+    assert.match(skeptic, /drops the waitlist place/);
+    assert.match(skeptic, /breaks the one-action rule/);
+    assert.match(skeptic, /refute only if EVERY reading is wrong/);
+    assert.match(prompts.publish, /The same line, read as claude-md: breaks the one-action rule/);
+    assert.equal(result.verdict, 'fail');
+  });
+
   test('on one line, a blocker beats a note from another lens', async () => {
     const note = { severity: 'note', category: 'logic', file: 'src/a.jsx', line: 12, claim: 'minor', evidence: 'e' };
     const { result } = await run({

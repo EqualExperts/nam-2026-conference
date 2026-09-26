@@ -219,10 +219,21 @@ const SEVERITY = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-
 // Without a line only an identical claim merges: a 60-character prefix once
 // merged "…more than three" with "…fewer than three". Judging a duplicate
 // twice costs a skeptic; dropping a different problem costs a blocker.
+// Merge, never drop: a reading this key already holds joins it in `also`,
+// and the skeptic may refute the location only if every reading is wrong. A
+// kept-first merge let a refuted criterion take a real logic blocker on the
+// same line down with it, unjudged.
+const group = (m, f) => {
+  const k = where(f)
+  if (!m.has(k)) return m.set(k, { ...f, also: [] })
+  const g = m.get(k)
+  if (g.claim !== f.claim && !g.also.some(a => a.claim === f.claim)) g.also.push({ category: f.category, claim: f.claim, evidence: f.evidence })
+  return m
+}
 const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
 const raised = [...done.flatMap(r => r.findings)
   .sort((a, b) => (a.severity === 'blocker' ? 0 : 1) - (b.severity === 'blocker' ? 0 : 1) || SEVERITY.indexOf(a.category) - SEVERITY.indexOf(b.category))
-  .reduce((m, f) => (m.has(where(f)) ? m : m.set(where(f), f)), new Map()).values()]
+  .reduce(group, new Map()).values()]
 const blockers = raised.filter(f => f.severity === 'blocker')
 
 phase('Verify')
@@ -232,8 +243,10 @@ const judged = await parallel(blockers.map(f => () =>
     `A reviewer claims this blocker on pull request #${pr}. Try to REFUTE it: open ${f.file}:${f.line} in ` +
     `\`gh pr diff ${pr}\` or the checkout and check it says what is claimed. Refute if it does not, if the ` +
     `behaviour is already on ${ctx.base}, if a human amendment above asked for exactly this, or if it is ` +
-    `style rather than a defect. If you cannot tell, it is NOT refuted.\n\n` +
-    `[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}`,
+    `style rather than a defect. If you cannot tell, it is NOT refuted.` +
+    (f.also && f.also.length ? ` Several reviewers read this line differently ("also" below): refute only if EVERY reading is wrong.` : '') +
+    `\n\n[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}` +
+    (f.also || []).map(a => `\nalso, [${a.category}]: ${a.claim} — ${a.evidence}`).join(''),
     { phase: 'Verify', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium' },
   ).then(v => (v && v.refuted ? null : f))))   // a skeptic that died refuted nothing
 const RANK = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-truth', 'claude-md', 'test-proves-nothing']
@@ -258,7 +271,8 @@ async function publish(r) {
   let body, line
   if (r.verdict === 'fail') {
     body = `> [!CAUTION]\n> ### Code review · blocker\n> ${r.findings.length} confirmed by a second reader. Judged: ${r.covered}\n\n` +
-      r.findings.map(f => `**\`${f.file}:${f.line}\`** — ${f.claim}\n${f.evidence}`).join('\n\n')
+      r.findings.map(f => `**\`${f.file}:${f.line}\`** — ${f.claim}\n${f.evidence}` +
+        (f.also || []).map(a => `\n\nThe same line, read as ${a.category}: ${a.claim}\n${a.evidence}`).join('')).join('\n\n')
     line = `FAIL ${r.findings[0].claim}`
   } else if (r.verdict === 'pass') {
     const [kind, meter] = CALLOUT[r.confidence]

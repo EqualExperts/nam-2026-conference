@@ -506,4 +506,18 @@ describe('ship', () => {
     });
     assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
   });
+
+  test('a second reading of the same line goes to the skeptic with the first, never dropped', async () => {
+    const f = (category, claim) => ({ ...blocker(claim), category });
+    const { prompts, calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [f('criterion-unmet', 'criterion 2 has no test')] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [f('logic', 'the total counts waitlisted sessions')] : [] }),
+    });
+    const skeptic = prompts['skeptic:criterion-unmet'];
+    assert.match(skeptic, /criterion 2 has no test/);
+    assert.match(skeptic, /also, \[logic\]: the total counts waitlisted sessions/);
+    assert.match(skeptic, /refute only if EVERY reading is wrong/);
+    assert.match(prompts['fix#1'], /the total counts waitlisted sessions/);
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+  });
 });

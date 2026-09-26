@@ -164,11 +164,13 @@ cannot start another round.
 - The skeptic gets the ticket, the worktree and the spec, and judges against
   the spec *as first committed* — a fixer cannot make a missed criterion
   "deliberate" by editing the spec.
-- **Deduplication** (`where()`, in `ship.js` and `code-review.js`): one
-  finding per exact file and line — or per claim when there is no line —
-  whichever lens reported it and under whatever category. Code review keeps
-  the most severe reading, ship the first. Findings on *different* lines are
-  never merged: a ten-line window once hid a second problem from the skeptic.
+- **Deduplication** (`where()` and `group()`, in `ship.js` and
+  `code-review.js`): findings on the same exact line — or with an identical
+  claim when there is no line — are **grouped, never dropped**. The first (in
+  code review, the most severe) leads; the others ride along in `also`, the
+  skeptic sees every reading and may refute the location only if every one is
+  wrong, and the fixer and the review comment see them all. Findings on
+  different lines are never grouped.
 - `STUCK_AFTER` (2): stuck detection keys on category, file and line bucket
   (`line / 10`), never on wording. The same key confirmed three rounds running
   hands back.

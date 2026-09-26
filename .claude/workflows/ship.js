@@ -195,7 +195,18 @@ const brief = s => { const t = String(s || '').replace(/\s+/g, ' ').trim(); retu
 // merged "…more than three" with "…fewer than three". Judging a duplicate
 // twice costs a skeptic; dropping a different problem costs a blocker.
 const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
-const dedupe = fs => [...fs.reduce((m, f) => (m.has(where(f)) ? m : m.set(where(f), f)), new Map()).values()]
+// Merge, never drop: a reading this key already holds joins it in `also`,
+// and the skeptic may refute the location only if every reading is wrong. A
+// kept-first merge let a refuted criterion take a real logic blocker on the
+// same line down with it, unjudged.
+const group = (m, f) => {
+  const k = where(f)
+  if (!m.has(k)) return m.set(k, { ...f, also: [] })
+  const g = m.get(k)
+  if (g.claim !== f.claim && !g.also.some(a => a.claim === f.claim)) g.also.push({ category: f.category, claim: f.claim, evidence: f.evidence })
+  return m
+}
+const dedupe = fs => [...fs.reduce(group, new Map()).values()]
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
 // with a reason, never a green one.
@@ -219,7 +230,8 @@ const gateLine = r =>
   (r.browser.failed.length ? ` · ${r.browser.failed.length} failed` : '') + (r.browser.flaky ? ` · ${r.browser.flaky} flaky` : '')
 
 const listFindings = fs =>
-  fs.map((f, i) => `${i + 1}. [${f.category}] ${f.file}${f.line ? ':' + f.line : ''} — ${f.claim}\n   evidence: ${f.evidence}\n   fix: ${f.fix}`).join('\n')
+  fs.map((f, i) => `${i + 1}. [${f.category}] ${f.file}${f.line ? ':' + f.line : ''} — ${f.claim}\n   evidence: ${f.evidence}\n   fix: ${f.fix}` +
+    (f.also && f.also.length ? f.also.map(a => `\n   also, [${a.category}]: ${a.claim} — ${a.evidence}`).join('') : '')).join('\n')
 
 // Every finding goes past a skeptic before it costs a fix round. A false
 // positive here is worse than on a PR comment: the fixer will obediently
@@ -234,8 +246,9 @@ async function confirm(findings, where) {
       `would contradict CLAUDE.md, or if CLAUDE.md or ` +
       `the spec *as first committed* (\`git log --diff-filter=A --format=%H -- ${spec.path}\`, then \`git show\`) ` +
       `shows it was deliberate. A later edit to the spec does not make a missed Done-when criterion deliberate. ` +
-      `If you cannot tell, it is NOT refuted.\n\n` +
-      listFindings([f]),
+      `If you cannot tell, it is NOT refuted.` +
+      (f.also && f.also.length ? ` Several auditors read this location differently ("also" below): refute only if EVERY reading is wrong.` : '') +
+      `\n\n` + listFindings([f]),
       { phase: where === 'the spec' ? 'Spec Audit' : 'Code Audit', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium', model: T.think },
     // A skeptic that died refuted nothing. Dropping its finding would let a
     // crash read as a clean audit.
