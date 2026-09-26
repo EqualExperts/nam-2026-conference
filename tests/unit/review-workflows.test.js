@@ -97,6 +97,17 @@ describe('code-review', () => {
     assert.deepEqual(result.findings.map(f => f.category), ['logic']);
   });
 
+  test('on one line, a blocker beats a note from another lens', async () => {
+    const note = { severity: 'note', category: 'logic', file: 'src/a.jsx', line: 12, claim: 'minor', evidence: 'e' };
+    const { result } = await run({
+      context: { ...CTX, files: ['src/a.jsx'] },
+      'review:logic': { ...clean(), findings: [note] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+    });
+    assert.equal(result.verdict, 'fail');
+    assert.deepEqual(result.findings.map(f => f.claim), ['breaks the one-action rule']);
+  });
+
   test('two different problems a few lines apart are both judged — merging them hid one', async () => {
     const { calls, result } = await run({
       context: { ...CTX, files: ['src/a.jsx', 'CLAUDE.md'] },

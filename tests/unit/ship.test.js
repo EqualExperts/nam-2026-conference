@@ -489,4 +489,12 @@ describe('ship', () => {
     });
     assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
   });
+
+  test('several findings sharing a stuck key count once per round, not once each', async () => {
+    const near = (line, claim) => ({ ...blocker(claim), line });
+    const { calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [near(11, 'a'), near(13, 'b'), near(15, 'c')] : [] }),
+    });
+    assert.ok(calls.includes('fix#1'), 'a fix is attempted before anything is called stuck');
+  });
 });

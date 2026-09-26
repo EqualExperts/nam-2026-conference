@@ -586,11 +586,12 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     log(`build round ${round}: gate red, ${open.length} failing`)
   }
 
-  const stuck = open.filter(f => {
-    const n = (streak.get(key(f)) || 0) + 1
-    streak.set(key(f), n)
-    return n > STUCK_AFTER
-  })
+  // Once per key per round: several distinct findings inside one ten-line
+  // window share a key, and counting each of them handed tickets back as
+  // "survived 2 fix attempts" before a single fix had run.
+  const roundKeys = new Set(open.map(key))
+  for (const k of roundKeys) streak.set(k, (streak.get(k) || 0) + 1)
+  const stuck = open.filter(f => streak.get(key(f)) > STUCK_AFTER)
   for (const k of [...streak.keys()]) if (!open.some(f => key(f) === k)) streak.delete(k)
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
   if (round === MAX_BUILD_ROUNDS) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
