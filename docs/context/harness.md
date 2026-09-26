@@ -100,7 +100,7 @@ agent, or one missing `doneWhen`/`branch`/`workdir`, hands back too.
 reads the issue's label. Still `ai-working` → the run died: hand back, naming
 the branch. Otherwise, if the branch has an open non-draft PR, it re-runs
 `gate.mjs` itself on the PR head,
-writes the JSON to the job summary, and on red puts the PR back to draft.
+writes the JSON to the job summary, and on red puts the PR back to draft. It runs in a fresh worktree of the branch with its own ports (4460/4461) and database, never in the workspace `ship` used — the first version did, found the ports taken by what ship left running, and sent a green PR back to draft nine seconds later. The gate JSON goes to the log, and a red names its failing tests in the PR comment.
 
 **Context docs.** `MAP` is the sentence every reading agent gets. The Context
 phase runs `context.mjs for $(git diff --name-only origin/main...HEAD)` and
