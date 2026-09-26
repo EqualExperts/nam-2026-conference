@@ -25,10 +25,21 @@ from seconds after the run starts until it ends:
 Round 1 — gate green (unit 262 passed · browser 161 passed) · 2 audits · clean
 ```
 
-The elapsed time and the running phase refresh on every edit. When the run
+For the first two or three minutes the header reads `🚢 Ship · sizing… · 1m
+elapsed · Run`, because the tier is the setup agent's answer and it has not
+given one yet (see *Decisions*). The elapsed time and the running phase
+refresh on every edit. When the run
 ends the same comment's last state says **Shipped**, with the pull request
 link; or **Handed back**, with the stage and reason; or **The run died**, with
 the run link — never "running" forever.
+
+That last state is written **twice over**, because the commonest way a ship run
+dies is the *Run /ship* step hitting its 100-minute timeout or being cancelled,
+and that kills the whole process tree — the follower with it. So the last word
+belongs to a separate `if: always()` step that runs after the CLI is gone,
+reads the transcript left on disk and patches the comment to its settled state.
+In a healthy run it finds the follower's last body already right and writes
+nothing; in a killed one it is the only thing that runs.
 
 While code review and QA run on a pull request, the same script puts one line
 on the PR — `Reviewing…` / `Running QA…` with elapsed time — and replaces that
@@ -60,13 +71,27 @@ malformed line or a crash leaves the run untouched.
   - `prLine(state, { kind, now })` → the one-line PR status.
   - `follow()` — polls the transcript file for new bytes, re-renders, and
     posts once / patches thereafter through an injected `gh` function.
+  - `finish({ killed })` — the one-shot pass. It reads the transcript file
+    *once*, renders the final state, and patches the comment whose id is
+    cached in `$RUNNER_TEMP` (falling back to a marker search, and to posting
+    fresh if the follower never got that far). With no `task_notification` and
+    no workflow result file, the state is **died**, and `killed` supplies the
+    reason — "the step timed out or was cancelled". Idempotent: if the body it
+    renders equals what is already there, it writes nothing.
+  - The command line is `node scripts/ship-progress.mjs follow|finish`.
 - **`scripts/agent-run.sh`** — starts the follower in the background before
   `claude -p`, and reaps it after. It runs only when `SHIP_PROGRESS_ISSUE` or
-  `SHIP_PROGRESS_PR` is set, so a laptop run is unchanged.
+  `SHIP_PROGRESS_PR` is set, so a laptop run is unchanged. It does **not** own
+  the final render: a step kill never reaches the line after `claude`.
 - **`.github/workflows/agent-ship.yml`** — sets `SHIP_PROGRESS_ISSUE` and
-  `SHIP_PROGRESS_RUN` on the *Run /ship* step.
+  `SHIP_PROGRESS_RUN` on the *Run /ship* step, and adds a *🏁 Finish the
+  progress comment* step directly after it, `if: ${{ always() }}`,
+  `continue-on-error: true`, running `node scripts/ship-progress.mjs finish ||
+  true`. It is deliberately before *🧹 Check what the run left behind*, whose
+  gate re-run takes minutes and whose branches `exit 0` early.
 - **`.github/workflows/agent-code-review.yml`**, **`agent-qa.yml`** — set
-  `SHIP_PROGRESS_PR` and `SHIP_PROGRESS_KIND`, and add
+  `SHIP_PROGRESS_PR` and `SHIP_PROGRESS_KIND`, get the same `always()` finish
+  step (the publish steps run on `!cancelled()`, so they are not it), and add
   `scripts/ship-progress.mjs` to the list of harness paths they check out from
   the base branch beside `scripts/agent-run.sh`.
 - **`.claude/workflows/ship.js`** — one change: in the `SETUP` schema, `size`
@@ -75,7 +100,9 @@ malformed line or a crash leaves the run untouched.
   present order the tier falls off the end of the preview. Nothing about
   sizing itself changes.
 - **`docs/context/harness.md`** — a *Progress on the issue* section under *How
-  it works*, the two new files in its `files:`/`tests:` front matter (the
+  it works*, covering the follower, the `always()` finish step that settles the
+  comment when the run's step is killed, and what each final state means; the
+  two new files in its `files:`/`tests:` front matter (the
   ownership check in `tests/unit/context.test.js` fails until they are there),
   and a gotcha recording that `log()` output is **not** live.
 - **`tests/unit/ship-progress.test.js`** (new) — the checks below.
@@ -88,12 +115,15 @@ injected as a stub — no browser, no network, no model. `npm test` runs them;
 
 | Criterion | Check | Layer |
 | --- | --- | --- |
-| A comment within about a minute, naming tier, elapsed time and the run link | `render()` on a stream holding only `task_started` plus the first `task_progress` (all nine phases, one agent started) returns markdown containing `small`, `0m`/`1m` from an injected `now`, and the run URL — and `follow()` against that stream calls its stub **once**, with `create` | unit |
+| A comment within about a minute, with the elapsed time and the run link | `render()` on a stream holding only `task_started` plus the first `task_progress` (all nine phases, the setup agent `start`ed) returns markdown containing `sizing…`, `0m`/`1m` from an injected `now`, and the run URL — and `follow()` against that stream calls its stub **once**, with `create` | unit |
+| …naming the tier, once there is one to name | appending the setup agent's `done` event, with `{"size":"small",…}` in its `resultPreview`, makes the next `render()` say `small` — and `follow()` `patch`es it in, because a tier change is one of the things that skips the throttle | unit |
 | Edited in place, never a new comment | `follow()` driven over a stream appended in three chunks calls `create` once and `patch` twice, with the same comment id, and every body carries the same `<!-- ship-progress run=… -->` marker | unit |
 | Each phase done / running / not started, and the running phase's finished agents | `readStream()` on the mid-run fixture gives `Setup…Verify: done`, `Code Audit: running`, `Context/Learn/PR: not started`; `render()` prints `running — 2 of 3 agents finished` for Code Audit and `—` for the untouched phases | unit |
 | The spec is linked when pushed | the fixture's `write-spec` agent is `done` with `resultPreview` `{"path":"specs/53-…md",…}`; `render()` links `blob/<branch>/specs/53-…md`, taking the branch from the setup agent's preview, and prints the bare path when the branch is unknown | unit |
 | Each finished build round shows its gate and audit result | the fixture's `verify#1` preview carries the gate JSON line; `render()` prints `Round 1 — gate green (unit 262 passed · browser 161 passed) · 2 audits · clean`, and a second fixture with `verify#2` red and `fix#2` present prints `gate red · … · fix ran` | unit |
 | The final state is shipped / handed back / died | four `render()` cases: `result.outcome='shipped'` → `Shipped` and the PR url; `'needs-human'` → `Handed back at Code Audit — <reason>`; a stream whose last line is a `task_notification` with `status:'failed'`, and a stream that just stops with no notification at all → `The run died` with the run link. None contains the word `running` | unit |
+| A killed step still settles the comment | `finish()` over the mid-run fixture — the transcript of a run cut off inside Code Audit, no notification, no result file — with an injected `gh` stub and the comment id read from a temp cache: it calls `patch` once on that id, and the body says `The run died — the step timed out or was cancelled` with the run link, the tier and the phases it did reach, and nowhere says `running`. Two more cases: the same call with no cached id and a stub whose list returns the marker `create`s nothing and `patch`es the found id; with neither, it `create`s. And `finish()` over a *complete* shipped transcript, given the body it already rendered, writes nothing | unit |
+| …and the workflow actually calls it | a test reads `.github/workflows/agent-ship.yml`, `agent-code-review.yml` and `agent-qa.yml` and asserts each has a step guarded by `always()` that runs `ship-progress.mjs finish`, with `continue-on-error: true` — the guard is the whole point, so a later edit to `!cancelled()` or `success()` has to break a test | unit |
 | No model calls; a failure never fails or slows the run | `follow()` with a stub that throws on every call still returns normally and still consumes the whole stream (asserting the throw was swallowed); a grep-style assertion that the script imports nothing from the Agent SDK and spawns no `claude`; and, in `agent-run.sh`, the follower is backgrounded and reaped with `|| true` — asserted by a test that reads the script and checks the CLI's stdout still goes to the transcript file, not into a pipe | unit |
 | Empty or malformed stream | `readStream([])`, `readStream(['', 'not json', '{"type":"assistant"}'])` and a `task_progress` whose `workflow_progress` is missing/`null` all return a usable state, and `render()` of each produces a comment that says the run has not reported yet — no throw | unit |
 | Reviewing… / Running QA… on the PR, replaced by the verdict | `prLine()` mid-run returns `Reviewing… · 3m`, and after a `task_notification` whose output file holds `result.verdictLine` returns that verdict line; the QA variant reads `Running QA…` | unit |
@@ -123,6 +153,41 @@ new script without touching the doc.
   properties so `size` precedes the verbatim `doneWhen` list is the smallest
   thing that puts the tier inside the preview. Until the setup agent returns,
   the comment says `sizing…` rather than picking a default.
+- **So the first-minute comment names the tier as `sizing…`, and the ticket's
+  wording is not quite met.** "Within about a minute … naming the tier" cannot
+  be honoured literally: the tier is the setup agent's judgement, and that
+  agent reads the ticket, checks the base branch, relabels and branches before
+  it returns — two or three minutes. The only sources available at second zero
+  are a `ship:full` label or a `--full`/`--small` flag, which cover a small
+  minority of runs; guessing `small` for the rest would put a wrong tier in
+  front of a person for the first minutes of most runs, and a status comment
+  that invents a fact is the thing this spec is most careful not to do. What
+  is met within the minute is the comment itself, with elapsed time and the run
+  link; the tier appears in the same comment the moment it exists.
+- **A killed step is the commonest death, so the finaliser cannot live inside
+  the step.** *Run /ship* is bounded by `timeout-minutes: 100` inside a
+  120-minute job. When that fires — or someone cancels — GitHub kills the
+  step's process group: `agent-run.sh` never reaches the line after `claude`,
+  and the backgrounded follower dies with it, mid-render. An earlier draft of
+  this spec had the follower own the final state, which meant the comment
+  stayed "running" forever in exactly the case people most need to read it.
+  Hence `finish`, in its own `always()` step, outside the killed tree. It is
+  cheap to run in the healthy case (one file read, one no-op) and is the only
+  thing that runs in the unhealthy one.
+- **`finish` derives the outcome from what is on disk, not from the step's
+  exit.** `$RUNNER_TEMP` survives between steps in a job, so the transcript and
+  the cached comment id are both still there. A `task_notification` or a
+  `workflow-result.json` means the run reported; their absence means it did
+  not, and that is what "died" is. The step's own conclusion is not consulted —
+  the *Run /ship* step exits 0 on a ship that returned an error, which is why
+  the cleanup step next door already reads the issue's labels instead.
+- **What is still not covered: the runner itself dying.** If the job is lost
+  (hardware, a spot runner reclaimed, the 120-minute job bound overrunning a
+  cancelled step's grace), no step runs and the comment keeps its last render.
+  Nothing in this repo executes at that point, so there is no fix inside it; the
+  comment carries the run link and its elapsed time is visibly stale, and the
+  job's own conclusion on the Actions page is the fallback. Worth writing down
+  rather than claiming the case away.
 - **The follower tails the transcript file; it is never in the CLI's pipe.**
   `claude … | tee out | node ship-progress.mjs` would be shorter, but if the
   follower died the CLI would take an `EPIPE` — the updater would then be able
@@ -139,13 +204,18 @@ new script without touching the doc.
   two hours long and GitHub's secondary rate limits are real; a status comment
   that gets the run throttled would be self-defeating.
 - **The comment is found by a marker carrying the run id**, and the id is
-  cached in `$RUNNER_TEMP` after the first post, so an update never searches.
+  cached in `$RUNNER_TEMP` after the first post, so an update never searches —
+  except `finish`, which searches by marker if the cache is missing, since it
+  may be running after a follower that died before it could write the cache.
   A second run on the same ticket gets its own comment, because it is a
   different run and its predecessor's final state is still worth reading.
 - **The PR status stays one line.** The job's *Publish the verdict* step still
   posts the full review and QA comments; the follower only replaces its own
   line with the verdict line, so a reviewer opening a PR mid-review sees that
-  something is happening instead of silence.
+  something is happening instead of silence. The same `finish` step settles it
+  when the review or QA step is killed — `Review did not finish` with the run
+  link — because *Publish the verdict* is guarded by `!cancelled()` and so
+  never runs in that case.
 
 ## Out of scope
 
