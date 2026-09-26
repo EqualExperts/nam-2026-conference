@@ -191,7 +191,10 @@ const brief = s => { const t = String(s || '').replace(/\s+/g, ' ').trim(); retu
 // keyed by where it is, first report kept. Stuck detection still uses key().
 // The exact line, not a window: two different problems ten lines apart are
 // two findings, and merging them left one that no skeptic ever judged.
-const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
+// Without a line only an identical claim merges: a 60-character prefix once
+// merged "…more than three" with "…fewer than three". Judging a duplicate
+// twice costs a skeptic; dropping a different problem costs a blocker.
+const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
 const dedupe = fs => [...fs.reduce((m, f) => (m.has(where(f)) ? m : m.set(where(f), f)), new Map()).values()]
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate

@@ -497,4 +497,13 @@ describe('ship', () => {
     });
     assert.ok(calls.includes('fix#1'), 'a fix is attempted before anything is called stuck');
   });
+
+  test('two findings with no line whose claims only share a beginning are both judged', async () => {
+    const long = 'the hours tile counts waitlisted sessions when the attendee has ';
+    const unmet = (claim, category) => ({ ...blocker(claim), category, file: 'specs/7-hours.md', line: undefined });
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [unmet(long + 'more than three', 'criterion-unmet'), unmet(long + 'fewer than three', 'logic')] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+  });
 });

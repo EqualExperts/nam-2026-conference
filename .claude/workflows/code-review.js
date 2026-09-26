@@ -216,7 +216,10 @@ const done = reports.filter(Boolean)
 const SEVERITY = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-truth', 'claude-md', 'test-proves-nothing']
 // The exact line, not a window: two different problems ten lines apart are
 // two findings, and merging them left one that no skeptic ever judged.
-const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
+// Without a line only an identical claim merges: a 60-character prefix once
+// merged "…more than three" with "…fewer than three". Judging a duplicate
+// twice costs a skeptic; dropping a different problem costs a blocker.
+const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
 const raised = [...done.flatMap(r => r.findings)
   .sort((a, b) => (a.severity === 'blocker' ? 0 : 1) - (b.severity === 'blocker' ? 0 : 1) || SEVERITY.indexOf(a.category) - SEVERITY.indexOf(b.category))
   .reduce((m, f) => (m.has(where(f)) ? m : m.set(where(f), f)), new Map()).values()]
