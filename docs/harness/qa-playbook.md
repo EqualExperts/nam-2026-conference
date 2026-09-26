@@ -22,6 +22,13 @@ QA pass becomes a fishing trip.
 
 ## 1. Decide what is worth probing
 
+**First: is exploring worth it at all?** A cosmetic change — copy, a label, a
+colour, spacing, an icon — that the tests already pin needs no probes. Say
+so, say which tests cover it, and stop. The workflow takes your word only for
+a UI-only change of at most 30 lines — facts the job computes from git, not
+from you — and never for anything with logic, data, an API, state or a flow; it then publishes a medium-confidence pass that
+reads *skipped — existing tests are enough*.
+
 Read the ticket's **Done when:**, the diff, and the tests it added. The tests
 say where *not* to spend time — what they assert is already proven. The
 `docs/context/` doc for the area (`node scripts/context.mjs index`) names its

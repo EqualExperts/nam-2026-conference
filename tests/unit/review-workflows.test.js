@@ -373,4 +373,45 @@ describe('qa', () => {
       assert.ok(!calls.some(c => c.startsWith('skeptic')));
     });
   });
+
+  describe('triage — is exploring worth it?', () => {
+    const cosmetic = { ...PLAN, probes: [], enough: true, enoughWhy: 'relabels the Add button; seats.spec.js asserts the new label' };
+    const SMALL_UI = '42 --app-lines=4 --ui-only=yes';
+
+    test('a small cosmetic change the tests pin is passed without probes, and says so', async () => {
+      const { result, calls, prompts } = await run({ plan: cosmetic }, SMALL_UI);
+      assert.equal(result.verdict, 'pass');
+      assert.equal(result.confidence, 'medium', 'nobody drove it, so not high');
+      assert.ok(!calls.includes('probe') && !calls.includes('probe-commands'));
+      assert.match(prompts.publish, /QA · skipped — existing tests are enough/);
+      assert.match(prompts.publish, /relabels the Add button/);
+    });
+
+    test('too many changed lines is re-planned and explored — "enough" plans no probes', async () => {
+      const { calls, result } = await run({ plan: cosmetic, 'plan-again': PLAN }, '42 --app-lines=120 --ui-only=yes');
+      assert.ok(calls.includes('plan-again'));
+      assert.ok(calls.includes('probe'));
+      assert.notEqual(result.confidence, 'low');
+    });
+
+    test('no facts from the job (a local run), no skip — re-planned and explored', async () => {
+      const { calls } = await run({ plan: cosmetic, 'plan-again': PLAN });
+      assert.ok(calls.includes('plan-again') && calls.includes('probe'));
+    });
+
+    test('a harness, workflow or server change is never skipped, however few lines — the planner\'s word is not enough', async () => {
+      const { calls } = await run({ plan: cosmetic, 'plan-again': PLAN }, '42 --app-lines=0 --ui-only=no');
+      assert.ok(calls.includes('plan-again') && calls.includes('probe'));
+    });
+
+    test('a re-planner that dies publishes no verdict rather than a pass', async () => {
+      const { result } = await run({ plan: cosmetic, 'plan-again': null }, '42 --app-lines=120 --ui-only=yes');
+      assert.equal(result.verdict, 'none');
+    });
+
+    test('with --no-publish the job still gets a verdict line for the check', async () => {
+      const { result } = await run({ plan: cosmetic }, '42 --no-publish --app-lines=4 --ui-only=yes');
+      assert.match(result.verdictLine, /^PASS medium no exploration needed/);
+    });
+  });
 });

@@ -20,6 +20,7 @@ files:
   - scripts/context.mjs
   - scripts/gate.mjs
   - scripts/red-check.mjs
+  - scripts/qa-facts.mjs
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
   - docs/context/README.md
@@ -30,6 +31,7 @@ tests:
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
   - tests/unit/red-check.test.js
+  - tests/unit/qa-facts.test.js
   - tests/unit/agent-summary.test.js
 related: [testing]
 ---
@@ -132,7 +134,14 @@ survived:
   tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
-- **`qa.js`** — *Plan* (≤ 5 probes, each `browser` or `command`: a script,
+- **`qa.js`** — *Plan* first triages: a cosmetic change the tests pin
+  passes at medium confidence with no probes, headed *skipped — existing
+  tests are enough* — but only when the planner says `enough` **and** the job's
+  own git facts agree: `--app-lines` (src/ + server/) ≤ `TRIVIAL_LINES` (30)
+  and `--ui-only=yes` (every file under src/, tests/, docs/ or specs/). A
+  harness, workflow, script or server change never skips; nor does a local run,
+  which passes no facts.
+  Otherwise ≤ 5 probes, each `browser` or `command`: a script,
   a workflow under stubs or an `if:` against a payload is probed by running
   it; `surface: false` only when nothing can be exercised → a low-confidence
   pass) → *Probe* (commands first, then one browser spec, both viewports) → *Reproduce*, one failing probe at a time: again on the branch,

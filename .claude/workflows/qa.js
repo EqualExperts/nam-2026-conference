@@ -20,6 +20,12 @@ export const meta = {
 const argText = typeof args === 'object' && args ? '' : String(args ?? '')
 const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
 const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
+// Facts the QA job computes from git before this runs — never the planner's
+// word: `--app-lines=N` (changed lines under src/ and server/) and
+// `--ui-only=yes|no` (every changed file under src/, tests/, docs/ or specs/,
+// at least one in src/). Without them — a local run — triage never skips.
+const APP_LINES = typeof args === 'object' && args ? args.appLines : Number((/--app-lines=(\d+)/.exec(argText) || [])[1] ?? NaN)
+const UI_ONLY = typeof args === 'object' && args ? args.uiOnly === true : /--ui-only=yes\b/.test(argText)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -36,6 +42,9 @@ const PROBE_FILE = 'tests/qa-probe.spec.js'
 // Five, not eight: each browser probe runs on both viewports on a 2-core
 // runner, and eight of them plus reproductions ran QA past its time limit.
 const MAX_PROBES = 5
+// Exploring a relabelled button is ceremony. The planner may call a change
+// covered by its tests — but only a cosmetic one this small, whatever it says.
+const TRIVIAL_LINES = 30
 
 const PLAN = {
   type: 'object',
@@ -45,6 +54,9 @@ const PLAN = {
     base: { type: 'string' },
     surface: { type: 'boolean', description: 'false only when nothing that changed can be exercised at all — not by a browser, not by running anything' },
     reason: { type: 'string', description: 'if surface is false, why' },
+    enough: { type: 'boolean', description: 'true only if the change is cosmetic — copy, a label, a colour, spacing, an icon — touches no logic, data, API, state or flow, and the tests the PR adds or already has pin what changed. Then no probes.' },
+    enoughWhy: { type: 'string', description: 'if enough: what changed and which tests cover it, in one sentence' },
+    appLines: { type: 'integer', description: 'lines added + removed under src/ and server/ in the diff' },
     probes: {
       type: 'array',
       maxItems: MAX_PROBES,
@@ -121,10 +133,39 @@ const plan = await agent(
   `changed GitHub Actions \`if:\` or expression evaluated in a few lines of node against a realistic payload ` +
   `(an issue comment, a bot's pull request, a draft); every command a changed doc tells an agent to run, run ` +
   `as written. Commands must not touch GitHub or change tracked files. Return surface=false only when there ` +
-  `is genuinely nothing to exercise. Write nothing.`,
+  `is genuinely nothing to exercise. Before any of that, decide whether exploring is worth it at all: a ` +
+  `cosmetic change — copy, a label, a colour, spacing — that the tests already pin needs no probes; say ` +
+  `enough=true, why, and appLines, and return no probes. Anything with logic, data, an API, state or a flow ` +
+  `in it is never enough. Write nothing.`,
   { phase: 'Plan', label: 'plan', schema: PLAN },
 )
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
+// Triage: the planner judged the tests enough, and the change is small
+// enough to take its word. Past the line cap it is explored regardless.
+const mayTriage = Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY
+if (plan.enough === true && mayTriage) {
+  log(`QA triage: skipped — ${plan.enoughWhy || 'cosmetic, covered by tests'}`)
+  return publish({ verdict: 'pass', confidence: 'medium', skipped: true,
+    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${APP_LINES} UI lines)`, probes: [] })
+}
+// Over the cap, or no count: the planner said "enough" and so planned no
+// probes. Ask again for a real plan — logging "exploring anyway" and then
+// falling through to "nothing to exercise" explored nothing.
+if (plan.enough === true) {
+  log(`QA triage: the planner called it enough, but the change is not a small UI-only one (${Number.isInteger(APP_LINES) ? APP_LINES : 'unknown'} app lines, ui-only ${UI_ONLY}) — exploring anyway`)
+  const again = await agent(
+    `${HERE}Plan exploratory QA for pull request #${pr}. It cannot be skipped: only a UI-only change of at most ` +
+    `${TRIVIAL_LINES} lines may be called covered by its tests, and this is not one. ` +
+    `Do not return enough=true. Otherwise plan exactly as before: read the ticket's Done when, \`gh pr diff ${pr}\` ` +
+    `and the tests it adds, then pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives — ` +
+    `browser probes, or command probes for what a browser cannot reach. Write nothing.`,
+    { phase: 'Plan', label: 'plan-again', schema: PLAN },
+  )
+  if (!again) return publish({ verdict: 'none', why: 'the planner did not finish' })
+  plan.surface = again.surface
+  plan.reason = again.reason
+  plan.probes = again.probes
+}
 if (!plan.surface || !plan.probes.length) return publish({ verdict: 'pass', confidence: 'low', covered: `nothing to exercise — ${plan.reason || 'no probe could be planned'}`, probes: [] })
 
 // ── Probe ───────────────────────────────────────────────────────────────────
@@ -237,7 +278,9 @@ async function publish(r) {
     line = `FAIL ${findings.find(f => f.kind === 'bug').probe.id}: ${findings.find(f => f.kind === 'bug').happened}`
   } else if (r.verdict === 'pass') {
     const [kind, meter] = CALLOUT[r.confidence]
-    head = `> [!${kind}]\n> ### QA · ${r.confidence} confidence &nbsp; \`${meter}\`\n> ${r.covered}`
+    head = r.skipped
+      ? `> [!${kind}]\n> ### QA · skipped — existing tests are enough &nbsp; \`${meter}\`\n> ${r.covered}`
+      : `> [!${kind}]\n> ### QA · ${r.confidence} confidence &nbsp; \`${meter}\`\n> ${r.covered}`
     line = `PASS ${r.confidence} ${r.covered}`
   } else {
     head = `> [!WARNING]\n> ### QA · did not finish\n> ${r.why}. Treat as unproven.`
