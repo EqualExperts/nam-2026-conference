@@ -153,7 +153,9 @@ const LENSES = [
     ask: `Read the tests the diff adds or changes. A blocker is a test that would pass before the change, ` +
       `asserts the implementation against itself, or an existing test weakened without the ticket asking ` +
       `(test-proves-nothing). Code that changes behaviour with no test that would catch it breaking is one ` +
-      `too. Run a test if that settles it.`,
+      `too. \`GATE_BASE=origin/<base branch> node scripts/red-check.mjs\` answers the first question by ` +
+      `running the branch's tests against the base branch's app code: failedOnBase false means none of them ` +
+      `would notice the change being reverted. Run it, and run a test yourself if that settles the rest.`,
   },
   {
     key: 'actions',

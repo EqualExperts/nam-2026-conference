@@ -18,6 +18,7 @@ files:
   - scripts/pr-media.mjs
   - scripts/context.mjs
   - scripts/gate.mjs
+  - scripts/red-check.mjs
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
   - docs/context/README.md
@@ -27,6 +28,7 @@ tests:
   - tests/unit/review-workflows.test.js
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
+  - tests/unit/red-check.test.js
   - tests/unit/agent-summary.test.js
 related: [testing]
 ---
@@ -84,6 +86,13 @@ handed back. **The gate is a command, not an opinion**: the verify agent runs
 that — anything unparseable is red. `gate.mjs` retries a failing browser test
 once (a pass on retry is `flaky`, not a failure) and lists removed assertions
 or added skips in `tests/` as `tampered`, which only the lens that traces the criteria sees (`criteria`, or `combined` on a small ticket).
+
+**The red check.** After a green gate, `red-check#n` (Haiku) runs
+`scripts/red-check.mjs`: in a scratch worktree it reverts the app files the
+branch changed to the base, keeps the branch's tests, and runs only the tests
+it added or changed. None failing becomes a `test-proves-nothing` blocker for
+the skeptic — on #41 the tests only exercised an untouched helper and an
+auditor had said it checked. Code review's tests lens runs it too.
 
 A build round is: gate; if red, its failures become the findings and go
 straight to `fix` (red code is not audited, and red with no named failure

@@ -515,13 +515,34 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
       `code. Empty is a good answer.`,
       { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model || T.think },
     )
+    // Would the new tests fail without the change? A command answers it —
+    // on #41 the small-tier auditor said it had checked, and the tests only
+    // exercised a helper the change never touched. The result is a finding
+    // for the skeptic, not a verdict: a refactor's tests pass either way.
+    const red = await agent(
+      `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` once and return the last line it ` +
+      `printed, verbatim, as json. Change nothing and interpret nothing.`,
+      { phase: 'Verify', label: `red-check#${round}`, schema: GATE, effort: 'low', model: ROTE },
+    )
+    const redCheck = (() => { try { return JSON.parse(red.json) } catch { return null } })()
+    if (redCheck && redCheck.checked && redCheck.failedOnBase === false) {
+      log(`build round ${round}: red-check — the new tests pass without the change`)
+    }
     const readers = await audit(CODE_LENSES.filter(l => !l.alone), run)
     const driver = await audit(CODE_LENSES.filter(l => l.alone), run)
     const missing = [...readers.missing, ...driver.missing]
     if (missing.length) return handBack('Code Audit', `the ${missing.join(', ')} auditor could not finish`)
     const reports = [...readers.reports, ...driver.reports]
 
-    const raised = reports.flatMap(r => r.findings)
+    const raised = [
+      ...reports.flatMap(r => r.findings),
+      ...(redCheck && redCheck.checked && redCheck.failedOnBase === false ? [{
+        severity: 'blocker', category: 'test-proves-nothing', file: redCheck.tests[0] || 'tests/',
+        claim: 'the tests this branch added or changed pass with its app code reverted',
+        evidence: `scripts/red-check.mjs reverted ${redCheck.reverted.join(', ')} to ${BASE} and ran ${redCheck.tests.join(', ')}: none failed`,
+        fix: 'add a test that exercises the changed code where an attendee meets it, and fails on the base branch',
+      }] : []),
+    ]
     minors = raised.filter(f => f.severity === 'minor')
     open = await confirm(raised.filter(f => f.severity === 'blocker'), 'the change')
     history.push(...open)
