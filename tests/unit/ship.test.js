@@ -481,4 +481,12 @@ describe('ship', () => {
     });
     assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
   });
+
+  test('two different findings a few lines apart in one file are both judged', async () => {
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [{ ...blocker('the total ignores waitlist places'), line: 12 }] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [{ ...blocker('the note renders for zero hours'), line: 15 }] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+  });
 });
