@@ -14,6 +14,7 @@ files:
   - .github/workflows/agent-code-review.yml
   - .github/workflows/agent-qa.yml
   - .github/workflows/agent-respond.yml
+  - .github/workflows/learn-escape.yml
   - .github/workflows/setup.yml
   - scripts/pr-media.mjs
   - scripts/context.mjs
@@ -132,6 +133,17 @@ survived:
   both viewports. `agent-respond.yml` handles `@claude` and
 pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits
 trigger CI; on the `GITHUB_TOKEN` fallback they do not.
+
+**Escapes.** A code review or QA **FAIL** on a pull request ship built
+(branch `issue-<n>-…`) is something ship's own loop let through. The job's
+*🧯 Flag a harness escape* step labels the PR `harness-escape` — `gh pr list
+--label harness-escape --state all` is the count — and a follow-up job calls
+`learn-escape.yml`: an agent on Sonnet decides whether the mistake recurs on
+other tickets and, if so, opens a pull request teaching the harness where it
+would have been caught — preferring an audit rule in `ship.js` over a
+`docs/context` gotcha, and naming any mechanical check it would take. A person
+merges the lesson or not. Its own PR is on a `learn/…` branch, so its reviews
+cannot start another round.
 
 ## Invariants
 

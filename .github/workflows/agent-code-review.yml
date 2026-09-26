@@ -31,6 +31,9 @@ concurrency:
 
 jobs:
   fresh-context:
+    outputs:
+      escape: ${{ steps.escape.outputs.escape }}
+      finding: ${{ steps.escape.outputs.finding }}
     # A draft is what `ship` opens when it hands a ticket back: it already
     # knows what is wrong, and says so on the pull request. Marking it ready
     # is what asks for this pass.
@@ -88,6 +91,26 @@ jobs:
             git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
           done
           scripts/agent-run.sh "/code-review $PR --no-publish" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
+
+      # A FAIL on a pull request that ship built (branch issue-<n>-…) is an
+      # escape: the independent pass caught what ship's own loop let through.
+      # Labelled so they can be counted, and handed to learn-escape.yml.
+      - name: 🧯 Flag a harness escape
+        id: escape
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          line=$(jq -r '.verdictLine // empty' "$RUNNER_TEMP/workflow-result.json" 2>/dev/null || true)
+          case "$HEAD_REF" in issue-[0-9]*-*) shipped=yes ;; *) shipped=no ;; esac
+          if [ "$shipped" = yes ] && [ "${line%% *}" = FAIL ]; then
+            gh pr edit "$PR" --add-label harness-escape || true
+            { echo "escape=true"; echo "finding<<__FINDING__"; printf '%s\n' "${line#FAIL }"; echo "__FINDING__"; } >> "$GITHUB_OUTPUT"
+            echo "### 🧯 Harness escape — ship's loop let this through: ${line#FAIL }" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # Red means a blocker was found, not that merging is forbidden — nothing
       # here is a required check. It puts the blocker where a skim-reader sees
@@ -150,3 +173,17 @@ jobs:
 
           echo "verdict: ${verdict:-<none>} → $conclusion"
           [ "$conclusion" != "failure" ]
+
+  learn:
+    needs: fresh-context
+    if: ${{ always() && needs.fresh-context.outputs.escape == 'true' }}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    uses: ./.github/workflows/learn-escape.yml
+    with:
+      pr: ${{ github.event.pull_request.number }}
+      source: code review
+      finding: ${{ needs.fresh-context.outputs.finding }}
+    secrets: inherit
