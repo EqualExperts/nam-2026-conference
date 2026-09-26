@@ -33,13 +33,26 @@ function runner(name, defaults) {
   };
 }
 
+/** The machine-readable verdict marker a pass leaves for the next run. */
+const marker = (comment, pass) => {
+  const m = new RegExp(`<!-- orbit-verdict:${pass} (\\{[\\s\\S]*?\\}) -->`).exec(comment || '');
+  return m ? JSON.parse(m[1]) : null;
+};
+const keyOf = (f) => `${f.category}|${f.file}|${Math.floor((f.line || 0) / 10)}`;
+
 describe('code-review', () => {
-  const CTX = { issue: 27, title: 'Waitlist', doneWhen: ['a waitlisted session is not shown as now'], base: 'main', files: ['src/components/NextUpCard.jsx'], amendments: [] };
+  const HEAD = 'headsha1';
+  const CTX = { issue: 27, title: 'Waitlist', doneWhen: ['a waitlisted session is not shown as now'], base: 'main', files: ['src/components/NextUpCard.jsx'], amendments: [], head: HEAD };
   const clean = (confidence = 'high') => ({ confidence, covered: 'read it', findings: [] });
-  const blocker = (claim, category = 'logic', line = 10) => ({ severity: 'blocker', category, file: 'src/a.jsx', line, claim, evidence: 'e' });
+  const blocker = (claim, category = 'logic', line = 10) => ({
+    severity: 'blocker', category, file: 'src/a.jsx', line, claim, evidence: 'e',
+    how: 'add a waitlisted session, then open /my-agenda', harm: 'the hours tile promises time the room cannot give',
+  });
+  const was = (blockers = [], extra = {}) => ({ pass: 'code-review', commit: 'oldsha', inHistory: true, blockers, followUps: [], ...extra });
   const run = runner('code-review', (label) => {
     if (label === 'context') return CTX;
     if (label.startsWith('review')) return clean();
+    if (label.startsWith('recheck')) return { resolved: true, why: 'fixed' };
     if (label.startsWith('skeptic')) return { refuted: false, why: 'real' };
     if (label === 'publish') return { ok: true, url: 'u' };
   });
@@ -217,14 +230,159 @@ describe('code-review', () => {
     assert.equal(result.verdict, 'none');
     assert.match(prompts.publish, /Write nothing to \/tmp\/review-verdict/);
   });
+
+  describe('converging on a re-review', () => {
+    test('the comment ends with a marker naming the commit it reviewed', async () => {
+      const { result } = await run({ 'review:logic': { ...clean(), findings: [blocker('the done count includes waitlist places')] } });
+      const m = marker(result.comment, 'code-review');
+      assert.ok(m, 'no orbit-verdict:code-review marker in the comment');
+      assert.equal(m.pass, 'code-review');
+      assert.equal(m.commit, HEAD);
+      assert.deepEqual(m.blockers.map(b => b.claim), ['the done count includes waitlist places']);
+      assert.match(result.comment.trim(), /-->$/, 'the marker is not the last thing in the comment');
+    });
+
+    test('a verdict marker left by the other pass is ignored', async () => {
+      const previous = { ...was([blocker('QA found this, not us')]), pass: 'qa' };
+      const { result, calls, prompts } = await run({ context: { ...CTX, previous } });
+      assert.ok(!calls.some(c => c.startsWith('recheck')), 'rechecked the other pass’s blocker');
+      assert.doesNotMatch(prompts['review:logic'], /git diff oldsha/);
+      assert.equal(result.verdict, 'pass');
+      assert.doesNotMatch(result.comment, /QA found this/);
+      assert.match(prompts.context, /orbit-verdict:code-review/);
+      assert.doesNotMatch(prompts.context, /orbit-verdict:qa/);
+    });
+
+    test('a re-review scopes the lenses to what changed since the last reviewed commit', async () => {
+      const { prompts, calls } = await run({ context: { ...CTX, previous: was() } });
+      const lenses = calls.filter(c => c.startsWith('review:'));
+      assert.ok(lenses.length >= 4);
+      for (const label of lenses) {
+        assert.match(prompts[label], /git diff oldsha headsha1/, `${label} was not scoped to the delta`);
+        assert.doesNotMatch(prompts[label], /\bHEAD\b/, `${label} names HEAD, which in Actions is the merge commit`);
+      }
+    });
+
+    test('a re-review re-checks every previous blocker', async () => {
+      const previous = was([blocker('one', 'logic', 10), blocker('two', 'claude-md', 20)]);
+      const { calls } = await run({ context: { ...CTX, previous } });
+      assert.deepEqual(calls.filter(c => c.startsWith('recheck')).sort(), ['recheck:claude-md', 'recheck:logic']);
+    });
+
+    test('a previous commit no longer in history scopes the review to the files the PR touches', async () => {
+      const { prompts } = await run({ context: { ...CTX, previous: was([], { inHistory: false }) } });
+      assert.match(prompts['review:logic'], /git fetch origin oldsha/);
+      assert.match(prompts['review:logic'], /git diff oldsha headsha1/);
+      assert.match(prompts['review:logic'], /-- src\/components\/NextUpCard\.jsx/);
+    });
+
+    test('a dead context publishes did-not-finish with no marker', async () => {
+      const { result } = await run({ context: null });
+      assert.equal(result.verdict, 'none');
+      assert.ok(result.comment, 'nothing was published');
+      assert.doesNotMatch(result.comment, /orbit-verdict:/, 'a pass that did not finish claimed a commit');
+    });
+
+    test('an unresolved previous blocker still fails the review', async () => {
+      const previous = was([blocker('the hours tile counts waitlist places')]);
+      const { result, verdictLine, calls } = await run({ context: { ...CTX, previous }, recheck: { resolved: false, why: 'the line is unchanged' } });
+      assert.equal(result.verdict, 'fail');
+      assert.equal(verdictLine, 'FAIL the hours tile counts waitlist places');
+      assert.ok(!calls.some(c => c.startsWith('skeptic')), 'a previous blocker faced a second skeptic');
+    });
+
+    test('a re-review whose only previous blocker is resolved publishes a pass', async () => {
+      const previous = was([blocker('the hours tile counts waitlist places')]);
+      let asked = null;
+      const { result, calls } = await run({
+        context: { ...CTX, previous },
+        recheck: (label) => { asked = label; return { resolved: true, why: 'the tile now sums confirmed seats only' }; },
+      });
+      assert.deepEqual(calls.filter(c => c.startsWith('recheck')), ['recheck:logic']);
+      assert.equal(asked, 'recheck:logic');
+      assert.equal(result.verdict, 'pass');
+      assert.doesNotMatch(result.comment, /the hours tile counts waitlist places/, 'a resolved blocker stayed in the comment');
+      assert.deepEqual(marker(result.comment, 'code-review').blockers, []);
+    });
+
+    test('a blocker outside the delta is still published', async () => {
+      const { result, prompts } = await run({
+        context: { ...CTX, previous: was() },
+        'review:logic': { ...clean(), findings: [blocker('seats_taken can go negative')] },
+      });
+      assert.equal(result.verdict, 'fail');
+      assert.match(prompts['review:logic'], /would have blocked a first review/);
+    });
+  });
+
+  describe('the blocker bar, and follow-ups', () => {
+    test('a blocker with no path through normal use publishes as a follow-up', async () => {
+      const vague = { ...blocker('the helper could throw'), how: '', harm: '  ' };
+      const { result, calls } = await run({ 'review:logic': { ...clean(), findings: [vague] } });
+      assert.equal(result.verdict, 'pass');
+      assert.ok(!calls.some(c => c.startsWith('skeptic')), 'a demoted finding still went to a skeptic');
+      assert.equal(result.followUps.length, 1);
+      assert.match(result.comment, /the helper could throw/);
+    });
+
+    test('a contrived-input finding becomes a follow-up, not a refutation', async () => {
+      const { result } = await run({
+        'review:logic': { ...clean(), findings: [blocker('a NaN day index renders an empty grid')] },
+        skeptic: { refuted: false, contrived: true, why: 'only with a hand-edited ?day= in the URL' },
+      });
+      assert.equal(result.verdict, 'pass');
+      assert.equal(result.followUps.length, 1);
+      assert.match(result.comment, /hand-edited \?day= in the URL/);
+    });
+
+    test('a follow-up-only review publishes as a pass and files its issues', async () => {
+      const fu = { ...blocker('the empty state has no aria-label'), severity: 'follow-up' };
+      const { result, verdictLine } = await run({ 'review:logic': { ...clean(), findings: [fu] } });
+      assert.equal(result.verdict, 'pass');
+      assert.match(verdictLine, /^PASS /);
+      assert.match(result.comment, /the empty state has no aria-label/);
+      assert.equal(result.followUps.length, 1);
+      assert.ok(result.followUps[0].title, 'a follow-up with no title');
+      assert.match(result.followUps[0].body, /#42/, 'the follow-up issue does not link the pull request');
+      assert.deepEqual(marker(result.comment, 'code-review').followUps, [keyOf(fu)]);
+    });
+
+    test('a follow-up the last review already filed is not filed again', async () => {
+      const fu = { ...blocker('the empty state has no aria-label'), severity: 'follow-up' };
+      const previous = was([], { followUps: [keyOf(fu)] });
+      const { result } = await run({ context: { ...CTX, previous }, 'review:logic': { ...clean(), findings: [fu] } });
+      assert.equal(result.verdict, 'pass');
+      assert.deepEqual(result.followUps, []);
+      assert.match(result.comment, /the empty state has no aria-label/, 'a known follow-up vanished from the comment');
+    });
+
+    test('a failing review still returns its follow-ups', async () => {
+      const { result } = await run({
+        'review:logic': { ...clean(), findings: [blocker('seats_taken can go negative', 'logic', 10)] },
+        'review:tests': { ...clean(), findings: [blocker('a NaN index blanks the grid', 'test-proves-nothing', 50)] },
+        skeptic: (label) => (label === 'skeptic:test-proves-nothing'
+          ? { refuted: false, contrived: true, why: 'only from a hand-edited URL' }
+          : { refuted: false, why: 'real' }),
+      });
+      assert.equal(result.verdict, 'fail');
+      assert.equal(result.followUps.length, 1);
+      assert.match(result.followUps[0].body, /a NaN index blanks the grid/);
+    });
+  });
 });
 
 describe('qa', () => {
   const probe = (id) => ({ id, what: `visit /my-agenda as kenji (${id})`, expect: 'no live badge', why: 'empty-or-extreme' });
+  const HEAD = 'headsha1';
+  const SCOPE = { head: HEAD, files: ['src/components/NextUpCard.jsx'] };
+  const bug = (id) => ({ id, happened: 'LIVE badge shown', probe: probe(id) });
+  const was = (bugs = [], extra = {}) => ({ pass: 'qa', commit: 'oldsha', inHistory: true, bugs, followUps: [], ...extra });
+  const ranAll = (ids) => ({ results: ids.map(id => ({ id, desktop: 'pass', mobile: 'pass' })) });
   const PLAN = { issue: 27, base: 'main', surface: true, probes: ['a', 'b', 'c', 'd'].map(probe) };
   const allPass = { results: PLAN.probes.map(p => ({ id: p.id, desktop: 'pass', mobile: 'pass' })) };
   const withFail = (id) => ({ results: allPass.results.map(r => (r.id === id ? { ...r, mobile: 'fail', happened: 'LIVE badge shown' } : r)) });
   const run = runner('qa', (label) => {
+    if (label === 'scope') return SCOPE;
     if (label === 'plan') return PLAN;
     if (label === 'probe') return allPass;
     if (label.startsWith('repro')) return { onBranch: 'fails-again', onBase: 'passes', happened: 'LIVE badge shown' };
@@ -413,5 +571,192 @@ describe('qa', () => {
       const { result } = await run({ plan: cosmetic }, '42 --no-publish --app-lines=4 --ui-only=yes');
       assert.match(result.verdictLine, /^PASS medium no exploration needed/);
     });
+  });
+
+  describe('converging on a re-review', () => {
+    test('the comment ends with a marker naming the commit it reviewed', async () => {
+      const { result } = await run({ probe: withFail('b') });
+      const m = marker(result.comment, 'qa');
+      assert.ok(m, 'no orbit-verdict:qa marker in the comment');
+      assert.equal(m.pass, 'qa');
+      assert.equal(m.commit, HEAD);
+      assert.deepEqual(m.bugs.map(b => b.id), ['b']);
+      assert.ok(m.bugs[0].probe && m.bugs[0].probe.id === 'b', 'the marker does not carry the probe that found the bug');
+      assert.match(result.comment.trim(), /-->$/);
+    });
+
+    test('a verdict marker left by the other pass is ignored', async () => {
+      const previous = { ...was([bug('z')]), pass: 'code-review' };
+      const { result, prompts, calls } = await run({ scope: { ...SCOPE, previous } });
+      assert.doesNotMatch(prompts.plan, /git diff oldsha/);
+      assert.ok(!result.probes.some(p => p.id === 'z'), 'ran the other pass’s probe');
+      assert.equal(result.verdict, 'pass');
+      assert.match(prompts.scope, /orbit-verdict:qa/);
+      assert.doesNotMatch(prompts.scope, /orbit-verdict:code-review/);
+      assert.ok(!calls.some(c => c.startsWith('recheck')));
+    });
+
+    test('a re-review scopes the lenses to what changed since the last reviewed commit', async () => {
+      const { prompts } = await run({ scope: { ...SCOPE, previous: was() } });
+      assert.match(prompts.plan, /git diff oldsha headsha1/);
+      assert.doesNotMatch(prompts.plan, /\bHEAD\b/, 'the plan prompt names HEAD, which in Actions is the merge commit');
+      assert.match(prompts.plan, /would have blocked a first review/);
+    });
+
+    test('a previous commit no longer in history scopes the review to the files the PR touches', async () => {
+      const { prompts } = await run({ scope: { ...SCOPE, previous: was([], { inHistory: false }) } });
+      assert.match(prompts.plan, /git fetch origin oldsha/);
+      assert.match(prompts.plan, /git diff oldsha headsha1/);
+      assert.match(prompts.plan, /-- src\/components\/NextUpCard\.jsx/);
+    });
+
+    test('a dead context publishes did-not-finish with no marker', async () => {
+      const { result, calls } = await run({ scope: null });
+      assert.equal(result.verdict, 'none');
+      assert.ok(!calls.includes('plan'), 'planned blind');
+      assert.ok(!calls.includes('probe'));
+      assert.doesNotMatch(result.comment, /orbit-verdict:/);
+    });
+
+    test('a re-review re-runs each previous bug’s probe exactly once, inside the budget', async () => {
+      const previous = was([bug('r1'), bug('r2')]);
+      const fresh = { ...PLAN, probes: ['n1', 'n2', 'n3', 'n4'].map(probe) };
+      const { result, prompts } = await run({
+        scope: { ...SCOPE, previous }, plan: fresh,
+        probe: ranAll(['r1', 'r2', 'n1', 'n2', 'n3']),
+      });
+      assert.deepEqual(result.probes.map(p => p.id), ['r1', 'r2', 'n1', 'n2', 'n3']);
+      assert.match(prompts.plan, /r1/);
+      assert.match(prompts.plan, /r2/);
+      assert.match(prompts.plan, /at most 3 new/i, 'the planner was not told the reduced budget');
+      assert.match(result.verdictLine, /5\/5 probes ran as planned/);
+
+      // …and a planner that plans one of them anyway still only runs it once.
+      const dup = { ...PLAN, probes: ['r1', 'n1', 'n2', 'n3'].map(probe) };
+      const again = await run({ scope: { ...SCOPE, previous }, plan: dup, probe: ranAll(['r1', 'r2', 'n1', 'n2', 'n3']) });
+      assert.deepEqual(again.result.probes.map(p => p.id), ['r1', 'r2', 'n1', 'n2', 'n3']);
+    });
+
+    test('a re-review with an empty plan still re-runs the previous bugs’ probes', async () => {
+      const previous = was([bug('r1'), bug('r2')]);
+      for (const surface of [false, true]) {
+        const { result, calls } = await run({
+          scope: { ...SCOPE, previous },
+          plan: { ...PLAN, surface, reason: 'nothing new', probes: [] },
+          probe: ranAll(['r1', 'r2']),
+        });
+        assert.ok(calls.includes('probe'), `surface: ${surface} took the "nothing to exercise" early return`);
+        assert.deepEqual(result.probes.map(p => p.id), ['r1', 'r2']);
+        assert.equal(result.verdict, 'pass');
+        assert.deepEqual(marker(result.comment, 'qa').bugs, []);
+      }
+      const { result } = await run({
+        scope: { ...SCOPE, previous },
+        plan: { ...PLAN, surface: false, reason: 'nothing new', probes: [] },
+        probe: { results: [{ id: 'r1', desktop: 'pass', mobile: 'pass' }, { id: 'r2', desktop: 'fail', mobile: 'pass', happened: 'still shown' }] },
+      });
+      assert.equal(result.verdict, 'fail');
+    });
+
+    test('a re-review whose only previous blocker is resolved publishes a pass', async () => {
+      const previous = was([bug('r1')]);
+      const { result, calls } = await run({
+        scope: { ...SCOPE, previous },
+        plan: { ...PLAN, probes: ['n1', 'n2', 'n3', 'n4'].map(probe) },
+        probe: ranAll(['r1', 'n1', 'n2', 'n3', 'n4']),
+      });
+      assert.ok(result.probes.some(p => p.id === 'r1'), 'the previous bug’s probe was not re-run');
+      assert.equal(result.verdict, 'pass');
+      assert.ok(!calls.some(c => c.startsWith('repro')), 'a passing recheck was reproduced anyway');
+      assert.deepEqual(marker(result.comment, 'qa').bugs, []);
+    });
+
+    test('a previous bug whose probe fails again is a bug, and faces no second skeptic', async () => {
+      const previous = was([bug('r1')]);
+      const { result, verdictLine, calls } = await run({
+        scope: { ...SCOPE, previous },
+        plan: { ...PLAN, probes: [probe('n1')] },
+        probe: { results: [{ id: 'r1', desktop: 'fail', mobile: 'pass', happened: 'LIVE badge shown' }, { id: 'n1', desktop: 'pass', mobile: 'pass' }] },
+      });
+      assert.equal(result.verdict, 'fail');
+      assert.match(verdictLine, /^FAIL r1/);
+      assert.ok(calls.includes('repro:r1'));
+      assert.ok(!calls.some(c => c.startsWith('skeptic')), 'a previous bug faced a second skeptic');
+    });
+  });
+
+  describe('the blocker bar, and follow-ups', () => {
+    test('a contrived-input finding becomes a follow-up, not a refutation', async () => {
+      const { result } = await run({
+        probe: withFail('b'),
+        skeptic: { refuted: false, contrived: true, why: 'only with a hand-edited localStorage value' },
+      });
+      assert.equal(result.verdict, 'pass');
+      assert.equal(result.followUps.length, 1);
+      assert.match(result.comment, /hand-edited localStorage/);
+      assert.match(result.followUps[0].body, /#42/, 'the follow-up issue does not link the pull request');
+      assert.deepEqual(marker(result.comment, 'qa').followUps, ['b']);
+    });
+
+    test('a follow-up the last review already filed is not filed again', async () => {
+      const previous = was([], { followUps: ['b'] });
+      const { result } = await run({
+        scope: { ...SCOPE, previous },
+        probe: withFail('b'),
+        skeptic: { refuted: false, contrived: true, why: 'only with a hand-edited localStorage value' },
+      });
+      assert.equal(result.verdict, 'pass');
+      assert.deepEqual(result.followUps, []);
+      assert.match(result.comment, /hand-edited localStorage/);
+    });
+
+    test('a failing review still returns its follow-ups', async () => {
+      const two = { results: allPass.results.map(r => (['a', 'b'].includes(r.id) ? { ...r, desktop: 'fail', happened: 'boom' } : r)) };
+      const { result } = await run({
+        probe: two,
+        skeptic: (label) => (label === 'skeptic:a'
+          ? { refuted: false, contrived: true, why: 'only from a malformed ?at=' }
+          : { refuted: false, why: 'real' }),
+      });
+      assert.equal(result.verdict, 'fail');
+      assert.equal(result.followUps.length, 1);
+      assert.match(result.followUps[0].body, /a\b/);
+    });
+  });
+});
+
+describe('the review jobs', () => {
+  const yml = (f) => readFileSync(new URL(`../../.github/workflows/${f}`, import.meta.url), 'utf8');
+  // A comment mentioning `gh` or agent-run.sh is not a call: strip them first.
+  const stepsOf = (src) => src.split('\n      - ').slice(1)
+    .map(s => s.split('\n').filter(l => !/^\s*#/.test(l)).join('\n'));
+  const nameOf = (step) => (/^(?:name: )?(.*)/.exec(step) || [, '?'])[1];
+  const JOBS = ['agent-code-review.yml', 'agent-qa.yml'];
+
+  test('the follow-up step is not gated on the verdict', () => {
+    for (const f of JOBS) {
+      const step = stepsOf(yml(f)).find(s => /^name: .*File follow-ups/.test(s));
+      assert.ok(step, `${f} has no "File follow-ups" step`);
+      const cond = /\n        if: (.*)/.exec(step);
+      assert.ok(cond, `${f}: the follow-up step has no if:`);
+      assert.equal(cond[1].trim(), '${{ !cancelled() }}');
+      assert.doesNotMatch(cond[1], /verdict|conclusion|success\(|failure\(/, `${f}: the follow-up step is gated on the verdict`);
+    }
+    assert.match(yml('agent-code-review.yml'), /\n      issues: write\b/, 'code review cannot file an issue without issues: write');
+  });
+
+  test('every step that can reach gh pins the repository', () => {
+    for (const f of JOBS) {
+      for (const step of stepsOf(yml(f))) {
+        const reaches = /\bgh (pr|issue|api|label) /.test(step) || /agent-run\.sh/.test(step);
+        if (!reaches) continue;
+        assert.match(step, /GH_REPO: \$\{\{ github\.repository \}\}/, `${f} → ${nameOf(step)} can reach gh unpinned`);
+      }
+    }
+  });
+
+  test('setup.yml creates the follow-up label the reviews file against', () => {
+    const src = readFileSync(new URL('../../.github/workflows/setup.yml', import.meta.url), 'utf8');
+    assert.match(src, /^\s+label follow-up\s+[0-9A-Fa-f]{6}\s/m);
   });
 });
