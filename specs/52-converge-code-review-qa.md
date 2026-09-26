@@ -11,9 +11,11 @@ follow-up issue rather than argued about in another round.
 For the person merging — the audience for both passes, since neither is a
 required check:
 
-- **Every verdict comment ends with a marker** naming the commit it reviewed,
-  the blockers it raised and the follow-ups it filed. It is an HTML comment, so
-  it is invisible in the rendered thread and readable by the next run.
+- **Every verdict comment ends with a marker** naming the pass that wrote it,
+  the commit it reviewed, the blockers it raised and the follow-ups it filed.
+  It is an HTML comment, so it is invisible in the rendered thread and readable
+  by the next run. Both passes comment on the same thread, so each marker is
+  named for its own pass and each run reads back only its own.
 - **A re-review says what it re-checked.** On a pull request that was put back
   to draft and marked ready again, code review re-opens each previous blocker
   and says resolved or not, and hunts for new problems only in what has been
@@ -36,9 +38,12 @@ required check:
 **`.claude/workflows/code-review.js`**
 
 - `CONTEXT` gains `head` (`gh pr view --json headRefOid`) and an optional
-  `previous` — `{ commit, inHistory, blockers[], followUps[] }` — read back
-  from the newest comment carrying the marker. `inHistory` is
-  `git merge-base --is-ancestor <commit> HEAD`.
+  `previous` — `{ pass, commit, inHistory, blockers[], followUps[] }` — read
+  back from the newest comment carrying *this pass's* marker,
+  `<!-- orbit-verdict:code-review {…} -->`. `inHistory` is
+  `git merge-base --is-ancestor <commit> HEAD`. The script drops a `previous`
+  whose `pass` is not `code-review` and reviews as if it were the first, so
+  QA's marker on the same thread can never be read as one of ours.
 - `FINDINGS` items gain required `how` (the path through normal use) and
   `harm`; `severity` becomes `blocker | follow-up`. The script, not the model,
   demotes a `blocker` with an empty `how` or `harm`.
@@ -53,22 +58,36 @@ required check:
   they do not face another — and rank above this round's findings.
 - `REFUTATION` gains `contrived`. `refuted` drops the finding; `contrived`
   without `refuted` makes it a follow-up; a dead skeptic still refutes nothing.
-- `publish()` composes the marker, a **Follow-ups** section listing each one,
+- `publish()` composes the marker (`pass: 'code-review'`, `commit: ctx.head`,
+  the blockers, the follow-up keys), a **Follow-ups** section listing each one,
   and `followUps: [{ key, title, body }]` on the returned object (at most 3,
   minus any key in `previous.followUps`).
 
 **`.claude/workflows/qa.js`** — the same four ideas, in QA's shapes:
 
-- `PLAN` gains `head` and `previous` (`{ commit, inHistory, bugs[], followUps[] }`,
-  each bug carrying the probe that found it). The plan prompt carries the same
-  `SCOPE`.
-- The script prepends every previous bug's probe to `plan.probes` and truncates
-  to `MAX_PROBES`, so a planner that forgets one cannot drop it. A recheck
-  probe that fails and reproduces is a bug without a skeptic; one that passes
-  is reported as resolved.
+- A **`scope`** agent opens the Plan phase, ahead of the planner and the twin
+  of code review's `context` (`effort: 'low'`): it returns `head`, the pull
+  request's `files`, and an optional `previous`
+  (`{ pass, commit, inHistory, bugs[], followUps[] }`, each bug carrying the
+  probe that found it) read back from the newest `<!-- orbit-verdict:qa {…} -->`
+  marker — and, as in code review, the script drops a `previous` tagged for the
+  other pass. The script composes `SCOPE` from what it returns and appends it
+  to the *plan* prompt: the planner is what chooses new ground, so it is the
+  prompt that has to carry the boundary, and it cannot be the thing that tells
+  the script where the boundary is. `files` is what the rebase form
+  interpolates. Nothing else in QA needs its own scope paragraph — a probe is
+  already pinned to the plan that asked for it. A `scope` that does not finish
+  stops the pass (`verdict: 'none'`, as a dead `context` does in code review):
+  planning blind would silently close every previous bug.
+- The script prepends every `scope.previous` bug's probe to `plan.probes` and
+  truncates to `MAX_PROBES`, so a planner that forgets one cannot drop it. A
+  recheck probe that fails and reproduces is a bug without a skeptic; one that
+  passes is reported as resolved.
 - The skeptic's `contrived` turns a reproduced failure into a follow-up rather
   than a question — `LABEL` gains the wording.
-- `publish()` emits the marker, the follow-up list and `followUps` for the job.
+- `publish()` emits the marker (`pass: 'qa'`, `commit: scope.head`, the bugs
+  with their probes, the follow-up keys), the follow-up list and `followUps`
+  for the job.
 
 **`.github/workflows/agent-code-review.yml`, `agent-qa.yml`** — a *📌 File
 follow-ups* step after *Publish the verdict*, reading `.followUps` from
@@ -81,7 +100,8 @@ summary line stop claiming there are four labels.
 
 **`docs/context/harness.md`** — the code-review and QA bullets under *After the
 PR* gain the marker, the delta rule and the follow-up path; a new invariant for
-the blocker bar; a gotcha for the rebase case and for `issues: write`.
+the blocker bar; a gotcha for the rebase case, for `issues: write`, and for the
+shared comment thread — two passes, two markers, each reading only its own.
 
 **`docs/harness/code-review-playbook.md`**, **`qa-playbook.md`** — §2 gains the
 "name the path and the harm" bar and what a follow-up is; a new section on
@@ -99,10 +119,11 @@ agents return, which is exactly what that harness exercises.
 
 | Done when | Check (unit, `review-workflows.test.js`) |
 | --- | --- |
-| Verdict comments record the head commit, readably | `the comment ends with a marker naming the commit it reviewed` — asserts the marker line in `result.comment` for both scripts, and that it parses as JSON carrying `commit` and the raised blockers |
-| A re-review looks only at the delta | `a re-review scopes the lenses to what changed since the last reviewed commit` — every `review:*` prompt contains `git diff <sha>..HEAD`; the QA twin asserts the plan prompt does |
+| Verdict comments record the head commit, readably | `the comment ends with a marker naming the commit it reviewed` — asserts the marker line in `result.comment` for both scripts, and that it parses as JSON carrying its own `pass`, the `commit` and the raised blockers |
+| …and the two passes do not read each other's | `a verdict marker left by the other pass is ignored` — a `previous` carrying `pass: 'qa'` given to code review (and `pass: 'code-review'` given to QA) runs no `recheck:*` agent, puts no `git diff <sha>..HEAD` in any prompt, and leaves the previous blockers out of the verdict; the reader prompt is asserted to name only its own marker |
+| A re-review looks only at the delta | `a re-review scopes the lenses to what changed since the last reviewed commit` — every `review:*` prompt contains `git diff <sha>..HEAD`; the QA twin asserts the plan prompt does, from what the `scope` agent returned |
 | …and checks each previous blocker | `a re-review re-checks every previous blocker` — one `recheck:*` agent per previous blocker; QA: every previous bug's id is in the probe list even when the planner returned none of them |
-| Rebase: limit to the PR's files since that commit | `a previous commit no longer in history scopes the review to the files the PR touches` — `inHistory: false` puts `git fetch origin <sha>` and `-- <files>` in the prompts |
+| Rebase: limit to the PR's files since that commit | `a previous commit no longer in history scopes the review to the files the PR touches` — `inHistory: false` puts `git fetch origin <sha>` and `-- <files>` in the prompts, from `ctx.files` for code review and `scope.files` for QA |
 | A still-unresolved previous blocker stays a blocker | `an unresolved previous blocker still fails the review` — verdict `fail`, the claim in the verdict line, and no `skeptic:` call for it |
 | Severe new problem outside the delta may still block | `a blocker outside the delta is still published` — the lens returns one and the verdict is `fail`; the prompt's escape clause is asserted as text |
 | A blocker names how and what harm, or it is a follow-up | `a blocker with no path through normal use publishes as a follow-up` — `how`/`harm` blank → verdict `pass`, the finding in `result.followUps` |
@@ -120,6 +141,22 @@ touches `.github/` and `.claude/`, but no Playwright spec changes.
 - **The marker is JSON inside an HTML comment**, not a rendered line. A human
   reading the thread should not have to scroll past a commit hash, and the next
   run needs one place to look rather than a prose sentence to parse.
+- **The marker is named for its pass, and the script enforces it.** Code review
+  and QA both comment on the same pull request on the same event, and QA — the
+  slower job — usually comments last, so "the newest comment carrying the
+  marker" would hand code review QA's verdict and quietly drop every previous
+  blocker. So the tag carries the pass (`orbit-verdict:code-review` /
+  `orbit-verdict:qa`), the JSON repeats it in `pass`, and the script discards a
+  `previous` that is not its own rather than trusting the agent's grep. Two
+  markers on one thread also beat two threads: a person reading the pull
+  request sees both verdicts where the discussion is.
+- **QA reads its scope before it plans.** The planner is what decides where the
+  next five probes go, so it is the prompt that must carry the delta boundary —
+  and a prompt cannot be built from what the agent reading it is about to
+  return. A `scope` agent ahead of it, the twin of code review's `context`,
+  breaks that circle and is the only thing that knows the pull request's file
+  list for the rebase case. It costs one cheap low-effort call and a second
+  `gh pr view`; QA's budget is browser probes, not this.
 - **Previous blockers skip the skeptic.** They survived one when they were
   raised; re-running it invites a finding to flip between rounds, which is the
   spiral this ticket is about. A previous blocker leaves the list by being
