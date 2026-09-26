@@ -149,7 +149,9 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
   is its launcher's "running in the background", so every workflow died
   unstarted while the step went green. `scripts/agent-run.sh` runs `claude -p`
   (which waits), keeps the transcript, writes it to the job summary, and fails
-  the step when a launched workflow never reported back. Only
+  the step when a launched workflow never reported back. It sets
+  `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`: by default `claude -p` kills a
+  background workflow after 600s, which killed `/ship` mid-build. Only
   `agent-respond.yml` still uses the action — interactive mode needs it.
 - **In CI, review and QA do not publish — the job does.** They run with
   `--no-publish` and return `{ comment, verdictLine }` (QA adds `issue`,

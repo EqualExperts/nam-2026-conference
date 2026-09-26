@@ -97,6 +97,10 @@ jobs:
       - name: Run /ship
         timeout-minutes: 100
         env:
+          # `claude -p` stops waiting for a background workflow after 600s and
+          # kills it — /ship on #34 died that way, ten minutes in. The step's
+          # timeout-minutes is the bound instead.
+          CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0"
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # With AGENT_GITHUB_TOKEN the pull request is authored by a person,
           # so its checks run without an Approve click; see github.md.
