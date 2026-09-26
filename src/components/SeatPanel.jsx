@@ -53,7 +53,7 @@ export function SeatPanel({ session }) {
         <p className="mt-1.5 text-[11px] text-faint" data-testid="seats-left">
           {isFull
             ? `Full · ${plural(waitlistCount, 'person', 'people')} waiting`
-            : `${seatsLeft.toLocaleString()} seats left`}
+            : `${plural(seatsLeft, 'seat')} left`}
         </p>
       </div>
 

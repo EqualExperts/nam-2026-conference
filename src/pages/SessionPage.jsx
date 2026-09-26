@@ -114,7 +114,7 @@ export function SessionPage() {
               </Chip>
             ) : (
               <Chip accent={seatsLeft <= 10 ? 'amber' : 'emerald'} data-testid="header-seats">
-                {seatsLeft.toLocaleString()} seats left
+                {plural(seatsLeft, 'seat')} left
               </Chip>
             )}
           </div>

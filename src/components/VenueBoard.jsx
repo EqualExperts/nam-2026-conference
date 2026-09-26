@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
-import { time as fmtTime } from '../lib/format.js';
+import { plural, time as fmtTime } from '../lib/format.js';
 import { toMinutes, relativeToNow } from '../lib/clock.js';
 import { Chip, Skeleton, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
@@ -109,7 +109,7 @@ export function VenueBoard({ venue, day }) {
                     {isFull
                       ? <span className="font-bold text-rose-300">Full{waitlistCount > 0 && ` · ${waitlistCount} waiting`}</span>
                       : <span className={cx('font-semibold', seatsLeft <= 10 ? 'text-amber-300' : 'text-muted')}>
-                          {seatsLeft.toLocaleString()} seats left
+                          {plural(seatsLeft, 'seat')} left
                         </span>}
                     {mine && (
                       <Chip accent={mine === 'waitlisted' ? 'amber' : 'emerald'} className="!py-0.5 !text-[9px]">
