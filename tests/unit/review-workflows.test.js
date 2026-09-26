@@ -310,6 +310,9 @@ describe('qa', () => {
     test('pre-existing and flaky findings are not sent to a skeptic', async () => {
       const { calls } = await run({ probe: withFail('b'), repro: { onBranch: 'fails-again', onBase: 'fails', happened: 'x' } });
       assert.ok(!calls.some(c => c.startsWith('skeptic')));
+    });
+  });
+
   describe('triage — is exploring worth it?', () => {
     const cosmetic = { ...PLAN, probes: [], enough: true, enoughWhy: 'relabels the Add button; seats.spec.js asserts the new label' };
     const SMALL_UI = '42 --app-lines=4 --ui-only=yes';
