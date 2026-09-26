@@ -410,6 +410,9 @@ const SPEC_LENSES_ALL = [
 const SPEC_LENSES = SPEC_LENSES_ALL.filter(l => T.specLenses.includes(l.key))
 
 let specOpen = []
+// Technical findings still open when the spec rounds run out: the build must
+// resolve them, and the code audit is told to check that it did.
+let carried = []
 // Recorded like the build rounds: the spec audit's catches are the cheapest
 // the loop makes, and the first live run's spec said "no findings" about a
 // round that had confirmed and fixed one.
@@ -420,7 +423,10 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
     agent(
       `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
       `(in ${setup.workdir}) and the code it names. ${MAP} ${l.ask}\n\nBlockers only for something that would make ` +
-      `the change wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
+      `the change wrong or unprovable; everything else is minor. Use category scope only when the TICKET itself ` +
+      `is contradictory, unclear about what to build, or asks for something that cannot be built as written — ` +
+      `that is what goes to a person; a flaw in the spec's plan is spec-gap or logic. Cite file and line. Empty ` +
+      `is a good answer.`,
       { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: T.think },
     ))
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
@@ -432,14 +438,20 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   specRounds.push({ round, raised: found.length, confirmed: specOpen.length, what: specOpen.map(f => f.claim) })
   log(`spec round ${round}: ${found.length} raised, ${specOpen.length} confirmed`)
   if (!specOpen.length) break
-  // Full: a spec that will not converge goes to a person. Small: one audit,
-  // one revision, on to the build — the code audit still stands behind it.
-  if (round === MAX_SPEC_ROUNDS && SIZE === 'full') return handBack('Spec Audit', `spec still has blockers after ${round} rounds`, specOpen)
+  // A person is needed only when the ticket itself is in question (scope).
+  // Anything technical still open after the last round is revised once more,
+  // decided in the spec, and carried into the build for the code audit to
+  // check — #52 went to a person over a missing --repo flag.
+  if (round === MAX_SPEC_ROUNDS && specOpen.some(f => f.category === 'scope')) {
+    return handBack('Spec Audit', `the ticket itself is in question after ${round} spec rounds`, specOpen.filter(f => f.category === 'scope'))
+  }
+  if (round === MAX_SPEC_ROUNDS) carried = specOpen
 
   const revised = await agent(
     `${ticket}\n\n${inTree()}\n\nIndependent auditors confirmed these problems with ${spec.path}:\n\n` +
     `${listFindings(specOpen)}\n\nRevise the spec to resolve each one — or, if the ticket itself is wrong, ` +
-    `record that under *Decisions*. Commit ("docs(spec): …") and push.`,
+    `record that under *Decisions*. A technical question the ticket does not settle is yours to decide: ` +
+    `decide it, and record the decision and why under *Decisions*. Commit ("docs(spec): …") and push.`,
     { phase: 'Spec Audit', label: `revise-spec#${round}`, schema: SPEC_WRITTEN, model: T.think },
   )
   if (!revised) return handBack('Spec Audit', 'the spec reviser died', specOpen)
@@ -454,7 +466,8 @@ const built = await agent(
   `that commit is the evidence the check proves something. Then implement, running \`npm test\` after every edit. Commit ` +
   `in Conventional Commits and push. Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
-  `Set ui=true if anything an attendee sees in a browser changed.`,
+  `Set ui=true if anything an attendee sees in a browser changed.` +
+  (carried.length ? `\n\nThe spec audit left these open; resolve each in the build, and say how in the summary:\n${listFindings(carried)}` : ''),
   { phase: 'Implement', label: 'implement', schema: DONE, model: T.build },
 )
 if (!built || !built.ok) return handBack('Implement', built ? built.summary : 'the implementer died')
@@ -529,6 +542,9 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
+      (TRACES_CRITERIA.has(l.key) && carried.length
+        ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
+        : '') +
       (TRACES_CRITERIA.has(l.key) && gate.tampered.length
         ? `The gate flagged these lines in tests/ as removed assertions or added skips:\n${gate.tampered.join('\n')}\n\n`
         : '') +
