@@ -59,7 +59,7 @@ the `session` case that was already there for the Right-now card. Since every
 site above does nothing but call `plural(n, word)` and interpolate the
 result, this closes the loop between the ticket's wording and the code.
 
-**Existing browser coverage stays green as a check, not a new one**:
+**Existing browser coverage stays green as a check alongside the new tests**:
 `tests/schedule.spec.js` ("a card shows the seats left...") and
 `tests/seats.spec.js` (`seats-left`, `seat-count`) already assert against
 real seat counts through `npm run verify`; they assert the shape (`/^\d+
@@ -74,21 +74,14 @@ prove the surrounding markup didn't break.
   left" the ticket is about, and `SessionCard` sitting right next to them
   already does it correctly — leaving them out would mean the same bug still
   shipping on the venue board and the session page after this ticket closes.
-- **No new browser test.** The three (five) sites are template-string
-  rendering with no branching this ticket changes; `plural` is what decides
-  singular vs. plural, and it is already unit-tested infrastructure. Adding a
-  Playwright assertion that pins seat counts, check-in counts or follow
-  counts to exactly one would make an already-shared, concurrently-mutated
-  lane (seats, follows) flakier for no extra proof.
-
-## Out of scope
-
-Any other hard-coded plural in the app that isn't named above or discovered
-to share the exact same bug; the wording of "person"/"people" (waitlist),
-which is already handled by `plural`'s irregular form and untouched here.
-
-## Audit
-
+- **Browser tests, added in review.** The first cut proved the wording only
+  through `plural`'s unit tests, and the code review showed that reverting the
+  five call sites left the suite green. So each wording is now asserted where an
+  attendee meets it — the session page's seat chip and seat panel, the Right now
+  card's "1 session done" (lane `agenda.next-up-done`, pinned to day index 2's
+  spare 17:15 slot so it never touches a seat-count lane's session), and the home
+  page's "1 speaker followed" — plus a unit test that `plural` keeps the
+  thousands separator.
 - **Spec round 1** — 2 findings raised, 0 confirmed. Both were skepticked out
   before costing a fix; nothing in the spec changed as a result.
 - **Build round 1** — unit (265) and browser (157, both projects) all passed;
