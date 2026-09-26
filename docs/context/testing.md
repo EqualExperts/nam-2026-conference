@@ -87,9 +87,11 @@ instead of silently testing another worktree's app.
 `LANES` is **not exported**; it is the table inside `helpers.js` that `laneFor` reads.
 Entry shape: `'area.case': { desktop: { user, day, slot?, clean? }, mobile: {…} }`, with
 `day` a 0-based index. Its comment lists read-only fixtures and the rule that lanes with a
-`slot` own that slot on day index 2. It also names the read-only fixtures, including
-that **Jonas holds no waitlist place on any day** — `plan.spec.js` reads him as the
-attendee who sees no waitlisted hours, so no test may queue him for a full room.
+`slot` own the *whole* day index 2, not just that slot — they assert an exact seat count, so
+any other lane's booking there, even for a different attendee, can shift it mid-assertion.
+It also names the read-only fixtures, including that **Jonas holds no waitlist place on any
+day** — `plan.spec.js` reads him as the attendee who sees no waitlisted hours, so no test
+may queue him for a full room.
 
 **Port lanes** (`scripts/lane.mjs`). In a worktree, run `eval "$(node scripts/lane.mjs
 claim 42)"` (42 = the issue) before anything else. `claim()` sweeps stale claims (worktree gone), returns
@@ -153,9 +155,10 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 ## Where to change…
 
 - **Add a data lane**: add an entry to `LANES` in `tests/helpers.js` with a `desktop` and a
-  `mobile` pair whose `user`+`day` no other lane or fixture holds (see *Gotchas*); mark
-  `clean: true` only if the seed
-  books nothing for that attendee that day (seed doc lists who has which days). Read it
-  with `const { user, day } = await laneFor('area.case', testInfo)`.
+  `mobile` pair whose `user`+`day` no other lane or fixture holds (see *Gotchas*), and whose
+  `day` is not one a `slot` lane already owns outright (day index 2) — check the whole table,
+  not just lanes for the same attendee. Mark `clean: true` only if the seed books nothing for
+  that attendee that day (seed doc lists who has which days). Read it with
+  `const { user, day } = await laneFor('area.case', testInfo)`.
 - New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex.
 - New endpoint: `tests/api/endpoints.test.js` (see architecture).
