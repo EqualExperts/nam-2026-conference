@@ -277,6 +277,14 @@ cannot start another round.
 - **Filing follow-ups needs `issues: write`** on the code review job; QA's
   already had it. The *📌 File follow-ups* step is gated on `!cancelled()`
   only, so a fail files its follow-ups exactly as a pass does.
+- **A step's timeout or cancellation kills its whole process tree**, and that is
+  the commonest way a run ends: *Run /ship* is bounded by `timeout-minutes: 100`,
+  so nothing after `claude` in `agent-run.sh` runs and anything backgrounded
+  beside it dies mid-write. Work that has to settle state at the end of a run
+  belongs in its own `if: ${{ always() }}` step. That step inherits nothing —
+  Actions `env:` is per step and no agent job declares one at job level — so it
+  re-declares `GH_TOKEN`, `GH_REPO` and the run's variables itself, the way
+  *🧹 Check what the run left behind* does.
 - **CI runs the CLI, not `claude-code-action`.** The action drives the
   Agent SDK and stops at the first `result`; a saved workflow's first result
   is its launcher's "running in the background", so every workflow died
