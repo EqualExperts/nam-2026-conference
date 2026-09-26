@@ -111,6 +111,20 @@ describe('code-review', () => {
     assert.equal(result.verdict, 'fail');
   });
 
+  test('a note on the same line never shields a blocker from its skeptic', async () => {
+    const note = { severity: 'note', category: 'logic', file: 'src/a.jsx', line: 12, claim: 'the toast has no aria-label', evidence: 'e' };
+    const { prompts, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx'] },
+      'review:logic': { ...clean(), findings: [note] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      skeptic: { refuted: true, why: 'the rule is not broken' },
+    });
+    const skeptic = Object.entries(prompts).find(([k]) => k.startsWith('skeptic'))[1];
+    assert.doesNotMatch(skeptic, /aria-label/);
+    assert.doesNotMatch(skeptic, /EVERY reading/);
+    assert.equal(result.verdict, 'pass');
+  });
+
   test('on one line, a blocker beats a note from another lens', async () => {
     const note = { severity: 'note', category: 'logic', file: 'src/a.jsx', line: 12, claim: 'minor', evidence: 'e' };
     const { result } = await run({

@@ -223,8 +223,10 @@ const SEVERITY = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-
 // and the skeptic may refute the location only if every reading is wrong. A
 // kept-first merge let a refuted criterion take a real logic blocker on the
 // same line down with it, unjudged.
+// Severity is part of the key: a true note grouped under a false blocker,
+// with "refute only if every reading is wrong", kept the blocker alive.
 const group = (m, f) => {
-  const k = where(f)
+  const k = `${f.severity}|${where(f)}`
   // Grouping twice (ship's minors are grouped, then confirmed) must keep
   // the readings the first pass gathered.
   if (!m.has(k)) return m.set(k, { ...f, also: [...(f.also || [])] })
