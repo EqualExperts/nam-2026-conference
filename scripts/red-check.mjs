@@ -16,7 +16,7 @@
  * straight to a verdict: a refactor's tests are meant to pass either way.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,22 @@ export function plan(nameStatus) {
   }
   const applies = (code.length + added.length + renamed.length) > 0 && (unit.length + browser.length) > 0;
   return { applies, code, added, renamed, unit, browser };
+}
+
+/**
+ * Did every test actually run and pass? On the base branch's code a test
+ * that skips has not passed — it noticed something was missing — and the
+ * repo's data guards skip exactly that way. Counting a skip as a pass once
+ * flagged a test that genuinely proved its change as proving nothing.
+ */
+export function unitAllPassed(status, stdout = '') {
+  const n = (k) => Number((new RegExp(`^# ${k} (\\d+)`, 'm').exec(stdout) || [])[1] || 0);
+  return status === 0 && n('skipped') === 0 && n('todo') === 0 && n('cancelled') === 0;
+}
+
+export function browserAllPassed(status, report) {
+  const st = report?.stats || {};
+  return status === 0 && !!report && (st.unexpected || 0) === 0 && (st.skipped || 0) === 0 && (st.flaky || 0) === 0;
 }
 
 /** Did any of the branch's tests fail on the base branch's code? */
@@ -86,15 +102,18 @@ function main() {
 
     if (p.unit.length) {
       const r = spawnSync('node', ['--test', ...p.unit], { cwd: dir, encoding: 'utf8' });
-      runs.push({ kind: 'unit', failed: r.status !== 0 });
+      runs.push({ kind: 'unit', failed: !unitAllPassed(r.status, r.stdout) });
     }
     if (p.browser.length) {
       // Its own ports and database: the gate or an app may be running.
       const env = { ...process.env, PORT: '4470', WEB_PORT: '4471', ORBIT_LANE: 'red-check', ORBIT_DB: join(dir, 'red-check.db') };
       spawnSync('npm', ['run', 'db:seed', '--silent'], { cwd: dir, env, stdio: 'ignore' });
-      const r = spawnSync('npx', ['playwright', 'test', ...p.browser.map(f => f.replace(/^tests\//, '')), '--project=desktop', '--retries=0', '--reporter=dot'],
-        { cwd: dir, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-      runs.push({ kind: 'browser', failed: r.status !== 0 });
+      const json = join(dir, 'red-check-report.json');
+      const r = spawnSync('npx', ['playwright', 'test', ...p.browser.map(f => f.replace(/^tests\//, '')), '--project=desktop', '--retries=0', '--reporter=json'],
+        { cwd: dir, env: { ...env, PLAYWRIGHT_JSON_OUTPUT_NAME: json, PLAYWRIGHT_JSON_OUTPUT_FILE: json }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+      let report = null;
+      try { report = JSON.parse(readFileSync(json, 'utf8')); } catch { /* no report: not all passed */ }
+      runs.push({ kind: 'browser', failed: !browserAllPassed(r.status, report) });
     }
   } finally {
     try { git('worktree', 'remove', '--force', dir); } catch { rmSync(dir, { recursive: true, force: true }); }

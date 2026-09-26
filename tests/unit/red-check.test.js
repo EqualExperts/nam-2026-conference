@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plan, verdict } from '../../scripts/red-check.mjs';
+import { plan, verdict, unitAllPassed, browserAllPassed } from '../../scripts/red-check.mjs';
 
 /**
  * The shape of #41 is the case that matters: app code changed, a test was
@@ -67,4 +67,14 @@ test('a base it cannot diff against still prints one JSON line, saying why', asy
   assert.equal(last.checked, false);
   assert.equal(last.reason, 'could not run');
   assert.match(last.error, /no-such-ref-for-red-check|unknown revision|bad revision/i);
+});
+
+test('on the base code a skipped test has not passed — the data guards skip exactly when the change is missing', () => {
+  assert.equal(unitAllPassed(0, '# tests 3\n# pass 3\n# skipped 0\n# todo 0'), true);
+  assert.equal(unitAllPassed(0, '# tests 3\n# pass 2\n# skipped 1\n# todo 0'), false);
+  assert.equal(unitAllPassed(0, '# tests 1\n# pass 0\n# cancelled 1'), false);
+  assert.equal(unitAllPassed(1, '# pass 2\n# fail 1'), false);
+  assert.equal(browserAllPassed(0, { stats: { expected: 4, skipped: 0, unexpected: 0, flaky: 0 } }), true);
+  assert.equal(browserAllPassed(0, { stats: { expected: 3, skipped: 1, unexpected: 0 } }), false);
+  assert.equal(browserAllPassed(0, null), false);
 });
