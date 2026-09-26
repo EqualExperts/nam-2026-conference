@@ -395,7 +395,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
     agent(
       `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
       `(in ${setup.workdir}) and the code it names. ${MAP} ${l.ask}\n\nBlockers only for something that would make ` +
-      `the build wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
+      `the change wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
       { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: T.think },
     ))
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
