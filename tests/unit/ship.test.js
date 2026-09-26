@@ -75,7 +75,7 @@ describe('ship', () => {
     assert.ok(!calls.includes('learn'));
   });
 
-  test('an unbuildable ticket stops at setup and opens nothing', async () => {
+  test('an unshippable ticket stops at setup and opens nothing', async () => {
     const { result, calls } = await run({ setup: { proceed: false, reason: 'no Done when' } });
     assert.deepEqual(result, { outcome: 'declined', issue: 7, reason: 'no Done when' });
     assert.deepEqual(calls, ['setup']);

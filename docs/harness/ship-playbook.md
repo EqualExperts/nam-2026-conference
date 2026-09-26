@@ -1,6 +1,6 @@
 # Ship playbook
 
-How each step of a build is done. **This is not a command** — `/ship <n>`
+How each step of a ship run is done. **This is not a command** — `/ship <n>`
 runs the loop (`.claude/workflows/ship.js`), and each of its phase agents is
 told which numbered sections here are theirs. Do those and nothing else: the
 workflow owns the order, the loops and when to stop.
