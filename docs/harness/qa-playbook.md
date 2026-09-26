@@ -16,7 +16,7 @@ for what nobody thought to write down.
 **Your verdict is a file** — one line in `/tmp/qa-verdict`, nothing else is
 read. Saying "Verdict: PASS" in prose leaves the check reading *unproven*.
 
-**Budget: eight probes, or fifteen minutes.** Then write the verdict with
+**Budget: five probes, or fifteen minutes.** Then write the verdict with
 whatever confidence that earned. Exploring until you find something is how a
 QA pass becomes a fishing trip.
 
