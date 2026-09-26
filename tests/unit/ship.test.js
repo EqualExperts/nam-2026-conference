@@ -434,4 +434,42 @@ describe('ship', () => {
       }
     });
   });
+
+  describe('the red check', () => {
+    const red = (v) => ({ json: JSON.stringify(v) });
+
+    test('tests that pass without the change become a finding and cost a fix round', async () => {
+      const { calls, prompts } = await run({
+        'red-check': (n) => red(n === 1
+          ? { checked: true, failedOnBase: false, tests: ['tests/unit/format.test.js'], reverted: ['src/components/SeatPanel.jsx'] }
+          : { checked: true, failedOnBase: true, tests: [], reverted: [] }),
+      });
+      assert.ok(calls.includes('fix#1'));
+      assert.match(prompts['fix#1'], /pass with its app code reverted/);
+      assert.match(prompts['skeptic:test-proves-nothing'], /SeatPanel\.jsx/);
+    });
+
+    test('a skeptic can clear it — a refactor is meant to pass either way', async () => {
+      const { calls } = await run({
+        'red-check': red({ checked: true, failedOnBase: false, tests: ['tests/unit/a.test.js'], reverted: ['src/a.js'] }),
+        skeptic: { refuted: true, why: 'pure refactor; the ticket asked for no behaviour change' },
+      });
+      assert.ok(!calls.some(c => c.startsWith('fix')));
+    });
+
+    test('nothing to check, or unreadable or partial output, raises nothing and does not crash', async () => {
+      for (const v of [red({ checked: false, reason: 'no tests changed' }), { json: 'oops' }, null,
+        red({ checked: true, failedOnBase: false }), red({ checked: true, failedOnBase: false, tests: 'x', reverted: [] })]) {
+        const { calls } = await run({ 'red-check': v });
+        assert.ok(!calls.some(c => c.startsWith('fix')));
+      }
+    });
+
+    test('it runs on the cheapest model, after the gate and before the auditors', async () => {
+      const { calls, models } = await run();
+      assert.equal(models['red-check#1'], 'haiku');
+      assert.ok(calls.indexOf('red-check#1') > calls.indexOf('verify#1'));
+      assert.ok(calls.indexOf('red-check#1') < calls.indexOf('audit:criteria#1'));
+    });
+  });
 });
