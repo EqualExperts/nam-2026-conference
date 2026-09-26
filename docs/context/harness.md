@@ -132,7 +132,10 @@ survived:
   tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
-- **`qa.js`** — *Plan* (≤ 5 probes, each `browser` or `command`: a script,
+- **`qa.js`** — *Plan* first triages: a cosmetic change the tests pin
+  (`enough`, and `appLines` ≤ `TRIVIAL_LINES`, 30) passes at medium
+  confidence with no probes, headed *skipped — existing tests are enough*.
+  Otherwise ≤ 5 probes, each `browser` or `command`: a script,
   a workflow under stubs or an `if:` against a payload is probed by running
   it; `surface: false` only when nothing can be exercised → a low-confidence
   pass) → *Probe* (commands first, then one browser spec, both viewports) → *Reproduce*, one failing probe at a time: again on the branch,

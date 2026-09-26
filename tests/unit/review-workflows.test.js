@@ -310,6 +310,31 @@ describe('qa', () => {
     test('pre-existing and flaky findings are not sent to a skeptic', async () => {
       const { calls } = await run({ probe: withFail('b'), repro: { onBranch: 'fails-again', onBase: 'fails', happened: 'x' } });
       assert.ok(!calls.some(c => c.startsWith('skeptic')));
+  describe('triage — is exploring worth it?', () => {
+    const cosmetic = { ...PLAN, probes: [], enough: true, enoughWhy: 'relabels the Add button; seats.spec.js asserts the new label', appLines: 4 };
+
+    test('a small cosmetic change the tests pin is passed without probes, and says so', async () => {
+      const { result, calls, prompts } = await run({ plan: cosmetic });
+      assert.equal(result.verdict, 'pass');
+      assert.equal(result.confidence, 'medium', 'nobody drove it, so not high');
+      assert.ok(!calls.includes('probe') && !calls.includes('probe-commands'));
+      assert.match(prompts.publish, /QA · skipped — existing tests are enough/);
+      assert.match(prompts.publish, /relabels the Add button/);
+    });
+
+    test('too many changed lines is explored whatever the planner says', async () => {
+      const { calls } = await run({ plan: { ...cosmetic, appLines: 120, probes: PLAN.probes } });
+      assert.ok(calls.includes('probe'));
+    });
+
+    test('no line count, no skip', async () => {
+      const { calls } = await run({ plan: { ...cosmetic, appLines: undefined, probes: PLAN.probes } });
+      assert.ok(calls.includes('probe'));
+    });
+
+    test('with --no-publish the job still gets a verdict line for the check', async () => {
+      const { result } = await run({ plan: cosmetic }, '42 --no-publish');
+      assert.match(result.verdictLine, /^PASS medium no exploration needed/);
     });
   });
 });
