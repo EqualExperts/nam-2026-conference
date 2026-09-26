@@ -236,6 +236,14 @@ cannot start another round.
 - There is no CI gate inside `ship`: the runner's own `gate.mjs` re-run is the
   machine check, and waiting on `verify.yml` would mostly wait on the
   *Approve and run* click a bot's pull request needs.
+- **A post-open fix does not re-true the spec.** The Context phase makes
+  `specs/<n>-*.md` match the diff once, before the PR opens; `agent-respond.yml`'s
+  prompt is "make the change asked for, and nothing else" and never mentions
+  `specs/`. On #41, the fix pushed for a missing-browser-test blocker added four
+  Playwright tests and a data lane; the spec still called that combination a
+  rejected *Decision* ("No new browser test") for two more review rounds, because
+  nothing in the fix flow — or the human comment that triggered it — asked
+  anyone to check the spec back against what shipped.
 
 ## Where to change…
 
