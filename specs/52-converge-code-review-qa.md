@@ -142,6 +142,16 @@ carries its follow-ups in the same field a `pass` does, and a pass that did not
 finish carries none. Code review's job needs `issues: write` for it (it has
 `read` today).
 
+The same pinning is missing one step higher, and this branch is what makes it
+matter: the agent step (*🔍 Run /code-review*, *🧪 Run /qa*) sets `GH_TOKEN`
+but no `GH_REPO`, and it is where `context` and the new `scope` run `gh pr
+view` for the head sha, the file list and the verdict markers. On a fork an
+unpinned `gh pr view` resolves to the upstream, where the pull request number
+is somebody else's — so a re-review would scope itself to the wrong diff, or
+read a marker that is not ours. Both agent steps gain `GH_REPO: ${{
+github.repository }}`, which pins every `gh` call the agents make, the existing
+ones included, and is absent (so harmless) on a laptop.
+
 **`.github/workflows/setup.yml`** — `label follow-up …`, and the step title and
 summary line stop claiming there are four labels.
 
@@ -149,7 +159,9 @@ summary line stop claiming there are four labels.
 PR* gain the marker, the delta rule and the follow-up path; a new invariant for
 the blocker bar; a gotcha for the rebase case, for `issues: write`, for the
 shared comment thread — two passes, two markers, each reading only its own —
-and for `HEAD` being the merge commit in a `pull_request` job.
+and for `HEAD` being the merge commit in a `pull_request` job. The `GH_REPO`
+invariant is already written there and is what the agent-step change above
+makes true of the whole file, so it needs no new wording — only a test.
 
 And one existing gotcha is rewritten, because this branch falsifies its example.
 "A script-composed prompt carries only what an earlier agent already returned"
@@ -200,6 +212,7 @@ agents return, which is exactly what that harness exercises.
 | …and none is lost or duplicated | `a follow-up the last review already filed is not filed again` — a key in `previous.followUps` is listed but not re-filed |
 | A failing review files its follow-ups too | `a failing review still returns its follow-ups` — one confirmed blocker and one contrived finding → `verdict: 'fail'` *and* the follow-up in `result.followUps`; the QA twin does the same with one reproduced bug and one contrived one |
 | …and the job files them on either verdict | `the follow-up step is not gated on the verdict` — reads both review workflows and asserts the *File follow-ups* step's `if:` is `!cancelled()` and names no verdict; a YAML `if:` cannot be executed here, so this is the honest limit of the layer |
+| …on the repository the job runs in, fork or not | `every step that can reach gh pins the repository` — reads both `agent-*.yml` and asserts `GH_REPO: ${{ github.repository }}` in the `env:` of every step that can reach `gh`: one whose `run:` calls it (all three already do) **and** one that runs an agent (`agent-run.sh`), whose prompts do. The agent steps are the red half — today they set only `GH_TOKEN`, which is why the new *File follow-ups* step alone would not have been enough |
 | `setup.yml` creates the `follow-up` label | `setup.yml creates the follow-up label the reviews file against` — a new test reading `.github/workflows/setup.yml` for a `label follow-up` line, beside the existing file-reading harness in this file (the label itself is made by Actions, which no test can run) |
 | The playbooks and `harness.md` describe the rules | The docs-truth lens on this PR, plus `npm test`'s doc-ownership check; the prose changes are reviewed, not asserted |
 
@@ -270,6 +283,17 @@ filed on a fail as well as a pass.
   The step is ungated on the verdict for the same reason: a `fail` and a `pass`
   hand it the same field, so "file whatever is there" needs no branch, and the
   only way a follow-up gets lost is a condition somebody has to remember.
+- **`gh` is pinned by the environment, not by each call.** The ticket's author
+  asked that every new `gh` call name the repository it runs in — `--repo
+  "$GITHUB_REPOSITORY"` or `GH_REPO` set. It is `GH_REPO: ${{
+  github.repository }}` on the step, as the three steps that already pin it do,
+  because it also covers the `gh` calls inside the agents, whose commands are
+  written in a prompt and so cannot be relied on to carry a flag; and because a
+  prompt hard-coding `--repo "$GITHUB_REPOSITORY"` would break the same
+  `/code-review 42` run on a laptop, where that variable is empty. A flag
+  reaches one call site and an env var reaches every one, which is the
+  difference that matters when the failure is a follow-up filed at the
+  upstream, refused, and lost.
 - **Three follow-ups per pass, at most**, matching `MAX_FINDINGS`. A pass that
   wants to file ten has gone back to listing.
 
