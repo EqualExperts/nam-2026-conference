@@ -90,4 +90,14 @@ describe('Counts are pluralised', () => {
     assert.equal(plural(1, 'person', 'people'), '1 person');
     assert.equal(plural(3, 'person', 'people'), '3 people');
   });
+
+  test('a seat count reads singular at one, plural otherwise', () => {
+    assert.equal(plural(1, 'seat'), '1 seat');
+    assert.equal(plural(3, 'seat'), '3 seats');
+  });
+
+  test('a followed-speaker count reads singular at one, plural otherwise', () => {
+    assert.equal(plural(1, 'speaker'), '1 speaker');
+    assert.equal(plural(4, 'speaker'), '4 speakers');
+  });
 });
