@@ -94,6 +94,17 @@ jobs:
       - name: 📦 Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
+      # The claim is the job's, not an agent's: #52 and #53 were never
+      # labelled ai-working because Setup only removed ready-for-ai — and the
+      # safety net below finds a run that died by that label. Setup's own
+      # claim is then a no-op.
+      - name: 🏷️ Claim the ticket
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+        run: gh issue edit "$N" --add-label ai-working --remove-label ready-for-ai --remove-label needs-human --remove-label ready-for-human
+
       - name: 🚢 Run /ship
         timeout-minutes: 100
         env:
