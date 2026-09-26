@@ -87,6 +87,16 @@ describe('code-review', () => {
     assert.deepEqual(result.findings.map(f => f.claim), ['d', 'b', 'c']);
   });
 
+  test('one line reported by two lenses under different categories is one finding, the more severe kept', async () => {
+    const { calls, result } = await run({
+      context: { ...CTX, files: ['src/a.jsx', 'CLAUDE.md'] },
+      'review:rules': { ...clean(), findings: [blocker('breaks the one-action rule', 'claude-md', 12)] },
+      'review:logic': { ...clean(), findings: [blocker('drops the waitlist place', 'logic', 15)] },
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+    assert.deepEqual(result.findings.map(f => f.category), ['logic']);
+  });
+
   test('the same finding from two lenses is judged once', async () => {
     const f = blocker('same');
     const { calls } = await run({ 'review:logic': { ...clean(), findings: [f] }, 'review:tests': { ...clean(), findings: [f] } });

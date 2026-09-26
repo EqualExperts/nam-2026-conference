@@ -187,7 +187,10 @@ const key = f => `${f.category}|${f.file}|${f.line ? Math.floor(f.line / 10) : f
 // A table cell, not a report: the second live run's auditors each wrote a
 // paragraph here and the PR's audit table became a wall.
 const brief = s => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > 90 ? t.slice(0, 87).replace(/\s\S*$/, '') + '…' : t }
-const dedupe = fs => [...new Map(fs.map(f => [key(f), f])).values()]
+// One problem, one finding, whatever category each lens filed it under —
+// keyed by where it is, first report kept. Stuck detection still uses key().
+const where = f => `${f.file}|${f.line ? Math.floor(f.line / 10) : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60)}`
+const dedupe = fs => [...fs.reduce((m, f) => (m.has(where(f)) ? m : m.set(where(f), f)), new Map()).values()]
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
 // with a reason, never a green one.

@@ -472,4 +472,13 @@ describe('ship', () => {
       assert.ok(calls.indexOf('red-check#1') < calls.indexOf('audit:criteria#1'));
     });
   });
+
+  test('one line flagged by two auditors under different categories costs one skeptic', async () => {
+    const f = (category) => ({ ...blocker('the total ignores waitlist places'), category });
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [f('criterion-unmet')] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [f('logic')] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+  });
 });
