@@ -31,6 +31,12 @@ async function openPlan(page, as) {
   return plan;
 }
 
+/** `HH:MM` a few minutes after a session ends, for pinning the clock past it. */
+function shortlyAfter(endsAt) {
+  const mins = Number(endsAt.slice(0, 2)) * 60 + Number(endsAt.slice(3, 5)) + 5;
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+}
+
 test.describe('My Agenda', () => {
   test('adding a session from the schedule puts it on the agenda', async ({ page, request }, testInfo) => {
     const lane = await laneFor('agenda.add', testInfo);
@@ -114,6 +120,21 @@ test.describe('My Agenda', () => {
     await page.getByRole('button', { name: /Switch attendee/ }).click();
     await page.getByRole('option', { name: /Kenji Nakamura/ }).click();
     await expect(page.getByRole('heading', { name: /Kenji’s agenda/ })).toBeVisible();
+  });
+
+  test('the Right Now card counts a finished day in the singular', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('agenda.next-up-done', testInfo);
+    const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);
+    expect(target, 'nothing bookable on this clean day').toBeTruthy();
+
+    await request.put(`${API}/users/${lane.user}/reservations/${target.id}`);
+
+    await visit(page, '/my-agenda', { as: lane.user, at: `${lane.day}T${shortlyAfter(target.endsAt)}` });
+    await expect(page.getByTestId('next-up')).toHaveText(
+      'That is your day — 1 session done. Nothing else booked today.',
+    );
+
+    await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 });
 

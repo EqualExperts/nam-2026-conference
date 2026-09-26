@@ -100,4 +100,8 @@ describe('Counts are pluralised', () => {
     assert.equal(plural(1, 'speaker'), '1 speaker');
     assert.equal(plural(4, 'speaker'), '4 speakers');
   });
+
+  test('a count over a thousand keeps its thousands separator', () => {
+    assert.equal(plural(1098, 'seat'), '1,098 seats');
+  });
 });

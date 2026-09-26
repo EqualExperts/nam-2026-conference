@@ -119,6 +119,9 @@ const LANES = {
   'schedule.seats':   { desktop: { user: kenji, day: 1 },                 mobile: { user: marcus, day: 0 } },
   'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
+  // Kenji and Marcus only attend days 1–2, so day index 2 is unbooked for both —
+  // a clean day to book exactly one session on, distinct from the day-4 lanes above.
+  'agenda.next-up-done': { desktop: { user: marcus, day: 2, clean: true }, mobile: { user: kenji, day: 2, clean: true } },
 };
 
 /** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */

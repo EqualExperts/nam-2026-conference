@@ -101,6 +101,26 @@ test.describe('Home is about you, and about now', () => {
     await expect(page.getByTestId('speaking-strip')).toHaveCount(0);
   });
 
+  test('the followed-speaker count reads singular for exactly one', async ({ page, request }, testInfo) => {
+    // A different pair from the speakers/live specs' follow-toggle tests, so
+    // this test's temporarily-pinned follow set is never raced by another one.
+    const user = testInfo.project.name === 'mobile' ? ATTENDEES.priya : ATTENDEES.sofia;
+    const me = await (await request.get(`${API}/users/${user}`)).json();
+    const originalIds = me.followedSpeakers.map((s) => s.id);
+    const keep = originalIds[0] ?? 1; // every speaker presents at least one session
+
+    for (const id of originalIds) {
+      if (id !== keep) await request.delete(`${API}/users/${user}/follows/${id}`);
+    }
+    if (originalIds.length === 0) await request.put(`${API}/users/${user}/follows/${keep}`);
+
+    await visit(page, '/', { as: user });
+    await expect(page.getByTestId('followed-sessions')).toContainText('1 speaker followed');
+
+    await request.delete(`${API}/users/${user}/follows/${keep}`);
+    for (const id of originalIds) await request.put(`${API}/users/${user}/follows/${id}`);
+  });
+
   test('the brochure sections are gone', async ({ page }) => {
     await visit(page, '/');
     for (const id of ['keynotes', 'tracks', 'venue-split', 'featured-speakers', 'popular-sessions']) {

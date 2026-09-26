@@ -41,4 +41,25 @@ test.describe('Session detail', () => {
     await page.getByRole('link', { name: /./ }).filter({ hasText: /Labs|Systems|AI|Research/ }).first().click();
     await expect(page.getByTestId('speaker-detail')).toBeVisible();
   });
+
+  test('a session down to its last seat reads singular, not plural', async ({ page, request }) => {
+    const all = await (await request.get(`${API}/sessions`)).json();
+    const target = all.find((s) => s.seatsLeft === 1);
+    expect(target, 'the seed should leave a session at exactly one seat left').toBeTruthy();
+
+    await visit(page, `/sessions/${target.id}`);
+    await expect(page.getByTestId('header-seats')).toHaveText('1 seat left');
+    await expect(page.getByTestId('seats-left')).toHaveText('1 seat left');
+  });
+
+  test('a seat count over a thousand keeps its thousands separator', async ({ page, request }) => {
+    const all = await (await request.get(`${API}/sessions`)).json();
+    const target = all.find((s) => s.seatsLeft > 999);
+    expect(target, 'the seed should have a session with over 999 seats left').toBeTruthy();
+
+    await visit(page, `/sessions/${target.id}`);
+    const expected = `${target.seatsLeft.toLocaleString()} seats left`;
+    await expect(page.getByTestId('header-seats')).toHaveText(expected);
+    await expect(page.getByTestId('seats-left')).toHaveText(expected);
+  });
 });
