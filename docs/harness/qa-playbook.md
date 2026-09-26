@@ -24,9 +24,9 @@ QA pass becomes a fishing trip.
 
 **First: is exploring worth it at all?** A cosmetic change — copy, a label, a
 colour, spacing, an icon — that the tests already pin needs no probes. Say
-so, say which tests cover it, and stop. The workflow takes your word only up
-to 30 changed lines of app code, and never for anything with logic, data, an
-API, state or a flow in it; it then publishes a medium-confidence pass that
+so, say which tests cover it, and stop. The workflow takes your word only for
+a UI-only change of at most 30 lines — facts the job computes from git, not
+from you — and never for anything with logic, data, an API, state or a flow; it then publishes a medium-confidence pass that
 reads *skipped — existing tests are enough*.
 
 Read the ticket's **Done when:**, the diff, and the tests it added. The tests

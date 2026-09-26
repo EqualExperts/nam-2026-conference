@@ -133,8 +133,12 @@ survived:
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
 - **`qa.js`** — *Plan* first triages: a cosmetic change the tests pin
-  (`enough`, and `appLines` ≤ `TRIVIAL_LINES`, 30) passes at medium
-  confidence with no probes, headed *skipped — existing tests are enough*.
+  passes at medium confidence with no probes, headed *skipped — existing
+  tests are enough* — but only when the planner says `enough` **and** the job's
+  own git facts agree: `--app-lines` (src/ + server/) ≤ `TRIVIAL_LINES` (30)
+  and `--ui-only=yes` (every file under src/, tests/, docs/ or specs/). A
+  harness, workflow, script or server change never skips; nor does a local run,
+  which passes no facts.
   Otherwise ≤ 5 probes, each `browser` or `command`: a script,
   a workflow under stubs or an `if:` against a payload is probed by running
   it; `surface: false` only when nothing can be exercised → a low-confidence

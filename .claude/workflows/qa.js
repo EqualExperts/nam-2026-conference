@@ -20,6 +20,12 @@ export const meta = {
 const argText = typeof args === 'object' && args ? '' : String(args ?? '')
 const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
 const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
+// Facts the QA job computes from git before this runs — never the planner's
+// word: `--app-lines=N` (changed lines under src/ and server/) and
+// `--ui-only=yes|no` (every changed file under src/, tests/, docs/ or specs/,
+// at least one in src/). Without them — a local run — triage never skips.
+const APP_LINES = typeof args === 'object' && args ? args.appLines : Number((/--app-lines=(\d+)/.exec(argText) || [])[1] ?? NaN)
+const UI_ONLY = typeof args === 'object' && args ? args.uiOnly === true : /--ui-only=yes\b/.test(argText)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -136,19 +142,20 @@ const plan = await agent(
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
 // Triage: the planner judged the tests enough, and the change is small
 // enough to take its word. Past the line cap it is explored regardless.
-if (plan.enough === true && Number.isInteger(plan.appLines) && plan.appLines <= TRIVIAL_LINES) {
+const mayTriage = Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY
+if (plan.enough === true && mayTriage) {
   log(`QA triage: skipped — ${plan.enoughWhy || 'cosmetic, covered by tests'}`)
   return publish({ verdict: 'pass', confidence: 'medium', skipped: true,
-    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${plan.appLines} app lines)`, probes: [] })
+    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${APP_LINES} UI lines)`, probes: [] })
 }
 // Over the cap, or no count: the planner said "enough" and so planned no
 // probes. Ask again for a real plan — logging "exploring anyway" and then
 // falling through to "nothing to exercise" explored nothing.
 if (plan.enough === true) {
-  log(`QA triage: the planner called it enough, but ${plan.appLines ?? 'an unknown number of'} app lines is over ${TRIVIAL_LINES} — exploring anyway`)
+  log(`QA triage: the planner called it enough, but the change is not a small UI-only one (${Number.isInteger(APP_LINES) ? APP_LINES : 'unknown'} app lines, ui-only ${UI_ONLY}) — exploring anyway`)
   const again = await agent(
-    `${HERE}Plan exploratory QA for pull request #${pr}. It is too large to skip: ${plan.appLines ?? 'an unknown number of'} ` +
-    `lines of app code changed, over the ${TRIVIAL_LINES}-line limit for calling a change covered by its tests. ` +
+    `${HERE}Plan exploratory QA for pull request #${pr}. It cannot be skipped: only a UI-only change of at most ` +
+    `${TRIVIAL_LINES} lines may be called covered by its tests, and this is not one. ` +
     `Do not return enough=true. Otherwise plan exactly as before: read the ticket's Done when, \`gh pr diff ${pr}\` ` +
     `and the tests it adds, then pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives — ` +
     `browser probes, or command probes for what a browser cannot reach. Write nothing.`,
