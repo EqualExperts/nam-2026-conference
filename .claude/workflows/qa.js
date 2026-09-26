@@ -3,7 +3,7 @@ export const meta = {
   description: 'Exploratory QA of a pull request: plan probes → run them → reproduce each failure on the branch and its base → report',
   whenToUse: 'Trying to break a pull request in a real browser — /qa 42, or when an agent PR opens.',
   phases: [
-    { title: 'Plan', detail: 'what is worth probing that no test already proves' },
+    { title: 'Plan', detail: 'on a re-review, the delta and the previous bugs; then what is worth probing that no test already proves' },
     { title: 'Probe', detail: 'one spec, every probe, both viewports' },
     { title: 'Reproduce', detail: 'each failure: again on the branch, then on its base' },
     { title: 'Publish', detail: 'comment, one line on the issue, verdict' },
@@ -45,6 +45,36 @@ const MAX_PROBES = 5
 // Exploring a relabelled button is ceremony. The planner may call a change
 // covered by its tests — but only a cosmetic one this small, whatever it says.
 const TRIVIAL_LINES = 30
+
+// The marker a verdict comment ends with, read back by the next run on the
+// same pull request. It is named for this pass because code review comments
+// on the same thread — "the newest marker" could otherwise be code review's.
+const PASS = 'qa'
+const MARK = `orbit-verdict:${PASS}`
+// A commit id is interpolated into a shell command in the plan prompt, so
+// only something shaped like one is trusted — anything else plans in full.
+const sha = v => (typeof v === 'string' && /^[0-9A-Za-z]{4,64}$/.test(v) ? v : null)
+
+const SCOPE_OF = {
+  type: 'object',
+  required: ['head', 'files'],
+  properties: {
+    head: { type: 'string', description: 'the pull request head commit — headRefOid, the full sha' },
+    files: { type: 'array', items: { type: 'string' }, description: 'every file the pull request changes' },
+    previous: {
+      type: 'object',
+      description: `the JSON from the newest comment containing <!-- ${MARK} {…} -->, as written, plus inHistory; omit if there is none`,
+      required: ['pass', 'commit', 'inHistory', 'bugs', 'followUps'],
+      properties: {
+        pass: { type: 'string' },
+        commit: { type: 'string' },
+        inHistory: { type: 'boolean', description: 'git merge-base --is-ancestor <commit> <head> exited 0' },
+        bugs: { type: 'array', items: { type: 'object' }, description: 'each with the probe that found it' },
+        followUps: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+}
 
 const PLAN = {
   type: 'object',
@@ -101,7 +131,11 @@ const RAN = {
 const REFUTATION = {
   type: 'object',
   required: ['refuted', 'why'],
-  properties: { refuted: { type: 'boolean' }, why: { type: 'string' } },
+  properties: {
+    refuted: { type: 'boolean' },
+    contrived: { type: 'boolean', description: 'real, but only reachable with an input nobody gives in normal use — a hand-edited URL or localStorage value, a forged request' },
+    why: { type: 'string' },
+  },
 }
 
 const REPRO = {
@@ -123,11 +157,63 @@ const POSTED = {
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 phase('Plan')
-const plan = await agent(
+// Assigned from the planner below; publish() reads it, and the scope stop
+// returns before the planner runs.
+let plan = null
+// The planner chooses where the probes go, so it is the prompt that has to
+// carry the delta boundary — and it cannot be built from what the planner is
+// about to return. So a cheap agent reads the head, the files and the last
+// verdict first, as code review's context does.
+const scope = await agent(
+  `${HERE}Read what a QA re-review of pull request #${pr} needs, and judge nothing. \`gh pr view ${pr} --json ` +
+  `headRefOid,files,comments\`: return \`head\` (headRefOid) and \`files\` (every path). If a comment contains ` +
+  `\`<!-- ${MARK} {…} -->\`, take the NEWEST such comment, parse the JSON between the tag and \`-->\`, and ` +
+  `return it as \`previous\`, unchanged, with \`inHistory\` set by whether \`git merge-base --is-ancestor ` +
+  `<its commit> <head>\` exits 0 (fetch the head first if it is missing). No such comment: omit \`previous\`.`,
+  { phase: 'Plan', label: 'scope', schema: SCOPE_OF, effort: 'low' },
+)
+// Planning blind would silently close every previous bug.
+if (!scope) return publish({ verdict: 'none', why: 'could not read the pull request' })
+const HEAD_SHA = sha(scope.head)
+const files = Array.isArray(scope.files) ? scope.files : []
+// The marker's own `pass` is checked here, not trusted to the agent's grep.
+const previous = scope.previous && scope.previous.pass === PASS ? scope.previous : null
+if (scope.previous && !previous) log(`ignored a verdict marker from another pass (${scope.previous.pass})`)
+const before = previous && sha(previous.commit)
+const filedBefore = new Set(previous && Array.isArray(previous.followUps) ? previous.followUps : [])
+// The previous bugs' probes are the script's: re-run verbatim by id, so a
+// planner that forgets one cannot quietly close it. They come out of the
+// same budget — they are the probes most likely to matter.
+const recheck = [...(previous && Array.isArray(previous.bugs) ? previous.bugs : [])
+  .map(b => b && b.probe)
+  .filter(p => p && typeof p.id === 'string' && p.id && typeof p.what === 'string')
+  .reduce((m, p) => (m.has(p.id) ? m : m.set(p.id, p)), new Map()).values()].slice(0, MAX_PROBES)
+const RECHECK_IDS = new Set(recheck.map(p => p.id))
+const fresh = MAX_PROBES - recheck.length
+// Both ends of the delta are named commits: in Actions the checkout is the
+// merge of the branch into its base, not the head the marker recorded.
+const ESCAPE = `Probe outside that diff only for something severe enough that it would have blocked a first review.`
+const SCOPE = !previous ? ''
+  : (!before || !HEAD_SHA
+    ? `\n\nThis is a re-review, but the commit the last QA pass looked at is unreadable: plan in full.`
+    : previous.inHistory === true
+      ? `\n\nThis is a re-review. The last QA pass looked at ${before}; the pull request is now at ${HEAD_SHA}. ` +
+        `Plan new probes only for what changed since: \`git diff ${before} ${HEAD_SHA}\`. ${ESCAPE}`
+      : `\n\nThis is a re-review, and ${before}, the commit the last QA pass looked at, is no longer in the ` +
+        `branch's history — it was rebased. \`git fetch origin ${before}\`, then plan new probes only for ` +
+        `\`git diff ${before} ${HEAD_SHA} -- ${files.join(' ')}\` — the files this pull request touches. If that ` +
+        `commit cannot be fetched at all, plan for those files in full. ${ESCAPE}`) +
+    (recheck.length
+      ? ` These probes re-run the bugs the last pass found and are already planned — do not plan them again: ` +
+        `${recheck.map(p => p.id).join(', ')}. Pick at most ${fresh} new ${fresh === 1 ? 'one' : 'ones'}.`
+      : '')
+const budget = recheck.length ? `at most ${fresh} new probes (${recheck.length} of ${MAX_PROBES} are already spent re-running previous bugs)` : `at most ${MAX_PROBES} probes`
+
+plan = await agent(
   `${HERE}Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
   `issue), \`gh pr diff ${pr}\`, and the tests it adds — what they assert is already proven, so spend nothing ` +
   `there. \`node scripts/context.mjs for <changed files>\` names the docs with the callers and test ids. ` +
-  `Pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives. What a browser cannot reach, probe ` +
+  `Pick ${budget} in the order §1 of ${PLAYBOOK} gives. What a browser cannot reach, probe ` +
   `by running it (kind: command): a changed script with an empty, huge or malformed input; a changed ` +
   `workflow script under the stubs tests/unit already uses, with an agent returning null at the new step; a ` +
   `changed GitHub Actions \`if:\` or expression evaluated in a few lines of node against a realistic payload ` +
@@ -136,14 +222,16 @@ const plan = await agent(
   `is genuinely nothing to exercise. Before any of that, decide whether exploring is worth it at all: a ` +
   `cosmetic change — copy, a label, a colour, spacing — that the tests already pin needs no probes; say ` +
   `enough=true, why, and appLines, and return no probes. Anything with logic, data, an API, state or a flow ` +
-  `in it is never enough. Write nothing.`,
+  `in it is never enough. Write nothing.${SCOPE}`,
   { phase: 'Plan', label: 'plan', schema: PLAN },
 )
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
 // Triage: the planner judged the tests enough, and the change is small
 // enough to take its word. Past the line cap it is explored regardless.
 const mayTriage = Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY
-if (plan.enough === true && mayTriage) {
+// A skip re-runs nothing, so it is never taken over previous bugs: that
+// would publish a clean marker and close them unexamined.
+if (plan.enough === true && mayTriage && !recheck.length) {
   log(`QA triage: skipped — ${plan.enoughWhy || 'cosmetic, covered by tests'}`)
   return publish({ verdict: 'pass', confidence: 'medium', skipped: true,
     covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${APP_LINES} UI lines)`, probes: [] })
@@ -151,20 +239,33 @@ if (plan.enough === true && mayTriage) {
 // Over the cap, or no count: the planner said "enough" and so planned no
 // probes. Ask again for a real plan — logging "exploring anyway" and then
 // falling through to "nothing to exercise" explored nothing.
-if (plan.enough === true) {
+if (plan.enough === true && mayTriage) {
+  log(`QA triage: the planner called it enough — running only the ${recheck.length} previous bug probe(s)`)
+  plan.probes = []
+} else if (plan.enough === true) {
   log(`QA triage: the planner called it enough, but the change is not a small UI-only one (${Number.isInteger(APP_LINES) ? APP_LINES : 'unknown'} app lines, ui-only ${UI_ONLY}) — exploring anyway`)
   const again = await agent(
     `${HERE}Plan exploratory QA for pull request #${pr}. It cannot be skipped: only a UI-only change of at most ` +
     `${TRIVIAL_LINES} lines may be called covered by its tests, and this is not one. ` +
     `Do not return enough=true. Otherwise plan exactly as before: read the ticket's Done when, \`gh pr diff ${pr}\` ` +
-    `and the tests it adds, then pick at most ${MAX_PROBES} probes in the order §1 of ${PLAYBOOK} gives — ` +
-    `browser probes, or command probes for what a browser cannot reach. Write nothing.`,
+    `and the tests it adds, then pick ${budget} in the order §1 of ${PLAYBOOK} gives — ` +
+    `browser probes, or command probes for what a browser cannot reach. Write nothing.${SCOPE}`,
     { phase: 'Plan', label: 'plan-again', schema: PLAN },
   )
   if (!again) return publish({ verdict: 'none', why: 'the planner did not finish' })
   plan.surface = again.surface
   plan.reason = again.reason
   plan.probes = again.probes
+}
+// The recheck probes go in first, each id once (the recheck copy wins), and
+// the whole list obeys the budget — assigned back to plan.probes so that
+// everything downstream counts each id exactly once. Above the early return:
+// a planner told to leave the previous bugs alone may fairly plan nothing
+// new, and "nothing to exercise" would then close every one of them.
+if (recheck.length) {
+  const seen = new Set()
+  plan.probes = [...recheck, ...(plan.probes || [])].filter(p => p && !seen.has(p.id) && seen.add(p.id)).slice(0, MAX_PROBES)
+  plan.surface = true
 }
 if (!plan.surface || !plan.probes.length) return publish({ verdict: 'pass', confidence: 'low', covered: `nothing to exercise — ${plan.reason || 'no probe could be planned'}`, probes: [] })
 
@@ -224,6 +325,7 @@ for (const p of failing) {
     `${plan.issue || pr} <png>\`.`,
     { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO },
   )
+  const again = RECHECK_IDS.has(p.id)
   // A probe nobody could re-run is a question, not a bug.
   let kind = !repro || repro.onBranch === 'passes-now' ? 'flaky'
     : repro.onBase === 'fails' ? 'pre-existing'
@@ -232,8 +334,10 @@ for (const p of failing) {
   // not that the change is wrong. On #49 QA ran the PR's new tests against
   // main's copy of the code they test, and called their failure a bug. Like
   // code review's, a QA blocker now has to survive someone trying to refute it.
+  // A previous bug's probe that fails again already survived a skeptic when
+  // it was first found; re-arguing it invites it to flip between rounds.
   let doubt = null
-  if (kind === 'bug') {
+  if (kind === 'bug' && !again) {
     const v = await agent(
       `${HERE}QA reproduced this on pull request #${pr} and not on its base: "${p.id}" — ${p.what}; expected ` +
       `${p.expect}; happened: ${repro.happened}. Try to REFUTE that it is a bug in this change. Read the probe ` +
@@ -241,11 +345,14 @@ for (const p of failing) {
       `selector, a wrong expectation, the ticket asking for this behaviour), if it tests code or tests the PR ` +
       `adds against the base's version of the code they cover, if the failure is the environment (ports, data ` +
       `left by another test, timing), or if it is behaviour the ticket or a human on the PR asked for. If you ` +
-      `cannot tell, it is NOT refuted.`,
+      `cannot tell, it is NOT refuted. If it is real but only reachable with an input nobody gives in normal ` +
+      `use — a hand-edited URL or localStorage value, a forged request — say contrived, and why.`,
       { phase: 'Reproduce', label: `skeptic:${p.id}`, schema: REFUTATION, effort: 'medium' },
     )
     // A skeptic that died refuted nothing.
     if (v && v.refuted === true) { kind = 'question'; doubt = String(v.why || '').trim() || 'the skeptic refuted it without giving a reason' }
+    // Real, but not through normal use: tracked as an issue, not blocking.
+    else if (v && v.contrived === true) { kind = 'follow-up'; doubt = String(v.why || '').trim() || 'only reachable with a contrived input' }
   }
   findings.push({ probe: p, project, kind, happened: repro ? repro.happened : r.happened, image: repro && repro.image, doubt })
 }
@@ -262,7 +369,8 @@ const bugs = findings.filter(f => f.kind === 'bug')
 return publish({
   verdict: bugs.length ? 'fail' : 'pass',
   confidence,
-  covered: `${bothRan}/${plan.probes.length} probes ran as planned: ${plan.probes.map(p => p.id).join(', ')}`,
+  covered: `${bothRan}/${plan.probes.length} probes ran as planned: ${plan.probes.map(p => p.id).join(', ')}` +
+    (recheck.length ? ` (re-checked from the last pass: ${recheck.map(p => p.id).join(', ')})` : ''),
   probes: plan.probes,
   findings,
   cleanup: true,
@@ -270,7 +378,7 @@ return publish({
 
 async function publish(r) {
   const CALLOUT = { high: ['TIP', '●●●'], medium: ['NOTE', '●●○'], low: ['WARNING', '●○○'] }
-  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug' }
+  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug', 'follow-up': 'a follow-up — reproduced, but only with an input nobody gives in normal use; filed as an issue' }
   const findings = r.findings || []
   let head, line
   if (r.verdict === 'fail') {
@@ -292,7 +400,29 @@ async function publish(r) {
         `Did: ${f.probe.what}\nExpected: ${f.probe.expect}\nHappened: ${f.happened}` + (f.doubt ? `\nWhy it is not a blocker: ${f.doubt}` : '') + (f.image ? `\n${f.image}` : '')).join('\n\n')
     : '')
 
-  const out = { verdict: r.verdict, confidence: r.confidence, pr, comment: body, verdictLine: line, issue: plan && plan.issue, issueNote: head, findings }
+  // The marker and the follow-up issues only for a pass that finished: one
+  // that did not probed no commit, and recording one would let the next run
+  // treat every previous bug as closed. Follow-ups are filed on a fail too.
+  let comment = body, file = []
+  if (r.verdict === 'pass' || r.verdict === 'fail') {
+    const fus = findings.filter(f => f.kind === 'follow-up').slice(0, 3)
+    file = fus.filter(f => !filedBefore.has(f.probe.id)).map(f => ({
+      key: f.probe.id,
+      title: `Follow-up from #${pr}: ${f.probe.id} — ${f.happened}`.slice(0, 120),
+      body: `QA reproduced this on #${pr} and judged it not a blocker: ${f.doubt}.\n\nProbe ${f.probe.id} (${f.project})\n` +
+        `Did: ${f.probe.what}\nExpected: ${f.probe.expect}\nHappened: ${f.happened}`,
+    }))
+    const mark = {
+      pass: PASS,
+      commit: HEAD_SHA,
+      bugs: findings.filter(f => f.kind === 'bug').map(f => ({ id: f.probe.id, happened: f.happened, probe: f.probe })),
+      followUps: [...new Set([...filedBefore, ...fus.map(f => f.probe.id)])],
+    }
+    // `<` and `>` escaped, so no probe text can close the comment early.
+    comment += `\n\n<!-- ${MARK} ${JSON.stringify(mark).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')} -->`
+  }
+
+  const out = { verdict: r.verdict, confidence: r.confidence, pr, comment, verdictLine: line, issue: plan && plan.issue, issueNote: head, findings, probes: r.probes || [], followUps: file }
   // In CI the job posts these itself (the runner is thrown away, so there is
   // nothing to clean up either). An agent told to publish once returned
   // posted:false and the check read "did not finish".
@@ -302,7 +432,11 @@ async function publish(r) {
   const posted = await agent(
     HERE + (r.cleanup ? `First delete ${PROBE_FILE} and any ../orbit-qa-base worktree, and leave \`git status\` clean.\n\n` : '') +
     `Post this as ONE comment on pull request #${pr}, exactly as written — write it to a file and use ` +
-    `\`gh pr comment ${pr} --body-file <file>\`:\n\n${body}\n\n` +
+    `\`gh pr comment ${pr} --body-file <file>\`:\n\n${comment}\n\n` +
+    // In CI the job files these; on a laptop nothing else would, and the
+    // marker already says they were filed.
+    file.map(f => `Then \`gh issue create --label follow-up\` (without the label if it does not exist) titled ` +
+      `${JSON.stringify(f.title)}, with this body:\n${f.body}\n\n`).join('') +
     (plan && plan.issue
       ? `Then comment on issue #${plan.issue} with only the callout block above (the lines starting ">") ` +
         `followed by " → <the PR comment url>" — the findings stay on the pull request.\n\n`
