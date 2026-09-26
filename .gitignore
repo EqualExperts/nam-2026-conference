@@ -23,3 +23,6 @@ blob-report/
 
 # APM dependencies
 apm_modules/
+
+# Agent worktrees (Claude Code isolation) — local only
+.claude/worktrees/
