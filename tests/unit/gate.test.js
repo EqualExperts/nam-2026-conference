@@ -92,7 +92,7 @@ describe('a tree with work the pull request will not contain', () => {
     assert.equal(isDirty(''), false);
   });
 
-  test("files the build job swapped in from main are not the branch's work", () => {
+  test("files the ship job swapped in from main are not the branch's work", () => {
     const status = ' M playwright.config.js\n M scripts/gate.mjs';
     assert.equal(isDirty(status, ['playwright.config.js', 'scripts/gate.mjs']), false);
     assert.equal(isDirty(status + '\n M src/App.jsx', ['playwright.config.js', 'scripts/gate.mjs']), true);

@@ -10,7 +10,7 @@ files:
   - docs/harness/github.md
   - docs/harness/code-review-playbook.md
   - docs/harness/qa-playbook.md
-  - .github/workflows/agent-build.yml
+  - .github/workflows/agent-ship.yml
   - .github/workflows/agent-code-review.yml
   - .github/workflows/agent-qa.yml
   - .github/workflows/agent-respond.yml
@@ -38,7 +38,7 @@ the way they are. This is the machinery.
 
 ## How it works
 
-**Trigger.** `agent-build.yml` fires on `issues: labeled` filtered to
+**Trigger.** `agent-ship.yml` fires on `issues: labeled` filtered to
 `ready-for-ai`, and on an `@claude` comment on a plain issue from someone with
 write access — that comment rides along as `/ship <n> <comment>`, and reaches
 the spec writer and every auditor as notes that amend the ticket. `@claude` on
@@ -96,7 +96,7 @@ pushes the branch, opens a **draft** PR (`Refs #n`, not `Closes`) listing what
 is open, comments on the issue and labels it `needs-human`. A dead setup
 agent, or one missing `doneWhen`/`branch`/`workdir`, hands back too.
 
-**The runner checks behind it.** After the agent step, `agent-build.yml`
+**The runner checks behind it.** After the agent step, `agent-ship.yml`
 reads the issue's label. Still `ai-working` → the run died: hand back, naming
 the branch. Otherwise, if the branch has an open non-draft PR, it re-runs
 `gate.mjs` itself on the PR head,

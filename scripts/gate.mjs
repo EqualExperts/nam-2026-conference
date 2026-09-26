@@ -7,7 +7,7 @@
  * its answer. That is an agent marking its own homework. This runs the suites,
  * reads Playwright's JSON reporter rather than its prose, and prints the
  * verdict as JSON — the line the workflow parses, and the file
- * (`test-results/gate.json`) the build job re-reads.
+ * (`test-results/gate.json`) the ship job re-reads.
  *
  * Two things it does that a person running `npm run verify` would not:
  *
@@ -86,7 +86,7 @@ export function tampered(diff) {
 /**
  * Does `git status --porcelain` show work the pull request will not contain?
  * Any tracked change counts; an untracked file only under tests/. `pinned`
- * names files the caller swapped in on purpose — the build job runs main's
+ * names files the caller swapped in on purpose — the ship job runs main's
  * gate and config against the branch — which are not the branch's work.
  */
 export function isDirty(porcelain, pinned = []) {

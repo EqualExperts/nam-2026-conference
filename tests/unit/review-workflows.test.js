@@ -112,7 +112,7 @@ describe('code-review', () => {
   });
 
   test('a GitHub Actions change gets the Actions lens, not the app ones', async () => {
-    assert.deepEqual(await lensesFor(['.github/workflows/agent-build.yml']), ['actions', 'criteria']);
+    assert.deepEqual(await lensesFor(['.github/workflows/agent-ship.yml']), ['actions', 'criteria']);
   });
 
   test('an AI-context change gets the docs-truth lens', async () => {
@@ -129,7 +129,7 @@ describe('code-review', () => {
   });
 
   test('the Actions lens is pointed at what this repo learned the hard way', async () => {
-    const { prompts } = await run({ context: { ...CTX, files: ['.github/workflows/agent-build.yml'] } });
+    const { prompts } = await run({ context: { ...CTX, files: ['.github/workflows/agent-ship.yml'] } });
     assert.match(prompts['review:actions'], /script injection/);
     assert.match(prompts['review:actions'], /docs\/harness\/github\.md/);
   });

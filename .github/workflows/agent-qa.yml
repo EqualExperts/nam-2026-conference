@@ -8,8 +8,8 @@
 ## advice. The agent writes a verdict, a shell step turns it into a check run
 ## on the pull request, and branch protection can require it.
 ##
-## Triggered by the pull request itself. An earlier version keyed off the build
-## workflow finishing, which does not work: a build started by an `issues`
+## Triggered by the pull request itself. An earlier version keyed off the ship
+## workflow finishing, which does not work: a run started by an `issues`
 ## event reports `head_branch` as `main`, so the lookup for its pull request
 ## found nothing and these passes never ran.
 name: Agent · QA
