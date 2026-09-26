@@ -68,34 +68,33 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - uses: anthropics/claude-code-action@v1
+      # claude-code-action drives the Agent SDK, which stops at the first
+      # result — and a saved workflow's first result is its launcher saying
+      # "running in the background". The action ended there and the workflow
+      # died unstarted, reporting success. The CLI waits; see agent-run.sh.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run /qa
         # The agent failing is not the same as the change failing. Its verdict
         # is the signal, and the step below is what acts on it.
         continue-on-error: true
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # GITHUB_TOKEN deliberately, not AGENT_GITHUB_TOKEN. This pass only
-          # comments; it never opens a pull request or pushes, so it gains
-          # nothing from a personal token — and with one its comments are
-          # attributed to the person whose token it is, which on their own
-          # pull request reads as them reviewing their own work.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Without AGENT_GITHUB_TOKEN the pull request is opened by
-          # github-actions[bot], so this run's triggering actor is a bot — and
-          # the action rejects bot actors by default, to stop a bot triggering
-          # Claude in a loop. This pass cannot cause that loop: it only
-          # comments, and never opens a pull request or pushes. Without this
-          # line it simply never runs on anybody who has not set a PAT.
-          allowed_bots: "github-actions[bot]"
-          # A saved workflow, run as a slash command. It composes the
-          # comment and writes /tmp/qa-verdict itself, so the shape of both
-          # no longer depends on a model remembering it.
-          prompt: "/qa ${{ github.event.pull_request.number }}"
-          claude_args: >-
-            --model claude-sonnet-5 --max-turns 20
-            --allowedTools "Workflow,Bash,Read,Write,Glob,Grep"
+        timeout-minutes: 23
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE: ${{ github.base_ref }}
+          PR: ${{ github.event.pull_request.number }}
           NO_OPEN: "1"
+        run: |
+          # The harness must not review itself: a pull request that edits the
+          # review workflow, its playbook or CLAUDE.md would otherwise be
+          # judged by its own version of them. Run the base branch's.
+          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs; do
+            git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
+          done
+          # Sonnet: this pass is coverage, not insight.
+          scripts/agent-run.sh "/qa $PR --no-publish" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
 
       # The verdict is a file the agent writes, not a mood. No file means the
       # pass did not finish, which is not the same as finding nothing — say so
@@ -109,8 +108,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          verdict=$(head -c 2000 /tmp/qa-verdict 2>/dev/null | tr '\n' ' ' || true)
+          # The workflow returns its comment, verdict line and a one-line note
+          # for the issue; this step posts them. No model sits between the
+          # verdict and the check.
+          result="$RUNNER_TEMP/workflow-result.json"
+          field() { jq -r --arg k "$1" '.[$k] // empty' "$result" 2>/dev/null || true; }
+          field comment > "$RUNNER_TEMP/comment.md"
+          if [ -s "$RUNNER_TEMP/comment.md" ]; then
+            url=$(gh pr comment "$PR" --body-file "$RUNNER_TEMP/comment.md")
+            issue=$(field issue)
+            if [ -n "$issue" ] && [ "$issue" != "0" ]; then
+              { field issueNote; echo " → ${url:-$GITHUB_SERVER_URL/$GH_REPO/pull/$PR}"; } > "$RUNNER_TEMP/issue.md"
+              gh issue comment "$issue" --body-file "$RUNNER_TEMP/issue.md" || true
+            fi
+          fi
+          verdict=$(field verdictLine | head -c 2000 | tr '\n' ' ')
           state=$(printf '%s' "$verdict" | awk '{print $1}')
           confidence=$(printf '%s' "$verdict" | awk '{print $2}')
           detail=$(printf '%s' "$verdict" | cut -d' ' -f3-)
