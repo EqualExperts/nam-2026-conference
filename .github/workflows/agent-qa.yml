@@ -105,7 +105,9 @@ jobs:
           # Sonnet: this pass is coverage, not insight.
           # Facts for QA's triage, from git — never the planner's word: how much
           # app code changed, and whether the change is UI-only.
-          app=$(git diff --numstat "origin/$BASE...HEAD" -- src server | awk '{n += $1 + $2} END {print n + 0}')
+          # A binary file shows as "-" and would count as nothing; it counts as
+          # over the cap instead, so an added image can never hide in a skip.
+          app=$(git diff --numstat "origin/$BASE...HEAD" -- src server | awk '$1 == "-" {n += 1000; next} {n += $1 + $2} END {print n + 0}')
           files=$(git diff --name-only "origin/$BASE...HEAD")
           ui=no
           if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '^(src/|tests/|docs/|specs/)' && printf '%s\n' "$files" | grep -q '^src/'; then ui=yes; fi
