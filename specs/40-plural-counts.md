@@ -86,3 +86,11 @@ prove the surrounding markup didn't break.
 Any other hard-coded plural in the app that isn't named above or discovered
 to share the exact same bug; the wording of "person"/"people" (waitlist),
 which is already handled by `plural`'s irregular form and untouched here.
+
+## Audit
+
+- **Spec round 1** — 2 findings raised, 0 confirmed. Both were skepticked out
+  before costing a fix; nothing in the spec changed as a result.
+- **Build round 1** — unit (265) and browser (157, both projects) all passed;
+  0 findings raised. `985083b` wrote the spec, `74bd76c` added the two unit
+  cases, `8fdcec7` made the five call sites use `plural`.
