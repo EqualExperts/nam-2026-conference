@@ -22,6 +22,10 @@ model="${3:-claude-opus-5}"
 out="${RUNNER_TEMP:-/tmp}/claude-run.jsonl"
 summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
+# Wait for the workflow however long it takes; the CI step's timeout-minutes
+# bounds it. The CLI's own default gives up — and kills it — at 600s.
+export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS:-0}"
+
 claude -p "$prompt" \
   --model "$model" \
   --allowedTools "$tools" \
