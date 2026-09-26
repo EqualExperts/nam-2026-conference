@@ -137,7 +137,8 @@ survived:
   it; `surface: false` only when nothing can be exercised → a low-confidence
   pass) → *Probe* (commands first, then one browser spec, both viewports) → *Reproduce*, one failing probe at a time: again on the branch,
   then on the base in a separate worktree → *Publish*. Only a failure that
-  reproduces on the branch and not on the base is a bug; one that did not
+  reproduces on the branch and not on the base, and survives a `skeptic:<probe>`
+  asked to refute it as a bug in this change, is a bug (a refuted one is a question); one that did not
   reproduce is a question. Confidence is the share of the plan that ran on
   both viewports. `agent-respond.yml` handles `@claude` and
 pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits

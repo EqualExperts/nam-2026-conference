@@ -86,6 +86,12 @@ const RAN = {
   },
 }
 
+const REFUTATION = {
+  type: 'object',
+  required: ['refuted', 'why'],
+  properties: { refuted: { type: 'boolean' }, why: { type: 'string' } },
+}
+
 const REPRO = {
   type: 'object',
   required: ['onBranch', 'onBase', 'happened'],
@@ -178,10 +184,29 @@ for (const p of failing) {
     { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO },
   )
   // A probe nobody could re-run is a question, not a bug.
-  const kind = !repro || repro.onBranch === 'passes-now' ? 'flaky'
+  let kind = !repro || repro.onBranch === 'passes-now' ? 'flaky'
     : repro.onBase === 'fails' ? 'pre-existing'
     : 'bug'
-  findings.push({ probe: p, project, kind, happened: repro ? repro.happened : r.happened, image: repro && repro.image })
+  // Reproducing on the branch and not on the base proves the probe fails —
+  // not that the change is wrong. On #49 QA ran the PR's new tests against
+  // main's copy of the code they test, and called their failure a bug. Like
+  // code review's, a QA blocker now has to survive someone trying to refute it.
+  let doubt = null
+  if (kind === 'bug') {
+    const v = await agent(
+      `${HERE}QA reproduced this on pull request #${pr} and not on its base: "${p.id}" — ${p.what}; expected ` +
+      `${p.expect}; happened: ${repro.happened}. Try to REFUTE that it is a bug in this change. Read the probe ` +
+      `(${PROBE_FILE} or the command) and \`gh pr diff ${pr}\`. Refute if the probe itself is wrong (a wrong ` +
+      `selector, a wrong expectation, the ticket asking for this behaviour), if it tests code or tests the PR ` +
+      `adds against the base's version of the code they cover, if the failure is the environment (ports, data ` +
+      `left by another test, timing), or if it is behaviour the ticket or a human on the PR asked for. If you ` +
+      `cannot tell, it is NOT refuted.`,
+      { phase: 'Reproduce', label: `skeptic:${p.id}`, schema: REFUTATION, effort: 'medium' },
+    )
+    // A skeptic that died refuted nothing.
+    if (v && v.refuted === true) { kind = 'question'; doubt = String(v.why || '').trim() || 'the skeptic refuted it without giving a reason' }
+  }
+  findings.push({ probe: p, project, kind, happened: repro ? repro.happened : r.happened, image: repro && repro.image, doubt })
 }
 
 // ── Publish ─────────────────────────────────────────────────────────────────
@@ -204,7 +229,7 @@ return publish({
 
 async function publish(r) {
   const CALLOUT = { high: ['TIP', '●●●'], medium: ['NOTE', '●●○'], low: ['WARNING', '●○○'] }
-  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce' }
+  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug' }
   const findings = r.findings || []
   let head, line
   if (r.verdict === 'fail') {
@@ -221,7 +246,7 @@ async function publish(r) {
   const body = head + (findings.length
     ? '\n\n' + findings.map(f =>
         `**${f.probe.id}** (${f.project}) — *${LABEL[f.kind]}*\n` +
-        `Did: ${f.probe.what}\nExpected: ${f.probe.expect}\nHappened: ${f.happened}` + (f.image ? `\n${f.image}` : '')).join('\n\n')
+        `Did: ${f.probe.what}\nExpected: ${f.probe.expect}\nHappened: ${f.happened}` + (f.doubt ? `\nWhy it is not a blocker: ${f.doubt}` : '') + (f.image ? `\n${f.image}` : '')).join('\n\n')
     : '')
 
   const out = { verdict: r.verdict, confidence: r.confidence, pr, comment: body, verdictLine: line, issue: plan && plan.issue, issueNote: head, findings }

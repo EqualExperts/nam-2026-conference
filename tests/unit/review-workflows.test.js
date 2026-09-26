@@ -279,4 +279,37 @@ describe('qa', () => {
     assert.equal(result.issue, 27);
     assert.match(result.issueNote, /### QA/);
   });
+
+  describe('a QA blocker has to survive a skeptic', () => {
+    test('a reproduced failure the skeptic refutes is a question, and the check passes', async () => {
+      const { result, prompts } = await run({
+        probe: withFail('b'),
+        skeptic: { refuted: true, why: 'the probe ran the PR\'s new tests against the base copy of the code' },
+      });
+      assert.equal(result.verdict, 'pass');
+      assert.match(prompts.publish, /refuted as a bug/);
+      assert.match(prompts.publish, /Why it is not a blocker: the probe ran/);
+    });
+
+    test('one the skeptic cannot refute still fails the check', async () => {
+      const { result } = await run({ probe: withFail('b'), skeptic: { refuted: false, why: 'real' } });
+      assert.equal(result.verdict, 'fail');
+    });
+
+    test('a refutation with no reason still says something where the reason goes', async () => {
+      const { result, prompts } = await run({ probe: withFail('b'), skeptic: { refuted: true, why: '  ' } });
+      assert.equal(result.verdict, 'pass');
+      assert.match(prompts.publish, /Why it is not a blocker: the skeptic refuted it without giving a reason/);
+    });
+
+    test('a skeptic that dies refutes nothing', async () => {
+      const { result } = await run({ probe: withFail('b'), skeptic: null });
+      assert.equal(result.verdict, 'fail');
+    });
+
+    test('pre-existing and flaky findings are not sent to a skeptic', async () => {
+      const { calls } = await run({ probe: withFail('b'), repro: { onBranch: 'fails-again', onBase: 'fails', happened: 'x' } });
+      assert.ok(!calls.some(c => c.startsWith('skeptic')));
+    });
+  });
 });
