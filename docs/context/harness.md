@@ -68,12 +68,12 @@ fresh context; the script holds all state between them. In order:
 
 | Phase | Agent label(s) | Returns | Loops |
 | --- | --- | --- | --- |
-| Setup | `setup` | `SETUP` — proceed, branch, workdir, runner, doneWhen | — |
+| Setup | `setup` | `SETUP` — proceed, branch, workdir, runner, doneWhen, size | — |
 | Spec | `write-spec` | spec path | — |
-| Spec Audit | `spec-audit:{criteria,fit}#n`, `skeptic:*`, `revise-spec#n` | `FINDINGS` | ≤ `MAX_SPEC_ROUNDS` (3) |
-| Implement | `implement` | `DONE` | — |
+| Spec Audit | small: `spec-audit:combined#1`; full: `spec-audit:{criteria,fit}#n`; `skeptic:*`, `revise-spec#n` | `FINDINGS` | small 1, full ≤ 3 |
+| Implement | `implement` | `DONE` (+ `ui`) | — |
 | Verify | `verify#n` | `GATE` — the JSON line `scripts/gate.mjs` printed | each build round |
-| Code Audit | `audit:{criteria,rules}#n` together, then `audit:browser#n`; `skeptic:*`; `fix#n` | `FINDINGS` | ≤ `MAX_BUILD_ROUNDS` (4) |
+| Code Audit | small: `audit:combined#n`, then `audit:browser#n` if `ui`; full: `audit:{criteria,rules}#n`, then `audit:browser#n`; `skeptic:*`; `fix#n` | `FINDINGS` | small ≤ 2, full ≤ 4 |
 | Context | `context` | `DONE` | — |
 | Learn | `learn` | `LESSON` | only if anything was confirmed |
 | PR | `open-pr` | `DONE` with url | — |
