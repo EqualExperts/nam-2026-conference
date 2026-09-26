@@ -158,7 +158,7 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - **Add a data lane**: add an entry to `LANES` in `tests/helpers.js` with a `desktop` and a
   `mobile` pair whose `user`+`day` no other lane or fixture holds (see *Gotchas*), and — on
   day index 2 — that is pinned to a slot no `slot` lane owns (`09:00, 10:15, 11:30, 13:30,
-  14:45, 16:00` are taken; `17:15` is free) rather than picked dynamically with
+  14:45, 16:00` belong to the seat-count lanes and `17:15` to `agenda.next-up-done`, so day index 2 has no free slot left) rather than picked dynamically with
   `bookableFor`, which can land on a seat-count lane's session. Check the whole table, not
   just lanes for the same attendee. Mark `clean: true` only if the seed books nothing for
   that attendee that day (seed doc lists who has which days). Read it with
