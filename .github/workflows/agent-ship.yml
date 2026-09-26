@@ -205,7 +205,9 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           if [ "$verdict" = red ]; then
-            why=$(jq -r '[(.browser.failed // [])[].test, (if (.unit.failed // 0) > 0 then "npm test" else empty end), (if .dirty then "uncommitted changes" else empty end)] | map("- " + .) | join("\n")' "$report" 2>/dev/null)
+            # `|| true`: the step runs under bash -e, and a gate that crashed
+            # before writing its report must still put the PR back to draft.
+            why=$(jq -r '[(.browser.failed // [])[].test, (if (.unit.failed // 0) > 0 then "npm test" else empty end), (if .dirty then "uncommitted changes" else empty end)] | map("- " + .) | join("\n")' "$report" 2>/dev/null || true)
             gh pr ready "$pr" --undo || true
             gh issue edit "$N" --add-label needs-human --remove-label ready-for-human || true
             gh pr comment "$pr" --body "> [!CAUTION]
