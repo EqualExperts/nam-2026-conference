@@ -108,7 +108,16 @@ required check:
   id (the recheck copy wins), truncates to `MAX_PROBES` and **assigns it back
   to `plan.probes`** — so the budget, `bothRan`, `covered` and the published
   probe list all count each id exactly once, without touching anything
-  downstream. Each recheck probe comes from the marker, which records the
+  downstream. That merge happens the moment the planner returns and
+  **above the `if (!plan.surface || !plan.probes.length)` early return**
+  (qa.js:128); a non-empty recheck list also forces `plan.surface` true. A
+  planner told "do not plan these two, pick at most three new ones" on a small
+  or docs-only delta can legitimately return no probes, or `surface: false`, and
+  below that guard QA would publish its low-confidence "nothing to exercise"
+  pass — having re-run none of the previous bugs' probes, and leaving a marker
+  with no bugs that silently closes every one of them. The guard keeps its
+  meaning where it has one: on a first review the recheck list is empty and
+  nothing changes. Each recheck probe comes from the marker, which records the
   probe that found each bug, so it can be re-run verbatim. A recheck probe that
   fails and reproduces is a bug without a skeptic — it already survived one;
   one that passes is a resolved bug and leaves the verdict.
@@ -179,6 +188,7 @@ agents return, which is exactly what that harness exercises.
 | A still-unresolved previous blocker stays a blocker | `an unresolved previous blocker still fails the review` — verdict `fail`, the claim in the verdict line, and no `skeptic:` call for it |
 | **Resolved blockers leave the verdict** — a re-review converges | `a re-review whose only previous blocker is resolved publishes a pass` — asserts the *decision*, not only its colour, because a green verdict on a clean diff is already true today: exactly one `recheck:*` agent ran, keyed for the previous blocker's category, and it returned `{ resolved: true }`; the lenses on the delta are clean; the verdict is `pass` **and** the old claim is absent from both `result.comment`'s findings and the marker's `blockers`. The QA twin asserts the previous bug's probe id is in the published probe list and was run as a recheck (passing), `verdict: 'pass'`, and no `repro:` call. Every one of those assertions fails on `main`, where no recheck phase exists — which is what makes the row a proof rather than a restatement |
 | QA re-runs the previous failing probes itself, each id once | `a re-review re-runs each previous bug's probe exactly once, inside the budget` — a `previous` with two bugs and a planner that returns four fresh probes (and, in a second run, a planner that returns one of the recheck ids anyway) yields a probe list of `MAX_PROBES` with no repeated id, the two recheck ids first, and `covered` counting `5/5`; the plan prompt names those ids and the reduced budget |
+| …even when the planner returns nothing new | `a re-review with an empty plan still re-runs the previous bugs' probes` — a `previous` with two bugs and a planner returning `{ surface: false, probes: [] }` does **not** take the "nothing to exercise" early return: both recheck ids are in the published probe list, both were run, and the verdict comes from their results (`pass` when both pass, `fail` with one reproduced failure when one does not), not from an empty plan. The pair `{ surface: true, probes: [] }` is asserted the same way |
 | Severe new problem outside the delta may still block | `a blocker outside the delta is still published` — the lens returns one and the verdict is `fail`; the prompt's escape clause is asserted as text |
 | A blocker names how and what harm, or it is a follow-up | `a blocker with no path through normal use publishes as a follow-up` — `how`/`harm` blank → verdict `pass`, the finding in `result.followUps` |
 | The skeptic downgrades a contrived blocker | `a contrived-input finding becomes a follow-up, not a refutation` — skeptic `{ refuted: false, contrived: true }` → verdict `pass`, one follow-up, and the reason in the comment; the QA twin asserts the same for a reproduced failure |
