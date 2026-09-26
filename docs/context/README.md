@@ -44,6 +44,6 @@ doc under about 150 lines; one that needs more is two areas.
 
 The ship workflow's **Context** phase runs `for` over the files a branch
 changed and updates exactly those docs, in the same pull request as the code.
-Its **Learn** phase adds to *Gotchas* when an audit caught something a builder
+Its **Learn** phase adds to *Gotchas* when an audit caught something the ship run's implementer
 should have known. A doc that disagrees with the code is worse than none —
 it is read *instead of* the code.

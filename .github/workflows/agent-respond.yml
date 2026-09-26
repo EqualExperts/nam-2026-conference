@@ -6,7 +6,7 @@
 ##
 ## No `prompt` input, so the action runs in interactive mode: it waits for the
 ## trigger phrase rather than being told what to do up front.
-name: Agent · respond
+name: 💬 Agent · respond
 
 on:
   issue_comment:
@@ -64,7 +64,7 @@ jobs:
 
       # A review comment usually asks for a behaviour change, so the agent needs
       # to be able to re-run the gate before it replies.
-      - name: Install Chromium
+      - name: 🎭 Install Chromium
         run: npx playwright install --with-deps chromium
 
       - uses: anthropics/claude-code-action@v1

@@ -10,7 +10,7 @@
 ## workflow finishing, which does not work: a run started by an `issues`
 ## event reports `head_branch` as `main`, so the lookup for its pull request
 ## found nothing and these passes never ran.
-name: Agent · code review
+name: 🔍 Agent · code review
 
 on:
   pull_request:
@@ -63,10 +63,10 @@ jobs:
       # result — and a saved workflow's first result is its launcher saying
       # "running in the background". The action ended there and the workflow
       # died unstarted, reporting success. The CLI waits; see agent-run.sh.
-      - name: Install Claude Code
+      - name: 📦 Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Run /code-review
+      - name: 🔍 Run /code-review
         # The agent crashing is not the same as the change being wrong; its
         # verdict is the signal, and the step below is what acts on it.
         continue-on-error: true
@@ -115,7 +115,7 @@ jobs:
       # Red means a blocker was found, not that merging is forbidden — nothing
       # here is a required check. It puts the blocker where a skim-reader sees
       # it instead of three comments down.
-      - name: Publish the verdict
+      - name: 📣 Publish the verdict
         if: ${{ !cancelled() }}
         env:
           # Check runs can only be created by a GitHub App. GITHUB_TOKEN is
@@ -163,7 +163,7 @@ jobs:
           esac
 
           gh api "repos/$GH_REPO/check-runs" \
-            -f name='Code review verdict' \
+            -f name='🔍 Code review verdict' \
             -f head_sha="$SHA" \
             -f status=completed \
             -f conclusion="$conclusion" \

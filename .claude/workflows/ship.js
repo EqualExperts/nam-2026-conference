@@ -18,7 +18,7 @@ export const meta = {
 // ── Knobs ────────────────────────────────────────────────────────────────────
 // A loop that has not converged by these counts is not going to. Past them the
 // ticket goes to a person, with everything still open written down, rather than
-// burning another round on a finding the builder keeps failing to fix.
+// burning another round on a finding the implementer keeps failing to fix.
 let MAX_SPEC_ROUNDS = 3
 let MAX_BUILD_ROUNDS = 4
 
@@ -108,7 +108,7 @@ const FINDINGS = {
     findings: {
       type: 'array',
       // Unbounded, one auditor can fan out a skeptic per nit. Five blockers
-      // in one lens means the build is wrong, not that it needs five fixes.
+      // in one lens means the implementation is wrong, not that it needs five fixes.
       maxItems: 5,
       items: {
         type: 'object',
@@ -297,7 +297,7 @@ async function learn(how) {
   if (!history.length) return []
   const result = await agent(
     `${inTree()}\n\nThe ship run for issue #${issue} ${how}. Along the way independent audits confirmed these ` +
-    `problems the builder had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
+    `problems the implementer had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
     `would recur on a different ticket — not this ticket's specifics. For each, decide where the knowledge ` +
     `would have been seen in time: the *Gotchas* of the docs/context/ doc for that area (usually), CLAUDE.md ` +
     `(only for a decision, not a fact about code), or ${SKILL} (for a process step). If it is already written ` +
@@ -315,8 +315,8 @@ phase('Setup')
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
-  `Set up to build GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly: read the ticket, decide whether ` +
-  `it is buildable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
+  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly: read the ticket, decide whether ` +
+  `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
@@ -325,7 +325,7 @@ setup = await agent(
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
   `later phase would run commands that do not exist in the worktree. Do not write the spec or any code. Return proceed=false with the ` +
-  `reason if it is not buildable, and in that case also do §9 (comment and label needs-human). Size it: small ` +
+  `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Size it: small ` +
   `unless it carries the ship:full label or the size description says otherwise — most tickets are small.`,
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low', model: 'sonnet' },
 )
@@ -395,7 +395,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
     agent(
       `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
       `(in ${setup.workdir}) and the code it names. ${MAP} ${l.ask}\n\nBlockers only for something that would make ` +
-      `the build wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
+      `the change wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
       { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: T.think },
     ))
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
@@ -435,7 +435,7 @@ const built = await agent(
 if (!built || !built.ok) return handBack('Implement', built ? built.summary : 'the implementer died')
 
 // ── 5+6. Verify → Code Audit → Fix, until a round is clean ───────────────────
-// Every lens is a fresh agent that never sees the builder's reasoning — only
+// Every lens is a fresh agent that never sees the implementer's reasoning — only
 // the ticket, the spec and the diff. That is what makes it an audit.
 const CODE_LENSES_ALL = [
   {
@@ -515,13 +515,43 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
       `code. Empty is a good answer.`,
       { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model || T.think },
     )
+    // Would the new tests fail without the change? A command answers it —
+    // on #41 the small-tier auditor said it had checked, and the tests only
+    // exercised a helper the change never touched. The result is a finding
+    // for the skeptic, not a verdict: a refactor's tests pass either way.
+    const red = await agent(
+      `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` once and return the last line it ` +
+      `printed, verbatim, as json. Change nothing and interpret nothing.`,
+      { phase: 'Verify', label: `red-check#${round}`, schema: GATE, effort: 'low', model: ROTE },
+    )
+    // Validated like readGate: a cheap model relaying the line can drop a
+    // field, and a finding built from a partial result crashed the round.
+    const redCheck = (() => {
+      try {
+        const r = JSON.parse(red.json)
+        if (typeof r.checked !== 'boolean') return null
+        if (r.checked && (typeof r.failedOnBase !== 'boolean' || !Array.isArray(r.tests) || !Array.isArray(r.reverted))) return null
+        return r
+      } catch { return null }
+    })()
+    if (redCheck && redCheck.checked && redCheck.failedOnBase === false) {
+      log(`build round ${round}: red-check — the new tests pass without the change`)
+    }
     const readers = await audit(CODE_LENSES.filter(l => !l.alone), run)
     const driver = await audit(CODE_LENSES.filter(l => l.alone), run)
     const missing = [...readers.missing, ...driver.missing]
     if (missing.length) return handBack('Code Audit', `the ${missing.join(', ')} auditor could not finish`)
     const reports = [...readers.reports, ...driver.reports]
 
-    const raised = reports.flatMap(r => r.findings)
+    const raised = [
+      ...reports.flatMap(r => r.findings),
+      ...(redCheck && redCheck.checked && redCheck.failedOnBase === false ? [{
+        severity: 'blocker', category: 'test-proves-nothing', file: redCheck.tests[0] || 'tests/',
+        claim: 'the tests this branch added or changed pass with its app code reverted',
+        evidence: `scripts/red-check.mjs reverted ${redCheck.reverted.join(', ')} to ${BASE} and ran ${redCheck.tests.join(', ')}: none failed`,
+        fix: 'add a test that exercises the changed code where an attendee meets it, and fails on the base branch',
+      }] : []),
+    ]
     minors = raised.filter(f => f.severity === 'minor')
     open = await confirm(raised.filter(f => f.severity === 'blocker'), 'the change')
     history.push(...open)
@@ -586,14 +616,14 @@ const context = await agent(
   `describe any other:\n` +
   specRounds.map(r => `   spec round ${r.round}: ${r.raised} raised, ${r.confirmed} confirmed${r.what.length ? ` — ${r.what.join('; ')}` : ''}`).join('\n') + '\n' +
   rounds.map(r => `   build round ${r.round}: ${r.gate}; ${r.raised} raised, ${r.confirmed} confirmed`).join('\n') + '\n' +
-  `3. Only if the change made a *decision* a future builder must respect, add it to CLAUDE.md.\n` +
+  `3. Only if the change made a *decision* a future implementer must respect, add it to CLAUDE.md.\n` +
   `\`npm test\` (the context check runs there), commit as "docs(context): …" and push.`,
   { phase: 'Context', label: 'context', schema: DONE, effort: 'low', model: T.think },
 )
 if (!context || !context.ok) return handBack('Context', context ? context.summary : 'the context agent died')
 
 // ── 8. Learn ────────────────────────────────────────────────────────────────
-// What the audits kept catching is context the builder did not have. It goes
+// What the audits kept catching is context the implementer did not have. It goes
 // into the docs before the pull request opens, so the reviewers and the person
 // merging see the lesson with the code — never in a push after they looked.
 const lessons = await learn('passed its audit')

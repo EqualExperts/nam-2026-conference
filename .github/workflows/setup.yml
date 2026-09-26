@@ -7,7 +7,7 @@
 ##
 ## It also reports what else the fork still needs, because the alternative is
 ## finding out from a run that fails eight minutes in.
-name: Set up the harness
+name: 🛠️ Set up the harness
 
 on:
   # A repository made from this template starts with one commit that adds

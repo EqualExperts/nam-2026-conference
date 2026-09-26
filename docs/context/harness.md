@@ -19,6 +19,7 @@ files:
   - scripts/pr-media.mjs
   - scripts/context.mjs
   - scripts/gate.mjs
+  - scripts/red-check.mjs
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
   - docs/context/README.md
@@ -28,6 +29,7 @@ tests:
   - tests/unit/review-workflows.test.js
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
+  - tests/unit/red-check.test.js
   - tests/unit/agent-summary.test.js
 related: [testing]
 ---
@@ -43,7 +45,7 @@ the way they are. This is the machinery.
 `ready-for-ai`, and on an `@claude` comment on a plain issue from someone with
 write access — that comment rides along as `/ship <n> <comment>`, and reaches
 the spec writer and every auditor as notes that amend the ticket. `@claude` on
-a pull request is `agent-respond.yml`'s: a change to that diff, not a build. Its one step runs `claude-code-action` with the prompt
+a pull request is `agent-respond.yml`'s: a change to that diff, not a ship run. Its one step runs `claude-code-action` with the prompt
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
 rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
@@ -86,6 +88,13 @@ that — anything unparseable is red. `gate.mjs` retries a failing browser test
 once (a pass on retry is `flaky`, not a failure) and lists removed assertions
 or added skips in `tests/` as `tampered`, which only the lens that traces the criteria sees (`criteria`, or `combined` on a small ticket).
 
+**The red check.** After a green gate, `red-check#n` (Haiku) runs
+`scripts/red-check.mjs`: in a scratch worktree it reverts the app files the
+branch changed to the base, keeps the branch's tests, and runs only the tests
+it added or changed. None failing becomes a `test-proves-nothing` blocker for
+the skeptic — on #41 the tests only exercised an untouched helper and an
+auditor had said it checked. Code review's tests lens runs it too.
+
 A build round is: gate; if red, its failures become the findings and go
 straight to `fix` (red code is not audited, and red with no named failure
 hands back); if green, the criteria and rules lenses run in parallel, then
@@ -101,7 +110,7 @@ agent, or one missing `doneWhen`/`branch`/`workdir`, hands back too.
 reads the issue's label. Still `ai-working` → the run died: hand back, naming
 the branch. Otherwise, if the branch has an open non-draft PR, it re-runs
 `gate.mjs` itself on the PR head,
-writes the JSON to the job summary, and on red puts the PR back to draft.
+writes the JSON to the job summary, and on red puts the PR back to draft. It runs in a fresh worktree of the branch with its own ports (4460/4461) and database, never in the workspace `ship` used — the first version did, found the ports taken by what ship left running, and sent a green PR back to draft nine seconds later. The gate JSON goes to the log, and a red names its failing tests in the PR comment.
 
 **Context docs.** `MAP` is the sentence every reading agent gets. The Context
 phase runs `context.mjs for $(git diff --name-only origin/main...HEAD)` and
@@ -161,7 +170,7 @@ cannot start another round.
 - No `Date.now()`, `Math.random()` or filesystem in `ship.js` — the Workflow
   runtime forbids them. Anything that touches the machine goes through an
   agent; anything that decides goes through the script.
-- The audit lenses never receive the builder's reasoning.
+- The audit lenses never receive the implementer's reasoning.
 
 ## Gotchas
 
@@ -172,7 +181,7 @@ cannot start another round.
   (which waits), keeps the transcript, writes it to the job summary, and fails
   the step when a launched workflow never reported back. It sets
   `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`: by default `claude -p` kills a
-  background workflow after 600s, which killed `/ship` mid-build. Only
+  background workflow after 600s, which killed `/ship` mid-run. Only
   `agent-respond.yml` still uses the action — interactive mode needs it.
 - **In CI, review and QA do not publish — the job does.** They run with
   `--no-publish` and return `{ comment, verdictLine }` (QA adds `issue`,

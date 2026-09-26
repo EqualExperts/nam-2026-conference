@@ -22,6 +22,16 @@ related: [seats, agenda, clock, schedule, speakers, venues, seed, testing]
 
 ## How it works
 
+**Running it.** `npm run dev` seeds, then starts the API (`node --watch server/index.js`,
+`PORT`, default 3001) and Vite (`WEB_PORT`, default 5173, hot reload) together. Vite proxies
+`/api` to the API, so the frontend only ever fetches relative URLs. Where the rest lives:
+`server/lib/` holds the rules (`seats.js`, `attendance.js`, `agenda.js`, `ical.js`) beside
+`query.js`; `server/routes/` has one router per resource; `src/pages/<Thing>Page.jsx` is one
+file per route; `src/lib/` has `format.js`, `accents.js`, `travel.js`, `clock.js` and the
+small hooks; `public/avatars/` holds the committed portraits and `public/images/` the
+optional hero photography (see its README). `data/orbit.db` is generated and gitignored.
+There is no authentication: the selected attendee is `localStorage['orbit:currentUserId']`.
+
 **One request, end to end.** A page calls `useFetch(() => api.getSessions({ day }), [day])`
 (`src/lib/store.jsx:useFetch`) → `src/lib/api.js:getSessions` builds `/api/sessions?day=…`
 with `qs()` (drops `undefined`, `null`, `''` and `'all'`) and calls the private `api()`

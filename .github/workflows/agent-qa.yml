@@ -12,7 +12,7 @@
 ## workflow finishing, which does not work: a run started by an `issues`
 ## event reports `head_branch` as `main`, so the lookup for its pull request
 ## found nothing and these passes never ran.
-name: Agent · QA
+name: 🧪 Agent · QA
 
 on:
   pull_request:
@@ -70,17 +70,17 @@ jobs:
       - run: npm ci
 
       # This pass is the browser. Without it there is nothing to drive.
-      - name: Install Chromium
+      - name: 🎭 Install Chromium
         run: npx playwright install --with-deps chromium
 
       # claude-code-action drives the Agent SDK, which stops at the first
       # result — and a saved workflow's first result is its launcher saying
       # "running in the background". The action ended there and the workflow
       # died unstarted, reporting success. The CLI waits; see agent-run.sh.
-      - name: Install Claude Code
+      - name: 📦 Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Run /qa
+      - name: 🧪 Run /qa
         # The agent failing is not the same as the change failing. Its verdict
         # is the signal, and the step below is what acts on it.
         continue-on-error: true
@@ -128,7 +128,7 @@ jobs:
       # The verdict is a file the agent writes, not a mood. No file means the
       # pass did not finish, which is not the same as finding nothing — say so
       # rather than quietly passing.
-      - name: Publish the verdict
+      - name: 📣 Publish the verdict
         if: ${{ !cancelled() }}
         env:
           # Check runs can only be created by a GitHub App. GITHUB_TOKEN is
@@ -184,7 +184,7 @@ jobs:
           esac
 
           gh api "repos/$GH_REPO/check-runs" \
-            -f name='QA verdict' \
+            -f name='🧪 QA verdict' \
             -f head_sha="$SHA" \
             -f status=completed \
             -f conclusion="$conclusion" \

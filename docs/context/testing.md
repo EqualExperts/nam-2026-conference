@@ -20,9 +20,22 @@ related: [seed, architecture, clock, seats, harness]
 
 # Testing
 
-Which layer a test belongs in: see CLAUDE.md § Verifying a change. Two different things
-are called a **lane** here: a *port lane* (`scripts/lane.mjs`, one per worktree) and a
-*data lane* (`LANES` in `tests/helpers.js`, one per Playwright test per project).
+Why the cheapest layer wins: CLAUDE.md § Verifying a change. Which layer a test goes in:
+
+- **Unit** — a pure function: the check-in window, the clock projection, travel, iCal
+  escaping, a mapper. Import the module and assert.
+- **API** — a rule that needs the database and the routes: seats, waitlists, promotion,
+  check-in, rating, response shapes, `.ics` output. Nothing is shared, so book and break
+  anything — no cleanup, no lane.
+- **Browser** — what the attendee sees: navigation, the conflict dialog, responsive
+  behaviour. Open pages with `visit(page, path, { as: ATTENDEES.kenji })`, not `page.goto`.
+
+Commands: `npm test` (unit + API, under a second), `npm run verify` (reseed, then
+Playwright headless; `npm run verify -- --ui` or `npm run verify:ui` for the interactive
+runner), `npm run shot -- /schedule --mobile --user=2`, `npm run db:reset` (delete the
+database file and reseed). Two different things are called a **lane** here: a *port lane*
+(`scripts/lane.mjs`, one per worktree) and a *data lane* (`LANES` in `tests/helpers.js`,
+one per Playwright test per project).
 
 ## How it works
 
@@ -45,7 +58,7 @@ Paths are relative to `/api`. Also exported: `days(api)`, `overlaps(a, b)`,
 `close()` in `after`; files run in separate processes, so nothing is shared.
 
 **Browser** (`tests/*.spec.js`). `playwright.config.js`: `testMatch: '**/*.spec.js'`,
-`fullyParallel`, projects `desktop` (1440×900) and `mobile` (Pixel 7), `baseURL` from
+`fullyParallel` (tests within one file run in parallel too), projects `desktop` (1440×900) and `mobile` (Pixel 7), `baseURL` from
 `WEB_PORT`, `outputDir` from `PW_OUTPUT_DIR`, traces kept on failure. On CI: 1 retry,
 `forbidOnly`, reporters `github`, `list`, `html`, and `json` → `test-results/results.json`.
 `webServer` runs `npm run dev` and waits on the web URL (90 s);
@@ -76,7 +89,8 @@ Entry shape: `'area.case': { desktop: { user, day, slot?, clean? }, mobile: {…
 `day` a 0-based index. Its comment lists read-only fixtures and the rule that lanes with a
 `slot` own that slot on day index 2.
 
-**Port lanes** (`scripts/lane.mjs`). `claim()` sweeps stale claims (worktree gone), returns
+**Port lanes** (`scripts/lane.mjs`). In a worktree, run `eval "$(node scripts/lane.mjs
+claim 42)"` (42 = the issue) before anything else. `claim()` sweeps stale claims (worktree gone), returns
 this worktree's existing claim if any, else writes `<git-common-dir>/orbit-lanes/<port>.json`
 with flag `wx` for the first free pair from 4300 (API even, web = +1, up to 4398), then
 probes both ports and gives the lock back if either is taken. `asEnv(lane)` prints
@@ -104,6 +118,15 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - A lane never exports `ORBIT_DB`; each worktree seeds its own `data/orbit.db`.
 
 ## Gotchas
+
+- `npm run verify` reseeds first, so a run killed halfway cannot poison the next; within
+  a run nothing is reset. A test that books a seat and does not release it hits the
+  overlap guard on its next run.
+- There is no way to undo a check-in — pick a session the lane's attendee has not attended.
+- `test.describe.configure({ mode: 'serial' })` plus a conditional `test.skip()` abandons
+  the rest of the group; do not combine them.
+- `tests/smoke.spec.js` already asserts every route renders with no console errors and no
+  horizontal overflow on both projects, so responsive regressions fail on their own.
 
 - Tests that mutate one shared fixture run on one project only:
   `test.skip(testInfo.project.name !== 'desktop', …)` — see the promotion test in `tests/seats.spec.js`.
