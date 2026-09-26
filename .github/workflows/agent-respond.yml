@@ -38,7 +38,10 @@ jobs:
       !contains(github.event.comment.body, 'Claude finished') &&
       (github.event_name != 'issue_comment' || github.event.issue.pull_request)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # On #41 it confirmed a review blocker, found a second bug, and died at
+    # 19 minutes before pushing either — out of turns. A fix plus the gate
+    # needs room.
+    timeout-minutes: 60
 
     permissions:
       contents: write
@@ -75,5 +78,6 @@ jobs:
           # `allowed-tools` grant — without this the agent can read and edit
           # files but cannot run a test, boot the app or touch the GitHub API. It answers review comments it has no way to verify.
           claude_args: >-
-            --model claude-opus-5 --max-turns 60
+            --model claude-sonnet-5 --max-turns 150
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+            --append-system-prompt "You are answering a comment on a pull request in a repo with an engineering harness. Make the change asked for, and nothing else. Before you push, run node scripts/gate.mjs once and put its verdict in your reply: its ok field, and the unit and browser counts. If it is red, say what failed and do not claim the change works. If the comment asks you to build or redo a whole ticket, do not attempt it here: say that an @claude comment on the issue runs the ship workflow for that."
