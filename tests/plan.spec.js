@@ -124,8 +124,9 @@ test.describe('My Agenda', () => {
 
   test('the Right Now card counts a finished day in the singular', async ({ page, request }, testInfo) => {
     const lane = await laneFor('agenda.next-up-done', testInfo);
-    const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);
-    expect(target, 'nothing bookable on this clean day').toBeTruthy();
+    const target = (await bookableFor(request, lane.user, lane.day))
+      .find((s) => s.startsAt === lane.slot && s.seatsLeft > 3);
+    expect(target, 'nothing bookable in this lane\'s slot').toBeTruthy();
 
     await request.put(`${API}/users/${lane.user}/reservations/${target.id}`);
 
