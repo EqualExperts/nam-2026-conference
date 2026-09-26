@@ -98,9 +98,16 @@ pins it. Only dates change between machines; the PRNG output does not.
 - Presentation keys are **speaker ids as strings**; the loop reads `PRESENTATION[String(i + 3)]`.
   A missing key falls back to `chance(0.5)`, which consumes an extra `rnd()` and reshuffles
   everything after it.
+- Portraits (why they are synthetic: CLAUDE.md § Imagery) were fetched once by
+  `npm run avatars` (`scripts/fetch-avatars.mjs`, missing files only), downscaled to 256px
+  and committed, so the app never touches the network at runtime; they are served from
+  `/avatars/…` via `speakers.image_url` / `users.image_url`. A speaker with no file falls
+  back to `GeneratedAvatar`, so a partial set is never a broken image. The source dataset
+  also contains children — eyeball any replacement before committing it.
 - `fetch-avatars.mjs` only fetches `speaker-NNN.jpg` (default count 180, though only 110
   speakers exist) and never `attendee-*.jpg`. It is strictly sequential with a 900 ms gap
-  and rejects duplicates by SHA-1; resizing uses macOS `sips` and keeps the full-size file
+  and rejects duplicates by SHA-1 (the source serves whatever it generated most recently,
+  so concurrent requests come back identical — do not parallelise it); resizing uses macOS `sips` and keeps the full-size file
   elsewhere. `--force` re-downloads everything — which invalidates every presentation entry.
 - `sessions.seats_taken` is a seeded crowd size, not a count of `reservations` rows — the
   six attendees are a tiny share of it, and step 9 overwrites it outright. Never assert

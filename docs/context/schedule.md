@@ -74,8 +74,8 @@ buttons `tab-<date>`, track pills, and `Select`s for venue/level/format/topic.
 **`ScheduleGrid`** (`schedule-grid`, `role="table"`) — splits `sessions` into
 `gridSessions` and `bannerSessions` (`isKeynote || format === 'Social'`). Columns
 are the distinct rooms of `gridSessions` (so a venue filter drops columns), primary
-venue first then by name; each header takes the track of the *first* session seen
-in that room. Rows are every distinct `startsAt` across all sessions; at each,
+venue first then by name; each header takes (and is tinted by) the track of the
+*first* session seen in that room — the track that room runs that day. Rows are every distinct `startsAt` across all sessions; at each,
 banners render first as full-width rows (`5rem 1fr`), then a cell row if any room
 has a session. Columns use a CSS var `--grid: 5rem repeat(n, minmax(9rem, 1fr))`
 inside `min-w-[52rem]`. Cells show live (rose) / booked (emerald) / done (faded)
