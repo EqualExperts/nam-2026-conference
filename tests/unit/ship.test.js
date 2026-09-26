@@ -39,9 +39,11 @@ const blocker = (claim) => ({
 async function run(answers = {}, args = 7) {
   const calls = [];
   const prompts = {};
+  const models = {};
   const agent = async (prompt, opts) => {
     calls.push(opts.label);
     prompts[opts.label] = prompt;
+    models[opts.label] = opts.model;
     const [name, n] = opts.label.replace('-retry', '').split('#');
     const hit = Object.keys(answers).find(k => name === k || name.startsWith(k + ':'));
     if (hit) { const a = answers[hit]; return typeof a === 'function' ? a(Number(n), prompt) : a; }
@@ -56,7 +58,7 @@ async function run(answers = {}, args = 7) {
   };
   const parallel = async (thunks) => Promise.all(thunks.map(t => t().catch(() => null)));
   const result = await script(args, agent, parallel, () => {}, () => {});
-  return { result, calls, prompts };
+  return { result, calls, prompts, models };
 }
 
 describe('ship', () => {
@@ -364,5 +366,72 @@ describe('ship', () => {
     const { result, calls } = await run({}, 'please build the waitlist thing');
     assert.equal(result.outcome, 'error');
     assert.deepEqual(calls, []);
+  });
+
+  describe('sized to the ticket', () => {
+    const SMALL = { ...SETUP, size: 'small' };
+
+    test('a small ticket gets one spec auditor, one code auditor plus the browser, and Sonnet throughout', async () => {
+      const { result, calls, models } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: true } });
+      assert.equal(result.outcome, 'shipped');
+      assert.equal(result.size, 'small');
+      assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), ['spec-audit:combined#1']);
+      assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1', 'audit:browser#1']);
+      for (const l of ['write-spec', 'implement', 'audit:combined#1', 'context', 'open-pr']) assert.equal(models[l], 'sonnet', l);
+    });
+
+    test('a small ticket with nothing visible changed skips the browser pass', async () => {
+      const { calls } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: false } });
+      assert.ok(!calls.some(c => c.startsWith('audit:browser')));
+    });
+
+    test('a small spec with a confirmed blocker is revised once and built — not handed back', async () => {
+      const { result, calls } = await run({
+        setup: SMALL,
+        'spec-audit:combined': { covered: 'all', ran: 'nothing', findings: [blocker('names a file that does not exist')] },
+      });
+      assert.equal(result.outcome, 'shipped');
+      assert.deepEqual(calls.filter(c => c.startsWith('revise-spec')), ['revise-spec#1']);
+      assert.ok(calls.includes('implement'));
+    });
+
+    test('a small ticket hands back after two build rounds, not four', async () => {
+      const { result } = await run({
+        setup: SMALL,
+        'audit:combined': (n) => ({ covered: 'all', ran: 'nothing', findings: [{ ...blocker(`problem ${n}`), line: n * 100 }] }),
+      });
+      assert.equal(result.outcome, 'needs-human');
+      assert.match(result.reason, /after 2 rounds/);
+    });
+
+    test('--full overrides a small sizing', async () => {
+      const { result, calls, models } = await run({ setup: SMALL }, '7 --full');
+      assert.equal(result.size, 'full');
+      assert.ok(calls.includes('spec-audit:criteria#1') && calls.includes('spec-audit:fit#1'));
+      assert.equal(models.implement, undefined, 'full inherits the session model');
+    });
+
+    test('--small overrides a full sizing, and the flag is not taken as notes', async () => {
+      const { result, prompts } = await run({}, '7 --small');
+      assert.equal(result.size, 'small');
+      assert.doesNotMatch(prompts['write-spec'], /asked for this run/);
+    });
+
+    test('on a small ticket, weakened and flaky tests reach the combined auditor', async () => {
+      const g = gateResult({
+        tampered: ['tests/seats.spec.js: -    await expect(seat).toHaveText("Taken")'],
+        browser: { passed: 155, failed: [], flaky: 1, flakyTests: ['[mobile] tests/a.spec.js:3 › t'], skipped: 1 },
+      });
+      const { prompts } = await run({ setup: SMALL, verify: { json: JSON.stringify(g) } });
+      assert.match(prompts['audit:combined#1'], /toHaveText\("Taken"\)/);
+      assert.match(prompts['audit:combined#1'], /tests\/a\.spec\.js:3/);
+    });
+
+    test('running a command and copying its output uses the cheapest model in every tier', async () => {
+      for (const setup of [SMALL, SETUP]) {
+        const { models } = await run({ setup });
+        assert.equal(models['verify#1'], 'haiku');
+      }
+    });
   });
 });

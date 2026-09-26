@@ -36,7 +36,7 @@ jobs:
     # is what asks for this pass.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     permissions:
       contents: read
@@ -67,7 +67,7 @@ jobs:
         # The agent crashing is not the same as the change being wrong; its
         # verdict is the signal, and the step below is what acts on it.
         continue-on-error: true
-        timeout-minutes: 18
+        timeout-minutes: 30
         env:
           # `claude -p` stops waiting for a background workflow after 600s and
           # kills it — /ship on #34 died that way, ten minutes in. The step's

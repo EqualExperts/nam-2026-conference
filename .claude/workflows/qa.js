@@ -33,7 +33,9 @@ const HERE = WORKDIR
 
 const PLAYBOOK = 'docs/harness/qa-playbook.md'
 const PROBE_FILE = 'tests/qa-probe.spec.js'
-const MAX_PROBES = 8
+// Five, not eight: each browser probe runs on both viewports on a 2-core
+// runner, and eight of them plus reproductions ran QA past its time limit.
+const MAX_PROBES = 5
 
 const PLAN = {
   type: 'object',

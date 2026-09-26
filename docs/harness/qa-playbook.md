@@ -16,7 +16,7 @@ for what nobody thought to write down.
 **Your verdict is a file** — one line in `/tmp/qa-verdict`, nothing else is
 read. Saying "Verdict: PASS" in prose leaves the check reading *unproven*.
 
-**Budget: eight probes, or fifteen minutes.** Then write the verdict with
+**Budget: five probes, or fifteen minutes.** Then write the verdict with
 whatever confidence that earned. Exploring until you find something is how a
 QA pass becomes a fishing trip.
 
@@ -141,8 +141,8 @@ gh issue comment <issue> --body "> [!TIP]
 The callout and one sentence. The findings stay on the pull request, beside
 the diff they are about — repeating them here makes both harder to scan.
 
-**"I tried these six things and found nothing" is a good report.** Name the
-six, a few words each. A reviewer learns more from knowing what was probed
+**"I tried these five things and found nothing" is a good report.** Name
+them, a few words each. A reviewer learns more from knowing what was probed
 than from a finding you had to reach for.
 
 ## 5. Write the verdict

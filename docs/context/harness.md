@@ -50,7 +50,16 @@ step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
 `code-review.js` and `qa.js` take a PR number, or `{ pr, workdir }` on a
-laptop — a worktree of the PR branch to run in. **`ship.js`** takes `args` as an issue number (`/ship 42`) or
+laptop — a worktree of the PR branch to run in. **Sized to the ticket.** Setup sizes every ticket `small` or `full`
+(`TIERS` at the top of `ship.js`); the `ship:full` label, `--full` or
+`--small` override it. Small: one combined spec auditor and one round, one
+combined code auditor plus the browser pass only if the implementer reports
+`ui`, two build rounds, Sonnet throughout. Full: two spec auditors and three
+rounds, three code auditors, four build rounds, the session's model (Opus in
+CI). Both keep the skeptic and the machine gate, and both run Verify, hand-back
+and lane release on Haiku — they only run a command and copy its output.
+
+**`ship.js`** takes `args` as an issue number (`/ship 42`) or
 `{ issue, base }` — `base` (default `main`) is the branch the work starts
 from, is judged against (`GATE_BASE` for the gate) and targets, for a ticket
 stacked on a pull request that has not landed. It is plain JS run by the
@@ -59,12 +68,12 @@ fresh context; the script holds all state between them. In order:
 
 | Phase | Agent label(s) | Returns | Loops |
 | --- | --- | --- | --- |
-| Setup | `setup` | `SETUP` — proceed, branch, workdir, runner, doneWhen | — |
+| Setup | `setup` | `SETUP` — proceed, branch, workdir, runner, doneWhen, size | — |
 | Spec | `write-spec` | spec path | — |
-| Spec Audit | `spec-audit:{criteria,fit}#n`, `skeptic:*`, `revise-spec#n` | `FINDINGS` | ≤ `MAX_SPEC_ROUNDS` (3) |
-| Implement | `implement` | `DONE` | — |
+| Spec Audit | small: `spec-audit:combined#1`; full: `spec-audit:{criteria,fit}#n`; `skeptic:*`, `revise-spec#n` | `FINDINGS` | small 1, full ≤ 3 |
+| Implement | `implement` | `DONE` (+ `ui`) | — |
 | Verify | `verify#n` | `GATE` — the JSON line `scripts/gate.mjs` printed | each build round |
-| Code Audit | `audit:{criteria,rules}#n` together, then `audit:browser#n`; `skeptic:*`; `fix#n` | `FINDINGS` | ≤ `MAX_BUILD_ROUNDS` (4) |
+| Code Audit | small: `audit:combined#n`, then `audit:browser#n` if `ui`; full: `audit:{criteria,rules}#n`, then `audit:browser#n`; `skeptic:*`; `fix#n` | `FINDINGS` | small ≤ 2, full ≤ 4 |
 | Context | `context` | `DONE` | — |
 | Learn | `learn` | `LESSON` | only if anything was confirmed |
 | PR | `open-pr` | `DONE` with url | — |
@@ -74,7 +83,7 @@ handed back. **The gate is a command, not an opinion**: the verify agent runs
 `node scripts/gate.mjs` and returns its JSON, and `readGate()` decides from
 that — anything unparseable is red. `gate.mjs` retries a failing browser test
 once (a pass on retry is `flaky`, not a failure) and lists removed assertions
-or added skips in `tests/` as `tampered`, which only the criteria lens sees.
+or added skips in `tests/` as `tampered`, which only the lens that traces the criteria sees (`criteria`, or `combined` on a small ticket).
 
 A build round is: gate; if red, its failures become the findings and go
 straight to `fix` (red code is not audited, and red with no named failure
@@ -113,7 +122,7 @@ survived:
   tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
-- **`qa.js`** — *Plan* (≤ 8 probes, each `browser` or `command`: a script,
+- **`qa.js`** — *Plan* (≤ 5 probes, each `browser` or `command`: a script,
   a workflow under stubs or an `if:` against a payload is probed by running
   it; `surface: false` only when nothing can be exercised → a low-confidence
   pass) → *Probe* (commands first, then one browser spec, both viewports) → *Reproduce*, one failing probe at a time: again on the branch,

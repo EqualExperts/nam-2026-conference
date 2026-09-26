@@ -38,7 +38,9 @@ jobs:
     # is what asks for this pass.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # A killed run publishes nothing: QA on PR #38 hit 23 minutes mid-probe
+    # and the check read "did not finish". This bounds a hung run, not a slow one.
+    timeout-minutes: 45
 
     permissions:
       # write, so `scripts/pr-media.mjs` can put a screenshot on the pr-media
@@ -79,7 +81,7 @@ jobs:
         # The agent failing is not the same as the change failing. Its verdict
         # is the signal, and the step below is what acts on it.
         continue-on-error: true
-        timeout-minutes: 23
+        timeout-minutes: 40
         env:
           # `claude -p` stops waiting for a background workflow after 600s and
           # kills it — /ship on #34 died that way, ten minutes in. The step's

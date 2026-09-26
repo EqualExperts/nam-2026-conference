@@ -497,6 +497,8 @@ the way it is.
    *Setup → Spec → Spec Audit → Implement → Verify ⇄ Code Audit → Context →
    Learn → PR*
 
+   Setup sizes the ticket: most are **small** (one spec auditor, one code
+   auditor, two rounds, Sonnet); `ship:full` gets the whole loop below on Opus.
    Nothing is opened until a round comes back clean: `scripts/gate.mjs` green,
    then independent auditors — the ticket's criteria, this file's rules, a
    browser — whose blockers must each survive a skeptic before they cost a fix.
