@@ -110,7 +110,10 @@ jobs:
           app=$(git diff --numstat "origin/$BASE...HEAD" -- src server | awk '$1 == "-" {n += 1000; next} {n += $1 + $2} END {print n + 0}')
           files=$(git diff --name-only "origin/$BASE...HEAD")
           ui=no
-          if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '^(src/|tests/|docs/|specs/)' && printf '%s\n' "$files" | grep -q '^src/'; then ui=yes; fi
+          # docs/harness/ is the harness, not documentation of the app — a
+          # playbook change must never ride a small UI change into a skip.
+          if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '^(src/|tests/|docs/|specs/)' \
+             && ! printf '%s\n' "$files" | grep -q '^docs/harness/' && printf '%s\n' "$files" | grep -q '^src/'; then ui=yes; fi
           scripts/agent-run.sh "/qa $PR --no-publish --app-lines=$app --ui-only=$ui" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
 
       # A FAIL on a pull request that ship built (branch issue-<n>-…) is an
