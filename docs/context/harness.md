@@ -112,6 +112,13 @@ the implementer must resolve it and the criteria lens is told to check it did.
 (#52 went to a person over a missing `--repo` flag; #53, rightly, over a
 criterion the ticket got wrong.)
 
+**CI cannot edit the harness.** Claude Code in a runner refuses edits under
+`.claude/` as sensitive files — rightly: an agent there should not rewrite its
+own harness. The spec writer reports `editsHarness`; on a runner such a plan
+is handed back straight after the spec, to be built by a person or a local
+session from it (#52 found the wall an hour in). Harness changes are made
+locally and pushed to main while one person develops the harness.
+
 **Stopping.** `handBack(stage, why, open)` runs `learn`, then an agent that
 pushes the branch, opens a **draft** PR (`Refs #n`, not `Closes`) listing what
 is open, comments on the issue and labels it `needs-human`. A dead setup

@@ -551,4 +551,28 @@ describe('ship', () => {
     assert.match(prompts['open-pr'], /the note has no test/);
     assert.match(prompts['open-pr'], /the note rounds down/);
   });
+
+  test('a spec that needs .claude/ is handed back from a runner before anything is built', async () => {
+    const { result, calls } = await run({ 'write-spec': { path: 'specs/7-hours.md', summary: 's', editsHarness: true } });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'Spec');
+    assert.match(result.reason, /build it locally/);
+    assert.ok(!calls.some(c => c.startsWith('spec-audit') || c === 'implement'));
+  });
+
+  test('on a laptop a .claude/ plan is built as normal', async () => {
+    const { result } = await run({ setup: { ...SETUP, runner: false }, 'write-spec': { path: 'specs/7-hours.md', summary: 's', editsHarness: true } });
+    assert.equal(result.outcome, 'shipped');
+  });
+
+  test('a spec hand-back on scope also lists the technical findings still open', async () => {
+    const { prompts } = await run({
+      'spec-audit:fit': { covered: 'all', findings: [
+        { ...blocker('the ticket asks for two contradictory outcomes'), category: 'scope' },
+        { ...blocker('the gh call does not pin --repo'), line: 90 },
+      ] },
+    });
+    assert.match(prompts['hand-back'], /contradictory outcomes/);
+    assert.match(prompts['hand-back'], /Also still open[\s\S]*does not pin --repo/);
+  });
 });

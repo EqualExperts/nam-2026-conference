@@ -96,6 +96,7 @@ const SPEC_WRITTEN = {
   properties: {
     path: { type: 'string' },
     summary: { type: 'string', description: 'two sentences: the approach and how it will be proved' },
+    editsHarness: { type: 'boolean', description: 'true if the plan changes any file under .claude/' },
   },
 }
 
@@ -280,7 +281,7 @@ const inTree = () =>
       `\`eval "$(node scripts/lane.mjs claim ${issue})" &&\` — shell state does not persist between commands. ` +
       `Never release the lane: it belongs to the whole run, and the workflow releases it at the end.`)
 
-async function handBack(stage, why, open) {
+async function handBack(stage, why, open, alsoOpen) {
   log(`handing #${issue} back at ${stage}: ${why}`)
   // A run that could not converge is the one with the most to teach, so it
   // learns before it pushes — the lessons land on the draft with the work.
@@ -289,6 +290,7 @@ async function handBack(stage, why, open) {
   await agent(
     `Hand GitHub issue #${issue} back to a person. The automated ship run stopped at "${stage}" because: ${why}\n\n` +
     (open && open.length ? `Still open when it stopped:\n${listFindings(open)}\n\n` : '') +
+    (alsoOpen && alsoOpen.length ? `Also still open — technical, not why it stopped, but the next run must settle them:\n${listFindings(alsoOpen)}\n\n` : '') +
     (setup && setup.branch
       ? `${inTree()}\nPush whatever is committed (git push -u origin HEAD), then open a DRAFT pull request so the ` +
         `work is not lost — or, if a draft from an earlier attempt is already open on this branch, update its ` +
@@ -380,11 +382,19 @@ ticket =
 phase('Spec')
 spec = await agent(
   `${ticket}\n\n${inTree()}\n\nWrite the spec, following §3b of ${SKILL}: specs/${issue}-${setup.slug}.md, ` +
-  `commit it as the branch's first commit, push, and comment the link on the issue. ${MAP} Every Done-when ` +
+  `commit it as the branch's first commit, push, and comment the link on the issue. Set editsHarness if the ` +
+  `plan changes any file under .claude/. ${MAP} Every Done-when ` +
   `criterion must map to a named check at a named layer.`,
   { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN, model: T.think },
 )
 if (!spec) return handBack('Spec', 'the spec writer died')
+// Claude Code in CI refuses edits under .claude/ as sensitive — rightly: an
+// agent in a runner should not rewrite its own harness. #52 found that out an
+// hour in, after writing everything else. A spec that needs .claude/ goes
+// back now, with the spec kept, to be built by a person or a local session.
+if (spec.editsHarness && setup.runner) {
+  return handBack('Spec', 'the plan changes files under .claude/, which an agent in CI may not edit — build it locally from the spec on this branch')
+}
 
 // ── 3. Spec Audit ────────────────────────────────────────────────────────────
 // Cheapest place to catch a misreading: nothing is built yet.
@@ -443,7 +453,8 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   // decided in the spec, and carried into the build for the code audit to
   // check — #52 went to a person over a missing --repo flag.
   if (round === MAX_SPEC_ROUNDS && specOpen.some(f => f.category === 'scope')) {
-    return handBack('Spec Audit', `the ticket itself is in question after ${round} spec rounds`, specOpen.filter(f => f.category === 'scope'))
+    return handBack('Spec Audit', `the ticket itself is in question after ${round} spec rounds`,
+      specOpen.filter(f => f.category === 'scope'), specOpen.filter(f => f.category !== 'scope'))
   }
   if (round === MAX_SPEC_ROUNDS) carried = specOpen
 
