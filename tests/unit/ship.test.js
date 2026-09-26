@@ -520,4 +520,14 @@ describe('ship', () => {
     assert.match(prompts['fix#1'], /the total counts waitlisted sessions/);
     assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
   });
+
+  test('minor readings of one line reach the PR body together — grouping twice keeps them', async () => {
+    const minor = (category, claim) => ({ ...blocker(claim), category, line: 42, severity: 'minor' });
+    const { prompts } = await run({
+      'audit:criteria': { covered: 'all', findings: [minor('criterion-unmet', 'the note has no test')] },
+      'audit:rules': { covered: 'all', findings: [minor('logic', 'the note rounds down')] },
+    });
+    assert.match(prompts['open-pr'], /the note has no test/);
+    assert.match(prompts['open-pr'], /the note rounds down/);
+  });
 });

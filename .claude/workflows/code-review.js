@@ -225,9 +225,13 @@ const SEVERITY = ['criterion-unmet', 'logic', 'actions', 'orchestration', 'docs-
 // same line down with it, unjudged.
 const group = (m, f) => {
   const k = where(f)
-  if (!m.has(k)) return m.set(k, { ...f, also: [] })
+  // Grouping twice (ship's minors are grouped, then confirmed) must keep
+  // the readings the first pass gathered.
+  if (!m.has(k)) return m.set(k, { ...f, also: [...(f.also || [])] })
   const g = m.get(k)
-  if (g.claim !== f.claim && !g.also.some(a => a.claim === f.claim)) g.also.push({ category: f.category, claim: f.claim, evidence: f.evidence })
+  for (const r of [f, ...(f.also || [])]) {
+    if (g.claim !== r.claim && !g.also.some(a => a.claim === r.claim)) g.also.push({ category: r.category, claim: r.claim, evidence: r.evidence })
+  }
   return m
 }
 const where = f => `${f.file}|${f.line ? f.line : f.claim.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`
