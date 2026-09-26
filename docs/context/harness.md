@@ -50,7 +50,16 @@ step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
 `code-review.js` and `qa.js` take a PR number, or `{ pr, workdir }` on a
-laptop — a worktree of the PR branch to run in. **`ship.js`** takes `args` as an issue number (`/ship 42`) or
+laptop — a worktree of the PR branch to run in. **Sized to the ticket.** Setup sizes every ticket `small` or `full`
+(`TIERS` at the top of `ship.js`); the `ship:full` label, `--full` or
+`--small` override it. Small: one combined spec auditor and one round, one
+combined code auditor plus the browser pass only if the implementer reports
+`ui`, two build rounds, Sonnet throughout. Full: two spec auditors and three
+rounds, three code auditors, four build rounds, the session's model (Opus in
+CI). Both keep the skeptic and the machine gate, and both run Verify, hand-back
+and lane release on Haiku — they only run a command and copy its output.
+
+**`ship.js`** takes `args` as an issue number (`/ship 42`) or
 `{ issue, base }` — `base` (default `main`) is the branch the work starts
 from, is judged against (`GATE_BASE` for the gate) and targets, for a ticket
 stacked on a pull request that has not landed. It is plain JS run by the

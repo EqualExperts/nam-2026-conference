@@ -19,8 +19,32 @@ export const meta = {
 // A loop that has not converged by these counts is not going to. Past them the
 // ticket goes to a person, with everything still open written down, rather than
 // burning another round on a finding the builder keeps failing to fix.
-const MAX_SPEC_ROUNDS = 3
-const MAX_BUILD_ROUNDS = 4
+let MAX_SPEC_ROUNDS = 3
+let MAX_BUILD_ROUNDS = 4
+
+// How much loop a ticket gets. Setup sizes it; `ship:full` on the issue, or
+// `--full` / `--small` after the number, overrides. A three-line copy fix
+// does not need two spec auditors, three code auditors and Opus throughout —
+// that shape took a medium ticket 57 minutes. Small keeps what makes the
+// loop trustworthy — an independent audit, a skeptic, the machine gate — and
+// drops the redundancy.
+const TIERS = {
+  small: {
+    specRounds: 1, buildRounds: 2,
+    specLenses: ['combined'], codeLenses: ['combined', 'browser'],
+    think: 'sonnet',   // spec, audits, skeptic, context, learn, PR
+    build: 'sonnet',   // implement, fix
+  },
+  full: {
+    specRounds: 3, buildRounds: 4,
+    specLenses: ['criteria', 'fit'], codeLenses: ['criteria', 'rules', 'browser'],
+    think: undefined,  // the session's model — Opus in CI
+    build: undefined,
+  },
+}
+// Phases that run a command and copy its output back need no judgement.
+const ROTE = 'haiku'
+let T = TIERS.full
 // The same finding confirmed this many rounds running means the fixer cannot
 // fix it. Escalate early instead of spending the remaining rounds.
 const STUCK_AFTER = 2
@@ -29,8 +53,9 @@ const STUCK_AFTER = 2
 // this run), or `{ issue, base, notes }`.
 const argText = typeof args === 'object' && args ? '' : String(args ?? '').trim()
 const issue = Number(typeof args === 'object' && args ? args.issue : (/^#?(\d+)/.exec(argText) || [])[1])
+const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small)\b/.exec(argText) || [])[1]
 const NOTES = String((typeof args === 'object' && args ? args.notes : argText.replace(/^#?\d+\s*/, '')) || '')
-  .replace(/@claude\b/gi, '').trim()
+  .replace(/@claude\b/gi, '').replace(/--(full|small)\b/g, '').trim()
 // The branch the work starts from and the pull request targets. `main`
 // unless this ticket stacks on another pull request that has not landed.
 const BASE = (typeof args === 'object' && args && args.base) || 'main'
@@ -61,6 +86,7 @@ const SETUP = {
     runner: { type: 'boolean', description: 'true when $GITHUB_ACTIONS is set' },
     harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and docs/harness/ship-playbook.md' },
     doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
+    size: { enum: ['small', 'full'], description: 'small unless the issue is labelled ship:full, or it changes a rule in server/lib, the schema or seed, an API shape, or several areas at once, or has more than four Done-when criteria' },
   },
 }
 
@@ -130,6 +156,7 @@ const DONE = {
     ok: { type: 'boolean' },
     summary: { type: 'string' },
     url: { type: 'string' },
+    ui: { type: 'boolean', description: 'implement only: did anything an attendee sees in a browser change' },
   },
 }
 
@@ -201,7 +228,7 @@ async function confirm(findings, where) {
       `shows it was deliberate. A later edit to the spec does not make a missed Done-when criterion deliberate. ` +
       `If you cannot tell, it is NOT refuted.\n\n` +
       listFindings([f]),
-      { phase: where === 'the spec' ? 'Spec Audit' : 'Code Audit', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium' },
+      { phase: where === 'the spec' ? 'Spec Audit' : 'Code Audit', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium', model: T.think },
     // A skeptic that died refuted nothing. Dropping its finding would let a
     // crash read as a clean audit.
     ).then(v => (v && v.refuted ? null : f))))
@@ -246,7 +273,7 @@ async function handBack(stage, why, open) {
       : '') +
     `Then comment on the issue — what was tried, what stopped it, what it needs from a person, and the draft ` +
     `PR link if there is one — and run: gh issue edit ${issue} --add-label needs-human --remove-label ai-working`,
-    { phase: 'Learn', label: 'hand-back', schema: DONE, effort: 'low' },
+    { phase: 'Learn', label: 'hand-back', schema: DONE, effort: 'low', model: ROTE },
   )
   await cleanup()
   return { outcome: 'needs-human', issue, stage, reason: why, open: open || [], lessons }
@@ -259,7 +286,7 @@ async function cleanup() {
   await agent(
     `cd ${setup.workdir} && node scripts/lane.mjs release ${issue} — then \`node scripts/lane.mjs list\` and ` +
     `confirm no lane is held for ${setup.workdir}. Leave the worktree itself; a person may want it.`,
-    { phase: 'PR', label: 'release-lane', schema: DONE, effort: 'low' },
+    { phase: 'PR', label: 'release-lane', schema: DONE, effort: 'low', model: ROTE },
   )
 }
 
@@ -278,7 +305,7 @@ async function learn(how) {
     `in the voice around them, present tense — they are read instead of the code, so write only what you have ` +
     `checked against it. \`npm test\` (the context check runs there). Commit as "docs(context): …" and push. ` +
     `If nothing generalises, change nothing and return an empty list.`,
-    { phase: 'Learn', label: 'learn', schema: LESSON, effort: 'medium' },
+    { phase: 'Learn', label: 'learn', schema: LESSON, effort: 'medium', model: T.think },
   )
   return result ? result.lessons : []
 }
@@ -298,13 +325,19 @@ setup = await agent(
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
   `later phase would run commands that do not exist in the worktree. Do not write the spec or any code. Return proceed=false with the ` +
-  `reason if it is not buildable, and in that case also do §9 (comment and label needs-human).`,
-  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low' },
+  `reason if it is not buildable, and in that case also do §9 (comment and label needs-human). Size it: small ` +
+  `unless it carries the ship:full label or the size description says otherwise — most tickets are small.`,
+  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low', model: 'sonnet' },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
   ? `origin/${BASE} has no harness (scripts/gate.mjs, docs/harness/) — pass { issue, base } with a branch that does`
   : setup.reason }
+const SIZE = FORCED || (setup.size === 'small' ? 'small' : 'full')
+T = TIERS[SIZE]
+MAX_SPEC_ROUNDS = T.specRounds
+MAX_BUILD_ROUNDS = T.buildRounds
+log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ''}`)
 const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
 if (missingSetup.length) {
   const partial = setup
@@ -324,13 +357,19 @@ spec = await agent(
   `${ticket}\n\n${inTree()}\n\nWrite the spec, following §3b of ${SKILL}: specs/${issue}-${setup.slug}.md, ` +
   `commit it as the branch's first commit, push, and comment the link on the issue. ${MAP} Every Done-when ` +
   `criterion must map to a named check at a named layer.`,
-  { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN },
+  { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN, model: T.think },
 )
 if (!spec) return handBack('Spec', 'the spec writer died')
 
 // ── 3. Spec Audit ────────────────────────────────────────────────────────────
 // Cheapest place to catch a misreading: nothing is built yet.
-const SPEC_LENSES = [
+const SPEC_LENSES_ALL = [
+  {
+    key: 'combined',
+    ask: `Does every Done-when criterion map to a check that would fail today and pass once built, at the ` +
+      `cheapest layer CLAUDE.md allows — and does the plan contradict anything CLAUDE.md decides, or name files ` +
+      `that do not exist or do not own what it says?`,
+  },
   {
     key: 'criteria',
     ask: `Does every Done-when criterion map to a check that would fail today and pass once built — at the ` +
@@ -343,6 +382,7 @@ const SPEC_LENSES = [
       `claiming to be true that is not, the clock)? Do the files it names exist and own what it says they own?`,
   },
 ]
+const SPEC_LENSES = SPEC_LENSES_ALL.filter(l => T.specLenses.includes(l.key))
 
 let specOpen = []
 // Recorded like the build rounds: the spec audit's catches are the cheapest
@@ -356,7 +396,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
       `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
       `(in ${setup.workdir}) and the code it names. ${MAP} ${l.ask}\n\nBlockers only for something that would make ` +
       `the build wrong or unprovable; everything else is minor. Cite file and line. Empty is a good answer.`,
-      { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS },
+      { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: T.think },
     ))
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
   const found = specAudit.reports.flatMap(r => r.findings)
@@ -367,15 +407,18 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   specRounds.push({ round, raised: found.length, confirmed: specOpen.length, what: specOpen.map(f => f.claim) })
   log(`spec round ${round}: ${found.length} raised, ${specOpen.length} confirmed`)
   if (!specOpen.length) break
-  if (round === MAX_SPEC_ROUNDS) return handBack('Spec Audit', `spec still has blockers after ${round} rounds`, specOpen)
+  // Full: a spec that will not converge goes to a person. Small: one audit,
+  // one revision, on to the build — the code audit still stands behind it.
+  if (round === MAX_SPEC_ROUNDS && SIZE === 'full') return handBack('Spec Audit', `spec still has blockers after ${round} rounds`, specOpen)
 
   const revised = await agent(
     `${ticket}\n\n${inTree()}\n\nIndependent auditors confirmed these problems with ${spec.path}:\n\n` +
     `${listFindings(specOpen)}\n\nRevise the spec to resolve each one — or, if the ticket itself is wrong, ` +
     `record that under *Decisions*. Commit ("docs(spec): …") and push.`,
-    { phase: 'Spec Audit', label: `revise-spec#${round}`, schema: SPEC_WRITTEN },
+    { phase: 'Spec Audit', label: `revise-spec#${round}`, schema: SPEC_WRITTEN, model: T.think },
   )
   if (!revised) return handBack('Spec Audit', 'the spec reviser died', specOpen)
+  if (round === MAX_SPEC_ROUNDS) break
 }
 
 // ── 4. Implement ─────────────────────────────────────────────────────────────
@@ -385,15 +428,25 @@ const built = await agent(
   `confirm it fails for the reason you expect — then commit it on its own, red, as "test(…)", before any fix; ` +
   `that commit is the evidence the check proves something. Then implement, running \`npm test\` after every edit. Commit ` +
   `in Conventional Commits and push. Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
-  `only if you hit something you cannot resolve; the summary names the proving test and the files changed.`,
-  { phase: 'Implement', label: 'implement', schema: DONE },
+  `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
+  `Set ui=true if anything an attendee sees in a browser changed.`,
+  { phase: 'Implement', label: 'implement', schema: DONE, model: T.build },
 )
 if (!built || !built.ok) return handBack('Implement', built ? built.summary : 'the implementer died')
 
 // ── 5+6. Verify → Code Audit → Fix, until a round is clean ───────────────────
 // Every lens is a fresh agent that never sees the builder's reasoning — only
 // the ticket, the spec and the diff. That is what makes it an audit.
-const CODE_LENSES = [
+const CODE_LENSES_ALL = [
+  {
+    key: 'combined',
+    ask: `Read the ticket first, then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
+      `satisfies it and the test that proves it — one with nothing satisfying it is a blocker, and so is a test ` +
+      `that would pass before the change or an existing test weakened when the ticket did not ask for it ` +
+      `(test-weakened). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
+      `line), or a logic error with an input and the wrong output it produces. ` +
+      `docs/harness/code-review-playbook.md §2–§4 says what not to flag.`,
+  },
   {
     key: 'criteria',
     ask: `Read the ticket first, then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
@@ -421,6 +474,9 @@ const CODE_LENSES = [
     alone: true,
   },
 ]
+// Small tickets only get a browser pass when something visible changed.
+const CODE_LENSES = CODE_LENSES_ALL.filter(l =>
+  T.codeLenses.includes(l.key) && (l.key !== 'browser' || SIZE === 'full' || built.ui !== false))
 
 const rounds = []
 const streak = new Map() // finding key → consecutive rounds confirmed
@@ -434,7 +490,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
     `install. Change nothing and interpret nothing.`,
-    { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low' },
+    { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
@@ -453,7 +509,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
         : '') +
       `Blockers only for something that would change a merge decision; everything else is minor. Change no ` +
       `code. Empty is a good answer.`,
-      { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model },
+      { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model || T.think },
     )
     const readers = await audit(CODE_LENSES.filter(l => !l.alone), run)
     const driver = await audit(CODE_LENSES.filter(l => l.alone), run)
@@ -506,7 +562,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     `edit an existing test to make it pass, never skip or delete one. If a finding shows the spec was wrong, ` +
     `fix the spec too and say so in the summary. \`npm test\` after every edit; do not run the Playwright ` +
     `suite. Leave \`git status\` clean. Commit and push.`,
-    { phase: 'Code Audit', label: `fix#${round}`, schema: DONE },
+    { phase: 'Code Audit', label: `fix#${round}`, schema: DONE, model: T.build },
   )
   if (!fixed) return handBack('Code Audit', 'the fixer died', open)
 }
@@ -528,7 +584,7 @@ const context = await agent(
   rounds.map(r => `   build round ${r.round}: ${r.gate}; ${r.raised} raised, ${r.confirmed} confirmed`).join('\n') + '\n' +
   `3. Only if the change made a *decision* a future builder must respect, add it to CLAUDE.md.\n` +
   `\`npm test\` (the context check runs there), commit as "docs(context): …" and push.`,
-  { phase: 'Context', label: 'context', schema: DONE, effort: 'low' },
+  { phase: 'Context', label: 'context', schema: DONE, effort: 'low', model: T.think },
 )
 if (!context || !context.ok) return handBack('Context', context ? context.summary : 'the context agent died')
 
@@ -560,7 +616,7 @@ const pr = await agent(
       `reviewer would want them:\n${listFindings(minors)}\n\n`
     : '') +
   `Comment the PR link on the issue and move the label to ready-for-human. Return the PR url.`,
-  { phase: 'PR', label: 'open-pr', schema: DONE },
+  { phase: 'PR', label: 'open-pr', schema: DONE, model: T.think },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
@@ -569,6 +625,7 @@ await cleanup()
 return {
   outcome: 'shipped',
   issue,
+  size: SIZE,
   pr: pr.url,
   rounds,
   lessons,

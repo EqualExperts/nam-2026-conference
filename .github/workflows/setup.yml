@@ -45,6 +45,7 @@ jobs:
           label ai-working      1A7F37 "An agent has picked this up and is working it now."
           label ready-for-human BF8700 "PR open and verified. Needs human review."
           label needs-human     A40E26 "The agent stopped and said why. Read the comment before relabelling."
+          label ship:full       0969DA "Give this ticket the full ship loop — more auditors, more rounds, Opus."
 
       - name: Say what else this fork needs
         env:
