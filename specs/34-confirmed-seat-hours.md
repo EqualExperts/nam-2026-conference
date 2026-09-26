@@ -90,6 +90,14 @@ unconditional once and watching it go red. `npm test` runs after every edit;
   every test that books for him (`seats.count`, `seats.twice`, `conflict.api`,
   the promotion fixture) books a seat with room in it. The comment above `LANES`
   gains that line so a future test does not quietly take it away.
+- **A tile is read where a viewer reads it.** `Stat` renders its number through
+  `CountUp`, which sits at 0 until the number is properly on screen, and a
+  speaker's "You are speaking" panel puts the stats row at the very bottom of
+  the window — so every hours check centres the tile first. Playwright's
+  `scrollIntoViewIfNeeded` does not do it: a tile clipped by the fold already
+  counts as in view to it, while the observer behind `CountUp` wants half of
+  the number and 8% of clearance. This is the one thing the shape of these
+  tests got wrong on the first pass; the assertions themselves are unchanged.
 - **Rendered numbers can only be a subset of the payload**, since the page
   filters the fetched plan through the store's live reservations. A write
   landing between the store's fetch and the page's could therefore make the

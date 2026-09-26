@@ -19,6 +19,15 @@ async function openPlan(page, as) {
   const plan = await (await response).json();
   // wait for the plan itself, not just the shell, before reading any total
   if (plan.days.length) await expect(page.getByTestId(`plan-day-${plan.days[0].date}`)).toBeVisible();
+  /*
+   * A Stat counts up from zero once it is properly on screen, so a tile the
+   * viewer has not reached yet reads 0 however long you wait for it — and a
+   * speaker's "You are speaking" panel pushes this row to the very bottom of
+   * the window. Centre it first, the way a reader scrolling to the numbers
+   * would: `scrollIntoViewIfNeeded` is not enough, since a tile clipped by the
+   * fold already counts as in view to it but not to the observer behind CountUp.
+   */
+  await page.getByTestId('stat-hours-booked').evaluate((el) => el.scrollIntoView({ block: 'center' }));
   return plan;
 }
 
