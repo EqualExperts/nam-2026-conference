@@ -41,17 +41,20 @@ required check:
   `previous` — `{ pass, commit, inHistory, blockers[], followUps[] }` — read
   back from the newest comment carrying *this pass's* marker,
   `<!-- orbit-verdict:code-review {…} -->`. `inHistory` is
-  `git merge-base --is-ancestor <commit> HEAD`. The script drops a `previous`
+  `git merge-base --is-ancestor <commit> <head>`. The script drops a `previous`
   whose `pass` is not `code-review` and reviews as if it were the first, so
   QA's marker on the same thread can never be read as one of ours.
 - `FINDINGS` items gain required `how` (the path through normal use) and
   `harm`; `severity` becomes `blocker | follow-up`. The script, not the model,
   demotes a `blocker` with an empty `how` or `harm`.
 - A `SCOPE` paragraph, composed by the script and appended to every lens
-  prompt: nothing on a first review; `git diff <commit>..HEAD` when the
+  prompt: nothing on a first review; `git diff <commit> <head>` when the
   previous commit is an ancestor; `git fetch origin <commit>` then
-  `git diff <commit> HEAD -- <the PR's files>` when it is not (a rebase). Each
-  carries the "unless it would have blocked a first review" escape.
+  `git diff <commit> <head> -- <the PR's files>` when it is not (a rebase),
+  falling back to reviewing those files in full if the old commit cannot be
+  fetched at all. Both ends are named commits — never `HEAD`, which in Actions
+  is the merge commit, not the head (see *Decisions*). Each carries the
+  "unless it would have blocked a first review" escape.
 - A new **Recheck** phase before Verify: one agent per previous blocker,
   `recheck:<category>`, returning `{ resolved, why }`. Unresolved ones go
   straight into the confirmed list — they already survived a skeptic once, so
@@ -61,7 +64,13 @@ required check:
 - `publish()` composes the marker (`pass: 'code-review'`, `commit: ctx.head`,
   the blockers, the follow-up keys), a **Follow-ups** section listing each one,
   and `followUps: [{ key, title, body }]` on the returned object (at most 3,
-  minus any key in `previous.followUps`).
+  minus any key in `previous.followUps`). The marker is composed **only for a
+  `pass` or `fail` verdict**: `publish()` is also the did-not-finish path
+  (`if (!ctx) return publish({ verdict: 'none', … })`, code-review.js:103),
+  where there is no `ctx` to read a head from — and a pass that did not finish
+  reviewed no commit, so recording one would let the next run treat every
+  previous blocker as closed. An unfinished pass leaves no marker and the run
+  after it reviews as if it were the first.
 
 **`.claude/workflows/qa.js`** — the same four ideas, in QA's shapes:
 
@@ -78,7 +87,11 @@ required check:
   interpolates. Nothing else in QA needs its own scope paragraph — a probe is
   already pinned to the plan that asked for it. A `scope` that does not finish
   stops the pass (`verdict: 'none'`, as a dead `context` does in code review):
-  planning blind would silently close every previous bug.
+  planning blind would silently close every previous bug. That return happens
+  before the planner runs, and `publish()` reads `plan` (`issue: plan &&
+  plan.issue`, qa.js:252), so `plan` becomes a `let` initialised to `null`
+  above the Plan phase and assigned from the planner — otherwise the stop is a
+  ReferenceError instead of a comment.
 - The script prepends every `scope.previous` bug's probe to `plan.probes` and
   truncates to `MAX_PROBES`, so a planner that forgets one cannot drop it. A
   recheck probe that fails and reproduces is a bug without a skeptic; one that
@@ -87,7 +100,8 @@ required check:
   than a question — `LABEL` gains the wording.
 - `publish()` emits the marker (`pass: 'qa'`, `commit: scope.head`, the bugs
   with their probes, the follow-up keys), the follow-up list and `followUps`
-  for the job.
+  for the job — again only for `pass` or `fail`, so the three did-not-finish
+  returns (dead `scope`, dead planner, probes that never ran) record no commit.
 
 **`.github/workflows/agent-code-review.yml`, `agent-qa.yml`** — a *📌 File
 follow-ups* step after *Publish the verdict*, reading `.followUps` from
@@ -100,8 +114,9 @@ summary line stop claiming there are four labels.
 
 **`docs/context/harness.md`** — the code-review and QA bullets under *After the
 PR* gain the marker, the delta rule and the follow-up path; a new invariant for
-the blocker bar; a gotcha for the rebase case, for `issues: write`, and for the
-shared comment thread — two passes, two markers, each reading only its own.
+the blocker bar; a gotcha for the rebase case, for `issues: write`, for the
+shared comment thread — two passes, two markers, each reading only its own —
+and for `HEAD` being the merge commit in a `pull_request` job.
 
 **`docs/harness/code-review-playbook.md`**, **`qa-playbook.md`** — §2 gains the
 "name the path and the harm" bar and what a follow-up is; a new section on
@@ -120,10 +135,11 @@ agents return, which is exactly what that harness exercises.
 | Done when | Check (unit, `review-workflows.test.js`) |
 | --- | --- |
 | Verdict comments record the head commit, readably | `the comment ends with a marker naming the commit it reviewed` — asserts the marker line in `result.comment` for both scripts, and that it parses as JSON carrying its own `pass`, the `commit` and the raised blockers |
-| …and the two passes do not read each other's | `a verdict marker left by the other pass is ignored` — a `previous` carrying `pass: 'qa'` given to code review (and `pass: 'code-review'` given to QA) runs no `recheck:*` agent, puts no `git diff <sha>..HEAD` in any prompt, and leaves the previous blockers out of the verdict; the reader prompt is asserted to name only its own marker |
-| A re-review looks only at the delta | `a re-review scopes the lenses to what changed since the last reviewed commit` — every `review:*` prompt contains `git diff <sha>..HEAD`; the QA twin asserts the plan prompt does, from what the `scope` agent returned |
+| …and the two passes do not read each other's | `a verdict marker left by the other pass is ignored` — a `previous` carrying `pass: 'qa'` given to code review (and `pass: 'code-review'` given to QA) runs no `recheck:*` agent, puts no `git diff <sha>` in any prompt, and leaves the previous blockers out of the verdict; the reader prompt is asserted to name only its own marker |
+| A re-review looks only at the delta | `a re-review scopes the lenses to what changed since the last reviewed commit` — every `review:*` prompt contains `git diff <sha> <head-sha>`, with the head the context agent returned and **no `HEAD`** anywhere in the scope paragraph; the QA twin asserts the plan prompt does, from what the `scope` agent returned |
 | …and checks each previous blocker | `a re-review re-checks every previous blocker` — one `recheck:*` agent per previous blocker; QA: every previous bug's id is in the probe list even when the planner returned none of them |
-| Rebase: limit to the PR's files since that commit | `a previous commit no longer in history scopes the review to the files the PR touches` — `inHistory: false` puts `git fetch origin <sha>` and `-- <files>` in the prompts, from `ctx.files` for code review and `scope.files` for QA |
+| Rebase: limit to the PR's files since that commit | `a previous commit no longer in history scopes the review to the files the PR touches` — `inHistory: false` puts `git fetch origin <sha>`, `git diff <sha> <head-sha>` and `-- <files>` in the prompts, from `ctx.files` for code review and `scope.files` for QA |
+| A pass that dies still publishes, and claims no commit | `a dead context publishes did-not-finish with no marker` — code review's `context` returning nothing gives `verdict: 'none'`, a comment, and no `orbit-verdict:` marker; the QA twin does the same for a dead `scope`, having run no planner or probe |
 | A still-unresolved previous blocker stays a blocker | `an unresolved previous blocker still fails the review` — verdict `fail`, the claim in the verdict line, and no `skeptic:` call for it |
 | Severe new problem outside the delta may still block | `a blocker outside the delta is still published` — the lens returns one and the verdict is `fail`; the prompt's escape clause is asserted as text |
 | A blocker names how and what harm, or it is a follow-up | `a blocker with no path through normal use publishes as a follow-up` — `how`/`harm` blank → verdict `pass`, the finding in `result.followUps` |
@@ -157,6 +173,17 @@ touches `.github/` and `.claude/`, but no Playwright spec changes.
   breaks that circle and is the only thing that knows the pull request's file
   list for the rebase case. It costs one cheap low-effort call and a second
   `gh pr view`; QA's budget is browser probes, not this.
+- **The delta is diffed between two named commits, never against `HEAD`.**
+  Both jobs run on `pull_request` and check out with no `ref:`, so
+  `actions/checkout` gives them `refs/pull/<n>/merge` — HEAD is the merge of
+  the branch into its base, not the commit the marker recorded. `git diff
+  <commit>..HEAD` there would hand the lens everything merged into `main`
+  since the last review as well, and a re-review raising "new problems" in
+  code the pull request never touched is exactly the spiral this ticket
+  closes. So the script interpolates the head SHA it recorded at both ends,
+  which is also correct in a laptop worktree, where the two coincide. The head
+  is reachable in either checkout — it is a parent of the merge commit — so no
+  extra fetch is needed for the ancestor case.
 - **Previous blockers skip the skeptic.** They survived one when they were
   raised; re-running it invites a finding to flip between rounds, which is the
   spiral this ticket is about. A previous blocker leaves the list by being
