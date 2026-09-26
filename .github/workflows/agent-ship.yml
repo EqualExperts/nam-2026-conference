@@ -14,7 +14,7 @@
 ##
 ## Needs an ANTHROPIC_API_KEY repository secret; `Set up the harness` says
 ## what else, and none of it is the Claude GitHub App.
-name: Agent · ship
+name: 🚢 Agent · ship
 
 on:
   issues:
@@ -84,17 +84,17 @@ jobs:
       # `/ship` gates itself on `scripts/gate.mjs`, which drives a real
       # browser — and so does the re-check after it. Without this nothing can
       # be proved and every round is red.
-      - name: Install Chromium
+      - name: 🎭 Install Chromium
         run: npx playwright install --with-deps chromium
 
       # claude-code-action drives the Agent SDK, which stops at the first
       # result — and a saved workflow's first result is its launcher saying
       # "running in the background". The action ended there and the workflow
       # died unstarted, reporting success. The CLI waits; see agent-run.sh.
-      - name: Install Claude Code
+      - name: 📦 Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Run /ship
+      - name: 🚢 Run /ship
         timeout-minutes: 100
         env:
           # `claude -p` stops waiting for a background workflow after 600s and
@@ -125,7 +125,7 @@ jobs:
       # When ship says it shipped, the gate is run once more here, by the
       # runner, on the pull request's head. ship already ran it — this is the
       # difference between an agent reporting green and a machine seeing it.
-      - name: Check what the run left behind
+      - name: 🧹 Check what the run left behind
         if: ${{ always() }}
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
