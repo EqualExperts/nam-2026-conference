@@ -441,4 +441,18 @@ pre-checkout step and no `finish` step at all.
 - Progress for `agent-respond.yml`, which is interactive and short.
 - A pre-checkout post, or an `actions: read` API call, for code review or QA —
   neither ticket criterion needs it (see *Decisions*).
+
+## Audit
+
+- **Spec round 1** — 3 raised, 1 confirmed: the *Run /ship* step's `env:` was
+  written as "unchanged (`SHIP_PROGRESS_ISSUE`, `SHIP_PROGRESS_RUN`,
+  `GH_REPO`)", but none of those three existed on that step before this
+  ticket and no bullet in *Where* added them — so the follower that is
+  supposed to make the comment "edited in place as the run progresses" would
+  never start on a real ship run. Resolved by adding the three as ordinary
+  per-step `env:` entries on *Run /ship* itself (`.github/workflows/agent-ship.yml`),
+  the same way the finish steps already declare their own — see the *Gotchas*
+  bullet above and the proof table.
+- **Build round 1** — unit 325 passed, browser 161 passed; 0 raised, 0
+  confirmed.
 - Any change to what ship does, how it is sized, or when it hands back.
