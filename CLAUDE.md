@@ -83,6 +83,11 @@ what this app does.
   *everybody*; a full room waitlists you instead; removing a confirmed seat
   promotes whoever has waited longest (skipping anyone who has since taken a seat
   in that slot). All transactional — `server/lib/seats.js`.
+- **Hours are hours you hold a chair for.** Anything counting booked time —
+  `scheduleFor`'s `totalMinutes`, My Agenda's hours tile and day lines — counts
+  confirmed seats only; queued time is totalled apart (`waitlistedMinutes`,
+  `+Nh waitlisted`) rather than folded in or dropped. A waitlist place may never
+  come good, so counting it as booked promises a fuller day than the room can give.
 - The page is **My Agenda** (`/my-agenda`), which is what Whova, Cvent, EventMobi
   and AWS all call it. `/my-plan` redirects.
 - The store (`useConference()`: `toggleSeat`, `reservationFor`, `onAgenda`) is

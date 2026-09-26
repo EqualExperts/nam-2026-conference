@@ -1,6 +1,35 @@
 import { test, expect } from '@playwright/test';
 import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
 
+/** Hours are rounded per day and then summed, on the page and here alike. */
+const hours = (minutes) => Math.round(minutes / 60);
+const hoursOf = (days, field = 'totalMinutes') => days.reduce((n, d) => n + hours(d[field]), 0);
+
+/**
+ * Open My Agenda and hand back the `/schedule` payload the page rendered from.
+ *
+ * The expected numbers come from that response rather than from a second call:
+ * the tiles total the whole conference, and other lanes book seats for these
+ * attendees while this runs, so a fresh fetch could disagree with the screen
+ * for reasons that have nothing to do with hours.
+ */
+async function openPlan(page, as) {
+  const response = page.waitForResponse((r) => /\/api\/users\/\d+\/schedule/.test(r.url()) && r.ok());
+  await visit(page, '/my-agenda', { as });
+  const plan = await (await response).json();
+  // wait for the plan itself, not just the shell, before reading any total
+  if (plan.days.length) await expect(page.getByTestId(`plan-day-${plan.days[0].date}`)).toBeVisible();
+  /*
+   * A Stat counts up from zero once it is properly on screen, so a tile the
+   * viewer has not reached yet reads 0 however long you wait for it — and a
+   * speaker's "You are speaking" panel pushes this row to the very bottom of
+   * the window. Centre it first, the way a reader scrolling to the numbers
+   * would: `scrollIntoViewIfNeeded` is not enough, since a tile clipped by the
+   * fold already counts as in view to it but not to the observer behind CountUp.
+   */
+  await page.getByTestId('stat-hours-booked').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  return plan;
+}
 
 test.describe('My Agenda', () => {
   test('adding a session from the schedule puts it on the agenda', async ({ page, request }, testInfo) => {
@@ -24,14 +53,41 @@ test.describe('My Agenda', () => {
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
-  test('the hours tile totals the hours shown on each day', async ({ page }) => {
-    await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
+  test('the hours tile totals the confirmed hours shown on each day', async ({ page }) => {
+    const plan = await openPlan(page, ATTENDEES.sofia);
+    expect(plan.days.length, 'needs a plan spanning several days to be worth summing').toBeGreaterThan(1);
 
-    const perDay = await page.getByText(/^\d+h of content$/).allTextContents();
-    expect(perDay.length, 'needs a plan spanning several days to be worth summing').toBeGreaterThan(1);
-    const sum = perDay.reduce((n, text) => n + Number(text.match(/^(\d+)h/)[1]), 0);
+    await expect(page.getByTestId('stat-hours-booked')).toHaveText(String(hoursOf(plan.days)));
+    for (const day of plan.days) {
+      await expect(page.getByTestId(`plan-day-${day.date}`))
+        .toContainText(`${hours(day.totalMinutes)}h of content`);
+    }
+  });
 
-    await expect(page.getByTestId('stat-hours-booked')).toHaveText(String(sum));
+  test('an attendee holding both kinds sees waitlisted time counted apart', async ({ page }) => {
+    const plan = await openPlan(page, ATTENDEES.amara);
+    const held = plan.days.flatMap((d) => d.sessions).map((s) => s.reservation);
+    expect(held, 'Amara must hold a seat').toContain('confirmed');
+    expect(held, 'Amara must hold a waitlist place').toContain('waitlisted');
+
+    const booked = hoursOf(plan.days);
+    const waiting = hoursOf(plan.days, 'waitlistedMinutes');
+    await expect(page.getByTestId('stat-hours-booked')).toHaveText(String(booked));
+    await expect(page.getByTestId('stat-hours-waitlisted')).toHaveText(`+${waiting}h waitlisted`);
+
+    // the point of the ticket: the tile is lower than the old count-everything rule
+    const everything = plan.days.reduce((n, d) => n + hours(d.totalMinutes + d.waitlistedMinutes), 0);
+    expect(booked).toBeLessThan(everything);
+  });
+
+  test('an attendee on no waitlist sees nothing extra', async ({ page }) => {
+    const plan = await openPlan(page, ATTENDEES.jonas);
+    expect(plan.days.length, 'needs a plan to be worth reading').toBeGreaterThan(0);
+    const held = plan.days.flatMap((d) => d.sessions).map((s) => s.reservation);
+    expect(held, 'Jonas is the no-waitlist fixture').not.toContain('waitlisted');
+
+    await expect(page.getByTestId('stat-hours-booked')).toBeVisible();
+    await expect(page.getByTestId('stat-hours-waitlisted')).toHaveCount(0);
   });
 
   test('each attendee sees their own plan', async ({ page }) => {

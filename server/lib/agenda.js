@@ -105,10 +105,20 @@ export function scheduleFor(userId) {
     date,
     sessions: items,
     conflicts: clashesIn(items),
-    totalMinutes: items.reduce((n, s) => n + s.durationMins, 0),
+    totalMinutes: minutesHeld(items, 'confirmed'),
+    waitlistedMinutes: minutesHeld(items, 'waitlisted'),
     venuesVisited: [...new Set(items.map((s) => s.venue.shortName))],
   }));
 }
+
+/**
+ * Hours are hours you hold a chair for, so the two statuses are totalled
+ * apart. A waitlist place may never come good, and counting it as booked time
+ * told an attendee they had a fuller day than the room could give them.
+ */
+const minutesHeld = (items, status) => items
+  .filter((s) => s.reservation === status)
+  .reduce((n, s) => n + s.durationMins, 0);
 
 /**
  * Every overlapping pair on one day. The seat rules block two *confirmed*
