@@ -234,6 +234,10 @@ cannot start another round.
   task output file, and the *Publish the verdict* step posts it with `gh`. An
   agent asked to post once returned `posted: false` in CI and the check read
   "did not finish". The job summary also lists every agent and its state.
+- **Every `gh` call in a workflow pins `GH_REPO: ${{ github.repository }}`.**
+  On a fork `gh` resolves the base repo to the upstream, so an unpinned
+  `gh issue create` aims the ticket at the parent — where `GITHUB_TOKEN` is
+  refused, and the comment or follow-up is lost rather than misfiled.
 - **A PR is reviewed by the base branch's harness** (`.claude/`, CLAUDE.md,
   playbooks), so a change to the review workflow only takes effect on the
   pull requests after it merges.
