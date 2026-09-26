@@ -21,6 +21,7 @@ test('reverts changed app code, removes added app code, runs added and changed t
     applies: true,
     code: ['src/components/SeatPanel.jsx'],
     added: ['src/lib/newHelper.js'],
+    renamed: [],
     unit: ['tests/unit/format.test.js'],
     browser: ['tests/plural.spec.js'],
   });
@@ -45,4 +46,16 @@ test('one test failing on the base code is enough', () => {
   const v = verdict(plan(diff), [{ kind: 'unit', failed: false }, { kind: 'browser', failed: true }]);
   assert.equal(v.failedOnBase, true);
   assert.equal(v.finding, undefined);
+});
+
+test('a renamed app file is reverted to its old name, not checked out under the new one', () => {
+  const p = plan('R080\tsrc/lib/old.js\tsrc/lib/new.js\nM\ttests/unit/a.test.js');
+  assert.deepEqual(p.renamed, [{ from: 'src/lib/old.js', to: 'src/lib/new.js' }]);
+  assert.deepEqual(p.code, []);
+  assert.equal(p.applies, true);
+  assert.deepEqual(verdict(p, [{ failed: true }]).reverted, ['src/lib/new.js → src/lib/old.js']);
+});
+
+test('a copied app file is removed, like an added one', () => {
+  assert.deepEqual(plan('C100\tsrc/a.js\tsrc/b.js\nM\ttests/unit/a.test.js').added, ['src/b.js']);
 });

@@ -33,17 +33,21 @@ const isBrowserTest = (f) => /^tests\/[^/]+\.spec\.js$/.test(f);
  * Deleted tests are not run; added code is removed rather than reverted.
  */
 export function plan(nameStatus) {
-  const code = [], added = [], unit = [], browser = [];
+  const code = [], added = [], renamed = [], unit = [], browser = [];
   for (const line of nameStatus.split('\n').filter(Boolean)) {
     const [status, ...paths] = line.split('\t');
     const file = paths.at(-1);
     if (status.startsWith('D')) continue;
-    if (isCode(file)) (status.startsWith('A') ? added : code).push(file);
+    // A renamed app file is reverted by removing the new path and restoring
+    // the old one — the base has no file at the new name to check out, and
+    // asking for it made the whole check exit with a git error.
+    if (status.startsWith('R') && isCode(paths[0]) && isCode(file)) { renamed.push({ from: paths[0], to: file }); continue; }
+    if (isCode(file)) (status.startsWith('A') || status.startsWith('C') || status.startsWith('R') ? added : code).push(file);
     else if (isUnitTest(file)) unit.push(file);
     else if (isBrowserTest(file)) browser.push(file);
   }
-  const applies = (code.length + added.length) > 0 && (unit.length + browser.length) > 0;
-  return { applies, code, added, unit, browser };
+  const applies = (code.length + added.length + renamed.length) > 0 && (unit.length + browser.length) > 0;
+  return { applies, code, added, renamed, unit, browser };
 }
 
 /** Did any of the branch's tests fail on the base branch's code? */
@@ -56,7 +60,7 @@ export function verdict(p, runs) {
     checked: true,
     failedOnBase,
     tests: [...p.unit, ...p.browser],
-    reverted: [...p.code, ...p.added.map(f => `${f} (removed)`)],
+    reverted: [...p.code, ...p.added.map(f => `${f} (removed)`), ...p.renamed.map(r => `${r.to} → ${r.from}`)],
     ...(failedOnBase ? {} : { finding: 'none of the tests this branch added or changed fail when its app code is reverted — they would pass without the change' }),
   };
 }
@@ -75,6 +79,10 @@ function main() {
     const mergeBase = git('merge-base', base, 'HEAD').trim();
     if (p.code.length) execFileSync('git', ['checkout', '-q', mergeBase, '--', ...p.code], { cwd: dir });
     for (const f of p.added) rmSync(join(dir, f), { force: true });
+    for (const r of p.renamed) {
+      rmSync(join(dir, r.to), { force: true });
+      execFileSync('git', ['checkout', '-q', mergeBase, '--', r.from], { cwd: dir });
+    }
 
     if (p.unit.length) {
       const r = spawnSync('node', ['--test', ...p.unit], { cwd: dir, encoding: 'utf8' });

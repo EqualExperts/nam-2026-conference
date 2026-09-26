@@ -457,8 +457,9 @@ describe('ship', () => {
       assert.ok(!calls.some(c => c.startsWith('fix')));
     });
 
-    test('nothing to check, or unreadable output, raises nothing', async () => {
-      for (const v of [red({ checked: false, reason: 'no tests changed' }), { json: 'oops' }, null]) {
+    test('nothing to check, or unreadable or partial output, raises nothing and does not crash', async () => {
+      for (const v of [red({ checked: false, reason: 'no tests changed' }), { json: 'oops' }, null,
+        red({ checked: true, failedOnBase: false }), red({ checked: true, failedOnBase: false, tests: 'x', reverted: [] })]) {
         const { calls } = await run({ 'red-check': v });
         assert.ok(!calls.some(c => c.startsWith('fix')));
       }

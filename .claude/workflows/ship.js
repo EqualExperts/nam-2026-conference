@@ -524,7 +524,16 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
       `printed, verbatim, as json. Change nothing and interpret nothing.`,
       { phase: 'Verify', label: `red-check#${round}`, schema: GATE, effort: 'low', model: ROTE },
     )
-    const redCheck = (() => { try { return JSON.parse(red.json) } catch { return null } })()
+    // Validated like readGate: a cheap model relaying the line can drop a
+    // field, and a finding built from a partial result crashed the round.
+    const redCheck = (() => {
+      try {
+        const r = JSON.parse(red.json)
+        if (typeof r.checked !== 'boolean') return null
+        if (r.checked && (typeof r.failedOnBase !== 'boolean' || !Array.isArray(r.tests) || !Array.isArray(r.reverted))) return null
+        return r
+      } catch { return null }
+    })()
     if (redCheck && redCheck.checked && redCheck.failedOnBase === false) {
       log(`build round ${round}: red-check — the new tests pass without the change`)
     }
