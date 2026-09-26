@@ -210,6 +210,15 @@ cannot start another round.
 
 ## Gotchas
 
+- **A script-composed prompt carries only what an earlier agent already
+  returned, and an early `return publish(…)` runs before the later `const`s
+  exist.** `plan` is `qa.js`'s first agent, so nothing the script puts in the
+  plan prompt can name a sha or the PR's files; anything a prompt needs comes
+  from a Context agent ahead of it, as `code-review.js` does. And `publish()`
+  reads `plan` unconditionally (`issue: plan && plan.issue`), so a bail-out
+  added above that `const` is a ReferenceError rather than the `verdict:
+  'none'` it was meant to be — keep publish's inputs to what exists on every
+  path.
 - **CI runs the CLI, not `claude-code-action`.** The action drives the
   Agent SDK and stops at the first `result`; a saved workflow's first result
   is its launcher's "running in the background", so every workflow died

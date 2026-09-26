@@ -113,6 +113,10 @@ other than the ticket.
 - **Never delete, skip or `.only` a test.**
 - **Never assert a value copied from your own output.** It comes from the
   ticket, or from reasoning about it.
+- **Assert the decision, not the instruction.** A check that an agent's prompt
+  contains some string proves the prompt, and stays green while the code
+  ignores what comes back. Prove it through what the run returns — the verdict,
+  the findings, the rendered page.
 
 ## 6. Implement
 
