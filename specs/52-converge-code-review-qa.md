@@ -138,6 +138,19 @@ the blocker bar; a gotcha for the rebase case, for `issues: write`, for the
 shared comment thread — two passes, two markers, each reading only its own —
 and for `HEAD` being the merge commit in a `pull_request` job.
 
+And one existing gotcha is rewritten, because this branch falsifies its example.
+"A script-composed prompt carries only what an earlier agent already returned"
+currently illustrates itself with "`plan` is `qa.js`'s first agent, so nothing
+the script puts in the plan prompt can name a sha or the PR's files" — true
+until `scope` goes in ahead of the planner precisely so that it can. The rule
+survives unchanged and is why `scope` exists at all; the example flips, so
+`qa.js` reads as the fix rather than the violation: a prompt that needs a sha or
+a file list gets a Context agent ahead of it, as `code-review.js` always has and
+`qa.js` now does. The second half — `publish()` reading `plan` unconditionally,
+so a bail-out above that `const` is a ReferenceError — stays, and gains the
+consequence this spec already requires: it is why `plan` becomes a `let`
+initialised to `null`.
+
 **`docs/harness/code-review-playbook.md`**, **`qa-playbook.md`** — §2 gains the
 "name the path and the harm" bar and what a follow-up is; a new section on
 re-reviewing the delta and re-checking previous blockers, saying plainly that a
@@ -164,7 +177,7 @@ agents return, which is exactly what that harness exercises.
 | Rebase: limit to the PR's files since that commit | `a previous commit no longer in history scopes the review to the files the PR touches` — `inHistory: false` puts `git fetch origin <sha>`, `git diff <sha> <head-sha>` and `-- <files>` in the prompts, from `ctx.files` for code review and `scope.files` for QA |
 | A pass that dies still publishes, and claims no commit | `a dead context publishes did-not-finish with no marker` — code review's `context` returning nothing gives `verdict: 'none'`, a comment, and no `orbit-verdict:` marker; the QA twin does the same for a dead `scope`, having run no planner or probe |
 | A still-unresolved previous blocker stays a blocker | `an unresolved previous blocker still fails the review` — verdict `fail`, the claim in the verdict line, and no `skeptic:` call for it |
-| **Resolved blockers leave the verdict** — a re-review converges | `a re-review whose only previous blocker is resolved publishes a pass` — the single `recheck:*` agent returns `{ resolved: true }`, the lenses on the delta are clean, and the result is `verdict: 'pass'` with the old claim absent from `result.comment`'s findings; the QA twin gives the one previous bug's recheck probe a passing result and asserts `verdict: 'pass'` with no `repro:` call |
+| **Resolved blockers leave the verdict** — a re-review converges | `a re-review whose only previous blocker is resolved publishes a pass` — asserts the *decision*, not only its colour, because a green verdict on a clean diff is already true today: exactly one `recheck:*` agent ran, keyed for the previous blocker's category, and it returned `{ resolved: true }`; the lenses on the delta are clean; the verdict is `pass` **and** the old claim is absent from both `result.comment`'s findings and the marker's `blockers`. The QA twin asserts the previous bug's probe id is in the published probe list and was run as a recheck (passing), `verdict: 'pass'`, and no `repro:` call. Every one of those assertions fails on `main`, where no recheck phase exists — which is what makes the row a proof rather than a restatement |
 | QA re-runs the previous failing probes itself, each id once | `a re-review re-runs each previous bug's probe exactly once, inside the budget` — a `previous` with two bugs and a planner that returns four fresh probes (and, in a second run, a planner that returns one of the recheck ids anyway) yields a probe list of `MAX_PROBES` with no repeated id, the two recheck ids first, and `covered` counting `5/5`; the plan prompt names those ids and the reduced budget |
 | Severe new problem outside the delta may still block | `a blocker outside the delta is still published` — the lens returns one and the verdict is `fail`; the prompt's escape clause is asserted as text |
 | A blocker names how and what harm, or it is a follow-up | `a blocker with no path through normal use publishes as a follow-up` — `how`/`harm` blank → verdict `pass`, the finding in `result.followUps` |
