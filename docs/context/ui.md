@@ -78,7 +78,7 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `Spinner`, `Skeleton` | `className` |
 | `EmptyState` | `icon='search', title, description, action` |
 | `ErrorState` | `error, onRetry` — an `EmptyState` titled "That did not load" |
-| `Stat` | `value` (numbers animate via `CountUp`), `label, accent, testId` |
+| `Stat` | `value` (numbers animate via `CountUp`), `label, accent, testId, note?` — `note` is a quieter line under the label, for a caveat on the number (My Agenda's `+Nh waitlisted`) |
 
 **`Icon.jsx`.** `Icon({ name, className='size-5', filled, ...rest })` — stroke
 icons, `aria-hidden`; an unknown name renders **nothing** (no error). Names:

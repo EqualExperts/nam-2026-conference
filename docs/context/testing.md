@@ -87,7 +87,9 @@ instead of silently testing another worktree's app.
 `LANES` is **not exported**; it is the table inside `helpers.js` that `laneFor` reads.
 Entry shape: `'area.case': { desktop: { user, day, slot?, clean? }, mobile: {…} }`, with
 `day` a 0-based index. Its comment lists read-only fixtures and the rule that lanes with a
-`slot` own that slot on day index 2.
+`slot` own that slot on day index 2. It also names the read-only fixtures, including
+that **Jonas holds no waitlist place on any day** — `plan.spec.js` reads him as the
+attendee who sees no waitlisted hours, so no test may queue him for a full room.
 
 **Port lanes** (`scripts/lane.mjs`). In a worktree, run `eval "$(node scripts/lane.mjs
 claim 42)"` (42 = the issue) before anything else. `claim()` sweeps stale claims (worktree gone), returns
@@ -130,6 +132,10 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 
 - Tests that mutate one shared fixture run on one project only:
   `test.skip(testInfo.project.name !== 'desktop', …)` — see the promotion test in `tests/seats.spec.js`.
+- A `Stat` tile counts up from zero only once the number is properly on screen, so a tile
+  below the fold reads `0` however long you wait. Centre it first
+  (`el.scrollIntoView({ block: 'center' })`); Playwright's `scrollIntoViewIfNeeded` counts a
+  clipped tile as visible and is not enough — see `openPlan` in `tests/plan.spec.js`.
 - Only `momentOn`/full `THH:MM` values pin the clock; a bare date in `at` is ignored.
 - `clearAgendaFor` on a non-`clean` lane deletes seeded bookings, which the next run
   (without a reseed) no longer has — tests that expect seeded plans then fail far away.

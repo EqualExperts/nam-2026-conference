@@ -30,7 +30,9 @@ clashes are unchanged, and the *On a waitlist* tile is untouched.
 - `src/components/ui.jsx` — `Stat` takes an optional `note` node rendered
   under the label. Nothing else passes one.
 - `docs/context/agenda.md` — the `/schedule` payload fields, the stat-tile
-  line and the "hours tile equals the sum of the day headings" invariant.
+  line and the "hours tile equals the sum of the day headings" invariant;
+  `docs/context/ui.md` — `Stat`'s `note` prop; `docs/context/testing.md` — the
+  Jonas fixture and how to read a `Stat` tile.
 - `tests/helpers.js` — **no new lane**: every browser check here reads, it does
   not book. The only change is one line in the read-only fixture comment above
   `LANES`, recording that Jonas holds no waitlist place anywhere and no test may
@@ -42,7 +44,7 @@ clashes are unchanged, and the *On a waitlist* tile is untouched.
 | --- | --- | --- |
 | API counts confirmed seats only | new `tests/api/agenda.test.js`: clear an attendee's plan, take a seat in an open session and a waitlist place in a full one on the same day, then assert that day's `totalMinutes` is the confirmed session's duration alone, `waitlistedMinutes` is the waitlisted one's, and both sessions are still listed with their `reservation` status | `tests/api/` (`startApi()`) |
 | Tile counts confirmed seats only; day lines agree with it | the existing `tests/plan.spec.js` hours test, rewritten: wait for the plan (`plan-day-<date>`) to render, take the `/api/users/:id/schedule` payload the page itself fetched (`page.waitForResponse`), and assert the tile equals the sum of the per-day rounded **confirmed** hours from that payload and that each day's "Nh of content" line matches its own day | `tests/*.spec.js` |
-| Waitlisted time shown separately, for an attendee holding both kinds | new read-only `tests/plan.spec.js` test as **Amara**, from the one payload the page rendered: assert she holds both kinds (guard), that `stat-hours-waitlisted` reads `+${Σ round(waitlistedMinutes/60)}h waitlisted` — 2h on a fresh seed — and that `stat-hours-booked` equals `Σ round(confirmedMinutes/60)` and is strictly less than the old rule's `Σ round((confirmed+waitlisted)/60)` | `tests/*.spec.js` |
+| Waitlisted time shown separately, for an attendee holding both kinds | new read-only `tests/plan.spec.js` test as **Amara**, from the one payload the page rendered: assert she holds both kinds (guard), that `stat-hours-waitlisted` reads `+${Σ round(waitlistedMinutes/60)}h waitlisted`, and that `stat-hours-booked` equals `Σ round(confirmedMinutes/60)` and is strictly less than the old rule's `Σ round((confirmed+waitlisted)/60)` | `tests/*.spec.js` |
 | With no waitlist places, nothing extra is shown | new read-only `tests/plan.spec.js` test as **Jonas**: his payload has a plan and no waitlisted session, and `stat-hours-waitlisted` has count 0 | `tests/*.spec.js` |
 
 The first three are written first and confirmed red for the right reason: today
@@ -104,6 +106,28 @@ unconditional once and watching it go red. `npm test` runs after every edit;
   screen lag the payload by one session. That window is milliseconds wide and
   the existing hours test carries it too; the strict-inequality half of the
   Amara check is immune to it, which is why it is there as well as the equality.
+
+## Audit
+
+- **Spec round 1** — 6 raised, 3 confirmed, all about the same mistake: the
+  first draft proposed an `agenda.hours` data lane on an attendee+day pair that
+  `schedule.grid`, `schedule.seats` and the promotion fixture already own, which
+  the one-lane-per-test-per-project rule forbids and which would have let a
+  concurrent booking move the tile a test asserted was unchanged; and the
+  waitlisted-note test asserted absolute numbers those attendees cannot produce,
+  leaving its criterion red after a correct build and the "nothing extra is
+  shown" half unprovable. Resolved by dropping the lane entirely and making both
+  new browser checks read-only, with expectations taken from the payload the
+  page rendered, on Amara (holds both kinds) and Jonas (holds none).
+- **Spec round 2** — 5 raised, 0 confirmed. No change.
+- **Build round 1** — red: unit 256 passed, browser 159 passed and 2 failed. 2
+  raised, 2 confirmed, both the same cause on the two projects: the new
+  both-kinds check read `0` from the hours tile, because `Stat` renders through
+  `CountUp`, which holds at zero until the number is properly on screen, and
+  Amara's "You are speaking" panel pushes the stats row below the fold. Fixed in
+  `300e2c0` by centring the tile before reading it; no assertion changed.
+- **Build round 2** — unit 256 passed, browser 161 passed. 1 raised, 0
+  confirmed. Green.
 
 ## Out of scope
 
