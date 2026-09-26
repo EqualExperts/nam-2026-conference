@@ -132,7 +132,11 @@ required check:
 follow-ups* step after *Publish the verdict*, `if: ${{ !cancelled() }}` like
 the step above it and **gated on nothing else**: it reads `.followUps` from
 `workflow-result.json` and calls `gh issue create --label follow-up` for each,
-falling back to an unlabelled issue rather than losing one. An empty or absent
+falling back to an unlabelled issue rather than losing one. It sets `GH_REPO:
+${{ github.repository }}` beside `GH_TOKEN`, as *Publish the verdict* and *Flag
+a harness escape* already do — this repo is worked from forks, and unpinned
+`gh` resolves the base repo to the upstream, where `GITHUB_TOKEN` is refused and
+the follow-up is lost rather than misfiled. An empty or absent
 array is a no-op, which is what makes "run on every verdict" safe — a `fail`
 carries its follow-ups in the same field a `pass` does, and a pass that did not
 finish carries none. Code review's job needs `issues: write` for it (it has
