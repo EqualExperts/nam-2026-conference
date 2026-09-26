@@ -103,10 +103,21 @@ run untouched, and the follower runs beside the CLI, never in its pipe.
   `gh` failure here cannot fail the step or hold up checkout — it leaves the
   two variables unset instead, which the fallbacks below cover.
 
-  The *Run /ship* step's `env:` is unchanged (`SHIP_PROGRESS_ISSUE`,
-  `SHIP_PROGRESS_RUN`, `GH_REPO`) — `SHIP_PROGRESS_STARTED` and
-  `SHIP_PROGRESS_COMMENT_ID` reach it, and the finish step after it, through
-  `$GITHUB_ENV` automatically.
+  The *Run /ship* step's own `env:` gains three entries — none of which exist
+  on that step today — because a `$GITHUB_ENV` value only reaches a step that
+  is actually looking for it, and the follower has nothing to find without
+  them: `SHIP_PROGRESS_ISSUE: ${{ github.event.issue.number }}` (what
+  `agent-run.sh` checks to decide whether to start the follower at all — see
+  its bullet below), `SHIP_PROGRESS_RUN` (the same run-link expression
+  `RUN` already uses two steps down, so the follower and `finish` can print
+  it), and `GH_REPO: ${{ github.repository }}` (so `ship-progress.mjs` can
+  call `gh api` without a job-level default to fall back on). `N` already
+  covers the issue number for this step's own use and stays; the new
+  `SHIP_PROGRESS_ISSUE` is for the follower it starts. `SHIP_PROGRESS_STARTED`
+  and `SHIP_PROGRESS_COMMENT_ID` are the only two values that reach this step
+  for free, through `$GITHUB_ENV`; these three are ordinary per-step `env:`
+  entries, declared here for the same reason the finish step below declares
+  its own.
 
   The **🏁 Finish the progress comment** step (`if: ${{ always() }}`,
   `continue-on-error: true`, its own `env:` naming `GH_TOKEN`, `GH_REPO`,
@@ -218,7 +229,7 @@ gate.
 | Each finished build round shows its gate and audit result | both fixtures' `verify#n` previews are built the way the CLI builds them, from a realistically sized gate result: `JSON.stringify({ json: JSON.stringify(result) }).slice(0, 400)`, so the test inherits the truncation instead of hand-sizing round it. Green (~300 characters, intact): `render()` prints `Round 1 — gate green (unit 262 passed · browser 161 passed) · 2 audits · clean`. Red, from a result carrying twelve lines of unit `output` and a named browser failure with a six-line error — a preview cut mid-string, on which `JSON.parse` throws: `render()` prints `Round 2 — gate red (unit 260 passed, 2 failed) · 1 audit · fix ran`, and the body nowhere says `not known` | unit |
 | The final state is shipped / handed back / died | four `render()` cases: `result.outcome='shipped'` → `Shipped` and the PR url; `'needs-human'` → `Handed back at Code Audit — <reason>`; a stream whose last line is a `task_notification` with `status:'failed'`, and a stream that just stops with no notification at all → `The run died` with the run link. None contains the word `running` | unit |
 | A killed step still settles the comment | `finish()` over the mid-run fixture — the transcript of a run cut off inside Code Audit, no notification, no result file — with `SHIP_PROGRESS_COMMENT_ID` and `SHIP_PROGRESS_STARTED` in its injected environment (as the pre-checkout step would have left them) and an injected `gh` stub: it calls `patch` once on that id, and the body says `The run died — the step timed out or was cancelled` with the run link, the tier and the phases it did reach, elapsed counted from the injected `started`, and nowhere says `running`. Two more cases: the same call with `SHIP_PROGRESS_COMMENT_ID` absent and a stub whose list returns the marker `create`s nothing and `patch`es the found id; with neither the variable nor a marker match, it `create`s. And `finish()` over a *complete* shipped transcript, given the body it already rendered, writes nothing | unit |
-| …and the workflow actually calls it, with an environment | a test reads `agent-ship.yml`, `agent-code-review.yml` and `agent-qa.yml`, splits each into steps on the six-space `- name:` / `- uses:` boundary (no YAML dependency for three files). For ship, it asserts the pre-checkout step exists, precedes `actions/checkout@v7`, and wraps its `gh` calls so a failure cannot propagate (no unguarded non-zero exit reaches the step's own result). For all three files it takes the step whose `run:` mentions `ship-progress.mjs finish`: each must be guarded by `if: ${{ always() }}`, be `continue-on-error: true`, **and carry its own `env:` block naming `GH_TOKEN`, `GH_REPO`, `SHIP_PROGRESS_RUN` and `SHIP_PROGRESS_ISSUE` (ship) or `SHIP_PROGRESS_PR` and `SHIP_PROGRESS_KIND` (review, QA)** — a step inheriting nothing is the silent failure this catches, and an edit to `!cancelled()` or `success()`, or a dropped key, has to break a test | unit |
+| …and the workflow actually calls it, with an environment | a test reads `agent-ship.yml`, `agent-code-review.yml` and `agent-qa.yml`, splits each into steps on the six-space `- name:` / `- uses:` boundary (no YAML dependency for three files). For ship, it asserts the pre-checkout step exists, precedes `actions/checkout@v7`, and wraps its `gh` calls so a failure cannot propagate (no unguarded non-zero exit reaches the step's own result). It separately asserts the *Run /ship* step's own `env:` block names `SHIP_PROGRESS_ISSUE`, `SHIP_PROGRESS_RUN` and `GH_REPO` — the follower `agent-run.sh` starts inside that step has nothing to key off without them, so a spec that only checked the `finish` step's env would pass while the live-updating half of the feature never ran. For all three files it takes the step whose `run:` mentions `ship-progress.mjs finish`: each must be guarded by `if: ${{ always() }}`, be `continue-on-error: true`, **and carry its own `env:` block naming `GH_TOKEN`, `GH_REPO`, `SHIP_PROGRESS_RUN` and `SHIP_PROGRESS_ISSUE` (ship) or `SHIP_PROGRESS_PR` and `SHIP_PROGRESS_KIND` (review, QA)** — a step inheriting nothing is the silent failure this catches, and an edit to `!cancelled()` or `success()`, or a dropped key, has to break a test | unit |
 | No model calls; a failure never fails or slows the run | `follow()` and `finish()` with a stub that throws on every call still return normally and still consume the whole stream (asserting the throw was swallowed); a grep-style assertion that the script imports nothing from the Agent SDK and spawns no `claude`; the same for the pre-checkout step's shell (checked above); and, in `agent-run.sh`, the follower is backgrounded and reaped with `|| true` — asserted by a test that reads the script and checks the CLI's stdout still goes to the transcript file, not into a pipe | unit |
 | Empty or malformed stream | `readStream([])`, `readStream(['', 'not json', '{"type":"assistant"}'])` and a `task_progress` whose `workflow_progress` is missing/`null` all return a usable state, and `render()` of each, given a `started`, produces a comment that says the run has not reported yet — no throw. A `verify` preview that is prose, and one truncated before `"ok"`, both render `gate not known yet` rather than a guess | unit |
 | Reviewing… / Running QA… on the PR, replaced by the verdict | `prLine()` mid-run returns `Reviewing… · 3m`, and after a `task_notification` whose output file holds `result.verdictLine` returns that verdict line; the QA variant reads `Running QA…` | unit |
@@ -232,6 +243,21 @@ pre-checkout step and no `finish` step at all.
 
 ## Decisions
 
+- **The *Run /ship* step's `env:` was wrong in an earlier draft — it does not
+  already carry `SHIP_PROGRESS_ISSUE`, `SHIP_PROGRESS_RUN` or `GH_REPO`, and
+  those three do not travel through `$GITHUB_ENV` from the pre-checkout step
+  (that step only ever writes `SHIP_PROGRESS_STARTED` and
+  `SHIP_PROGRESS_COMMENT_ID`, per the earlier bullet on why those two and no
+  others go through `$GITHUB_ENV`).** A spec audit round caught this: without
+  them, `agent-run.sh`'s own gate — "runs only when `SHIP_PROGRESS_ISSUE` or
+  `SHIP_PROGRESS_PR` is set" — is false on every real ship run, so the
+  follower never starts and the comment sits at "starting…" until `finish`
+  patches it once at the very end, silently failing the live-update criterion
+  while every unit test (which only exercises the pure functions and the
+  workflow-parsing checks as they were written) still passed. Fixed by adding
+  the three as ordinary per-step `env:` entries on *Run /ship* itself — see
+  *Where* — and by widening the workflow-parsing test to check that step's
+  `env:` specifically, not only the `finish` step's.
 - **The stream really does carry live progress, and it was measured, not
   assumed.** A throwaway three-agent workflow was run under
   `claude -p --output-format stream-json --verbose`, and its transcript is
