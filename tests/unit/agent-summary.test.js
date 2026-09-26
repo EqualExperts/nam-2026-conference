@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, markdown } from '../../scripts/agent-summary.mjs';
+import { summarise, markdown, workflowRuns } from '../../scripts/agent-summary.mjs';
 
 /**
  * The shapes below are what `claude -p --output-format stream-json` printed
@@ -32,4 +32,21 @@ test('a run that launched nothing is judged on its one result', () => {
 
 test('no transcript at all is a failure', () => {
   assert.equal(summarise([]).ok, false);
+});
+
+test('a finished workflow’s return value and agent states come from its task output file', () => {
+  const note = JSON.stringify({ type: 'system', subtype: 'task_notification', status: 'completed', summary: 'qa', output_file: '/x' });
+  const file = { result: { verdictLine: 'PASS high 4/4', comment: '> [!TIP]' }, workflowProgress: [
+    { type: 'workflow_phase', title: 'Plan' },
+    { type: 'workflow_agent', label: 'plan', state: 'done', phaseTitle: 'Plan' },
+    { type: 'workflow_agent', label: 'publish', state: 'error', phaseTitle: 'Publish' },
+  ] };
+  const s = summarise([launch, result('launched'), note, result('done', 1)], () => file);
+  assert.equal(s.runs[0].result.verdictLine, 'PASS high 4/4');
+  assert.match(markdown(s, '/qa 35'), /\| publish \| Publish \| \*\*error\*\* \|/);
+});
+
+test('a missing output file is reported, not thrown', () => {
+  const note = { type: 'system', subtype: 'task_notification', status: 'completed', output_file: '/gone' };
+  assert.deepEqual(workflowRuns([note], () => { throw new Error('ENOENT'); }), [{ status: 'completed', summary: undefined, result: null, agents: [] }]);
 });

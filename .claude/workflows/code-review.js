@@ -17,7 +17,11 @@ export const meta = {
 // refute it, and the comment and the verdict are composed by the script from
 // what survived, so their shape never depends on a model remembering it.
 
-const pr = Number(typeof args === 'object' && args ? args.pr : args)
+// `/code-review 42`, `/code-review 42 --no-publish` (CI: the job posts what this returns),
+// or { pr, workdir, publish }.
+const argText = typeof args === 'object' && args ? '' : String(args ?? '')
+const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
+const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `code-review needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -253,6 +257,12 @@ async function publish(r) {
     line = ''
   }
 
+  const out = { verdict: r.verdict, confidence: r.confidence, pr, comment: body, verdictLine: line, findings: r.findings || [] }
+  // In CI the job posts `comment` and reads `verdictLine` itself — no model
+  // between the verdict and the check. An agent told to publish once
+  // returned posted:false and the check read "did not finish".
+  if (!PUBLISH) return out
+
   phase('Publish')
   const posted = await agent(
     `Post this as ONE comment on pull request #${pr}, exactly as written — write it to a file and use ` +
@@ -263,5 +273,5 @@ async function publish(r) {
     `Never approve, request changes or merge.`,
     { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low' },
   )
-  return { verdict: r.verdict, confidence: r.confidence, pr, comment: posted ? posted.url : null, findings: r.findings || [] }
+  return { ...out, commentUrl: posted ? posted.url : null }
 }

@@ -83,7 +83,7 @@ jobs:
           for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs; do
             git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
           done
-          scripts/agent-run.sh "/code-review $PR" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
+          scripts/agent-run.sh "/code-review $PR --no-publish" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
 
       # Red means a blocker was found, not that merging is forbidden — nothing
       # here is a required check. It puts the blocker where a skim-reader sees
@@ -97,8 +97,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          verdict=$(head -c 2000 /tmp/review-verdict 2>/dev/null | tr '\n' ' ' || true)
+          # The workflow returns its comment and verdict line; this step posts
+          # them. No model sits between the verdict and the check.
+          result="$RUNNER_TEMP/workflow-result.json"
+          field() { jq -r --arg k "$1" '.[$k] // empty' "$result" 2>/dev/null || true; }
+          field comment > "$RUNNER_TEMP/comment.md"
+          [ -s "$RUNNER_TEMP/comment.md" ] && gh pr comment "$PR" --body-file "$RUNNER_TEMP/comment.md"
+          verdict=$(field verdictLine | head -c 2000 | tr '\n' ' ')
           state=$(printf '%s' "$verdict" | awk '{print $1}')
           confidence=$(printf '%s' "$verdict" | awk '{print $2}')
           detail=$(printf '%s' "$verdict" | cut -d' ' -f3-)

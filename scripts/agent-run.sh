@@ -33,5 +33,8 @@ node "$(dirname "$0")/agent-summary.mjs" "$out" "$prompt" >> "$summary" || true
 node "$(dirname "$0")/agent-summary.mjs" "$out" "$prompt" --check
 checked=$?
 
+# The workflow's own return value, for the job to publish from.
+node "$(dirname "$0")/agent-summary.mjs" "$out" "$prompt" --result "${RUNNER_TEMP:-/tmp}/workflow-result.json" || true
+
 [ "$status" -ne 0 ] && exit "$status"
 exit "$checked"

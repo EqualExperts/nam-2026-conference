@@ -144,6 +144,13 @@ describe('code-review', () => {
     assert.deepEqual(result.findings.map(x => x.claim), ['trigger cannot fire', 'doc wrong']);
   });
 
+  test('with --no-publish nothing is posted by a model — the verdict and comment are returned for the job', async () => {
+    const { result, calls } = await run({}, '42 --no-publish');
+    assert.ok(!calls.includes('publish'));
+    assert.match(result.verdictLine, /^PASS high /);
+    assert.match(result.comment, /\[!TIP\]/);
+  });
+
   test('no pull request readable → no verdict file, which publishes as unproven', async () => {
     const { result, prompts } = await run({ context: null });
     assert.equal(result.verdict, 'none');
@@ -263,5 +270,13 @@ describe('qa', () => {
     const { calls, result } = await run({ plan: mixed, 'probe-commands': { results: [{ id: 'c1', command: 'pass' }] } });
     assert.ok(calls.includes('probe') && calls.includes('probe-commands'));
     assert.equal(result.confidence, 'high');
+  });
+
+  test('with --no-publish QA returns its comment, verdict and issue note for the job', async () => {
+    const { result, calls } = await run({}, '42 --no-publish');
+    assert.ok(!calls.includes('publish'));
+    assert.match(result.verdictLine, /^PASS high/);
+    assert.equal(result.issue, 27);
+    assert.match(result.issueNote, /### QA/);
   });
 });

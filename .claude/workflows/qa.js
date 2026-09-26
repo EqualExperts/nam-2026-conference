@@ -15,7 +15,11 @@ export const meta = {
 // replaces was trusted to do both checks; here they are phases, and the
 // verdict is computed from their results.
 
-const pr = Number(typeof args === 'object' && args ? args.pr : args)
+// `/qa 42`, `/qa 42 --no-publish` (CI: the job posts what this returns),
+// or { pr, workdir, publish }.
+const argText = typeof args === 'object' && args ? '' : String(args ?? '')
+const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
+const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -218,6 +222,12 @@ async function publish(r) {
         `Did: ${f.probe.what}\nExpected: ${f.probe.expect}\nHappened: ${f.happened}` + (f.image ? `\n${f.image}` : '')).join('\n\n')
     : '')
 
+  const out = { verdict: r.verdict, confidence: r.confidence, pr, comment: body, verdictLine: line, issue: plan && plan.issue, issueNote: head, findings }
+  // In CI the job posts these itself (the runner is thrown away, so there is
+  // nothing to clean up either). An agent told to publish once returned
+  // posted:false and the check read "did not finish".
+  if (!PUBLISH) return out
+
   phase('Publish')
   const posted = await agent(
     HERE + (r.cleanup ? `First delete ${PROBE_FILE} and any ../orbit-qa-base worktree, and leave \`git status\` clean.\n\n` : '') +
@@ -231,5 +241,5 @@ async function publish(r) {
     `Change no code and open no pull request.`,
     { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low' },
   )
-  return { verdict: r.verdict, confidence: r.confidence, pr, posted: !!(posted && posted.ok), findings }
+  return { ...out, posted: !!(posted && posted.ok) }
 }
