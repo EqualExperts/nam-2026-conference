@@ -151,6 +151,15 @@ trigger CI; on the `GITHUB_TOKEN` fallback they do not.
   (which waits), keeps the transcript, writes it to the job summary, and fails
   the step when a launched workflow never reported back. Only
   `agent-respond.yml` still uses the action — interactive mode needs it.
+- **In CI, review and QA do not publish — the job does.** They run with
+  `--no-publish` and return `{ comment, verdictLine }` (QA adds `issue`,
+  `issueNote`); `agent-summary.mjs --result` reads that from the workflow's
+  task output file, and the *Publish the verdict* step posts it with `gh`. An
+  agent asked to post once returned `posted: false` in CI and the check read
+  "did not finish". The job summary also lists every agent and its state.
+- **A PR is reviewed by the base branch's harness** (`.claude/`, CLAUDE.md,
+  playbooks), so a change to the review workflow only takes effect on the
+  pull requests after it merges.
 - **A session caches saved workflows when it starts.** `/ship` in a session
   that has since edited `ship.js` runs the version it loaded, silently. The
   first live run of the loop did exactly that and ran a week-old script. After
