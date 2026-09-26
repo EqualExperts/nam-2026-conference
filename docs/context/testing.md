@@ -129,7 +129,17 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   the rest of the group; do not combine them.
 - `tests/smoke.spec.js` already asserts every route renders with no console errors and no
   horizontal overflow on both projects, so responsive regressions fail on their own.
-
+- The seed gives every attendee a plan, waitlist places included, so a test that asserts an
+  absolute count assumes a zero that is not there. Read the baseline in the test — the
+  payload the page fetched, or the number before the click — and assert the change. An API
+  test may instead `clearAgenda(api, id)` first.
+- A data lane owns an attendee on **one day**, so it protects per-day numbers only. Anything
+  totalled across the conference — the hours tile, a whole-plan count — still moves when
+  another lane writes for the same attendee on a different day; assert those from one
+  payload, or pick an attendee no other lane uses at all.
+- Before claiming a lane, check the whole `LANES` table *and* the read-only fixtures in its
+  comment: the promotion test picks its session (and therefore its day) at runtime, so the
+  day it occupies is not visible in the table.
 - Tests that mutate one shared fixture run on one project only:
   `test.skip(testInfo.project.name !== 'desktop', …)` — see the promotion test in `tests/seats.spec.js`.
 - A `Stat` tile counts up from zero only once the number is properly on screen, so a tile
@@ -139,13 +149,12 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - Only `momentOn`/full `THH:MM` values pin the clock; a bare date in `at` is ignored.
 - `clearAgendaFor` on a non-`clean` lane deletes seeded bookings, which the next run
   (without a reseed) no longer has — tests that expect seeded plans then fail far away.
-- API tests may book anything, but an API test that assumes a seeded attendee's plan is
-  empty should call `clearAgenda(api, id)` first; the seed gives everyone a plan.
 
 ## Where to change…
 
 - **Add a data lane**: add an entry to `LANES` in `tests/helpers.js` with a `desktop` and a
-  `mobile` pair whose `user`+`day` no other lane uses; mark `clean: true` only if the seed
+  `mobile` pair whose `user`+`day` no other lane or fixture holds (see *Gotchas*); mark
+  `clean: true` only if the seed
   books nothing for that attendee that day (seed doc lists who has which days). Read it
   with `const { user, day } = await laneFor('area.case', testInfo)`.
 - New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex.
