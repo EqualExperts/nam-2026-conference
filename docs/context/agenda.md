@@ -98,9 +98,10 @@ fill bar from `fillRate`) and My Agenda `SpeakingPanel` (`speaking-panel`, all,
 plus `speaker.avgRating`) both fetch `api.getUser` and render only when the user
 is linked and has sessions. Fill colour: ≥95% rose, ≥80% amber, else emerald.
 
-**.ics** — `ical.js`: `sessionCalendar(id)` (route `sessions.js` `/:id.ics`) and
-`agendaCalendar(userId)` (route `users.js` `/:id/agenda.ics`, **confirmed seats
-only**). Both return `null` for a missing id → route 404. `event()` emits floating
+**.ics** — `ical.js`: `sessionCalendar(id, baseUrl)` (route `sessions.js`
+`/:id.ics`) and `agendaCalendar(userId, baseUrl)` (route `users.js`
+`/:id/agenda.ics`, **confirmed seats only**), both passed `baseUrlFor(req)`.
+Both return `null` for a missing id → route 404. `event()` emits floating
 local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
 `room, venue`, DESCRIPTION `track · format\n\nabstract`; every line goes through
 `fold` (75 octets, byte-aware) and text through `escape`. `wrap()` adds
@@ -124,8 +125,10 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
   session can show as "Right now"/next there, unlike `TodayPanel`.
 - The server's `conflicts`/`totalMinutes`/`waitlistedMinutes` are overwritten on My Agenda; change the
   client `useMemo` too if you change `scheduleFor`'s shape.
-- `ical.js` prepares its statements per call (not module scope) and hard-codes
-  `URL:http://localhost:5173/...`; `DTSTAMP` uses real `new Date()`.
+- `ical.js` prepares its statements per call (not module scope); `DTSTAMP` uses
+  real `new Date()`. `URL:` comes from `baseUrlFor(req)` — `ORBIT_PUBLIC_URL`
+  if set, else `X-Forwarded-Proto`/`X-Forwarded-Host` or the direct
+  connection's own protocol/host.
 - `speakingSessions` lack `speakers`/`tags` — do not hand them to a component that reads those.
 
 ## Where to change…

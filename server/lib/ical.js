@@ -40,7 +40,21 @@ const stamp = (iso) => `${iso.replace(/[-:]/g, '').slice(0, 15)}Z`;
 /** Local venue time, emitted as floating local time so it lands as written. */
 const local = (day, hhmm) => `${day.replace(/-/g, '')}T${hhmm.replace(':', '')}00`;
 
-function event(s) {
+/**
+ * The address to put on `URL:` — an operator-configured public address if
+ * one is set, else the one the request actually arrived on. Reads
+ * `X-Forwarded-Proto`/`X-Forwarded-Host` directly (rather than Express's
+ * `trust proxy`, which also reshapes `req.ip`/`req.hostname`) so a reverse
+ * proxy in front of the app is honoured without touching anything else.
+ */
+export function baseUrlFor(req) {
+  if (process.env.ORBIT_PUBLIC_URL) return process.env.ORBIT_PUBLIC_URL.replace(/\/+$/, '');
+  const proto = req.get('X-Forwarded-Proto') || req.protocol;
+  const host = req.get('X-Forwarded-Host') || req.get('host');
+  return `${proto}://${host}`;
+}
+
+function event(s, baseUrl) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:orbit-session-${s.id}@orbitconf.dev`,
@@ -50,7 +64,7 @@ function event(s) {
     `SUMMARY:${escape(s.title)}`,
     `LOCATION:${escape(`${s.room_name}, ${s.venue_name}`)}`,
     `DESCRIPTION:${escape(`${s.track_name} · ${s.format}\n\n${s.abstract}`)}`,
-    `URL:http://localhost:5173/sessions/${s.id}`,
+    `URL:${baseUrl}/sessions/${s.id}`,
     'END:VEVENT',
   ];
   return lines.map(fold).join('\r\n');
@@ -78,17 +92,17 @@ function wrap(name, events) {
   ].join('\r\n');
 }
 
-export function sessionCalendar(sessionId) {
+export function sessionCalendar(sessionId, baseUrl) {
   const s = db.prepare(`${SELECT} WHERE s.id = ?`).get(sessionId);
   if (!s) return null;
-  return wrap(`ORBIT ’26 — ${s.title}`, [event(s)]);
+  return wrap(`ORBIT ’26 — ${s.title}`, [event(s, baseUrl)]);
 }
 
-export function agendaCalendar(userId) {
+export function agendaCalendar(userId, baseUrl) {
   const user = db.prepare('SELECT name FROM users WHERE id = ?').get(userId);
   if (!user) return null;
   const rows = db.prepare(`${SELECT}
     JOIN reservations res ON res.session_id = s.id AND res.user_id = ? AND res.status = 'confirmed'
     ORDER BY s.day, s.starts_at`).all(userId);
-  return wrap(`ORBIT ’26 — ${user.name}`, rows.map(event));
+  return wrap(`ORBIT ’26 — ${user.name}`, rows.map((s) => event(s, baseUrl)));
 }
