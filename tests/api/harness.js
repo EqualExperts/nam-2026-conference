@@ -37,8 +37,10 @@ export async function startApi() {
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
 
+  const origin = `http://127.0.0.1:${server.address().port}`;
   return {
-    api: client(`http://127.0.0.1:${server.address().port}/api`),
+    api: client(`${origin}/api`),
+    origin,
     async close() {
       await new Promise((done) => server.close(done));
       rmSync(dir, { recursive: true, force: true });
@@ -48,10 +50,10 @@ export async function startApi() {
 
 /** Minimal fetch wrapper: every call reports its status and its parsed body. */
 export function client(base) {
-  const send = async (method, path, body) => {
+  const send = async (method, path, body, headers) => {
     const res = await fetch(base + path, {
       method,
-      headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+      headers: body === undefined ? headers : { 'content-type': 'application/json', ...headers },
       // a string body goes out verbatim, so a test can post malformed JSON
       body: body === undefined || typeof body === 'string' ? body : JSON.stringify(body),
     });
@@ -61,7 +63,7 @@ export function client(base) {
   };
 
   return {
-    get: (path) => send('GET', path),
+    get: (path, headers) => send('GET', path, undefined, headers),
     put: (path, body) => send('PUT', path, body),
     del: (path) => send('DELETE', path),
     /** The body of a GET that is expected to succeed. */

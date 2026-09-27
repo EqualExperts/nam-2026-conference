@@ -13,10 +13,11 @@ import { clearAgenda, overlaps, startApi } from './harness.js';
 
 let api;
 let close;
+let origin;
 let sessions;
 
 before(async () => {
-  ({ api, close } = await startApi());
+  ({ api, close, origin } = await startApi());
   sessions = await api.json('/sessions');
 });
 after(() => close());
@@ -83,6 +84,42 @@ describe('One session as a calendar entry', () => {
     const res = await api.get('/sessions/99999.ics');
     assert.equal(res.status, 404);
     assert.ok(res.body.error);
+  });
+
+  test('URL: is built from the address the request actually used', async () => {
+    const session = sessions[0];
+    const res = await api.get(`/sessions/${session.id}.ics`);
+    const [block] = events(res.text);
+
+    assert.equal(valueOf(block, 'URL'), `${origin}/sessions/${session.id}`);
+  });
+
+  test('URL: prefers a forwarded host and protocol over the direct connection', async () => {
+    const session = sessions[0];
+    const res = await api.get(`/sessions/${session.id}.ics`, {
+      'X-Forwarded-Host': 'attendee.example',
+      'X-Forwarded-Proto': 'https',
+    });
+    const [block] = events(res.text);
+
+    assert.equal(valueOf(block, 'URL'), `https://attendee.example/sessions/${session.id}`);
+  });
+
+  test('URL: a configured public base URL wins over a forwarded host', async () => {
+    const session = sessions[0];
+    process.env.ORBIT_PUBLIC_URL = 'https://orbit.conf/';
+    let res;
+    try {
+      res = await api.get(`/sessions/${session.id}.ics`, {
+        'X-Forwarded-Host': 'attendee.example',
+        'X-Forwarded-Proto': 'https',
+      });
+    } finally {
+      delete process.env.ORBIT_PUBLIC_URL;
+    }
+    const [block] = events(res.text);
+
+    assert.equal(valueOf(block, 'URL'), `https://orbit.conf/sessions/${session.id}`);
   });
 });
 
