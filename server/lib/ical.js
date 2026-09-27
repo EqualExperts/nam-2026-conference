@@ -49,8 +49,11 @@ const local = (day, hhmm) => `${day.replace(/-/g, '')}T${hhmm.replace(':', '')}0
  */
 export function baseUrlFor(req) {
   if (process.env.ORBIT_PUBLIC_URL) return process.env.ORBIT_PUBLIC_URL.replace(/\/+$/, '');
-  const proto = req.get('X-Forwarded-Proto') || req.protocol;
-  const host = req.get('X-Forwarded-Host') || req.get('host');
+  // A chain of proxies appends (`client.example, inner.proxy`); the first
+  // entry is the one the attendee typed.
+  const first = (v) => (v || '').split(',')[0].trim();
+  const proto = first(req.get('X-Forwarded-Proto')) || req.protocol;
+  const host = first(req.get('X-Forwarded-Host')) || req.get('host');
   return `${proto}://${host}`;
 }
 

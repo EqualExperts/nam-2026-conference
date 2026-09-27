@@ -105,6 +105,17 @@ describe('One session as a calendar entry', () => {
     assert.equal(valueOf(block, 'URL'), `https://attendee.example/sessions/${session.id}`);
   });
 
+  test('URL: takes the first host of a proxy chain, not the whole list', async () => {
+    const session = sessions[0];
+    const res = await api.get(`/sessions/${session.id}.ics`, {
+      'X-Forwarded-Host': 'attendee.example, internal-proxy.local',
+      'X-Forwarded-Proto': 'https, http',
+    });
+    const [block] = events(res.text);
+
+    assert.equal(valueOf(block, 'URL'), `https://attendee.example/sessions/${session.id}`);
+  });
+
   test('URL: a configured public base URL wins over a forwarded host', async () => {
     const session = sessions[0];
     process.env.ORBIT_PUBLIC_URL = 'https://orbit.conf/';

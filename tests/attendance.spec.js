@@ -195,6 +195,14 @@ test.describe('Calendar export', () => {
     }
   });
 
+  // Through the dev server, as a browser fetches it: the proxy rewrites Host,
+  // so without forwarding it the link named the API's own localhost port.
+  test('an exported link points at the address the attendee used', async ({ request, baseURL }) => {
+    const res = await request.get('/api/sessions/1.ics');
+    expect(res.ok()).toBeTruthy();
+    expect(await res.text()).toContain(`URL:${baseURL}/sessions/1\r\n`);
+  });
+
   test('a single session downloads too', async ({ request }) => {
     const res = await request.get(`${API}/sessions/1.ics`);
     expect(res.ok()).toBeTruthy();

@@ -127,8 +127,10 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
   client `useMemo` too if you change `scheduleFor`'s shape.
 - `ical.js` prepares its statements per call (not module scope); `DTSTAMP` uses
   real `new Date()`. `URL:` comes from `baseUrlFor(req)` — `ORBIT_PUBLIC_URL`
-  if set, else `X-Forwarded-Proto`/`X-Forwarded-Host` or the direct
-  connection's own protocol/host.
+  if set, else the first entry of `X-Forwarded-Proto`/`X-Forwarded-Host` or
+  the direct connection's own protocol/host. The Vite proxy (`changeOrigin`)
+  rewrites Host, so `vite.config.js` sets those headers itself — prove a link
+  through the web port (`attendance.spec.js`), not by calling the API directly.
 - `speakingSessions` lack `speakers`/`tags` — do not hand them to a component that reads those.
 
 ## Where to change…
