@@ -44,7 +44,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      issues: read
+      issues: write         # file a follow-up issue for anything that did not block
       checks: write         # publish the verdict as a check on the PR
       id-token: write
       actions: read
@@ -81,6 +81,11 @@ jobs:
           # personal token its comments would read as the author reviewing
           # their own pull request.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The agents run `gh` too — `gh pr view` for the head sha and for
+          # the verdict marker the last pass left. Unpinned, `gh` resolves a
+          # fork's base repo to the upstream, where pull request #42 is
+          # somebody else's, and the re-review would scope itself to it.
+          GH_REPO: ${{ github.repository }}
           BASE: ${{ github.base_ref }}
           PR: ${{ github.event.pull_request.number }}
         run: |
@@ -173,6 +178,36 @@ jobs:
 
           echo "verdict: ${verdict:-<none>} → $conclusion"
           [ "$conclusion" != "failure" ]
+
+      # A follow-up is real but nobody hits it in normal use, so it never
+      # turns the check red — which means filing it is the only way it
+      # survives the thread. Ungated on the outcome above: a red review and a
+      # green one hand this the same field, and the only way to lose a
+      # follow-up is a condition somebody has to remember. An empty or absent
+      # array is a no-op, which is what makes that safe.
+      - name: 📌 File follow-ups
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          result="$RUNNER_TEMP/workflow-result.json"
+          n=$(jq -r '(.followUps // []) | length' "$result" 2>/dev/null || echo 0)
+          [ "${n:-0}" -gt 0 ] || { echo "no follow-ups"; exit 0; }
+          i=0
+          while [ "$i" -lt "$n" ]; do
+            title=$(jq -r --argjson i "$i" '.followUps[$i].title // empty' "$result" | head -c 200)
+            jq -r --argjson i "$i" '.followUps[$i].body // empty' "$result" > "$RUNNER_TEMP/follow-up.md"
+            i=$((i + 1))
+            [ -n "$title" ] || continue
+            # Better an unlabelled issue than a lost one: a fork that never
+            # ran setup.yml has no follow-up label, and --label on a missing
+            # one is a hard error.
+            url=$(gh issue create --title "$title" --body-file "$RUNNER_TEMP/follow-up.md" --label follow-up) \
+              || url=$(gh issue create --title "$title" --body-file "$RUNNER_TEMP/follow-up.md") \
+              || { echo "could not file: $title"; continue; }
+            echo "- [$title]($url)" >> "$GITHUB_STEP_SUMMARY"
+          done
 
   learn:
     needs: fresh-context

@@ -28,7 +28,7 @@ jobs:
       issues: write        # create the labels
 
     steps:
-      - name: Create the four labels
+      - name: Create the labels
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -46,6 +46,7 @@ jobs:
           label ready-for-human BF8700 "PR open and verified. Needs human review."
           label needs-human     A40E26 "The agent stopped and said why. Read the comment before relabelling."
           label harness-escape  D93F0B "A blocker found after ship opened this PR — its own loop let it through."
+          label follow-up       0E8A16 "Worth doing, but nobody hits it in normal use. Filed by a review that passed."
           label ship:full       0969DA "Give this ticket the full ship loop — more auditors, more rounds, Opus."
 
       - name: Say what else this fork needs
@@ -58,7 +59,7 @@ jobs:
           {
             echo "## Harness setup"
             echo
-            echo "The four labels exist. \`ready-for-ai\` on an issue starts a ship run."
+            echo "The labels exist. \`ready-for-ai\` on an issue starts a ship run."
             echo
             echo "| Needs | State |"
             echo "| --- | --- |"

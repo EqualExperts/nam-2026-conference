@@ -150,6 +150,16 @@ survived:
   tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
+  *Context* also returns the PR's `head` and, on a re-review, `previous` —
+  read back from the newest `<!-- orbit-verdict:code-review {…} -->` marker
+  the last finished pass ended its comment with (`commit`, `blockers`,
+  `followUps`). Then every lens prompt carries a `SCOPE` paragraph: new
+  problems only in `git diff <commit> <head>` (on a rebase, `git fetch origin
+  <commit>` and the same diff limited to the PR's files), unless severe enough
+  to have blocked a first review; and a *Recheck* phase runs one
+  `recheck:<category>` per previous blocker — an unresolved one is confirmed
+  without a skeptic and ranks first, a resolved one leaves the verdict. All
+  previous blockers resolved and a clean delta is a **pass**.
 - **`qa.js`** — *Plan* first triages: a cosmetic change the tests pin
   passes at medium confidence with no probes, headed *skipped — existing
   tests are enough* — but only when the planner says `enough` **and** the job's
@@ -165,7 +175,15 @@ survived:
   reproduces on the branch and not on the base, and survives a `skeptic:<probe>`
   asked to refute it as a bug in this change, is a bug (a refuted one is a question); one that did not
   reproduce is a question. Confidence is the share of the plan that ran on
-  both viewports. `agent-respond.yml` handles `@claude` and
+  both viewports. A `scope` agent opens *Plan*, ahead of the planner: the
+  PR's `head`, its `files`, and `previous` from the newest `<!--
+  orbit-verdict:qa {…} -->` marker, each previous bug carrying the probe that
+  found it. The plan prompt gets the same `SCOPE` paragraph as code review's
+  lenses and is told the previous bugs' probe ids are already spent; the
+  script puts those probes first in `plan.probes` (each id once, capped at
+  `MAX_PROBES`) before the empty-plan early return, and one that fails and
+  reproduces again is a bug without a second skeptic. A dead `scope` is
+  `verdict: 'none'`. `agent-respond.yml` handles `@claude` and
 pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits
 trigger CI; on the `GITHUB_TOKEN` fallback they do not.
 
@@ -207,9 +225,47 @@ cannot start another round.
   runtime forbids them. Anything that touches the machine goes through an
   agent; anything that decides goes through the script.
 - The audit lenses never receive the implementer's reasoning.
+- **A blocker names how and harm.** A code review finding must say the path
+  through normal use that reaches it (`how`) and what it costs (`harm`); the
+  script demotes one with either left blank to a follow-up, and a skeptic
+  (in either pass) may answer `contrived` — real, but only from an input
+  nobody gives — which does the same. Follow-ups never colour the check:
+  they are listed in the comment, returned as `followUps` (at most three,
+  minus any key the last marker already filed) on a pass **or** a fail, and
+  the job's *📌 File follow-ups* step opens one `follow-up` issue each.
+- **Only a finished pass leaves a marker.** A `verdict: 'none'` comment has
+  none, so the run after it reviews as if it were the first rather than
+  treating every previous blocker as closed.
 
 ## Gotchas
 
+- **A script-composed prompt carries only what an earlier agent already
+  returned, and an early `return publish(…)` runs before the later `const`s
+  exist.** A prompt that needs a sha or the PR's files gets a Context agent
+  ahead of it: `code-review.js` always had `context`, and `qa.js` gained
+  `scope` ahead of the planner for exactly this — the plan prompt carries the
+  delta boundary, and could not while `plan` was the first agent. And
+  `publish()` reads `plan` unconditionally (`issue: plan && plan.issue`), so a
+  bail-out above its assignment is a ReferenceError rather than the `verdict:
+  'none'` it was meant to be — which is why `plan` is a `let` initialised to
+  `null` above the `scope` stop. Keep publish's inputs to what exists on every
+  path.
+- **Two passes, one thread, two markers.** Code review and QA comment on the
+  same pull request, QA usually last, so each marker is named for its pass
+  (`orbit-verdict:code-review`, `orbit-verdict:qa`), each reader prompt names
+  only its own, and the script still drops a `previous` whose `pass` is not
+  its own — QA's marker read as code review's would silently close every
+  previous blocker.
+- **In a `pull_request` job, `HEAD` is the merge commit**, not the PR head:
+  `actions/checkout` with no `ref:` checks out `refs/pull/<n>/merge`. So the
+  delta is always `git diff <marker commit> <head sha>` between two named
+  commits; a diff against `HEAD` would add everything merged into the base
+  since the last review. A rebase leaves the marker's commit outside the
+  branch's history (`inHistory: false`), so the scope fetches it and limits
+  the diff to the PR's files, reviewing them in full if it cannot be fetched.
+- **Filing follow-ups needs `issues: write`** on the code review job; QA's
+  already had it. The *📌 File follow-ups* step is gated on `!cancelled()`
+  only, so a fail files its follow-ups exactly as a pass does.
 - **CI runs the CLI, not `claude-code-action`.** The action drives the
   Agent SDK and stops at the first `result`; a saved workflow's first result
   is its launcher's "running in the background", so every workflow died
@@ -220,11 +276,15 @@ cannot start another round.
   background workflow after 600s, which killed `/ship` mid-run. Only
   `agent-respond.yml` still uses the action — interactive mode needs it.
 - **In CI, review and QA do not publish — the job does.** They run with
-  `--no-publish` and return `{ comment, verdictLine }` (QA adds `issue`,
-  `issueNote`); `agent-summary.mjs --result` reads that from the workflow's
+  `--no-publish` and return `{ comment, verdictLine, followUps }` (QA adds
+  `issue`, `issueNote`); `agent-summary.mjs --result` reads that from the workflow's
   task output file, and the *Publish the verdict* step posts it with `gh`. An
   agent asked to post once returned `posted: false` in CI and the check read
   "did not finish". The job summary also lists every agent and its state.
+- **Every `gh` call in a workflow pins `GH_REPO: ${{ github.repository }}`.**
+  On a fork `gh` resolves the base repo to the upstream, so an unpinned
+  `gh issue create` aims the ticket at the parent — where `GITHUB_TOKEN` is
+  refused, and the comment or follow-up is lost rather than misfiled.
 - **A PR is reviewed by the base branch's harness** (`.claude/`, CLAUDE.md,
   playbooks), so a change to the review workflow only takes effect on the
   pull requests after it merges.

@@ -73,6 +73,12 @@ Headings: *What this changes* (in terms of what an attendee sees), *Where*
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
+Every row of *How it will be proved* must name an assertion that is **false on
+main today** — run the scenario against the branch point before you write the
+row. A row whose assertions all already hold (typically because it names an
+absence, or a side effect the change happens to keep) proves nothing, and it
+reads as proof right through the audit.
+
 ```bash
 git add specs/<n>-<short-slug>.md
 git commit -m "docs(spec): <the ticket's title, lower case>"
@@ -104,15 +110,18 @@ not. A change contradicting a stated decision is wrong even when it is green.
 ## 5. Write the check first
 
 Derive a check from **Done when:**, at the cheapest layer that can prove it —
-`CLAUDE.md` says which. Run it and **confirm it fails for the reason you
-expect**; a check that passes before you write anything is proving something
-other than the ticket.
+`CLAUDE.md` says which. Run it and confirm it is red for the reason §3b made
+you predict.
 
 - **Never edit an existing test to make it pass.** A failing test means your
   change is wrong, unless the ticket explicitly changes that behaviour.
 - **Never delete, skip or `.only` a test.**
 - **Never assert a value copied from your own output.** It comes from the
   ticket, or from reasoning about it.
+- **Assert the decision, not the instruction.** A check that an agent's prompt
+  contains some string proves the prompt, and stays green while the code
+  ignores what comes back. Prove it through what the run returns — the verdict,
+  the findings, the rendered page.
 
 ## 6. Implement
 
