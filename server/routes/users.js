@@ -4,7 +4,7 @@ import { SESSION_SELECT, toUser, toSpeaker, toSession } from '../lib/query.js';
 import { reserveSeat, releaseSeat, seatState } from '../lib/seats.js';
 import { attendanceState, checkIn, rateSession } from '../lib/attendance.js';
 import { todayFor, scheduleFor } from '../lib/agenda.js';
-import { agendaCalendar } from '../lib/ical.js';
+import { agendaCalendar, baseUrlFor } from '../lib/ical.js';
 
 export const usersRouter = Router();
 
@@ -49,7 +49,7 @@ usersRouter.get('/:id', (req, res) => {
 
 /** A subscribable feed of everything this attendee holds a seat for. */
 usersRouter.get('/:id/agenda.ics', (req, res) => {
-  const ics = agendaCalendar(Number(req.params.id));
+  const ics = agendaCalendar(Number(req.params.id), baseUrlFor(req));
   if (!ics) return res.status(404).json({ error: 'Attendee not found' });
   res.type('text/calendar').set('Content-Disposition', 'attachment; filename="orbit-agenda.ics"').send(ics);
 });

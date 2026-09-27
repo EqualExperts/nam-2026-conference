@@ -49,7 +49,9 @@ from `server/db.js` called right after, as `tests/unit/attendance.test.js` does.
 **API** (`tests/api/*.test.js`). `harness.js:startApi()` makes a temp dir, runs
 `server/seed.js` into it with `ORBIT_DB` set, sets `process.env.ORBIT_DB`, dynamically
 imports `server/index.js` (which does not listen when imported), and listens on port 0.
-It returns `{ api, close }`. `api` is `client(base)`: `get(path)`, `put(path, body)`,
+It returns `{ api, close, origin }` (`origin` is the bare `http://127.0.0.1:<port>`,
+for asserting against a value that is not under `/api`, e.g. an `.ics` `URL:`
+line). `api` is `client(base)`: `get(path, headers)`, `put(path, body)`,
 `del(path)` each resolve to `{ status, type, text, body }` (a string body is sent
 verbatim, for malformed-JSON tests); `json(path)` returns the body or throws on non-200.
 Paths are relative to `/api`. Also exported: `days(api)`, `overlaps(a, b)`,
