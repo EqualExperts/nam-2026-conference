@@ -218,13 +218,20 @@ jobs:
         run: |
           labels=$(gh issue view "$N" --json labels --jq '.labels[].name')
           branch=$(git ls-remote --heads origin "issue-$N-*" | awk '{print $2}' | sed 's#refs/heads/##' | head -1)
+          # An API refusal (a spend limit, an outage) reads exactly like a
+          # crash from outside. #61 was handed back as "did not finish" when
+          # the key had hit its usage limit; quote the API instead.
+          apierr=$(grep -ho 'API Error: [^"]*' "$RUNNER_TEMP/claude-run.jsonl" 2>/dev/null | tail -1 || true)
+          why=${apierr:+
+
+          > $apierr}
 
           # Still `ready-for-ai`: the run never claimed the ticket, so it never
           # started. The first Actions runs did exactly this and reported
           # success; say so instead.
           if printf '%s\n' "$labels" | grep -qx ready-for-ai; then
             gh issue edit "$N" --add-label needs-human --remove-label ready-for-ai || true
-            gh issue comment "$N" --body "The ship run ended without starting — the ticket was never claimed. The job summary has the transcript.
+            gh issue comment "$N" --body "The ship run ended without starting — the ticket was never claimed. The job summary has the transcript.$why
 
           [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
             echo "### Ship never started — handed back" >> "$GITHUB_STEP_SUMMARY"
@@ -233,7 +240,7 @@ jobs:
 
           if printf '%s\n' "$labels" | grep -qx ai-working; then
             gh issue edit "$N" --add-label needs-human --remove-label ai-working || true
-            gh issue comment "$N" --body "The ship run did not finish — it timed out, was cancelled, or stopped without handing back.${branch:+ Its work so far is on \`$branch\`.}
+            gh issue comment "$N" --body "The ship run did not finish — it timed out, was cancelled, or stopped without handing back.${branch:+ Its work so far is on \`$branch\`.}$why
 
           [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
             echo "### Ship did not finish — handed back" >> "$GITHUB_STEP_SUMMARY"
