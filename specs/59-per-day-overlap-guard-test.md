@@ -65,3 +65,10 @@ The PR description will record this run.
 
 Any change to how overlaps are detected (per the ticket) — the `overlapping`
 query, `reserveSeat`, and `releaseSeat`'s promotion check are untouched.
+
+## Audit
+
+- **Spec round 1** — 1 finding raised, 0 confirmed: a reviewer's concern did
+  not survive scrutiny, so the spec shipped as written with no change needed.
+- **Build round 1** — unit 312 passed, browser 169 passed; 0 findings raised,
+  0 confirmed. The implementation matched this spec on the first pass.
