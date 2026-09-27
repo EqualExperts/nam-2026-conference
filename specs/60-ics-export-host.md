@@ -77,3 +77,8 @@ change.
 - The web app's own address (Vite's dev proxy, `WEB_PORT`) is unchanged; this
   is only the link text inside exported `.ics` files.
 - No change to `DTSTAMP`, folding, or escaping.
+
+## Audit
+
+- spec round 1: 1 raised, 0 confirmed — nothing needed fixing.
+- build round 1: unit 314 passed, browser 169 passed; 0 raised, 0 confirmed.
