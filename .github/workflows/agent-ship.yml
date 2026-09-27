@@ -34,9 +34,12 @@ on:
 # second, but a shared group would leave it queued behind the real ship run for
 # the whole run, looking like a duplicate.
 # A comment shares the label's group, so a comment and a label on the same
-# ticket queue behind each other rather than shipping it twice at once.
+# ticket queue behind each other rather than shipping it twice at once. Only an
+# `@claude` comment, though: ship's own comments on the issue (the spec link,
+# progress) would otherwise sit "pending" behind the run that posted them for
+# its whole length, reading as a second ship, before the `if` skips them.
 concurrency:
-  group: agent-ship-${{ github.event.issue.number }}-${{ github.event.label.name || 'ready-for-ai' }}
+  group: agent-ship-${{ github.event.issue.number }}-${{ (github.event_name == 'issue_comment' && !contains(github.event.comment.body, '@claude')) && format('comment-{0}', github.run_id) || github.event.label.name || 'ready-for-ai' }}
   cancel-in-progress: false
 
 jobs:
