@@ -169,6 +169,21 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           scripts/agent-run.sh "/ship $N $NOTES" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
 
+      # The transcript is the only record of what the agent did. Without it a
+      # run that dies mid-way (#61: exit 1 after 18 minutes, nothing in the
+      # log) cannot be diagnosed, and the job summary is not readable from
+      # the API. Kept two weeks, uploaded whatever happened.
+      - name: 🗂️ Keep the transcript
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: transcript-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/claude-run.jsonl
+            ${{ runner.temp }}/workflow-result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       # A step's timeout or cancellation kills the whole process tree above —
       # the follower with it — so the comment's last word cannot be that
       # step's to write. This runs after it is gone, reads whatever

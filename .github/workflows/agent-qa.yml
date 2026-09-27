@@ -122,6 +122,21 @@ jobs:
           facts=$(node scripts/qa-facts.mjs "origin/$BASE")
           scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
 
+      # The transcript is the only record of what the agent did. Without it a
+      # run that dies mid-way (#61: exit 1 after 18 minutes, nothing in the
+      # log) cannot be diagnosed, and the job summary is not readable from
+      # the API. Kept two weeks, uploaded whatever happened.
+      - name: 🗂️ Keep the transcript
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: transcript-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/claude-run.jsonl
+            ${{ runner.temp }}/workflow-result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       # A killed step takes the follower with it, mid-line — this is what
       # settles the one-line status afterwards. See agent-ship.yml and
       # docs/context/harness.md.
