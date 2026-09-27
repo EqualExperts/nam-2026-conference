@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appLines, uiOnly, BINARY_LINES } from '../../scripts/qa-facts.mjs';
+import { appLines, uiOnly, totalLines, docsOnly, BINARY_LINES } from '../../scripts/qa-facts.mjs';
 
 /** The facts QA's triage is not allowed to take from the planner. */
 
@@ -23,4 +23,16 @@ test('not UI-only: a harness playbook, a workflow, a script, the server, or no s
   assert.equal(uiOnly('src/a.jsx\nserver/lib/seats.js'), false);
   assert.equal(uiOnly('tests/a.spec.js\ndocs/context/ui.md'), false);
   assert.equal(uiOnly(''), false);
+});
+
+test('total lines count every file, a binary as over any cap', () => {
+  assert.equal(totalLines('3\t1\tsrc/a.jsx\n40\t0\ttests/a.spec.js\n-\t-\tpublic/x.png'), 44 + BINARY_LINES);
+});
+
+test('docs-only: prose about the app, never the harness playbooks or CLAUDE.md', () => {
+  assert.equal(docsOnly('docs/context/ui.md\nspecs/1-x.md\nREADME.md'), true);
+  assert.equal(docsOnly('docs/context/ui.md\nsrc/a.jsx'), false);
+  assert.equal(docsOnly('docs/harness/qa-playbook.md'), false);
+  assert.equal(docsOnly('CLAUDE.md'), false);
+  assert.equal(docsOnly(''), false);
 });

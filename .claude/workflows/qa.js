@@ -26,6 +26,10 @@ const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--
 // at least one in src/). Without them — a local run — triage never skips.
 const APP_LINES = typeof args === 'object' && args ? args.appLines : Number((/--app-lines=(\d+)/.exec(argText) || [])[1] ?? NaN)
 const UI_ONLY = typeof args === 'object' && args ? args.uiOnly === true : /--ui-only=yes\b/.test(argText)
+// The team's dial and one more fact: a change that is only prose about the app
+// is not QA's to exercise, and "thorough" never lets the planner skip.
+const DEPTH = (/--depth=(fast|balanced|thorough)\b/.exec(argText) || [])[1] || (typeof args === 'object' && args && args.depth) || 'balanced'
+const DOCS_ONLY = typeof args === 'object' && args ? args.docsOnly === true : /--docs-only=yes\b/.test(argText)
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -175,6 +179,7 @@ const scope = await agent(
 // Planning blind would silently close every previous bug.
 if (!scope) return publish({ verdict: 'none', why: 'could not read the pull request' })
 const HEAD_SHA = sha(scope.head)
+
 const files = Array.isArray(scope.files) ? scope.files : []
 // The marker's own `pass` is checked here, not trusted to the agent's grep.
 const previous = scope.previous && scope.previous.pass === PASS ? scope.previous : null
@@ -209,6 +214,13 @@ const SCOPE = !previous ? ''
       : '')
 const budget = recheck.length ? `at most ${fresh} new probes (${recheck.length} of ${MAX_PROBES} are already spent re-running previous bugs)` : `at most ${MAX_PROBES} probes`
 
+// Prose about the app — docs/, specs/, markdown, never the harness playbooks —
+// has nothing a browser or a command can exercise that code review's
+// docs-truth lens does not already read.
+if (DOCS_ONLY && DEPTH !== 'thorough' && !recheck.length) {
+  return publish({ verdict: 'pass', confidence: 'medium', skipped: true, covered: 'docs-only change — nothing for QA to exercise', probes: [] })
+}
+
 plan = await agent(
   `${HERE}Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
   `issue), \`gh pr diff ${pr}\`, and the tests it adds — what they assert is already proven, so spend nothing ` +
@@ -228,7 +240,7 @@ plan = await agent(
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
 // Triage: the planner judged the tests enough, and the change is small
 // enough to take its word. Past the line cap it is explored regardless.
-const mayTriage = Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY
+const mayTriage = DEPTH !== 'thorough' && Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY
 // A skip re-runs nothing, so it is never taken over previous bugs: that
 // would publish a clean marker and close them unexamined.
 if (plan.enough === true && mayTriage && !recheck.length) {

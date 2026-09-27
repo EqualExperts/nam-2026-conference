@@ -135,6 +135,17 @@ phase runs `context.mjs for $(git diff --name-only origin/main...HEAD)` and
 updates the docs that come back; Learn writes to their *Gotchas* — both
 before the PR opens, so reviewers see them.
 
+**Review depth.** `code-review.js`'s `tierFor()` picks **light** (one
+`combined` lens, Sonnet for lenses, rechecks and skeptics) or **full** (the
+lenses by kind, the session model) from the team's dial — `--depth`, from the
+`REVIEW_DEPTH` repo variable, default `balanced` — and facts the job computes
+with `scripts/qa-facts.mjs`: `--lines`, `--docs-only`, `--shipped` (branch
+`issue-<n>-*`). `thorough` → full; docs-only → light; the harness (`actions`,
+`orchestration`) or `server/lib/` → full at every depth; `fast` → light;
+`balanced` → light if ship built it or it is ≤ 150 lines, else full. QA skips a
+docs-only change (unless `thorough` or bugs need rechecking) and `thorough`
+turns its triage off. No facts — a local run — means full, as before.
+
 **After the PR.** `agent-code-review.yml` and `agent-qa.yml` fire on
 `pull_request` `opened | reopened | ready_for_review`, skip drafts, run the
 `code-review` and `qa` **workflows**, and turn the verdict file into a check

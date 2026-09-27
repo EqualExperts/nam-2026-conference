@@ -23,6 +23,16 @@ export const meta = {
 const argText = typeof args === 'object' && args ? '' : String(args ?? '')
 const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
 const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
+// Facts the job computes from git, and the team's dial (the REVIEW_DEPTH repo
+// variable): fast | balanced | thorough. Review depth follows risk — a copy
+// fix and a change to the seat rules should not get the same review.
+const flag = (k) => (typeof args === 'object' && args ? args[k] : (new RegExp(`--${k}=([\\w-]+)`).exec(argText) || [])[1])
+const DEPTH = ['fast', 'balanced', 'thorough'].includes(flag('depth')) ? flag('depth') : 'balanced'
+const FACTS = {
+  lines: Number.isInteger(Number(flag('lines'))) && flag('lines') !== undefined ? Number(flag('lines')) : null,
+  docsOnly: flag('docs-only') === 'yes' || flag('docsOnly') === true,
+  shipped: flag('shipped') === 'yes' || flag('shipped') === true,
+}
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `code-review needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -258,9 +268,32 @@ const LENSES = [
   },
 ]
 
+// Light: one combined reviewer on Sonnet. Full: the lenses by kind, on the
+// session model. The harness and the server's rules always get full — they are
+// where a missed defect costs every later ticket, or an attendee's seat.
+function tierFor({ depth, lines, docsOnly, shipped }, kinds, files) {
+  if (depth === 'thorough') return 'full'
+  if (docsOnly) return 'light'
+  const risky = kinds.has('actions') || kinds.has('orchestration') || files.some(f => f.startsWith('server/lib/'))
+  if (risky) return 'full'
+  if (depth === 'fast') return 'light'
+  if (shipped) return 'light'            // ship's own loop already audited it
+  return lines !== null && lines <= 150 ? 'light' : 'full'
+}
+
+const COMBINED = {
+  key: 'combined',
+  ask: `Trace each Done-when criterion to what satisfies it in the diff and the test that proves it (an unmet ` +
+    `one is criterion-unmet). Check the diff against the decisions CLAUDE.md records (claude-md), look for ` +
+    `logic errors with an input and the wrong output (logic), and for a test that would pass without the ` +
+    `change or that weakens an existing one (test-proves-nothing). One reader, all four questions.`,
+}
+
 const kinds = kindsOf(ctx.files)
-const ACTIVE = LENSES.filter(l => l.when(kinds))
-log(`kinds: ${[...kinds].join(', ') || 'none'} → lenses: ${ACTIVE.map(l => l.key).join(', ')}`)
+const TIER = tierFor({ depth: DEPTH, ...FACTS }, kinds, ctx.files)
+const MODEL = TIER === 'light' ? 'sonnet' : undefined
+const ACTIVE = TIER === 'light' ? [COMBINED] : LENSES.filter(l => l.when(kinds))
+log(`depth ${DEPTH} · tier ${TIER} · kinds: ${[...kinds].join(', ') || 'none'} → lenses: ${ACTIVE.map(l => l.key).join(', ')}`)
 
 phase('Review')
 const lens = (l, retry) => agent(
@@ -271,7 +304,7 @@ const lens = (l, retry) => agent(
   `name. A blocker names \`how\` — the path through normal use that reaches it — and \`harm\` — what that ` +
   `person loses; if you cannot name both, it is a follow-up. Change nothing, post nothing. Nothing to flag is ` +
   `the usual correct answer.${SCOPE}`,
-  { phase: 'Review', label: `review:${l.key}${retry}`, schema: FINDINGS },
+  { phase: 'Review', label: `review:${l.key}${retry}`, schema: FINDINGS, model: MODEL },
 )
 const first = await parallel(ACTIVE.map(l => () => lens(l, '')))
 const reports = await parallel(ACTIVE.map((l, i) => async () => first[i] || lens(l, '-retry')))
@@ -330,7 +363,7 @@ const rechecked = await parallel(earlier.map(b => () =>
     `${HEAD_SHA || 'the pull request head'}? Open ${b.file}:${b.line} there (the line may have moved) and check ` +
     `whether what is claimed can still happen. Resolved means it cannot, not that the line changed. If you ` +
     `cannot tell, it is NOT resolved.\n\n[${b.category}] ${b.file}:${b.line} — ${b.claim}\nevidence: ${b.evidence || ''}`,
-    { phase: 'Recheck', label: `recheck:${b.category}`, schema: RECHECK, effort: 'medium' },
+    { phase: 'Recheck', label: `recheck:${b.category}`, schema: RECHECK, effort: 'medium', model: MODEL },
   ).then(v => ({ resolved: !!(v && v.resolved === true) }))))
 const stillOpen = earlier.filter((b, i) => !(rechecked[i] && rechecked[i].resolved))
   .map(b => ({ ...b, severity: 'blocker', also: [] }))
@@ -350,7 +383,7 @@ const judged = await parallel(blockers.map(f => () =>
     (f.also && f.also.length ? ` Several reviewers read this line differently ("also" below): refute only if EVERY reading is wrong.` : '') +
     `\n\n[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}` +
     (f.also || []).map(a => `\nalso, [${a.category}]: ${a.claim} — ${a.evidence}`).join(''),
-    { phase: 'Verify', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium' },
+    { phase: 'Verify', label: `skeptic:${f.category}`, schema: REFUTATION, effort: 'medium', model: MODEL },
   ).then(v => (!v ? f   // a skeptic that died refuted nothing
     : v.refuted ? null
     : v.contrived ? { ...f, severity: 'follow-up', why: String(v.why || '').trim() || 'only with a contrived input' }

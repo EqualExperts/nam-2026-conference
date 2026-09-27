@@ -759,4 +759,68 @@ describe('the review jobs', () => {
     const src = readFileSync(new URL('../../.github/workflows/setup.yml', import.meta.url), 'utf8');
     assert.match(src, /^\s+label follow-up\s+[0-9A-Fa-f]{6}\s/m);
   });
+
+});
+
+describe('review depth follows risk', () => {
+  const CTXF = (files) => ({ issue: 27, title: 'x', doneWhen: ['y'], base: 'main', head: 'abc1234', files, amendments: [] });
+  const clean = { confidence: 'high', covered: 'read it', findings: [] };
+  const cr = (answers, args) => runner('code-review', (label) => {
+    if (label === 'context') return answers.context;
+    if (label.startsWith('review')) return clean;
+    if (label.startsWith('skeptic')) return { refuted: false, why: 'real' };
+    if (label === 'publish') return { ok: true, url: 'u' };
+  })(answers, args);
+  const lensesAndModel = async (files, args) => {
+    const { calls, result } = await cr({ context: CTXF(files) }, args);
+    return { lenses: calls.filter(c => c.startsWith('review:')), result };
+  };
+
+  test('a small app change on balanced gets one combined reviewer', async () => {
+    const { lenses } = await lensesAndModel(['src/components/A.jsx'], '42 --depth=balanced --lines=40');
+    assert.deepEqual(lenses, ['review:combined']);
+  });
+
+  test('a large app change on balanced gets the full lenses', async () => {
+    const { lenses } = await lensesAndModel(['src/components/A.jsx'], '42 --depth=balanced --lines=400');
+    assert.ok(lenses.length >= 3);
+  });
+
+  test('a pull request ship built gets the light review — its loop already audited it', async () => {
+    const { lenses } = await lensesAndModel(['src/components/A.jsx'], '42 --lines=400 --shipped=yes');
+    assert.deepEqual(lenses, ['review:combined']);
+  });
+
+  test('the harness and the server rules always get the full review, even on fast', async () => {
+    assert.ok((await lensesAndModel(['.github/workflows/agent-qa.yml'], '42 --depth=fast --lines=5')).lenses.includes('review:actions'));
+    assert.ok((await lensesAndModel(['server/lib/seats.js'], '42 --depth=fast --lines=5')).lenses.length > 1);
+  });
+
+  test('thorough reviews everything in full, docs included', async () => {
+    const { lenses } = await lensesAndModel(['docs/context/ui.md'], '42 --depth=thorough --docs-only=yes');
+    assert.ok(lenses.includes('review:docs'));
+  });
+
+  test('with no facts from the job it reviews in full, as before', async () => {
+    const { lenses } = await lensesAndModel(['src/components/A.jsx'], '42');
+    assert.ok(lenses.length >= 3);
+  });
+
+  const qa = runner('qa', (label) => {
+    if (label === 'scope') return { head: 'abc1234', files: ['docs/context/ui.md'] };
+    if (label === 'plan') return { issue: 27, base: 'main', surface: true, probes: [] };
+    if (label === 'publish') return { ok: true };
+  });
+
+  test('QA skips a docs-only change, and says so', async () => {
+    const { result, calls } = await qa({}, '42 --no-publish --docs-only=yes');
+    assert.equal(result.verdict, 'pass');
+    assert.match(result.comment, /docs-only change/);
+    assert.ok(!calls.includes('plan'));
+  });
+
+  test('QA on thorough explores a docs-only change anyway', async () => {
+    const { calls } = await qa({}, '42 --no-publish --docs-only=yes --depth=thorough');
+    assert.ok(calls.includes('plan'));
+  });
 });

@@ -1,7 +1,7 @@
 /**
  * Facts for QA's triage, from git — never the planner's word.
  *
- *   node scripts/qa-facts.mjs origin/main      # prints: --app-lines=N --ui-only=yes|no
+ *   node scripts/qa-facts.mjs origin/main      # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no
  *
  * QA may skip exploring a change only if it is UI-only and small. The planner
  * judges whether it is cosmetic; these two facts it does not get to judge.
@@ -24,6 +24,24 @@ export function appLines(numstat) {
   return n;
 }
 
+/** Lines added + removed across every file — what a review has to read. */
+export function totalLines(numstat) {
+  let n = 0;
+  for (const line of numstat.split('\n').filter(Boolean)) {
+    const [add, del] = line.split('\t');
+    n += add === '-' ? BINARY_LINES : Number(add) + Number(del);
+  }
+  return n;
+}
+
+/** Docs-only: every changed file is prose — docs/, specs/ or a markdown file — and none is a harness playbook. */
+export function docsOnly(names) {
+  const files = names.split('\n').filter(Boolean);
+  return files.length > 0
+    && files.every(f => /^(docs|specs)\//.test(f) || f.endsWith('.md'))
+    && !files.some(f => f.startsWith('docs/harness/') || f === 'CLAUDE.md');
+}
+
 /**
  * UI-only: every changed file under src/, tests/, docs/ or specs/, at least
  * one under src/, and none under docs/harness/ — the playbooks are the
@@ -42,5 +60,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8' }); } catch { return ''; } };
   const range = `${base}...HEAD`;
   // No diff (an unknown base) gives no facts that allow a skip.
-  console.log(`--app-lines=${appLines(git('diff', '--numstat', range))} --ui-only=${uiOnly(git('diff', '--name-only', range)) ? 'yes' : 'no'}`);
+  const numstat = git('diff', '--numstat', range);
+  const names = git('diff', '--name-only', range);
+  console.log(`--app-lines=${appLines(numstat)} --ui-only=${uiOnly(names) ? 'yes' : 'no'} ` +
+    `--lines=${totalLines(numstat)} --docs-only=${docsOnly(names) ? 'yes' : 'no'}`);
 }
