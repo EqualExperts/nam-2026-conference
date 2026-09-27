@@ -65,6 +65,35 @@ jobs:
       actions: read          # read CI results, so a red run can be understood
 
     steps:
+      # The comment exists before anything else does — before checkout, npm
+      # ci, Chromium or Claude Code install — which is what makes "within
+      # about a minute" true no matter how long setup takes: this post does
+      # not wait on any of it. Plain `gh`, already on the runner image, so it
+      # needs nothing checkout would provide. `SHIP_PROGRESS_STARTED` (the
+      # run's own start, from the Actions API — never the CLI's) and
+      # `SHIP_PROGRESS_COMMENT_ID` travel to every later step through
+      # $GITHUB_ENV, which is written once and survives whatever happens to
+      # the step below. See docs/context/harness.md.
+      - name: 📣 Post the starting comment
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Every gh call and every $GITHUB_ENV append is guarded: a rate
+          # limit or a network blip here must never fail the step or hold up
+          # checkout. It just leaves the two variables unset, which every
+          # later step already falls back around.
+          started=$(gh api "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at) || true
+          body="🚢 Ship · starting… · 0m elapsed · [Run]($RUN)
+
+          <!-- ship-progress run=$GITHUB_RUN_ID -->"
+          id=$(gh api "repos/$GH_REPO/issues/$N/comments" -f body="$body" --jq .id) || true
+          [ -n "$started" ] && echo "SHIP_PROGRESS_STARTED=$started" >> "$GITHUB_ENV"
+          [ -n "$id" ] && echo "SHIP_PROGRESS_COMMENT_ID=$id" >> "$GITHUB_ENV"
+          true
+
       - uses: actions/checkout@v7
         with:
           # The agent branches off origin/main, so it needs more than a
@@ -121,12 +150,37 @@ jobs:
           # notes. An environment variable, never interpolated into the
           # script, so the comment cannot become shell.
           NOTES: ${{ github.event.comment.body }}
+          # None of these three travel through $GITHUB_ENV — they are not
+          # values the pre-checkout step computed, so it is not the one to
+          # carry them. Without them agent-run.sh's own gate on starting the
+          # follower ("only when SHIP_PROGRESS_ISSUE or SHIP_PROGRESS_PR is
+          # set") is false on every real run, and the comment would sit at
+          # "starting…" until the finish step patched it once at the end.
+          SHIP_PROGRESS_ISSUE: ${{ github.event.issue.number }}
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_REPO: ${{ github.repository }}
         run: |
           git config user.name "claude[bot]"
           git config user.email "noreply@anthropic.com"
           # Pushes use the same token as gh.
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           scripts/agent-run.sh "/ship $N $NOTES" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
+
+      # A step's timeout or cancellation kills the whole process tree above —
+      # the follower with it — so the comment's last word cannot be that
+      # step's to write. This runs after it is gone, reads whatever
+      # transcript is left, and settles shipped / handed back / died. In a
+      # healthy run the follower already wrote the right thing, so this reads
+      # one file and patches nothing.
+      - name: 🏁 Finish the progress comment
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHIP_PROGRESS_ISSUE: ${{ github.event.issue.number }}
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ship-progress.mjs finish
 
       # What the run left behind is read from the issue, not from how the
       # step exited: the agent step succeeds even when ship returned an error,

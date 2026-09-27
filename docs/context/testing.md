@@ -124,6 +124,11 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 
 ## Gotchas
 
+- Build a fixture the way the thing that produces it does — the same truncation,
+  the same field order, the same event order. Data sized by hand proves the reader
+  and nothing else: a payload trimmed to fit, or an assertion on a value the real
+  stream only carries a few events later, stays green while the code fails in the
+  run.
 - `npm run verify` reseeds first, so a run killed halfway cannot poison the next; within
   a run nothing is reset. A test that books a seat and does not release it hits the
   overlap guard on its next run.

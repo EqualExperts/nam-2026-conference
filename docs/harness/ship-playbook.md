@@ -90,6 +90,12 @@ A plan, not an essay — half a page. If writing it changes your mind about the
 approach, that is the step working. It lands with the change and stays, so keep
 it true: a spec that disagrees with its own pull request is worse than none.
 
+A claim in *Where* about a file's current state — a step's `env:` already
+carrying a value, a function already existing — is read off the file, never
+inferred from a sibling step or from memory: GitHub Actions `env:` is per
+step, so "unchanged" true of one step says nothing about another, and a spec
+that gets this wrong ships a follower with nothing to read.
+
 ## 4. Find the change site
 
 ```bash

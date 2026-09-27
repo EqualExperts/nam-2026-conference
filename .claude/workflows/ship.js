@@ -85,8 +85,12 @@ const SETUP = {
     workdir: { type: 'string', description: 'absolute path every later agent works in' },
     runner: { type: 'boolean', description: 'true when $GITHUB_ACTIONS is set' },
     harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and docs/harness/ship-playbook.md' },
-    doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
+    // Before `doneWhen`: an agent's `resultPreview` is capped at 400
+    // characters, and `doneWhen` is verbatim ticket text -- with the tier
+    // after it, the tier falls off the end of a live progress render before
+    // anyone reading the issue ever sees it. See docs/context/harness.md.
     size: { enum: ['small', 'full'], description: 'small unless the issue is labelled ship:full, or it changes a rule in server/lib, the schema or seed, an API shape, or several areas at once, or has more than four Done-when criteria' },
+    doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
   },
 }
 
