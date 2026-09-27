@@ -34,6 +34,17 @@ say where *not* to spend time — what they assert is already proven. The
 `docs/context/` doc for the area (`node scripts/context.mjs index`) names its
 callers and test ids, which is most of what you need to aim a probe.
 
+**On a re-review, the previous bugs come first.** Your last comment ended
+with `<!-- orbit-verdict:qa {…} -->`, recording the commit you probed and each
+bug with the probe that found it. The workflow re-runs those probes itself,
+verbatim, and hands them to you as already spent: **do not plan them again**,
+and pick at most five minus that many new ones. Aim the new ones at what was
+pushed since — `git diff <that commit> <head sha>`, never `HEAD`, which in
+Actions is the merge commit; after a rebase, that diff limited to the pull
+request's files — and step outside it only for something that would have
+blocked a first review. A previous bug whose probe now passes is resolved and
+leaves the verdict; **all resolved and nothing new is a pass.**
+
 Then pick from these, in this order:
 
 - **The empty and the extreme.** Zero, one, many. An attendee with nothing
@@ -109,6 +120,13 @@ If it fails there too the bug is real but **pre-existing** — report it and
 pass. Blaming this pull request sends somebody to fix code that did not
 change.
 
+**A blocker is something someone will hit.** A failure that reproduces but
+only from an input nobody gives in normal use — a hand-edited URL or
+localStorage value, a forged request — is a **follow-up**: the skeptic says
+`contrived`, the check stays green, and it is filed as a `follow-up` issue
+linking the pull request, on a pass or a fail. A previous bug whose probe
+fails again is a bug without a second skeptic; it survived one already.
+
 ## 4. Report
 
 One comment. The callout, then at most three short paragraphs. Each finding is
@@ -127,8 +145,10 @@ three lines: **what you did, what you expected, what happened.**
 | pass, low | `> [!WARNING]` | `●○○` |
 | blocker | `> [!CAUTION]` | *none* |
 
-Label every finding **a bug in this change**, **pre-existing**, or **a
-question** you cannot tell is intended. Show it rather than describe it:
+Label every finding **a bug in this change**, **pre-existing**, **a
+follow-up** (real, but contrived), or **a question** you cannot tell is
+intended. The workflow ends the comment with the `orbit-verdict:qa` marker the
+next pass reads back. Show it rather than describe it:
 
 ```bash
 node scripts/pr-media.mjs <issue> /tmp/<name>.png

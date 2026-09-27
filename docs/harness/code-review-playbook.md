@@ -74,6 +74,16 @@ lenses when the diff touches it:
 Every finding cites `file:line`, read from the line. Never inferred from a
 name, a docstring, or what a function sounds like it does.
 
+**A blocker names the path and the harm.** `how`: the route through normal
+use that reaches it — who does what, where. `harm`: what that person loses or
+sees go wrong at the end of it. If you cannot name both, it is a
+**follow-up**: real enough to track, not bad enough to stop a merge. So is
+anything that needs an input nobody gives in normal use — a hand-edited URL,
+a forged request — and the skeptic will say `contrived` if you miss it. The
+workflow demotes a blocker with a blank `how` or `harm` itself. A follow-up
+never turns the check red; it is listed in the comment and filed as a GitHub
+issue labelled `follow-up`, linking the pull request, whatever the verdict.
+
 ## 3. Never flag these
 
 - Style, naming, formatting, structure, or how you would have written it
@@ -101,6 +111,29 @@ exist.
 **At most three findings.** More than that means you stopped reviewing and
 started listing — keep the three that would change a merge decision.
 
+## 4a. On a re-review, look at the delta
+
+A pull request put back to draft and marked ready again is reviewed again —
+as a second look, not a first. Your last comment ended with a marker,
+`<!-- orbit-verdict:code-review {…} -->`, naming the commit you reviewed, the
+blockers you raised and the follow-ups you filed. The workflow reads it back
+(its own marker only — QA leaves one on the same thread) and:
+
+- **re-checks each previous blocker** at the new head: resolved means what was
+  claimed can no longer happen. One still there stays a blocker, without a
+  second skeptic — it survived one already. One that is gone leaves the
+  verdict entirely.
+- **hunts for new problems only in what was pushed since**, `git diff <that
+  commit> <head sha>` — between two named commits, never `HEAD`, which in
+  Actions is the merge commit. After a rebase, that diff limited to the files
+  the pull request touches. Something outside it is raised only if it would
+  have blocked a first review.
+
+**A re-review whose previous blockers are all resolved and whose delta is
+clean is a pass.** That is what makes a review converge: a round that fixed
+what it was told ends green. A follow-up already filed is listed, not filed
+again.
+
 ## 5. Comment
 
 One comment. Open with the callout, then at most three short paragraphs. Each
@@ -121,6 +154,19 @@ finding is two lines: what breaks, and when.
 
 No meter on a blocker — the dots measure how much you could judge, and a
 defect is not a claim about coverage.
+
+Follow-ups go after the findings, under their own heading — each one line,
+with why it is not a blocker — and the workflow ends the comment with the
+marker:
+
+```markdown
+#### Follow-ups
+Not blockers, so they do not colour the check — each is filed as an issue.
+
+- `src/pages/SchedulePage.jsx:88` a NaN day index renders an empty grid — *only with a hand-edited ?day=*
+
+<!-- orbit-verdict:code-review {"pass":"code-review","commit":"…","blockers":[],"followUps":["logic|src/pages/SchedulePage.jsx|8"]} -->
+```
 
 **"Nothing to flag" is a good review**, and the usual correct outcome for work
 that passed a green gate. Say it in one line and stop. It should cost you no

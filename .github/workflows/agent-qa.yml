@@ -92,14 +92,27 @@ jobs:
           CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0"
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The agents run `gh` too — the scope agent reads the head sha, the
+          # PR's file list and the verdict marker the last QA pass left.
+          # Unpinned, `gh` resolves a fork's base repo to the upstream, where
+          # pull request #42 is somebody else's.
+          GH_REPO: ${{ github.repository }}
           BASE: ${{ github.base_ref }}
           PR: ${{ github.event.pull_request.number }}
+          DEPTH: ${{ vars.REVIEW_DEPTH || 'balanced' }}
           NO_OPEN: "1"
+          # Neither ticket needing this asks for a pre-checkout post — there
+          # is no "within about a minute" criterion here — so these three are
+          # what let agent-run.sh start the follower at all, and what it
+          # needs to find the one-line status it maintains on the PR.
+          SHIP_PROGRESS_PR: ${{ github.event.pull_request.number }}
+          SHIP_PROGRESS_KIND: qa
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # The harness must not review itself: a pull request that edits the
           # review workflow, its playbook or CLAUDE.md would otherwise be
           # judged by its own version of them. Run the base branch's.
-          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs; do
+          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs scripts/ship-progress.mjs; do
             git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
           done
           # Sonnet: this pass is coverage, not insight.
@@ -107,7 +120,36 @@ jobs:
           # scripts/qa-facts.mjs (restored from the base above, like the rest
           # of the harness, so a PR cannot change how its own facts are made).
           facts=$(node scripts/qa-facts.mjs "origin/$BASE")
-          scripts/agent-run.sh "/qa $PR --no-publish $facts" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
+          scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
+
+      # The transcript is the only record of what the agent did. Without it a
+      # run that dies mid-way (#61: exit 1 after 18 minutes, nothing in the
+      # log) cannot be diagnosed, and the job summary is not readable from
+      # the API. Kept two weeks, uploaded whatever happened.
+      - name: 🗂️ Keep the transcript
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: transcript-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/claude-run.jsonl
+            ${{ runner.temp }}/workflow-result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # A killed step takes the follower with it, mid-line — this is what
+      # settles the one-line status afterwards. See agent-ship.yml and
+      # docs/context/harness.md.
+      - name: 🏁 Finish the progress comment
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHIP_PROGRESS_PR: ${{ github.event.pull_request.number }}
+          SHIP_PROGRESS_KIND: qa
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ship-progress.mjs finish
 
       # A FAIL on a pull request that ship built (branch issue-<n>-…) is an
       # escape: the independent pass caught what ship's own loop let through.
@@ -198,6 +240,36 @@ jobs:
 
           echo "verdict: ${verdict:-<none>} → $conclusion"
           [ "$conclusion" != "failure" ]
+
+      # A follow-up is real but nobody hits it in normal use, so it never
+      # turns the check red — which means filing it is the only way it
+      # survives the thread. Ungated on the outcome above: a red pass and a
+      # green one hand this the same field, and the only way to lose a
+      # follow-up is a condition somebody has to remember. An empty or absent
+      # array is a no-op, which is what makes that safe.
+      - name: 📌 File follow-ups
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          result="$RUNNER_TEMP/workflow-result.json"
+          n=$(jq -r '(.followUps // []) | length' "$result" 2>/dev/null || echo 0)
+          [ "${n:-0}" -gt 0 ] || { echo "no follow-ups"; exit 0; }
+          i=0
+          while [ "$i" -lt "$n" ]; do
+            title=$(jq -r --argjson i "$i" '.followUps[$i].title // empty' "$result" | head -c 200)
+            jq -r --argjson i "$i" '.followUps[$i].body // empty' "$result" > "$RUNNER_TEMP/follow-up.md"
+            i=$((i + 1))
+            [ -n "$title" ] || continue
+            # Better an unlabelled issue than a lost one: a fork that never
+            # ran setup.yml has no follow-up label, and --label on a missing
+            # one is a hard error.
+            url=$(gh issue create --title "$title" --body-file "$RUNNER_TEMP/follow-up.md" --label follow-up) \
+              || url=$(gh issue create --title "$title" --body-file "$RUNNER_TEMP/follow-up.md") \
+              || { echo "could not file: $title"; continue; }
+            echo "- [$title]($url)" >> "$GITHUB_STEP_SUMMARY"
+          done
 
   learn:
     needs: exploratory

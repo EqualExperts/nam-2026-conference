@@ -26,12 +26,31 @@ summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 # bounds it. The CLI's own default gives up — and kills it — at 600s.
 export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS:-0}"
 
+# Only when the caller left a progress comment for this run to update — a
+# laptop run sets neither and is unchanged. It reads $out as it grows, beside
+# the CLI, never inside its pipeline: piping the CLI's own output through the
+# follower would let a follower that died mid-write take the CLI down with it
+# (EPIPE), and this updater must never be able to touch the run it reports on.
+follower=""
+here="$(dirname "$0")"
+if [ -n "${SHIP_PROGRESS_ISSUE:-}" ] || [ -n "${SHIP_PROGRESS_PR:-}" ]; then
+  node "$here/ship-progress.mjs" follow &
+  follower=$!
+fi
+
 claude -p "$prompt" \
   --model "$model" \
   --allowedTools "$tools" \
   --output-format stream-json --verbose \
   < /dev/null > "$out"
 status=$?
+
+# A step's own `timeout-minutes` kills the whole process tree, this follower
+# included, before it ever reaches this line — that is what `finish`, in its
+# own always() step outside the kill, is for. In the ordinary case the
+# follower is still tailing $out; give it one more moment to catch the
+# stream's own end, then stop it either way.
+[ -n "$follower" ] && { sleep 1; kill "$follower" 2>/dev/null || true; wait "$follower" 2>/dev/null || true; }
 
 node "$(dirname "$0")/agent-summary.mjs" "$out" "$prompt" >> "$summary" || true
 node "$(dirname "$0")/agent-summary.mjs" "$out" "$prompt" --check

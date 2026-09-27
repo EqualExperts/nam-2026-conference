@@ -135,6 +135,28 @@ shows as *unproven*, not green.
 Comment `@claude …` on the pull request and it makes the change and replies.
 You still merge.
 
+## How we review
+
+Every agent pull request gets an independent **code review** and **QA** pass —
+but how hard they look follows the risk, the way a real team's would, and a
+red review is information for the person merging, not a gate.
+
+- **Machines gate; agents advise.** The tests, the gate re-run and the red-check
+  are deterministic and cheap — those are what a team would make required. The
+  AI passes publish a verdict with a confidence and never block a merge.
+- **Depth follows risk.** A docs change gets one reader and no QA; a small app
+  change, or one `ship` already audited, gets one combined reviewer on Sonnet;
+  the harness, the server's rules and large changes get every lens, on Opus.
+  QA skips exploring a cosmetic change its tests already pin.
+- **The team sets the dial.** *Settings → Secrets and variables → Actions →
+  Variables*: `REVIEW_DEPTH` = `fast`, `balanced` (default) or `thorough`.
+- **Reviews converge.** A re-review checks the previous blockers and only what
+  changed since; a blocker must name a realistic path to harm, and anything
+  less becomes a `follow-up` issue while the check stays green.
+- **We measure whether it is enough.** A blocker found after `ship` opened its
+  pull request is labelled `harness-escape`, and an agent proposes the lesson —
+  so the dial is tuned with data, not argued about.
+
 ## Set up your fork
 
 Once per fork, in this order. Step 3 tells you if you missed 1, 2 or 4.

@@ -23,6 +23,7 @@ files:
   - scripts/qa-facts.mjs
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
+  - scripts/ship-progress.mjs
   - docs/context/README.md
   - specs/README.md
 tests:
@@ -33,6 +34,7 @@ tests:
   - tests/unit/red-check.test.js
   - tests/unit/qa-facts.test.js
   - tests/unit/agent-summary.test.js
+  - tests/unit/ship-progress.test.js
 related: [testing]
 ---
 
@@ -135,6 +137,17 @@ phase runs `context.mjs for $(git diff --name-only origin/main...HEAD)` and
 updates the docs that come back; Learn writes to their *Gotchas* — both
 before the PR opens, so reviewers see them.
 
+**Review depth.** `code-review.js`'s `tierFor()` picks **light** (one
+`combined` lens, Sonnet for lenses, rechecks and skeptics) or **full** (the
+lenses by kind, the session model) from the team's dial — `--depth`, from the
+`REVIEW_DEPTH` repo variable, default `balanced` — and facts the job computes
+with `scripts/qa-facts.mjs`: `--lines`, `--docs-only`, `--shipped` (branch
+`issue-<n>-*`). `thorough` → full; docs-only → light; the harness (`actions`,
+`orchestration`) or `server/lib/` → full at every depth; `fast` → light;
+`balanced` → light if ship built it or it is ≤ 150 lines, else full. QA skips a
+docs-only change (unless `thorough` or bugs need rechecking) and `thorough`
+turns its triage off. No facts — a local run — means full, as before.
+
 **After the PR.** `agent-code-review.yml` and `agent-qa.yml` fire on
 `pull_request` `opened | reopened | ready_for_review`, skip drafts, run the
 `code-review` and `qa` **workflows**, and turn the verdict file into a check
@@ -150,6 +163,16 @@ survived:
   tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
+  *Context* also returns the PR's `head` and, on a re-review, `previous` —
+  read back from the newest `<!-- orbit-verdict:code-review {…} -->` marker
+  the last finished pass ended its comment with (`commit`, `blockers`,
+  `followUps`). Then every lens prompt carries a `SCOPE` paragraph: new
+  problems only in `git diff <commit> <head>` (on a rebase, `git fetch origin
+  <commit>` and the same diff limited to the PR's files), unless severe enough
+  to have blocked a first review; and a *Recheck* phase runs one
+  `recheck:<category>` per previous blocker — an unresolved one is confirmed
+  without a skeptic and ranks first, a resolved one leaves the verdict. All
+  previous blockers resolved and a clean delta is a **pass**.
 - **`qa.js`** — *Plan* first triages: a cosmetic change the tests pin
   passes at medium confidence with no probes, headed *skipped — existing
   tests are enough* — but only when the planner says `enough` **and** the job's
@@ -165,9 +188,65 @@ survived:
   reproduces on the branch and not on the base, and survives a `skeptic:<probe>`
   asked to refute it as a bug in this change, is a bug (a refuted one is a question); one that did not
   reproduce is a question. Confidence is the share of the plan that ran on
-  both viewports. `agent-respond.yml` handles `@claude` and
+  both viewports. A `scope` agent opens *Plan*, ahead of the planner: the
+  PR's `head`, its `files`, and `previous` from the newest `<!--
+  orbit-verdict:qa {…} -->` marker, each previous bug carrying the probe that
+  found it. The plan prompt gets the same `SCOPE` paragraph as code review's
+  lenses and is told the previous bugs' probe ids are already spent; the
+  script puts those probes first in `plan.probes` (each id once, capped at
+  `MAX_PROBES`) before the empty-plan early return, and one that fails and
+  reproduces again is a bug without a second skeptic. A dead `scope` is
+  `verdict: 'none'`. `agent-respond.yml` handles `@claude` and
 pushes with `AGENT_GITHUB_TOKEN` when there is one — only then do its commits
 trigger CI; on the `GITHUB_TOKEN` fallback they do not.
+
+**Progress on the issue.** A run is up to two hours long; nothing appeared on
+the issue while it worked until this. `agent-ship.yml`'s job's *very first*
+step — before checkout, `npm ci`, Chromium or Claude Code — is plain `gh`:
+it reads the run's own start (`gh api …/actions/runs/$GITHUB_RUN_ID --jq
+.run_started_at` — the job's `actions: read` already covers it, never the
+CLI's own idea of when it began, which is three or four minutes late on a
+cold cache) and posts `🚢 Ship · starting… · 0m elapsed · Run`, with the run
+link and an HTML marker, needing nothing checkout would provide. That is what
+makes "within about a minute" true regardless of setup time. It hands the new
+comment's id and the run's start down through `$GITHUB_ENV` — written once,
+so it outlives whatever happens to the step after it — and every later step
+falls back to searching for the marker, then creating, only if that post
+itself failed.
+
+Once `claude -p` is streaming, `scripts/agent-run.sh` backgrounds
+`node scripts/ship-progress.mjs follow` beside it (gated on
+`SHIP_PROGRESS_ISSUE`/`SHIP_PROGRESS_PR`, so a laptop run is unchanged) and
+reaps it after — never in the CLI's pipe, so a follower that died mid-write
+cannot take the run down with it (`EPIPE`). It tails the transcript
+`claude -p --output-format stream-json` writes, and turns two things it
+reports into markdown: `system/task_progress`'s cumulative
+`workflow_progress` (every phase from `meta.phases`, and every agent tried, so
+the follower is stateless and only ever needs the *last* such event) into the
+phase table, done / running / not started; and each agent's `resultPreview` —
+capped at 400 characters, so read by regex, never `JSON.parse`, because the
+one that matters (the verify agent's gate line) arrives cut mid-string on a
+red round — into the tier, the branch, the spec link and each round's gate
+and audit result. It patches one comment in place, found by the id from
+`$GITHUB_ENV`, never by searching, unless that id is missing.
+
+Because a step's `timeout-minutes` or a cancellation kills its whole process
+tree — the commonest way a run ends — the follower dies with it, mid-render.
+A separate `🏁 Finish the progress comment` step, `if: always()` and
+`continue-on-error: true`, runs after and settles the comment from whatever
+transcript is left on disk: **shipped**, with the pull request link;
+**handed back**, with the stage and reason; or **the run died**, naming the
+step timing out or being cancelled — never left reading "running". In a
+healthy run the follower already wrote the right thing, so this reads one
+file and patches nothing. The same pair of steps, without a pre-checkout
+post (neither ticket needing this has a "within about a minute" criterion),
+keeps one line — `Reviewing…` / `Running QA…`, replaced by the verdict —
+on the pull request while `agent-code-review.yml` and `agent-qa.yml` run;
+`scripts/ship-progress.mjs` is one of the harness paths both check out from
+the base branch, beside `agent-run.sh`. None of this is a model call: it is
+`gh` and a script reading text `claude -p` already prints, and every `gh`
+call is wrapped so a rate limit or a malformed reply leaves the run
+untouched.
 
 **Escapes.** A code review or QA **FAIL** on a pull request ship built
 (branch `issue-<n>-…`) is something ship's own loop let through. The job's
@@ -207,9 +286,55 @@ cannot start another round.
   runtime forbids them. Anything that touches the machine goes through an
   agent; anything that decides goes through the script.
 - The audit lenses never receive the implementer's reasoning.
+- **A blocker names how and harm.** A code review finding must say the path
+  through normal use that reaches it (`how`) and what it costs (`harm`); the
+  script demotes one with either left blank to a follow-up, and a skeptic
+  (in either pass) may answer `contrived` — real, but only from an input
+  nobody gives — which does the same. Follow-ups never colour the check:
+  they are listed in the comment, returned as `followUps` (at most three,
+  minus any key the last marker already filed) on a pass **or** a fail, and
+  the job's *📌 File follow-ups* step opens one `follow-up` issue each.
+- **Only a finished pass leaves a marker.** A `verdict: 'none'` comment has
+  none, so the run after it reviews as if it were the first rather than
+  treating every previous blocker as closed.
 
 ## Gotchas
 
+- **A script-composed prompt carries only what an earlier agent already
+  returned, and an early `return publish(…)` runs before the later `const`s
+  exist.** A prompt that needs a sha or the PR's files gets a Context agent
+  ahead of it: `code-review.js` always had `context`, and `qa.js` gained
+  `scope` ahead of the planner for exactly this — the plan prompt carries the
+  delta boundary, and could not while `plan` was the first agent. And
+  `publish()` reads `plan` unconditionally (`issue: plan && plan.issue`), so a
+  bail-out above its assignment is a ReferenceError rather than the `verdict:
+  'none'` it was meant to be — which is why `plan` is a `let` initialised to
+  `null` above the `scope` stop. Keep publish's inputs to what exists on every
+  path.
+- **Two passes, one thread, two markers.** Code review and QA comment on the
+  same pull request, QA usually last, so each marker is named for its pass
+  (`orbit-verdict:code-review`, `orbit-verdict:qa`), each reader prompt names
+  only its own, and the script still drops a `previous` whose `pass` is not
+  its own — QA's marker read as code review's would silently close every
+  previous blocker.
+- **In a `pull_request` job, `HEAD` is the merge commit**, not the PR head:
+  `actions/checkout` with no `ref:` checks out `refs/pull/<n>/merge`. So the
+  delta is always `git diff <marker commit> <head sha>` between two named
+  commits; a diff against `HEAD` would add everything merged into the base
+  since the last review. A rebase leaves the marker's commit outside the
+  branch's history (`inHistory: false`), so the scope fetches it and limits
+  the diff to the PR's files, reviewing them in full if it cannot be fetched.
+- **Filing follow-ups needs `issues: write`** on the code review job; QA's
+  already had it. The *📌 File follow-ups* step is gated on `!cancelled()`
+  only, so a fail files its follow-ups exactly as a pass does.
+- **A step's timeout or cancellation kills its whole process tree**, and that is
+  the commonest way a run ends: *Run /ship* is bounded by `timeout-minutes: 100`,
+  so nothing after `claude` in `agent-run.sh` runs and anything backgrounded
+  beside it dies mid-write. Work that has to settle state at the end of a run
+  belongs in its own `if: ${{ always() }}` step. That step inherits nothing —
+  Actions `env:` is per step and no agent job declares one at job level — so it
+  re-declares `GH_TOKEN`, `GH_REPO` and the run's variables itself, the way
+  *🧹 Check what the run left behind* does.
 - **CI runs the CLI, not `claude-code-action`.** The action drives the
   Agent SDK and stops at the first `result`; a saved workflow's first result
   is its launcher's "running in the background", so every workflow died
@@ -220,11 +345,15 @@ cannot start another round.
   background workflow after 600s, which killed `/ship` mid-run. Only
   `agent-respond.yml` still uses the action — interactive mode needs it.
 - **In CI, review and QA do not publish — the job does.** They run with
-  `--no-publish` and return `{ comment, verdictLine }` (QA adds `issue`,
-  `issueNote`); `agent-summary.mjs --result` reads that from the workflow's
+  `--no-publish` and return `{ comment, verdictLine, followUps }` (QA adds
+  `issue`, `issueNote`); `agent-summary.mjs --result` reads that from the workflow's
   task output file, and the *Publish the verdict* step posts it with `gh`. An
   agent asked to post once returned `posted: false` in CI and the check read
   "did not finish". The job summary also lists every agent and its state.
+- **Every `gh` call in a workflow pins `GH_REPO: ${{ github.repository }}`.**
+  On a fork `gh` resolves the base repo to the upstream, so an unpinned
+  `gh issue create` aims the ticket at the parent — where `GITHUB_TOKEN` is
+  refused, and the comment or follow-up is lost rather than misfiled.
 - **A PR is reviewed by the base branch's harness** (`.claude/`, CLAUDE.md,
   playbooks), so a change to the review workflow only takes effect on the
   pull requests after it merges.
@@ -237,6 +366,13 @@ cannot start another round.
 - `tests/unit/ship.test.js` runs the script with `agent` stubbed **by label**
   (`-retry` is stripped before matching). Renaming a label breaks those tests —
   change both together.
+- **A workflow's `log()` output is not live** — it only ever shows up in the
+  task's output file, after the run ends. A throwaway workflow run under
+  `claude -p --output-format stream-json --verbose` settled this: the obvious
+  design for the progress comment was to have `ship.js` log milestones for
+  `ship-progress.mjs` to read, and that recording is what ruled it out. What
+  *is* live is each agent's `resultPreview` on `system/task_progress` — that
+  is what the follower reads instead.
 - Every tracked file under `server/`, `src/`, `scripts/` and `tests/` must be
   owned by a doc; a new script fails `npm test` until it is listed here or in
   its area's doc.
