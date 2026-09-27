@@ -95,6 +95,41 @@ describe('Two seats in one slot', () => {
   });
 });
 
+/**
+ * A session in the exact same slot as `held`, but on a different day, with
+ * seats to spare — every seeded day repeats the same slot grid, so this
+ * always exists.
+ */
+function sameSlotOtherDay(sessions, held) {
+  return sessions.find((s) =>
+    s.day !== held.day && s.startsAt === held.startsAt && s.endsAt === held.endsAt &&
+    !s.isFull && s.seatsLeft > 2);
+}
+
+describe('The overlap guard is per day', () => {
+  test('the same slot on another day is not a clash, but the same day still is', async () => {
+    const user = 1;
+    await clearAgenda(api, user);
+    const sessions = await api.json('/sessions');
+    const { held, wanted } = await collidingPair();
+    const otherDay = sameSlotOtherDay(sessions, held);
+    assert.ok(otherDay, 'every seeded day repeats the same slot grid');
+
+    assert.equal((await api.put(`/users/${user}/reservations/${held.id}`)).body.status, 'confirmed');
+
+    // Same slot, different day: must succeed, not read as a clash with `held`.
+    const otherDayRes = await api.put(`/users/${user}/reservations/${otherDay.id}`);
+    assert.equal(otherDayRes.status, 200);
+    assert.equal(otherDayRes.body.status, 'confirmed');
+
+    // Same day, overlapping interval: must still be refused.
+    const sameDayRes = await api.put(`/users/${user}/reservations/${wanted.id}`);
+    assert.equal(sameDayRes.status, 409);
+    assert.equal(sameDayRes.body.rejected, 'overlap');
+    assert.equal(sameDayRes.body.conflictsWith.id, held.id);
+  });
+});
+
 describe('A session that is already over', () => {
   test('cannot be booked, and says so rather than silently succeeding', async () => {
     const user = 5;
