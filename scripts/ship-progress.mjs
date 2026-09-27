@@ -228,22 +228,26 @@ function ghApi(args, input) {
   return execFileSync('gh', args, { input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 }
 
-/** The real `gh` calls. Tests inject a stub instead — see the spec. */
-export function makeGh(env) {
+/**
+ * The real `gh` calls. Tests inject a stub instead — see the spec.
+ * The body goes in with `-F body=@-`: `-f` is a raw string, so `-f body=@-`
+ * posted the two characters "@-" as every progress comment.
+ */
+export function makeGh(env, run = ghApi) {
   const repo = env.GH_REPO;
   const issue = env.SHIP_PROGRESS_ISSUE || env.SHIP_PROGRESS_PR;
   return {
     async create(body) {
-      return ghApi(['api', `repos/${repo}/issues/${issue}/comments`, '-f', 'body=@-', '--jq', '.id'], body).trim();
+      return run(['api', `repos/${repo}/issues/${issue}/comments`, '-F', 'body=@-', '--jq', '.id'], body).trim();
     },
     async patch(id, body) {
-      ghApi(['api', `repos/${repo}/issues/comments/${id}`, '-X', 'PATCH', '-f', 'body=@-'], body);
+      run(['api', `repos/${repo}/issues/comments/${id}`, '-X', 'PATCH', '-F', 'body=@-'], body);
     },
     async read(id) {
-      return ghApi(['api', `repos/${repo}/issues/comments/${id}`, '--jq', '.body']);
+      return run(['api', `repos/${repo}/issues/comments/${id}`, '--jq', '.body']);
     },
     async findByMarker(runId) {
-      const out = ghApi(['api', `repos/${repo}/issues/${issue}/comments`, '--paginate', '--jq',
+      const out = run(['api', `repos/${repo}/issues/${issue}/comments`, '--paginate', '--jq',
         `.[] | select(.body | contains("ship-progress run=${runId}")) | .id`]);
       const ids = out.split('\n').map((s) => s.trim()).filter(Boolean);
       return ids.at(-1) || null;

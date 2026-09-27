@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  readPreview, readStream, render, prLine, follow, finish,
+  readPreview, readStream, render, prLine, follow, finish, makeGh,
 } from '../../scripts/ship-progress.mjs';
 
 /**
@@ -473,5 +473,21 @@ describe('the workflows actually call it, with an environment', () => {
       assert.match(run, /SHIP_PROGRESS_RUN/, name);
       assert.match(run, /GH_REPO/, name);
     }
+  });
+});
+
+describe('makeGh', () => {
+  // `-f body=@-` is a raw string: every progress comment read "@-".
+  test('sends the body from stdin as a field gh reads, not the literal "@-"', async () => {
+    const calls = [];
+    const gh = makeGh({ GH_REPO: 'o/r', SHIP_PROGRESS_PR: '7' }, (args, input) => { calls.push({ args, input }); return '42\n'; });
+    assert.equal(await gh.create('hello'), '42');
+    await gh.patch('42', 'again');
+    for (const { args, input } of calls) {
+      const i = args.indexOf('body=@-');
+      assert.equal(args[i - 1], '-F', `${args.join(' ')} must pass the body with -F`);
+      assert.ok(input);
+    }
+    assert.match(calls[0].args[1], /repos\/o\/r\/issues\/7\/comments/);
   });
 });
