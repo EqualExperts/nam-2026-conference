@@ -52,3 +52,8 @@ No other file in `server/lib/` is touched — `seats.js` and the rest already
 follow the module-scope convention. The window rules, rejection reasons and
 response shapes in `attendance.js` are unchanged; this is a preparation-site
 move only.
+
+## Audit
+
+- Spec round 1: 0 raised, 0 confirmed.
+- Build round 1: unit 313 passed, browser 169 passed; 0 raised, 0 confirmed.
