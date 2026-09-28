@@ -586,6 +586,8 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ${BATCH} ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
+      (l.key === 'browser' ? '' : `The gate has just run the whole suite at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+        `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
         : '') +
