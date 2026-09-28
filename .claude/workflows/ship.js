@@ -503,7 +503,9 @@ const built = await agent(
   `would have to re-learn it: \`node scripts/context.mjs for <changed files>\` names the docs/context/ docs that ` +
   `own them; update each the change made wrong or incomplete (a new function, payload or testid — usually a ` +
   `line or two), and a new file no doc owns goes into the \`files\` of the doc for its area. ` +
-  `Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
+  `Do NOT run the whole Playwright suite or the gate — the next phase does, once — but a browser test you ` +
+  `added runs before you hand over, alone: \`npx playwright test <file> -g "<its title>"\` (on a laptop, behind ` +
+  `the lane prefix). On #64 an unpinned clock in a new spec cost a whole red gate and a fix round. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
   `Set ui=true if anything an attendee sees in a browser changed.` +
   (carried.length ? `\n\nThe spec audit left these open; resolve each in the build, and say how in the summary:\n${listFindings(carried)}` : ''),
@@ -679,7 +681,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} (${sections(5, '6')}) still hold: never ` +
     `edit an existing test to make it pass, never skip or delete one. If a finding shows the spec was wrong, ` +
     `fix the spec too and say so in the summary; if a fix changes what a docs/context/ doc says, fix the doc. ` +
-    `\`npm test\` after every edit; do not run the Playwright ` +
+    `\`npm test\` after every edit, and a browser test you added or changed alone by title; do not run the whole Playwright ` +
     `suite. Leave \`git status\` clean. Commit and push.`,
     { phase: 'Code Audit', label: `fix#${round}`, schema: DONE, model: T.build },
   )
