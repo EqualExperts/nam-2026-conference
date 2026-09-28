@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { frontMatter, load, docsFor, problems, unowned, tracked } from '../../scripts/context.mjs';
+import { frontMatter, load, docsFor, problems, unowned, tracked, parts } from '../../scripts/context.mjs';
 
 /**
  * The context docs are what an agent reads instead of the source, so a doc
@@ -67,4 +67,16 @@ test('every tracked source file is owned by a doc, so a change to it reaches one
 test('an unowned file is reported; one outside the owned trees is not', () => {
   const docs = [{ files: ['src/'], tests: [] }];
   assert.deepEqual(unowned(docs, ['src/a.js', 'server/b.js', 'README.md']), ['server/b.js']);
+});
+
+describe('parts — reading a doc by the piece', () => {
+  const DOC = `---\nsummary: x\n---\n# Seats\n\n## How it works\n\n**Server — seats.js.** One.\nTwo.\n\n**Client.** Three.\n\n## Gotchas\n\n- a **bold** word mid-line is not a part\n`;
+
+  test('sections and the bold-led paragraphs inside them, each running to the next', () => {
+    const p = parts(DOC);
+    assert.deepEqual(p.map(x => [x.level, x.title]), [[2, 'How it works'], [3, 'Server — seats.js'], [3, 'Client'], [2, 'Gotchas']]);
+    assert.match(p[1].text, /^\*\*Server — seats\.js\.\*\* One\.\nTwo\.$/);
+    assert.doesNotMatch(p[2].text, /Gotchas/, 'a part never runs into the next section');
+    assert.match(p[0].text, /Three\./, 'a section includes its parts');
+  });
 });

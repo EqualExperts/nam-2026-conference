@@ -114,7 +114,10 @@ node scripts/context.mjs index
 ```
 
 That is the map: one entry per area of the app, saying what it covers and when
-to read it. Read the one or two docs in `docs/context/` your ticket touches;
+to read it. Pick the one or two docs in `docs/context/` your ticket touches and
+read them by the piece — `node scripts/context.mjs show <doc>` for the outline,
+`show <doc> Gotchas <part>` for what you need — because whatever you read is
+re-read on every turn after it;
 they name the functions, payloads and test ids, so you open source only for
 the lines you will change. **Take their word, and `CLAUDE.md`'s, rather than
 re-deriving how the repo is organised from source** — reading the Playwright

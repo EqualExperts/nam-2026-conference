@@ -242,7 +242,9 @@ if (DOCS_ONLY && DEPTH !== 'thorough' && !recheck.length) {
 plan = await agent(
   `${HERE}Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
   `issue), \`gh pr diff ${pr}\`, and the tests it adds — what they assert is already proven, so spend nothing ` +
-  `there. \`node scripts/context.mjs for <changed files>\` names the docs with the callers and test ids. ` +
+  `there. \`node scripts/context.mjs for <changed files>\` names the docs with the callers and test ids; \`show <doc>\` ` +
+  `gives a doc's outline and \`show <doc> <part>\` just that part — read parts, not whole docs. Batch reads you ` +
+  `already know you need into one command: every turn re-reads everything before it. ` +
   `Pick ${budget} in the order §1 of ${PLAYBOOK} gives. What a browser cannot reach, probe ` +
   `by running it (kind: command): a changed script with an empty, huge or malformed input; a changed ` +
   `workflow script under the stubs tests/unit already uses, with an agent returning null at the new step; a ` +

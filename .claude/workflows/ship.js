@@ -71,9 +71,11 @@ const sections = (from, to) => `\`awk '/^## ${from}\\./,/^## ${to}\\./' ${SKILL}
 // Every agent is a fresh context. Without this line each one re-reads the
 // source to learn how the app fits together, and that is most of the bill.
 const MAP =
-  `Start from \`node scripts/context.mjs index\` and read the one or two docs in docs/context/ for the area ` +
-  `this touches. Take their word for how the app fits together; open source only for the lines you will ` +
-  `change or must verify.`
+  `Start from \`node scripts/context.mjs index\` and pick the one or two docs in docs/context/ for the area ` +
+  `this touches. \`node scripts/context.mjs show <doc>\` prints a doc's outline; \`show <doc> Gotchas <part>…\` ` +
+  `prints only those parts — read the Gotchas and the parts you need, never a whole doc: what you read is ` +
+  `re-read on every turn after. Take their word for how the app fits together; open source only for the lines ` +
+  `you will change or must verify.`
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 const SETUP = {

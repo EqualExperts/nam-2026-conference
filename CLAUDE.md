@@ -25,8 +25,10 @@ if you are reaching for one, you are probably solving the wrong problem.
 
 This file says what was decided and why; `docs/context/` says where it lives
 and how it works — files, functions, payloads, test ids, the repo layout.
-`node scripts/context.mjs index` lists one doc per area and when to read it.
-They are read *instead of* the code, so a pull request that changes what a doc
+`node scripts/context.mjs index` lists one doc per area and when to read it;
+`show <doc>` prints a doc's outline and `show <doc> Gotchas <part>` just those
+parts — read by the piece, since whatever an agent reads it re-reads on every
+turn after. They are read *instead of* the code, so a pull request that changes what a doc
 describes updates it (`node scripts/context.mjs for <file…>` says which).
 
 ## Conventions

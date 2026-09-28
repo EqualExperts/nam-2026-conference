@@ -302,7 +302,8 @@ phase('Review')
 const lens = (l, retry) => agent(
   `${HERE}You are reviewing a pull request you did not write. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
   `\`gh pr diff ${pr}\`, the spec in specs/ if the branch has one, and the docs/context/ docs that own the ` +
-  `changed files (\`node scripts/context.mjs for <files>\`). Your lens only: ${l.ask}\n\n` +
+  `changed files (\`node scripts/context.mjs for <files>\`, then \`show <doc>\` for its outline and \`show <doc> <part>\` ` +
+  `for the parts you need — not whole docs). Your lens only: ${l.ask}\n\n` +
   `§2–§4 of ${PLAYBOOK} say what never to flag. Cite file:line read from the line, never inferred from a ` +
   `name. A blocker names \`how\` — the path through normal use that reaches it — and \`harm\` — what that ` +
   `person loses; if you cannot name both, it is a follow-up. Change nothing, post nothing. Nothing to flag is ` +

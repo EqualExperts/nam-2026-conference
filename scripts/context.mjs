@@ -4,6 +4,8 @@
  *   node scripts/context.mjs index                     # every doc's front matter, one line each
  *   node scripts/context.mjs for server/lib/seats.js   # which docs cover these files
  *   node scripts/context.mjs check                     # every path a doc names exists
+ *   node scripts/context.mjs show seats                # a doc's outline: its sections and parts, with sizes
+ *   node scripts/context.mjs show seats Gotchas Waitlist   # only those parts
  *
  * Each file in `docs/context/` describes one area of the app, with YAML front
  * matter saying what it covers, which files it owns and when to read it. An
@@ -17,6 +19,10 @@
  * `npm test`, so a doc naming a file that has been moved fails the build rather
  * than quietly misleading the next agent — and so does a source file no doc
  * owns, because `for` cannot route a change to a doc that does not list it.
+ *
+ * `show` exists because a read is paid for on every later turn: an agent that
+ * cats two 150-line docs carries them, re-read, for the rest of its life. The
+ * outline costs a few lines; then it reads the Gotchas and the parts it needs.
  *
  * The front matter is a deliberate subset of YAML — `key: value` scalars and
  * `- item` lists — so this needs no parser dependency.
@@ -105,6 +111,40 @@ export function unowned(docs, tracked) {
 const tracked = (root = ROOT) =>
   execFileSync('git', ['ls-files', ...OWNED], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
 
+/**
+ * The parts of a doc body: each `## ` section, and within one each paragraph
+ * that opens with a **bold lead** — the docs' natural sub-sections. Every part
+ * runs to the start of the next, and a part inside a section never crosses it.
+ */
+export function parts(text) {
+  const lines = text.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n');
+  const out = [];
+  let section = null;
+  lines.forEach((line, i) => {
+    const h = /^## (.+)/.exec(line);
+    const b = !h && /^\*\*([^*]+?)\*\*/.exec(line) && (i === 0 || lines[i - 1].trim() === '');
+    if (h) { section = { level: 2, title: h[1].trim(), start: i }; out.push(section); }
+    else if (b) out.push({ level: 3, title: /^\*\*([^*]+?)\*\*/.exec(line)[1].replace(/[.:—]+$/, '').trim(), start: i, section });
+  });
+  out.forEach((p, k) => {
+    const next = out.slice(k + 1).find(q => p.level === 2 ? q.level === 2 : true);
+    p.end = next ? next.start : lines.length;
+    p.text = lines.slice(p.start, p.end).join('\n').trimEnd();
+  });
+  return out;
+}
+
+export function show(doc, wanted = []) {
+  const body = readFileSync(join(ROOT, doc.path), 'utf8');
+  const all = parts(body);
+  if (!wanted.length) {
+    return [`${doc.path} — ${doc.summary}`, ...all.map(p =>
+      `${p.level === 2 ? '' : '  '}${p.level === 2 ? '## ' : ''}${p.title}  (${p.end - p.start} lines)`)].join('\n');
+  }
+  const hits = all.filter(p => wanted.some(w => p.title.toLowerCase().startsWith(w.toLowerCase())));
+  return hits.length ? hits.map(p => p.text).join('\n\n') : `no part of ${doc.path} starts with: ${wanted.join(', ')}`;
+}
+
 function main([cmd, ...rest]) {
   const docs = load();
   if (cmd === 'index') {
@@ -112,13 +152,18 @@ function main([cmd, ...rest]) {
   } else if (cmd === 'for') {
     const files = rest.map(f => relative(ROOT, resolve(f)));
     for (const d of docsFor(docs, files)) console.log(d.path);
+  } else if (cmd === 'show') {
+    const [name, ...wanted] = rest;
+    const doc = docs.find(d => d.path.endsWith(`/${String(name).replace(/\.md$/, '')}.md`));
+    if (!doc) { console.error(`no context doc named ${name}`); process.exit(2); }
+    console.log(show(doc, wanted));
   } else if (cmd === 'check') {
     const bad = [...problems(docs), ...unowned(docs, tracked()).map(f => `${f}: no context doc owns it`)];
     for (const p of bad) console.error(p);
     if (bad.length) process.exit(1);
     console.log(`${docs.length} context docs, every path resolves`);
   } else {
-    console.error('usage: node scripts/context.mjs index | for <file…> | check');
+    console.error('usage: node scripts/context.mjs index | for <file…> | show <doc> [part…] | check');
     process.exit(2);
   }
 }
