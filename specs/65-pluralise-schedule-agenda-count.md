@@ -86,6 +86,11 @@ pinned to day index 0, the current code still renders `today`, not `on Day 2`.
   computed once in `/bootstrap`, not `dayLabel()` (which renders a full
   calendar date) — matching the ticket's own example text.
 
+## Audit
+
+- spec round 1: 0 raised, 0 confirmed.
+- build round 1: unit 413 passed · browser 173 passed; 0 raised, 0 confirmed.
+
 ## Out of scope
 
 `bookedToday`'s definition (sessions on the currently-filtered day) is
