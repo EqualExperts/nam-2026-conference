@@ -396,11 +396,11 @@ describe('ship', () => {
   describe('sized to the ticket', () => {
     const SMALL = { ...SETUP, size: 'small' };
 
-    test('a small ticket gets one spec auditor, one code auditor plus the browser, and Sonnet throughout', async () => {
+    test('a small ticket gets no spec audit, one code auditor plus the browser, and Sonnet throughout', async () => {
       const { result, calls, models } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: true } });
       assert.equal(result.outcome, 'shipped');
       assert.equal(result.size, 'small');
-      assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), ['spec-audit:combined#1']);
+      assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), []);
       assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1', 'audit:browser#1']);
       for (const l of ['write-spec', 'implement', 'audit:combined#1']) assert.equal(models[l], 'sonnet', l);
       // Opening the PR is rote now — its body is given and its picture comes from the proving test.
@@ -434,24 +434,23 @@ describe('ship', () => {
       assert.ok(!calls.some(c => c.startsWith('audit:browser')));
     });
 
-    test('a small ticket whose ticket is in question goes to a person after its one spec round — at any size', async () => {
+    test('a small ticket whose ticket is in question goes to a person from the code audit, not a fix round', async () => {
       const { result, calls } = await run({
         setup: SMALL,
-        'spec-audit:combined': { covered: 'all', ran: 'nothing', findings: [{ ...blocker('the ticket asks for two contradictory labels'), category: 'scope' }] },
+        'audit:combined': { covered: 'all', ran: 'nothing', findings: [{ ...blocker('the ticket asks for two contradictory labels'), category: 'scope' }] },
       });
       assert.equal(result.outcome, 'needs-human');
-      assert.equal(result.stage, 'Spec Audit');
-      assert.ok(!calls.includes('implement'));
+      assert.equal(result.stage, 'Code Audit');
+      assert.ok(!calls.some(c => c.startsWith('fix')));
     });
 
-    test('a small spec with a confirmed blocker is revised once and built — not handed back', async () => {
-      const { result, calls } = await run({
-        setup: SMALL,
-        'spec-audit:combined': { covered: 'all', ran: 'nothing', findings: [blocker('names a file that does not exist')] },
-      });
+    test('a small ticket\'s spec is written by setup and checked by the code audit — two agents fewer', async () => {
+      const { result, calls, prompts } = await run({ setup: { ...SMALL, spec: { path: 'specs/7-hours.md', summary: 's' } } });
       assert.equal(result.outcome, 'shipped');
-      assert.deepEqual(calls.filter(c => c.startsWith('revise-spec')), ['revise-spec#1']);
-      assert.ok(calls.includes('implement'));
+      assert.ok(!calls.includes('write-spec'));
+      assert.ok(!calls.some(c => c.startsWith('spec-audit')));
+      assert.match(prompts.setup, /If you proceed and size it small, write the spec too/);
+      assert.match(prompts['audit:combined#1'], /nobody else has checked that it reads the ticket/);
     });
 
     test('a small ticket hands back after two build rounds, not four', async () => {

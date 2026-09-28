@@ -35,10 +35,12 @@ audit.
 2. **Spec** — `specs/<n>-<slug>.md`, pushed as the branch's first commit. Its
    *Where* is the builder's map: the files, the lines, the test file and the
    helpers, so the implementer searches for nothing.
-3. **Spec audit** — a fresh agent judges the *plan* against the ticket and the
-   context docs: does every Done-when map to a check that fails today? A
-   finding that questions the ticket itself goes to a person; anything
-   technical is decided in the spec and carried into the build.
+3. **Spec audit** (full tickets) — a fresh agent judges the *plan* against the
+   ticket and the context docs: does every Done-when map to a check that fails
+   today? A finding that questions the ticket itself goes to a person; anything
+   technical is decided in the spec and carried into the build. On a small
+   ticket setup writes the spec and the code auditor checks its reading of the
+   ticket — two agents fewer, each of which costs its whole context to start.
 4. **Implement** — the check first, committed red; then the change; `npm test`
    after every edit; any browser test it wrote, run alone. It keeps the
    `docs/context/` docs that own what it changed true in the same push.
@@ -70,7 +72,7 @@ the issue).
 | | Small | Full |
 | --- | --- | --- |
 | Model | Sonnet; Haiku for rote steps (gate, PR) | the session model (Opus in CI) |
-| Spec audit | 1 combined auditor, 1 round | criteria + fit auditors, up to 3 rounds |
+| Spec | written by setup; its reading of the ticket checked by the code auditor | its own writer; criteria + fit auditors, up to 3 rounds |
 | Code audit | 1 combined auditor | criteria + rules + browser lenses |
 | Browser audit | only if something visible changed; 2 probes | always; 5 probes |
 | Audited rounds | up to 2 | up to 4 |

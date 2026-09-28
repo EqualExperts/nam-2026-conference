@@ -29,7 +29,9 @@ let MAX_BUILD_ROUNDS = 4
 // drops the redundancy.
 const TIERS = {
   small: {
-    specRounds: 1, buildRounds: 2,
+    // No separate spec audit: the combined code auditor traces every criterion
+    // to a test and judges the spec's reading of the ticket (see its ask).
+    specRounds: 0, buildRounds: 2,
     specLenses: ['combined'], codeLenses: ['combined', 'browser'],
     think: 'sonnet',   // spec, audits, skeptic, context, learn, PR
     build: 'sonnet',   // implement, fix
@@ -96,6 +98,15 @@ const SETUP = {
     // anyone reading the issue ever sees it. See docs/context/harness.md.
     size: { enum: ['small', 'full'], description: 'small unless the issue is labelled ship:full, or it changes a rule in server/lib, the schema or seed, an API shape, or several areas at once, or has more than four Done-when criteria' },
     doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
+    spec: {
+      type: 'object',
+      description: 'only when you sized it small and proceeded: the spec you wrote',
+      properties: {
+        path: { type: 'string' },
+        summary: { type: 'string', description: 'two sentences: the approach and how it will be proved' },
+        editsHarness: { type: 'boolean', description: 'true if the plan changes any file under .claude/' },
+      },
+    },
   },
 }
 
@@ -353,6 +364,17 @@ async function learn(how) {
   return result ? result.lessons : []
 }
 
+// What a spec must be, for whichever agent writes it: setup on a small ticket
+// (it has just read the ticket and the map, and a second agent would re-read
+// both), the spec writer on a full one.
+const specAsk = (path) =>
+  `Write the spec, following §3b of ${SKILL} (${sections('3b', '4')} prints it): ${path}, ` +
+  `commit it as the branch's first commit, push, and comment the link on the issue. Its *Where* is the builder's ` +
+  `map — name each file, the function or line to change, the test file, and the lane or helpers the test will ` +
+  `use (tests/helpers.js), so the builder opens those and searches for nothing. Set editsHarness if the ` +
+  `plan changes any file under .claude/. ${MAP} Every Done-when ` +
+  `criterion must map to a named check at a named layer.`
+
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
 phase('Setup')
 setup = await agent(
@@ -370,10 +392,12 @@ setup = await agent(
   `later phase would run commands that do not exist in the worktree. \`gh\` works on the repository origin points ` +
   `at, as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
   `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the worktree. ` +
-  `Do not write the spec or any code. Return proceed=false with the ` +
+  `Write no code. If you proceed and size it small, write the spec too, in the workspace you made — ` +
+  `${specAsk(`specs/${issue}-<your slug>.md`)} — and return it as spec; a full ticket's spec is the next step's. ` +
+  `Return proceed=false with the ` +
   `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Size it: small ` +
   `unless it carries the ship:full label or the size description says otherwise — most tickets are small.`,
-  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low', model: 'sonnet' },
+  { phase: 'Setup', label: 'setup', schema: SETUP, model: 'sonnet' },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
@@ -399,13 +423,8 @@ ticket =
 
 // ── 2. Spec ──────────────────────────────────────────────────────────────────
 phase('Spec')
-spec = await agent(
-  `${ticket}\n\n${inTree()}\n\nWrite the spec, following §3b of ${SKILL} (${sections('3b', '4')} prints it): specs/${issue}-${setup.slug}.md, ` +
-  `commit it as the branch's first commit, push, and comment the link on the issue. Its *Where* is the builder's ` +
-  `map — name each file, the function or line to change, the test file, and the lane or helpers the test will ` +
-  `use (tests/helpers.js), so the builder opens those and searches for nothing. Set editsHarness if the ` +
-  `plan changes any file under .claude/. ${MAP} Every Done-when ` +
-  `criterion must map to a named check at a named layer.`,
+spec = setup.spec && setup.spec.path ? setup.spec : await agent(
+  `${ticket}\n\n${inTree()}\n\n${specAsk(`specs/${issue}-${setup.slug}.md`)}`,
   { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN, model: T.think },
 )
 if (!spec) return handBack('Spec', 'the spec writer died')
@@ -525,7 +544,8 @@ if (!built || !built.ok) return handBack('Implement', built ? built.summary : 't
 const CODE_LENSES_ALL = [
   {
     key: 'combined',
-    ask: `Read the ticket first, then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
+    ask: `Read the ticket first, then the spec — on a small ticket nobody else has checked that it reads the ticket ` +
+      `right; a misreading is criterion-unmet, a ticket that contradicts itself is scope — then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
       `satisfies it and the test that proves it — one with nothing satisfying it is a blocker, and so is a test ` +
       `that would pass before the change or an existing test weakened when the ticket did not ask for it ` +
       `(test-weakened). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
@@ -536,7 +556,8 @@ const CODE_LENSES_ALL = [
   },
   {
     key: 'criteria',
-    ask: `Read the ticket first, then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
+    ask: `Read the ticket first, then the spec — on a small ticket nobody else has checked that it reads the ticket ` +
+      `right; a misreading is criterion-unmet, a ticket that contradicts itself is scope — then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
       `satisfies it and the test that proves it. A criterion with nothing satisfying it is a blocker. So is a ` +
       `test that would pass before the change, or asserts the implementation against itself, or an existing ` +
       `test weakened (category test-weakened) when the ticket did not ask for that behaviour to change.`,
@@ -696,6 +717,11 @@ for (let round = 1; ; round++) {
   for (const k of roundKeys) streak.set(k, (streak.get(k) || 0) + 1)
   const stuck = open.filter(f => streak.get(key(f)) > STUCK_AFTER)
   for (const k of [...streak.keys()]) if (!open.some(f => key(f) === k)) streak.delete(k)
+  // A ticket that contradicts itself is not something a fixer can fix. On a
+  // small ticket the code audit is the first reader to see the ticket at all.
+  if (open.some(f => f.category === 'scope')) {
+    return handBack('Code Audit', 'the ticket itself is in question', open.filter(f => f.category === 'scope'), open.filter(f => f.category !== 'scope'))
+  }
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
   if (audited >= MAX_BUILD_ROUNDS || round >= MAX_BUILD_ROUNDS + 2) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
 
