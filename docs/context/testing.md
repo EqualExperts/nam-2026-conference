@@ -163,8 +163,10 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   another lane writes for the same attendee on a different day; assert those from one
   payload, or pick an attendee no other lane uses at all.
 - `tests/unit/lanes.test.js` fails `npm test` when two panes share an attendee and day
-  (unless one is `readOnly: true` or both pin distinct `slot`s) — mark a lane that books
-  nothing `readOnly`. Before claiming a lane, check the whole `LANES` table *and* the read-only fixtures in its
+  (unless one is `readOnly: true`, exactly one is `agenda: false`, or both pin distinct
+  `slot`s) — mark a lane that reads only `readOnly`, and one that writes check-ins or
+  ratings but books nothing `agenda: false`. Six attendees × four days are nearly all
+  taken, so a new attendance lane usually has to be `agenda: false`. Before claiming a lane, check the whole `LANES` table *and* the read-only fixtures in its
   comment: the promotion test picks its session (and therefore its day) at runtime, so the
   day it occupies is not visible in the table.
 - Tests that mutate one shared fixture run on one project only:
