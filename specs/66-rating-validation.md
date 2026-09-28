@@ -90,3 +90,8 @@ by the existing suite, re-run unmodified: a string comment, an empty string
 - Any change to `rateSession`'s rejection rules (`not-checked-in`,
   `too-early`) — those stay 409, they are still a real conflict with
   conference state, not a malformed request.
+
+## Audit
+
+- Spec round 1: 0 raised, 0 confirmed.
+- Build round 1: unit 411 passed, browser 171 passed; 0 raised, 0 confirmed.
