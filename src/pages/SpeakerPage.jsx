@@ -4,7 +4,7 @@ import * as api from '../lib/api.js';
 import { plural } from '../lib/format.js';
 import { dayLabel } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
-import { Avatar, Button, Chip, EmptyState, ErrorState, Skeleton, cx } from '../components/ui.jsx';
+import { Avatar, Button, Chip, ErrorState, NotFoundState, Skeleton, cx } from '../components/ui.jsx';
 import { Icon, BrandIcon } from '../components/Icon.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
@@ -31,11 +31,13 @@ export function SpeakerPage() {
   // followerCount already includes you if you follow, so refetch when that
   // changes rather than adding one on the client and counting you twice.
   const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id, following]);
-  useDocumentTitle(speaker?.name);
+  const notFound = error?.status === 404;
+  useDocumentTitle(notFound ? 'Not found' : speaker?.name);
 
   if (loading && !speaker) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-64" /></div>;
+  if (notFound) return <NotFoundState title="Speaker not found" backTo="/speakers" backLabel="All speakers" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
-  if (!speaker) return <EmptyState title="Speaker not found" />;
+  if (!speaker) return <NotFoundState title="Speaker not found" backTo="/speakers" backLabel="All speakers" />;
 
   const byDay = speaker.sessions.reduce((acc, s) => {
     (acc[s.day] ??= []).push(s);
