@@ -30,57 +30,14 @@ No login — pick an attendee from the switcher. Two of them are also speaking.
 
 ## The pipeline
 
-```mermaid
-flowchart TB
-    V["🎙️ transcript · voice note · screenshot"]
-    P["proposal"]
-    I["GitHub Issue<br/><i>why · what · Done when…</i>"]
-    NH["🔴 needs-human<br/><i>draft PR · what is still open</i>"]
-    PR["pull request<br/><i>spec · proof · audit rounds</i>"]
-    V2["verdict + <b>confidence</b><br/><i>coverage, not conviction</i>"]
-    H{"you merge"}
-    M["main"]
-
-    V -->|process-requirements| P
-    P -->|create-tasks| I
-    I -->|"you label <b>ready-for-ai</b> → <b>/ship</b>"| SP
-
-    subgraph ship["ship · every step a fresh agent"]
-        direction TB
-        SP(["spec"]) --> SA{"spec audit"}
-        SA -->|blockers| SP
-        SA -->|clean| IM(["implement<br/><i>failing check first</i>"])
-        IM --> VF{"gate<br/>unit + browser, desktop + mobile"}
-        VF -->|green| CA{"independent audit<br/><i>criteria · rules · browser<br/>each blocker vs a skeptic</i>"}
-        VF -->|red| FX(["fix"])
-        CA -->|confirmed blocker| FX
-        FX --> VF
-        CA -->|clean| CX(["context<br/><i>update docs/context</i>"])
-        CX --> LN(["learn<br/><i>what the audits caught → docs</i>"])
-    end
-
-    SA -.->|3 rounds| NH
-    FX -.->|"4 rounds, or stuck"| NH
-    NH -.->|you answer, relabel| I
-    LN --> PR
-    PR --> gates
-    gates --> V2
-    V2 --> H
-    H --> M
-
-    subgraph gates["both run on every ready pull request · neither can block a merge"]
-        direction LR
-        CR(["code-review workflow · Opus<br/><i>4 lenses → skeptic →<br/>verdict + confidence</i>"])
-        QA(["qa workflow · Sonnet<br/><i>probes both viewports,<br/>reproduces on branch + base</i>"])
-    end
-
-    style V fill:#8250DF,color:#fff
-    style I fill:#8250DF,color:#fff
-    style NH fill:#A40E26,color:#fff
-    style PR fill:#BF8700,color:#fff
-    style H fill:#BF8700,color:#fff
-    style M fill:#1A7F37,color:#fff
 ```
+transcript · voice note ──process-requirements──▶ proposal ──create-tasks──▶ GitHub Issue
+GitHub Issue ──ready-for-ai──▶ ship ──▶ pull request ──▶ code review + QA ──▶ you merge
+                                 └──▶ needs-human (draft PR, what is still open) ──▶ you answer, relabel
+```
+
+How each part works, how hard it looks at which change, and what it costs:
+**[docs/harness/README.md](./docs/harness/README.md)**.
 
 ## Two harnesses
 
@@ -96,36 +53,28 @@ following a playbook in `docs/harness/` — together, that is the harness.
 | 📋 | `process-requirements` | Distils a transcript into durable knowledge and actionable work; surfaces conflicts |
 | 📋 | `create-tasks` | Raises the tickets — goal first, deduplicated, one goal each |
 | 📋 | `update-context` | Folds agreed knowledge back into the project's docs |
-| ⚙️ | `ship` *(workflow)* | Ticket → spec ⟲ audit → code → verify ⇄ independent audit ⟲ → context → learn → PR |
-| ⚙️ | `code-review` *(workflow)* | Four independent lenses → a skeptic per blocker → one comment, verdict with a confidence |
+| ⚙️ | `ship` *(workflow)* | Ticket → spec ⟲ audit → code → verify ⇄ independent audit ⟲ → learn → PR |
+| ⚙️ | `code-review` *(workflow)* | Sized to the change: one reviewer or a lens per kind of file → a skeptic per blocker → verdict with a confidence |
 | ⚙️ | `qa` *(workflow)* | Plans probes → drives Chromium on both viewports → reproduces each failure on the branch and its base |
 
 ## How a ticket moves
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> ready_for_ai: you label it
-    ready_for_ai --> ai_working: agent claims it
-    ai_working --> ready_for_human: audit clean, PR open
-    ai_working --> needs_human: would not converge — draft PR
-    ready_for_human --> [*]: you merge
-    needs_human --> ready_for_ai: you answer, relabel
-```
+`ready-for-ai` (you label it) → `ai-working` (ship claimed it) → `ready-for-human`
+(audit clean, PR open) → you merge. A ticket ship cannot converge on goes to
+`needs-human` with a draft PR; answer it and relabel `ready-for-ai`.
 
 **`ship` loops until it is satisfied, then stops.** It writes a spec into
-`specs/` as the branch's first commit, and two agents that did not write it
-audit it before any code exists. It writes a check that fails first. Then,
-round after round: the gate (`scripts/gate.mjs` — every test, desktop and
-mobile), three independent
-auditors — the ticket's criteria, `CLAUDE.md`'s rules, a browser — and a
-skeptic that tries to refute each blocker before it costs a fix. **No pull
-request until a round comes back clean.** Four rounds without converging, or
-one finding surviving two fixes, and it hands you a **draft** saying what is
-still open, rather than burning another round. Every agent starts from
+`specs/` as the branch's first commit, and an agent that did not write it
+audits the plan before any code exists. It writes a check that fails first,
+keeps the context docs true as it goes, and then, round after round: the gate
+(`scripts/gate.mjs` — every test, desktop and mobile), a red-check that the new
+tests fail without the change, independent auditors, and a skeptic that tries
+to refute each blocker before it costs a fix. **No pull request until a round
+comes back clean.** A ticket that will not converge goes to you as a **draft**
+saying what is still open. Most tickets are *small* — one auditor, Sonnet, two
+rounds; `ship:full` gets the whole loop. Every agent starts from
 [`docs/context/`](./docs/context/README.md), a map of the app, instead of
-reading the source to find its way; `ship` keeps those docs current and writes
-what its audits caught back into them.
+reading the source, and every ticket carries a running **🧾 AI spend** comment.
 
 **Then two agents read it**, neither having seen the reasoning that produced it
 — the agent who wrote it cannot see its own misreading. Each publishes a
@@ -222,6 +171,9 @@ you arrive mid-conference and the clock ticks while you watch. Pin it with
 
 ## Read next
 
+- **[docs/harness/README.md](./docs/harness/README.md)** — how the engineering
+  harness works: ship's loop, small vs full, how review and QA size
+  themselves, what confidence means, and what a ticket costs.
 - **[CLAUDE.md](./CLAUDE.md)** — architecture, conventions, and *why*. What the
   review agent checks a change against.
 - **[docs/context/](./docs/context/README.md)** — one doc per area of the app;
