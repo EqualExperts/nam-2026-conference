@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor, MID_SESSION_TIME } from './helpers.js';
+import { API, visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor, MID_SESSION_TIME, ATTENDEES, shotForPR } from './helpers.js';
 
 
 test.describe('Schedule', () => {
@@ -125,5 +125,37 @@ test.describe('Schedule grid', () => {
 
     await expect(cardFor(roomy.title).getByTestId('card-seats')).toHaveText(/^\d+ seats left$/);
     await expect(cardFor(full.title).getByTestId('card-seats')).toContainText('Full');
+  });
+});
+
+test.describe('Ended sessions', () => {
+  test('a past day\'s cards cannot be booked and read as done', async ({ page }) => {
+    // Read-only: nothing here can reach the API, so no lane is needed.
+    const days = await conferenceDays();
+    const at = await momentOn(1, '10:00');
+    const reservationCalls = [];
+    page.on('request', (req) => { if (req.url().includes('/reservations')) reservationCalls.push(req.url()); });
+
+    await visit(page, `/schedule?view=list&day=${days[0]}`, { as: ATTENDEES.marcus, at });
+    await waitForResults(page);
+    const cards = page.getByTestId('session-card');
+    await expect(cards.first()).toBeVisible();
+
+    const ended = cards.getByRole('button', { name: /ended/i }).first();
+    await expect(ended).toBeVisible();
+    await expect(ended).toBeDisabled();
+    await ended.click({ force: true });
+    await page.waitForTimeout(300);
+    expect(reservationCalls).toEqual([]);
+    await expect(page.getByTestId('toaster')).toHaveText('');
+
+    const done = await cards.evaluateAll((els) => els.map((el) => el.dataset.done));
+    expect(done.length).toBeGreaterThan(0);
+    expect(done.every((d) => d === 'true')).toBe(true);
+    await shotForPR(page, 'ended-cards');
+
+    await visit(page, `/schedule?view=list&day=${days[2]}`, { as: ATTENDEES.marcus, at });
+    await waitForResults(page);
+    await expect(page.getByTestId('session-card').first()).toHaveAttribute('data-done', 'false');
   });
 });
