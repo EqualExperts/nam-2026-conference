@@ -87,7 +87,7 @@ describe('ship', () => {
     });
     assert.equal(result.outcome, 'shipped');
     assert.deepEqual(result.rounds.map(r => r.confirmed), [1, 0]);
-    const order = ['verify#1', 'fix#1', 'verify#2', 'audit:rules#2', 'context', 'learn', 'open-pr'].map(l => calls.indexOf(l));
+    const order = ['verify#1', 'fix#1', 'verify#2', 'audit:rules#2', 'learn', 'open-pr'].map(l => calls.indexOf(l));
     assert.deepEqual([...order].sort((a, b) => a - b), order, 'learn lands before the PR opens, so it is reviewed');
   });
 
@@ -230,10 +230,13 @@ describe('ship', () => {
     assert.equal(result.outcome, 'needs-human');
   });
 
-  test('a context agent that dies hands back rather than shipping', async () => {
-    const { result, calls } = await run({ context: null });
-    assert.equal(result.outcome, 'needs-human');
-    assert.ok(!calls.includes('open-pr'));
+  test('the docs move with the code: the implementer and fixer keep them true, the auditor checks, no context agent', async () => {
+    const { calls, prompts } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('x')] : [] }),
+    });
+    assert.ok(!calls.includes('context'));
+    assert.match(prompts.implement, /node scripts\/context\.mjs for <changed files>/);
+    assert.match(prompts['fix#1'], /docs\/context\/ doc/);
   });
 
   test('a PR agent that fails learns once, not twice', async () => {
@@ -339,11 +342,10 @@ describe('ship', () => {
     assert.match(cell, /…$/);
   });
 
-  test('a spec round that confirmed something is in the spec and the PR table, not just the build rounds', async () => {
+  test('a spec round that confirmed something is in the PR table, not just the build rounds', async () => {
     const { prompts } = await run({
       'spec-audit:fit': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('the lane books into the slot lanes')] : [] }),
     });
-    assert.match(prompts.context, /spec round 1: 1 raised, 1 confirmed — the lane books into the slot lanes/);
     assert.match(prompts['open-pr'], /\| spec 1 \| — \| 1 raised · 1 confirmed \|/);
   });
 
@@ -397,7 +399,7 @@ describe('ship', () => {
       assert.equal(result.size, 'small');
       assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), ['spec-audit:combined#1']);
       assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1', 'audit:browser#1']);
-      for (const l of ['write-spec', 'implement', 'audit:combined#1', 'context', 'open-pr']) assert.equal(models[l], 'sonnet', l);
+      for (const l of ['write-spec', 'implement', 'audit:combined#1', 'open-pr']) assert.equal(models[l], 'sonnet', l);
     });
 
     test('a small ticket with nothing visible changed skips the browser pass', async () => {

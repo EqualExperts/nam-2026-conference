@@ -9,7 +9,6 @@ export const meta = {
     { title: 'Implement', detail: 'failing check first, then the change' },
     { title: 'Verify', detail: 'scripts/gate.mjs, every round' },
     { title: 'Code Audit', detail: 'independent reviewers, skeptic-verified, fix, repeat' },
-    { title: 'Context', detail: 'update the docs/context files this change touched' },
     { title: 'Learn', detail: 'turn what the audits caught into context, on the branch' },
     { title: 'PR', detail: 'push, screenshots, open it' },
   ],
@@ -125,7 +124,7 @@ const FINDINGS = {
         properties: {
           severity: { enum: ['blocker', 'minor'] },
           category: {
-            enum: ['criterion-unmet', 'claude-md', 'logic', 'test-proves-nothing', 'test-weakened', 'browser', 'spec-gap', 'scope', 'gate'],
+            enum: ['criterion-unmet', 'claude-md', 'logic', 'test-proves-nothing', 'test-weakened', 'browser', 'spec-gap', 'scope', 'gate', 'docs-stale'],
           },
           file: { type: 'string' },
           line: { type: 'integer' },
@@ -495,7 +494,11 @@ const built = await agent(
   `unless *Where* turns out wrong. Write the check first and ` +
   `confirm it fails for the reason you expect — then commit it on its own, red, as "test(…)", before any fix; ` +
   `that commit is the evidence the check proves something. Then implement, running \`npm test\` after every edit. Commit ` +
-  `in Conventional Commits and push. Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
+  `in Conventional Commits and push. In the same push keep the docs true — you know what changed, a fresh agent ` +
+  `would have to re-learn it: \`node scripts/context.mjs for <changed files>\` names the docs/context/ docs that ` +
+  `own them; update each the change made wrong or incomplete (a new function, payload or testid — usually a ` +
+  `line or two), and a new file no doc owns goes into the \`files\` of the doc for its area. ` +
+  `Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
   `Set ui=true if anything an attendee sees in a browser changed.` +
   (carried.length ? `\n\nThe spec audit left these open; resolve each in the build, and say how in the summary:\n${listFindings(carried)}` : ''),
@@ -513,7 +516,9 @@ const CODE_LENSES_ALL = [
       `satisfies it and the test that proves it — one with nothing satisfying it is a blocker, and so is a test ` +
       `that would pass before the change or an existing test weakened when the ticket did not ask for it ` +
       `(test-weakened). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
-      `line), or a logic error with an input and the wrong output it produces. ` +
+      `line), or a logic error with an input and the wrong output it produces. Last, \`node scripts/context.mjs ` +
+      `for <changed files>\`: a docs/context/ doc that now describes the code wrongly is docs-stale (a minor ` +
+      `unless an agent following it would build the wrong thing). ` +
       `docs/harness/code-review-playbook.md §2–§4 says what not to flag.`,
   },
   {
@@ -666,7 +671,8 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
     `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} (${sections(5, '6')}) still hold: never ` +
     `edit an existing test to make it pass, never skip or delete one. If a finding shows the spec was wrong, ` +
-    `fix the spec too and say so in the summary. \`npm test\` after every edit; do not run the Playwright ` +
+    `fix the spec too and say so in the summary; if a fix changes what a docs/context/ doc says, fix the doc. ` +
+    `\`npm test\` after every edit; do not run the Playwright ` +
     `suite. Leave \`git status\` clean. Commit and push.`,
     { phase: 'Code Audit', label: `fix#${round}`, schema: DONE, model: T.build },
   )
@@ -675,24 +681,10 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
 
 // ── 7. Context ───────────────────────────────────────────────────────────────
 // The docs are read instead of the code, so they change in the same pull
-// request as the code they describe — never in a follow-up nobody writes.
-phase('Context')
-const context = await agent(
-  `${inTree()}\n\nThe change on this branch is done and audited. Keep what describes it true:\n` +
-  `1. \`node scripts/context.mjs for $(git diff --name-only origin/${BASE}...HEAD)\` lists the docs/context/ ` +
-  `docs that own the changed files. Update each where the change made it wrong or incomplete — a new ` +
-  `function, a changed payload, a new testid. A file the branch added that no doc owns goes into the ` +
-  `\`files\` of the doc for its area. Most changes move a line or two; none is fine.\n` +
-  `2. Make ${spec.path} true of what shipped, and add a short *Audit* section — a line per round, what it ` +
-  `confirmed and how that was resolved (\`git log\` shows the fix commits). These are the rounds; do not ` +
-  `describe any other:\n` +
-  specRounds.map(r => `   spec round ${r.round}: ${r.raised} raised, ${r.confirmed} confirmed${r.what.length ? ` — ${r.what.join('; ')}` : ''}`).join('\n') + '\n' +
-  rounds.map(r => `   build round ${r.round}: ${r.gate}; ${r.raised} raised, ${r.confirmed} confirmed`).join('\n') + '\n' +
-  `3. Only if the change made a *decision* a future implementer must respect, add it to CLAUDE.md.\n` +
-  `\`npm test\` (the context check runs there), commit as "docs(context): …" and push.`,
-  { phase: 'Context', label: 'context', schema: DONE, effort: 'low', model: T.think },
-)
-if (!context || !context.ok) return handBack('Context', context ? context.summary : 'the context agent died')
+// request as the code they describe. The implementer and fixer update them as
+// they go — they know what changed; a separate context agent re-learnt the
+// whole change to move a line or two (~400k context tokens a ticket) — and
+// the code audit checks them (docs-stale). The rounds live in the PR body.
 
 // ── 8. Learn ────────────────────────────────────────────────────────────────
 // What the audits kept catching is context the implementer did not have. It goes
