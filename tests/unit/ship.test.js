@@ -466,11 +466,12 @@ describe('ship', () => {
   });
 
   describe('the red check', () => {
-    const red = (v) => ({ json: JSON.stringify(v) });
+    // The verify agent runs red-check after a green gate and relays both lines.
+    const red = (v) => ({ ...GREEN, red: JSON.stringify(v) });
 
     test('tests that pass without the change become a finding and cost a fix round', async () => {
       const { calls, prompts } = await run({
-        'red-check': (n) => red(n === 1
+        verify: (n) => red(n === 1
           ? { checked: true, failedOnBase: false, tests: ['tests/unit/format.test.js'], reverted: ['src/components/SeatPanel.jsx'] }
           : { checked: true, failedOnBase: true, tests: [], reverted: [] }),
       });
@@ -481,25 +482,25 @@ describe('ship', () => {
 
     test('a skeptic can clear it — a refactor is meant to pass either way', async () => {
       const { calls } = await run({
-        'red-check': red({ checked: true, failedOnBase: false, tests: ['tests/unit/a.test.js'], reverted: ['src/a.js'] }),
+        verify: red({ checked: true, failedOnBase: false, tests: ['tests/unit/a.test.js'], reverted: ['src/a.js'] }),
         skeptic: { refuted: true, why: 'pure refactor; the ticket asked for no behaviour change' },
       });
       assert.ok(!calls.some(c => c.startsWith('fix')));
     });
 
     test('nothing to check, or unreadable or partial output, raises nothing and does not crash', async () => {
-      for (const v of [red({ checked: false, reason: 'no tests changed' }), { json: 'oops' }, null,
+      for (const v of [red({ checked: false, reason: 'no tests changed' }), { ...GREEN, red: 'oops' }, GREEN,
         red({ checked: true, failedOnBase: false }), red({ checked: true, failedOnBase: false, tests: 'x', reverted: [] })]) {
-        const { calls } = await run({ 'red-check': v });
+        const { calls } = await run({ verify: v });
         assert.ok(!calls.some(c => c.startsWith('fix')));
       }
     });
 
-    test('it runs on the cheapest model, after the gate and before the auditors', async () => {
-      const { calls, models } = await run();
-      assert.equal(models['red-check#1'], 'haiku');
-      assert.ok(calls.indexOf('red-check#1') > calls.indexOf('verify#1'));
-      assert.ok(calls.indexOf('red-check#1') < calls.indexOf('audit:criteria#1'));
+    test('the verify agent runs it after a green gate, on the cheapest model, with no agent of its own', async () => {
+      const { calls, models, prompts } = await run();
+      assert.equal(models['verify#1'], 'haiku');
+      assert.match(prompts['verify#1'], /only if that line contains "ok":true, then run `GATE_BASE=origin\/main node scripts\/red-check\.mjs`/i);
+      assert.ok(!calls.some(c => c.startsWith('red-check')));
     });
   });
 

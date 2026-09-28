@@ -155,6 +155,7 @@ const GATE = {
   required: ['json'],
   properties: {
     json: { type: 'string', description: 'the last line gate.mjs printed, verbatim' },
+    red: { type: 'string', description: 'verify only: the last line red-check.mjs printed, verbatim, if it was run' },
   },
 }
 
@@ -558,10 +559,13 @@ let minors = []
 
 for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   phase('Verify')
+  // One rote agent for both commands: each agent costs its ~30k-token
+  // baseline before it runs anything, and red-check needs no judgement.
   const ran = await agent(
     `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
-    `install. Change nothing and interpret nothing.`,
+    `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
+    `once and return its last line, verbatim, as red. Change nothing and interpret nothing.`,
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
@@ -590,11 +594,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
     // on #41 the small-tier auditor said it had checked, and the tests only
     // exercised a helper the change never touched. The result is a finding
     // for the skeptic, not a verdict: a refactor's tests pass either way.
-    const red = await agent(
-      `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` once and return the last line it ` +
-      `printed, verbatim, as json. Change nothing and interpret nothing.`,
-      { phase: 'Verify', label: `red-check#${round}`, schema: GATE, effort: 'low', model: ROTE },
-    )
+    const red = { json: ran.red || '' }
     // Validated like readGate: a cheap model relaying the line can drop a
     // field, and a finding built from a partial result crashed the round.
     const redCheck = (() => {
