@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, laneFor, bookableFor } from './helpers.js';
+import { API, ATTENDEES, visit, momentOn, laneFor, bookableFor, conferenceDays, shotForPR } from './helpers.js';
 
 test.describe('Session detail', () => {
   test('shows the full session record', async ({ page }) => {
@@ -61,5 +61,25 @@ test.describe('Session detail', () => {
     const expected = `${target.seatsLeft.toLocaleString()} seats left`;
     await expect(page.getByTestId('header-seats')).toHaveText(expected);
     await expect(page.getByTestId('seats-left')).toHaveText(expected);
+  });
+
+  test('an ended session offers no seat', async ({ page, request }) => {
+    // Read-only: an ended session's controls make no call, so no lane is
+    // needed. Taken from the end of Day 1, where no other lane books.
+    const days = await conferenceDays();
+    const me = await (await request.get(`${API}/users/${ATTENDEES.marcus}`)).json();
+    const held = new Set(me.reservations.map((r) => r.sessionId));
+    const onDay1 = await (await request.get(`${API}/sessions?day=${days[0]}`)).json();
+    const target = onDay1.filter((s) => !held.has(s.id)).at(-1);
+    expect(target, 'no Day 1 session Marcus has not booked').toBeTruthy();
+
+    await visit(page, `/sessions/${target.id}`, { as: ATTENDEES.marcus, at: await momentOn(1, '10:00') });
+    await expect(page.getByTestId('session-title')).toBeVisible();
+
+    await expect(page.getByTestId('session-ended')).toContainText('ended');
+    await expect(page.getByTestId('save-session')).toBeDisabled();
+    await expect(page.getByTestId('session-ended-seat')).toBeDisabled();
+    await expect(page.getByTestId('reserve-seat')).toHaveCount(0);
+    await shotForPR(page, 'ended-session');
   });
 });

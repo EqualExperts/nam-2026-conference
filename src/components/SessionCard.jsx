@@ -6,7 +6,7 @@ import { Avatar, Chip, SeatButton, Rating, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 import { GeneratedCover } from './GeneratedCover.jsx';
 import { LiveBadge } from './LiveNow.jsx';
-import { progressOf, toMinutes } from '../lib/clock.js';
+import { hasEnded, progressOf, toMinutes } from '../lib/clock.js';
 
 /**
  * The workhorse card, in two layouts:
@@ -26,7 +26,8 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
   const onToday = clock?.day === session.day;
   const nowMins = clock ? toMinutes(clock.time) : -1;
   const isLive = onToday && nowMins >= toMinutes(session.startsAt) && nowMins < toMinutes(session.endsAt);
-  const isDone = onToday && nowMins >= toMinutes(session.endsAt);
+  // Done on any earlier day too, not just once today's end time has passed.
+  const isDone = hasEnded(session, clock);
   const a = accent(session.track.color);
   const v = accent(session.venue.accent);
   // Live counts win over the payload the list was fetched with.
@@ -38,7 +39,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
 
   if (variant === 'row') {
     return (
-      <div className={cx(
+      <div data-testid="session-card" data-done={isDone ? 'true' : 'false'} className={cx(
         'group relative flex scroll-mt-28 items-stretch gap-0 overflow-hidden rounded-xl border bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay',
         isLive ? 'border-rose-400/45' : onAgenda ? 'border-emerald-400/30' : 'border-hairline',
@@ -79,7 +80,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
               )}
             </div>
           </div>
-          <SeatButton size="sm" status={reservation} onClick={() => toggleSeat(session.id)} />
+          <SeatButton size="sm" status={reservation} ended={isDone} onClick={() => toggleSeat(session.id)} />
         </div>
       </div>
     );
@@ -92,6 +93,8 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
 
   return (
     <article
+      data-testid="session-card"
+      data-done={isDone ? 'true' : 'false'}
       className={cx(
         'group relative flex scroll-mt-28 flex-col overflow-hidden rounded-xl border bg-raised transition-colors duration-150',
         'hover:border-white/20 hover:bg-overlay/70',
@@ -134,7 +137,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isLive && <LiveBadge />}
-          <SeatButton status={reservation} onClick={() => toggleSeat(session.id)} />
+          <SeatButton status={reservation} ended={isDone} onClick={() => toggleSeat(session.id)} />
         </div>
       </div>
 

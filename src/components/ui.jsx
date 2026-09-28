@@ -116,18 +116,22 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
  * The one action: add this session to my agenda, which takes a seat.
  * `status` is null | 'confirmed' | 'waitlisted'.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title }) {
+export function SeatButton({ status, onClick, size = 'md', className, title, ended = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
+  // An ended session offers no seat; a seat already held can still be released.
+  const closed = ended && !on;
   const label = on
     ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
+    : closed ? 'Session ended'
     : (title ?? 'Add to my agenda');
 
   return (
     <button
       type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
+      disabled={closed}
       aria-pressed={on}
       aria-label={label}
       title={label}
@@ -141,7 +145,9 @@ export function SeatButton({ status, onClick, size = 'md', className, title }) {
           ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
           : on
             ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-            : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
+            : closed
+              ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
+              : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
         className,
       )}
     >

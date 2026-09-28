@@ -94,8 +94,17 @@ Escape unless `busy`.
 its own status comes **only** from `reservationFor()`. Card-level buttons
 (`SessionCard`, `ScheduleGrid`, `TodayPanel`, `SessionPage`) call `toggleSeat`.
 
+Once `hasEnded(session, clock)` (`src/lib/clock.js`) is true and no seat is
+held, no control offers one: `SeatPanel` renders a disabled
+`session-ended-seat` instead of `reserve-seat`, `SessionPage` disables
+`save-session` ("Session ended") and shows `session-ended`, `SeatButton`
+takes `ended` (disabled, named "Session ended", never calls `onClick`) and
+the grid buttons are disabled likewise. A seat already held keeps its status
+and can still be released.
+
 Testids: `seat-panel`, `seat-count`, `seats-left`, `reservation-confirmed`,
-`reservation-waitlisted`, `reserve-seat`, `release-seat`, `conflict-dialog`,
+`reservation-waitlisted`, `reserve-seat`, `session-ended-seat`, `session-ended`,
+`release-seat`, `conflict-dialog`,
 `conflict-keep`, `conflict-swap`.
 
 ## Invariants

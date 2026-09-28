@@ -75,7 +75,7 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `Chip` | `accent?, className, as='span', ...rest` |
 | `TrackPill` | `track` (uses `track.color`, `track.name`) |
 | `Button` | `variant (primary ghost subtle danger; default ghost), size (sm md lg), to` → `Link`, `href` → `a`, else `button`; `as` overrides |
-| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title` — the one agenda action; stops propagation and sits at `z-10` above card link overlays |
+| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, ended` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended" |
 | `Rating` | `value, count, showValue` — "Not yet rated" when `count` is 0 |
 | `SectionHeader` | `eyebrow, title, description, action, className` — renders an `h2` |
 | `Spinner`, `Skeleton` | `className` |

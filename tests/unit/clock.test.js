@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 // Safe to import outside a browser: nothing in this module touches `window`
 // until a hook is actually called.
-import { toMinutes, progressOf, relativeToNow, isOpenAt } from '../../src/lib/clock.js';
+import { toMinutes, progressOf, relativeToNow, isOpenAt, hasEnded } from '../../src/lib/clock.js';
 
 const session = { startsAt: '14:30', endsAt: '15:30' };
 
@@ -87,5 +87,30 @@ describe('Opening hours', () => {
     assert.equal(isOpenAt('08:00', '01:00', '01:00'), false);
     assert.equal(isOpenAt('08:00', '01:00', '04:00'), false);
     assert.equal(isOpenAt('08:00', '01:00', '07:59'), false);
+  });
+});
+
+describe('A session has ended once its day is past or its end time has come', () => {
+  const talk = { day: '2026-10-13', startsAt: '14:30', endsAt: '15:30' };
+
+  test('a session on an earlier day has ended', () => {
+    assert.equal(hasEnded(talk, { day: '2026-10-14', time: '09:00' }), true);
+  });
+
+  test('it has ended at exactly its end time', () => {
+    assert.equal(hasEnded(talk, { day: '2026-10-13', time: '15:30' }), true);
+  });
+
+  test('one minute before the end it has not', () => {
+    assert.equal(hasEnded(talk, { day: '2026-10-13', time: '15:29' }), false);
+  });
+
+  test('a session on a later day has not ended, whatever the time', () => {
+    assert.equal(hasEnded(talk, { day: '2026-10-12', time: '23:00' }), false);
+  });
+
+  test('without a clock nothing is treated as over', () => {
+    assert.equal(hasEnded(talk, null), false);
+    assert.equal(hasEnded(talk, undefined), false);
   });
 });
