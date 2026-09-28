@@ -26,6 +26,14 @@ summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 # bounds it. The CLI's own default gives up — and kills it — at 600s.
 export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS:-0}"
 
+# Cache writes are most of what a run costs: every agent writes its context,
+# at 2x the input price for the default 1-hour cache and 1.25x for 5 minutes.
+# An agent's turns are seconds apart and its life is minutes, so 5 minutes
+# loses nothing and cuts the write bill by ~40% (verified with the CLI's own
+# billing: ephemeral_5m_input_tokens instead of ephemeral_1h_input_tokens).
+export CLAUDE_CODE_PROMPT_CACHE_TTL="${CLAUDE_CODE_PROMPT_CACHE_TTL:-5m}"
+export CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL="${CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL:-5m}"
+
 # Only when the caller left a progress comment for this run to update — a
 # laptop run sets neither and is unchanged. It reads $out as it grows, beside
 # the CLI, never inside its pipeline: piping the CLI's own output through the

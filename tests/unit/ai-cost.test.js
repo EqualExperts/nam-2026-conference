@@ -25,6 +25,12 @@ describe('ai-cost', () => {
     assert.ok(Math.abs(cost - 0.0239229) < 0.0001, `${cost}`);
   });
 
+  test('a 5-minute cache write is priced at 1.25x input, a 1-hour one at 2x', () => {
+    const u = { in: 0, out: 0, read: 0, write: 1_000_000 };
+    assert.equal(priced('claude-sonnet-5', u), 6);
+    assert.equal(priced('claude-sonnet-5', { ...u, write5m: 1_000_000 }), 3.75);
+  });
+
   test('a line says tokens, where they went and the cost, and marks an estimate', () => {
     const u = fromStream(stream);
     assert.equal(tokens(total(u)), 10 + 50 + 13689 + 11147 + 100 + 2000 + 1_000_000 + 100_000);

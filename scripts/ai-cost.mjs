@@ -20,11 +20,15 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** $ per million tokens. Cache writes are the 1-hour TTL the CLI uses (2× input). */
+/**
+ * $ per million tokens. A cache write costs 2× input for the 1-hour TTL and
+ * 1.25× for 5 minutes; `write` is the 1-hour rate and `write5m` the other —
+ * transcripts say which (`cache_creation.ephemeral_5m_input_tokens`).
+ */
 export const RATES = {
-  haiku: { in: 1, out: 5, read: 0.1, write: 2 },
-  sonnet: { in: 3, out: 15, read: 0.3, write: 6 },
-  opus: { in: 5, out: 25, read: 0.5, write: 10 },
+  haiku: { in: 1, out: 5, read: 0.1, write: 2, write5m: 1.25 },
+  sonnet: { in: 3, out: 15, read: 0.3, write: 6, write5m: 3.75 },
+  opus: { in: 5, out: 25, read: 0.5, write: 10, write5m: 6.25 },
 };
 const family = (model) => (/haiku/.test(model) ? 'haiku' : /opus/.test(model) ? 'opus' : 'sonnet');
 
@@ -35,7 +39,8 @@ const add = (a, b) => ({ in: a.in + b.in, out: a.out + b.out, read: a.read + b.r
 export const tokens = (u) => u.in + u.out + u.read + u.write;
 export const priced = (model, u) => {
   const r = RATES[family(model)];
-  return (u.in * r.in + u.out * r.out + u.read * r.read + u.write * r.write) / 1e6;
+  const short = Math.min(u.write5m || 0, u.write);
+  return (u.in * r.in + u.out * r.out + u.read * r.read + (u.write - short) * r.write + short * r.write5m) / 1e6;
 };
 
 /** A `claude -p --output-format stream-json` transcript → usage by model, as billed. */
@@ -70,6 +75,7 @@ export function fromTranscripts(dir) {
     let u = empty();
     for (const m of byMessage.values()) {
       u = add(u, { in: m.input_tokens || 0, out: m.output_tokens || 0, read: m.cache_read_input_tokens || 0, write: m.cache_creation_input_tokens || 0, cost: 0 });
+      u.write5m = (u.write5m || 0) + (m.cache_creation?.ephemeral_5m_input_tokens || 0);
     }
     u.cost = priced(model, u);
     const key = family(model);
