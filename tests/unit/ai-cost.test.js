@@ -34,13 +34,15 @@ describe('ai-cost', () => {
 
   test('the ledger round-trips through the comment and totals every run', () => {
     const rows = [
-      { kind: 'ship', run: 'https://x/1', tokens: 5_000_000, cost: 4.03, estimated: true },
-      { kind: 'code review', run: 'https://x/2', pr: 71, tokens: 1_200_000, cost: 0.9, estimated: false },
+      { kind: 'ship', run: 'https://x/1', tokens: 5_000_000, cost: 4.03, models: { sonnet: 3.85, haiku: 0.18 }, estimated: true },
+      { kind: 'code review', run: 'https://x/2', pr: 71, tokens: 1_200_000, cost: 0.9, models: { opus: 0.9 }, estimated: false },
     ];
     const body = ledgerBody(rows);
     assert.deepEqual(parseLedger(body), rows);
     assert.match(body, /AI spend on this ticket: 6\.2M tokens · ~\$4\.93/);
     assert.match(body, /\[code review\]\(https:\/\/x\/2\) · #71/);
+    assert.match(body, /\| \*\*Total\*\* \| \*\*6\.2M\*\* \| \*\*~\$0\.90\*\* \| \*\*~\$3\.85\*\* \| \*\*~\$0\.18\*\* \|/);
+    assert.doesNotMatch(body, /@claude/, 'a comment naming @claude starts a ship run');
     assert.deepEqual(parseLedger('no ledger here'), []);
   });
 

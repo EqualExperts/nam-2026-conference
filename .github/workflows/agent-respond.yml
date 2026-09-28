@@ -36,6 +36,8 @@ jobs:
       (contains(github.event.comment.body, '@claude') ||
        contains(github.event.review.body, '@claude')) &&
       !contains(github.event.comment.body, 'Claude finished') &&
+      !contains(github.event.comment.body, '<!-- orbit-') &&
+      !contains(github.event.comment.body, '<!-- ship-progress') &&
       (github.event_name != 'issue_comment' || github.event.issue.pull_request)
     runs-on: ubuntu-latest
     # On #41 it confirmed a review blocker, found a second bug, and died at
@@ -96,4 +98,4 @@ jobs:
         run: |
           [ -f "$EXECUTION" ] || exit 0
           issue=$(gh pr view "$PR" --json closingIssuesReferences -q '.closingIssuesReferences[0].number' 2>/dev/null || true)
-          node scripts/ai-cost.mjs record ${issue:+--issue "$issue"} --kind "@claude" --run "$RUN" --stream "$EXECUTION"
+          node scripts/ai-cost.mjs record ${issue:+--issue "$issue"} --kind respond --run "$RUN" --stream "$EXECUTION"

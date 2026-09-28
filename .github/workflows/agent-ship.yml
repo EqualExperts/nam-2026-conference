@@ -48,12 +48,16 @@ jobs:
     # dispatch rather than a nuisance. A comment counts only on an issue (not
     # a pull request), only from someone with write access — it becomes part
     # of the agent's instructions — and never from the agent's own replies.
+    # Nor from the harness's own comments (markers <!-- orbit-… / ship-progress):
+    # the AI-spend ledger once said "@claude" in its footer and started five ships.
     if: |
       github.event.label.name == 'ready-for-ai' ||
       (github.event_name == 'issue_comment' &&
        !github.event.issue.pull_request &&
        contains(github.event.comment.body, '@claude') &&
        !contains(github.event.comment.body, 'Claude finished') &&
+       !contains(github.event.comment.body, '<!-- orbit-') &&
+       !contains(github.event.comment.body, '<!-- ship-progress') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     runs-on: ubuntu-latest
     # A clean ticket takes one audit round; a hard one takes four. Past this

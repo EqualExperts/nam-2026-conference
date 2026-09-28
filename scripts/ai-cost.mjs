@@ -6,7 +6,7 @@
  *     (--stream <claude-run.jsonl> | --transcripts <workflow transcript dir>) [--pr 57]
  *
  * `record` keeps one comment on the issue — every ship, code review, QA and
- * @claude run as a row, and the total — so the ticket says what AI spent on
+ * respond run as a row, and the total — so the ticket says what AI spent on
  * it without anyone adding it up. With --pr it also comments the run's line
  * on the pull request.
  *
@@ -95,16 +95,22 @@ export function line(usage) {
 }
 
 /** The ledger kept in the issue comment: rows in, markdown (with the rows hidden in it) out. */
+const FAMILIES = ['opus', 'sonnet', 'haiku'];
+
 export function ledgerBody(rows) {
   const t = rows.reduce((a, r) => ({ tokens: a.tokens + r.tokens, cost: a.cost + r.cost, est: a.est || r.estimated }), { tokens: 0, cost: 0, est: false });
+  const by = (f, list) => list.reduce((a, r) => a + ((r.models || {})[f] || 0), 0);
+  const cell = (n, est) => (n ? `${est ? '~' : ''}${dollars(n)}` : '—');
   return [
     `### 🧾 AI spend on this ticket: ${human(t.tokens)} tokens · ${t.est ? '~' : ''}${dollars(t.cost)}`,
     '',
-    '| Run | Tokens | Cost |',
-    '| --- | --- | --- |',
-    ...rows.map((r) => `| ${r.run ? `[${r.kind}](${r.run})` : r.kind}${r.pr ? ` · #${r.pr}` : ''} | ${human(r.tokens)} | ${r.estimated ? '~' : ''}${dollars(r.cost)} |`),
+    `| Run | Tokens | ${FAMILIES.map((f) => f[0].toUpperCase() + f.slice(1)).join(' | ')} | Cost |`,
+    `| --- | --- | ${FAMILIES.map(() => '---').join(' | ')} | --- |`,
+    ...rows.map((r) => `| ${r.run ? `[${r.kind}](${r.run})` : r.kind}${r.pr ? ` · #${r.pr}` : ''} | ${human(r.tokens)} | ` +
+      `${FAMILIES.map((f) => cell((r.models || {})[f], r.estimated)).join(' | ')} | ${r.estimated ? '~' : ''}${dollars(r.cost)} |`),
+    `| **Total** | **${human(t.tokens)}** | ${FAMILIES.map((f) => `**${cell(by(f, rows), t.est)}**`).join(' | ')} | **${t.est ? '~' : ''}${dollars(t.cost)}** |`,
     '',
-    `<sub>Updated after every ship, code review, QA and @claude run. CI rows are billed list prices; ~ marks a local run priced from its transcripts.</sub>`,
+    `<sub>Updated after every ship, code review, QA and respond run. CI rows are billed list prices; ~ marks a local run priced from its transcripts.</sub>`,
     '',
     `<!-- ${MARKER} ${JSON.stringify(rows)} -->`,
   ].join('\n');
@@ -125,7 +131,9 @@ function record(opts) {
   const text = line(usage);
   if (!tokens(t)) { console.log(`no usage found — nothing recorded`); return; }
   const repo = process.env.GH_REPO || gh(['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner']).trim();
-  const row = { kind: opts.kind, run: opts.run || '', pr: opts.pr ? Number(opts.pr) : undefined, tokens: tokens(t), cost: Math.round(t.cost * 100) / 100, estimated: usage.estimated };
+  const byFamily = {};
+  for (const [name, u] of Object.entries(usage.models)) byFamily[family(name)] = Math.round(((byFamily[family(name)] || 0) + u.cost) * 100) / 100;
+  const row = { kind: opts.kind, run: opts.run || '', pr: opts.pr ? Number(opts.pr) : undefined, tokens: tokens(t), cost: Math.round(t.cost * 100) / 100, models: byFamily, estimated: usage.estimated };
   if (opts.issue) {
     const found = gh(['api', `repos/${repo}/issues/${opts.issue}/comments`, '--paginate', '--jq',
       `.[] | select(.body | contains("${MARKER}")) | .id`]).split('\n').filter(Boolean).at(-1);
