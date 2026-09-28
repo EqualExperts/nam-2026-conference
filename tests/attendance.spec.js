@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES, failOnPageErrors } from './helpers.js';
+
+/** The first non-keynote, non-Social session on `day` this attendee has not checked into. */
+async function unattendedFor(request, userId, day) {
+  const me = await (await request.get(`${API}/users/${userId}`)).json();
+  const been = new Set(me.checkIns ?? []);
+  const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
+  return all
+    .filter((s) => !s.isKeynote && s.format !== 'Social' && !been.has(s.id))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+}
 
 
 /** The first slot where this attendee can book at least two sessions with seats. */
@@ -173,6 +183,63 @@ test.describe('Check in and rate', () => {
       data: { stars: 11, day: days[0], time: '23:59' },
     });
     expect(res.status()).toBe(400);
+  });
+
+  test('checking in toasts a confirmation, and a rejected check-in toasts instead of throwing', async ({ page, request }, testInfo) => {
+    const { user, day } = await laneFor('attendance.checkin-toast', testInfo);
+    const target = await unattendedFor(request, user, day);
+    test.skip(!target, 'no un-attended session left on this day');
+
+    const errors = failOnPageErrors(page);
+    await visit(page, `/sessions/${target.id}`, { as: user, at: `${day}T${target.startsAt}` });
+
+    // Fulfilled once, so the click after it hits the real route and succeeds.
+    await page.route(`**/api/users/${user}/checkins/${target.id}`, (route) =>
+      route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ rejected: 'future' }) }),
+    { times: 1 });
+
+    await page.getByTestId('check-in').click();
+    await expect(page.getByTestId('toaster')).toContainText('Check-in has not opened yet');
+    await expect(page.getByTestId('check-in')).toHaveText('Check in');
+
+    await page.getByTestId('check-in').click();
+    await expect(page.getByTestId('toaster')).toContainText('Checked in');
+    await expect(page.getByTestId('checked-in')).toBeVisible();
+
+    expect(errors).toEqual([]);
+  });
+
+  test('rating toasts Rating saved, then Rating updated, and a rejection toasts too', async ({ page, request }, testInfo) => {
+    const { user, day } = await laneFor('attendance.rating-toast', testInfo);
+    const target = await unattendedFor(request, user, day);
+    test.skip(!target, 'no un-attended session left on this day');
+
+    await request.put(`${API}/users/${user}/checkins/${target.id}`, {
+      data: { day, time: target.startsAt },
+    });
+
+    const errors = failOnPageErrors(page);
+    await visit(page, `/sessions/${target.id}`, { as: user, at: `${day}T23:59` });
+
+    const star = (n) => page.getByTestId('rating-form')
+      .getByRole('radio', { name: `${n} star${n > 1 ? 's' : ''}`, exact: true });
+
+    await star(4).click();
+    await page.getByTestId('submit-rating').click();
+    await expect(page.getByTestId('toaster')).toContainText('Rating saved');
+
+    await star(2).click();
+    await page.getByTestId('submit-rating').click();
+    await expect(page.getByTestId('toaster')).toContainText('Rating updated');
+
+    await page.route(`**/api/users/${user}/ratings/${target.id}`, (route) =>
+      route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ rejected: 'not-checked-in' }) }),
+    { times: 1 });
+    await page.getByTestId('submit-rating').click();
+    await expect(page.getByTestId('toaster')).toContainText('You need to check in before you can rate this');
+    await expect(page.getByTestId('submit-rating')).toHaveText('Update rating');
+
+    expect(errors).toEqual([]);
   });
 });
 

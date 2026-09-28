@@ -130,6 +130,9 @@ export const LANES = {
   // marcus/day 3 desktop and jonas/day 0 mobile are each used by no other lane,
   // so concurrent tests cannot collide on these attendee+day pairs.
   'switcher.live-count': { desktop: { user: marcus, day: 3 }, mobile: { user: jonas, day: 0, clean: true } },
+  // Check-ins and ratings only — no seat is booked (see lanes.test.js).
+  'attendance.checkin-toast': { desktop: { user: kenji, day: 2, agenda: false },  mobile: { user: amara, day: 2, agenda: false } },
+  'attendance.rating-toast':  { desktop: { user: marcus, day: 2, agenda: false }, mobile: { user: priya, day: 2, agenda: false } },
 };
 
 /**
