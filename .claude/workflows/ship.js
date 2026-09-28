@@ -698,30 +698,44 @@ const auditTable = [
   ...specRounds.map(r => `| spec ${r.round} | — | ${r.raised} raised · ${r.confirmed} confirmed | ${r.what.map(brief).join('; ') || '—'} |`),
   ...rounds.map(r => `| build ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`),
 ].join('\n')
+// Everything the body needs, the script already holds — the gate, the rounds,
+// the spec, the criteria. Told to "follow §8" the agent spent 20 turns on #61
+// finding §8, re-reading the spec and code and re-running npm test. So the
+// shape is given here, nothing is re-verified, and only a visible change —
+// screenshots are a judgement — gets more than the rote model.
+const visible = built.ui !== false
 const pr = await agent(
-  `${ticket}\n\n${inTree()}\n\nOpen the pull request against ${BASE}, following §8 of ${SKILL} — ready for review, screenshots ` +
-  `only if something visible changed, the body in the shape given there. ` +
-  (SIZE === 'full' ? `Label it ship:full (\`--label ship:full\`) — code review and QA size themselves from it. ` : '') +
-  `In the *Proof* table use: ` +
-  `\`node scripts/gate.mjs\` → ${gateLine(gate)}, at ${gate.sha.slice(0, 7)}. If \`git log ${gate.sha}..HEAD\` ` +
-  `shows later commits, say in one line that they touch only docs — and if any touches code, stop and ` +
-  `return ok=false instead. After it, add this section verbatim:\n\n` +
+  `${ticket}\n\n${inTree()}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
+  `not re-read the spec, the playbook or the code, and do not run tests. \`git diff --stat origin/${BASE}...HEAD\` ` +
+  `and \`git log --oneline origin/${BASE}..HEAD\` are all you need for *Changed*. If \`git log ${gate.sha}..HEAD\` ` +
+  `shows a commit touching anything outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
+  (visible
+    ? `Something an attendee sees changed: add screenshots as §8 of ${SKILL} says (one shot of the new state, or ` +
+      `before/after for a fix), via \`node scripts/pr-media.mjs\`, where the body shows <media>.\n\n`
+    : `Nothing visible changed: no screenshots, and drop the <media> line.\n\n`) +
+  `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts:\n\n` +
+  `Closes #${issue}\n\n<one sentence: what an attendee (or a developer) gets now that they did not before>\n\n` +
+  `[Spec](https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path})\n\n` +
+  `### Changed\n- \`<file>\` — <what, in a few words> (one line per file that matters)\n\n<media>\n\n` +
+  `### Proof\n| Check | Result |\n| --- | --- |\n| \`<each test the change added>\` | red before, green after |\n` +
+  `| \`node scripts/gate.mjs\` | ${gateLine(gate)}, at \`${gate.sha.slice(0, 7)}\` |\n\n` +
   `### Audit loop\n| Round | Gate | Independent audit | Confirmed / covered |\n| --- | --- | --- | --- |\n${auditTable}\n\n` +
-  (gate.browser.flakyTests && gate.browser.flakyTests.length ? `Under the table, one line: flaky on retry — ${gate.browser.flakyTests.join(', ')}.\n\n` : '') +
-  `Link the spec as a full URL to the file on this branch (https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path}) — a ` +
-  `relative link does not resolve from a PR body. List every test the change added in the Proof table.\n\n` +
-  (lessons.length ? `And a *Lessons* line listing what Learn wrote: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n\n` : '') +
+  (gate.browser.flakyTests && gate.browser.flakyTests.length ? `Flaky on retry — ${gate.browser.flakyTests.join(', ')}.\n\n` : '') +
+  (lessons.length ? `Lessons: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n\n` : '') +
   (minors.length
-    ? `Put these unconfirmed minor notes inside the "Worth a closer look" block, one line each, only if a ` +
-      `reviewer would want them:\n${listFindings(minors)}\n\n`
+    ? `<details><summary>Worth a closer look</summary>\n\n<only those of these unconfirmed notes a reviewer would ` +
+      `want, one line each:\n${listFindings(minors)}>\n</details>\n\n`
     : '') +
-  `Comment the PR link on the issue and move the label to ready-for-human. Return the PR url.`,
-  { phase: 'PR', label: 'open-pr', schema: DONE, model: T.think },
+  `Then, from the worktree: \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
+  `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
+  `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +
+  `for review: <url>"\`; \`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
+  (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
+  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: visible ? T.think : ROTE },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
-await cleanup()
-
+// The PR agent released the lane on its way out.
 return {
   outcome: 'shipped',
   issue,

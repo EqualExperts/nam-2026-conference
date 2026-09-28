@@ -299,7 +299,7 @@ describe('ship', () => {
     assert.match(prompts.setup, /origin\/harness\/ship-loop/);
     assert.match(prompts['verify#1'], /GATE_BASE=origin\/harness\/ship-loop/);
     assert.match(prompts['audit:criteria#1'], /git diff origin\/harness\/ship-loop\.\.\.HEAD/);
-    assert.match(prompts['open-pr'], /against harness\/ship-loop/);
+    assert.match(prompts['open-pr'], /gh pr create --base harness\/ship-loop/);
     assert.doesNotMatch(Object.values(prompts).join('\n'), /origin\/main/);
   });
 
@@ -353,10 +353,19 @@ describe('ship', () => {
     assert.match(prompts['audit:criteria#1'], /plan\.spec\.js:40 › one done/);
   });
 
-  test('on a laptop the run releases its own lane at the end, and tells agents not to', async () => {
+  test('on a laptop the PR agent releases the lane on its way out, and tells other agents not to', async () => {
     const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
-    assert.equal(calls.at(-1), 'release-lane');
+    assert.equal(calls.at(-1), 'open-pr');
+    assert.match(prompts['open-pr'], /node scripts\/lane\.mjs release 7/);
     assert.match(prompts.implement, /Never release the lane/);
+  });
+
+  test('the PR agent is handed the body, re-verifies nothing, and a change nobody sees opens on the rote model', async () => {
+    const { prompts, models } = await run({ implement: { ok: true, summary: 'done', ui: false } });
+    assert.match(prompts['open-pr'], /do not run tests/);
+    assert.match(prompts['open-pr'], /### Audit loop/);
+    assert.doesNotMatch(prompts['open-pr'], /following §8/);
+    assert.equal(models['open-pr'], 'haiku');
   });
 
   test('a comment that asked for the run reaches the spec writer and the auditors as notes', async () => {
