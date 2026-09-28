@@ -113,6 +113,38 @@ test.describe('My Agenda', () => {
     await expect(option).not.toContainText(/saved/i);
   });
 
+  test('the switcher\'s own row updates after booking or releasing a seat, without a reload', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('switcher.live-count', testInfo);
+    const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);
+    expect(target, 'nothing bookable in this lane').toBeTruthy();
+
+    await visit(page, `/sessions/${target.id}`, { as: lane.user });
+
+    const digitOf = async (locator) => Number((await locator.textContent()).match(/(\d+) on agenda/)[1]);
+
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    const ownRow = page.getByRole('option', { selected: true });
+    const otherRow = page.getByRole('option', { selected: false }).first();
+    const before = await digitOf(ownRow);
+    const otherBefore = await digitOf(otherRow);
+    await page.keyboard.press('Escape');
+
+    await page.getByTestId('reserve-seat').click();
+    await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
+
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await expect(ownRow).toContainText(`${before + 1} on agenda`);
+    await expect(otherRow).toContainText(`${otherBefore} on agenda`);
+    await page.keyboard.press('Escape');
+
+    await page.getByTestId('release-seat').click();
+    await expect(page.getByTestId('reserve-seat')).toBeVisible();
+
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await expect(ownRow).toContainText(`${before} on agenda`);
+    await expect(otherRow).toContainText(`${otherBefore} on agenda`);
+  });
+
   test('switching attendee in the header changes the plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.jonas });
     await expect(page.getByRole('heading', { name: /Jonas’s agenda/ })).toBeVisible();
