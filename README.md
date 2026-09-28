@@ -7,8 +7,9 @@ A conference companion app for a fictional applied-AI conference in Las Vegas �
 four days, ~140 sessions, 110 speakers, two venues six miles apart.
 
 It is the sample application for a workshop on using AI across the software
-delivery lifecycle. **A voice note goes in one end. A merged pull request comes
-out the other.** You decide what to build and what to ship; agents do the rest.
+delivery lifecycle, and it ships with the **engineering harness** that builds
+it: a GitHub Issue goes in, a specified, tested and independently audited pull
+request comes out, and you decide what merges.
 
 ```bash
 npm install && npm run dev     # seeds, starts API + web on :5173
@@ -28,83 +29,87 @@ No login — pick an attendee from the switcher. Two of them are also speaking.
 >
 > Five minutes, once. [Full checklist ↓](#set-up-your-fork)
 
-## The pipeline
+## Working in this repo
+
+You decide **what** to build and **whether it ships**. Agents do the building
+in between, and every step leaves something you can read.
 
 ```
-transcript · voice note ──process-requirements──▶ proposal ──create-tasks──▶ GitHub Issue
-GitHub Issue ──ready-for-ai──▶ ship ──▶ pull request ──▶ code review + QA ──▶ you merge
-                                 └──▶ needs-human (draft PR, what is still open) ──▶ you answer, relabel
+idea ──▶ GitHub Issue ──▶ ship ──▶ pull request ──▶ code review + QA ──▶ you merge
+                            └──▶ needs-human: a draft PR and what is still open
 ```
 
-How each part works, how hard it looks at which change, and what it costs:
+### 1. Write the ticket
+
+An issue with a **why**, a **what**, and a **Done when:** list of outcomes a
+test could check — that list is what everything downstream is judged against.
+From a meeting, `process-requirements` turns a transcript into a proposal and
+`create-tasks` raises the issues; or write one by hand.
+
+### 2. Ship it
+
+- **On GitHub:** label it `ready-for-ai`. Actions runs `ship`; the issue shows
+  its progress as it goes.
+- **On your laptop:** `/ship 42` in Claude Code. It works in its own worktree
+  (`orbit-wt-42` beside your checkout) on its own ports, so you can keep
+  working — or ship several tickets at once.
+
+`ship` writes a spec, has it audited, writes a failing check, builds, then
+loops — the full test suite, an independent audit, a skeptic on every blocker,
+a fix — until a round comes back clean, and only then opens the pull request.
+Most tickets get the **small** loop (one auditor, Sonnet); the `ship:full`
+label, or `/ship 42 --full`, gets the whole one. A ticket it cannot finish
+comes back as `needs-human` with a draft pull request saying why: answer it,
+relabel. `@claude <notes>` on the issue ships it again with your notes.
+
+### 3. Read what came back
+
+Every pull request gets an independent **code review** and **QA** pass, sized
+to the change — a one-line fix gets one reviewer and two probes, a large change
+gets every lens. Each posts a verdict with a **confidence** that means
+coverage: QA is only *high* when every Done-when criterion was exercised. A red
+verdict is information, not a gate. `@claude <what to change>` on the pull
+request makes the change and replies.
+
+### 4. Merge — and see what it cost
+
+You merge. Every issue carries a **🧾 AI spend** comment — each ship, review
+and QA run's tokens and dollars, split by Opus, Sonnet and Haiku, with the
+total — so the ticket says what it cost without anyone adding it up.
+
+**How the machine works, how hard it looks at what, and why:**
 **[docs/harness/README.md](./docs/harness/README.md)**.
 
-## Two harnesses
+## Changing code yourself
 
-**Product** decides what to build. **Engineering** builds it. They meet at a
-GitHub Issue. The product skills are markdown in `.claude/skills/`; the
-engineering side is three workflow scripts in `.claude/workflows/`, each
-following a playbook in `docs/harness/` — together, that is the harness.
+People and agents follow the same rules, so read **[CLAUDE.md](./CLAUDE.md)**
+first — the architecture, the conventions and the decisions behind them. Then:
 
-| | Skill | What it does |
-| --- | --- | --- |
-| 🎙️ | `listen-to-meeting` | Listens live, flags contradictions and gaps while they can still be settled in the room |
-| 🎙️ | `transcribe-audio` | Whisper, locally — no hosted service, no account |
-| 📋 | `process-requirements` | Distils a transcript into durable knowledge and actionable work; surfaces conflicts |
-| 📋 | `create-tasks` | Raises the tickets — goal first, deduplicated, one goal each |
-| 📋 | `update-context` | Folds agreed knowledge back into the project's docs |
-| ⚙️ | `ship` *(workflow)* | Ticket → spec ⟲ audit → code → verify ⇄ independent audit ⟲ → learn → PR |
-| ⚙️ | `code-review` *(workflow)* | Sized to the change: one reviewer or a lens per kind of file → a skeptic per blocker → verdict with a confidence |
-| ⚙️ | `qa` *(workflow)* | Plans probes → drives Chromium on both viewports → reproduces each failure on the branch and its base |
+- **Start from [`docs/context/`](./docs/context/README.md)**, one doc per area
+  of the app. `node scripts/context.mjs for <file>` says which docs own a file;
+  a change that makes one wrong updates it in the same commit.
+- **A spec before the code** for anything non-trivial:
+  `specs/<issue>-<slug>.md`, the branch's first commit.
+- **`npm test` after every edit** (under a second); **`node scripts/gate.mjs`**
+  before you call it done — every test on desktop and mobile, as the agents
+  run it.
+- **Conventional Commits**, the body saying *why*.
 
-## How a ticket moves
+## Changing the harness
 
-`ready-for-ai` (you label it) → `ai-working` (ship claimed it) → `ready-for-human`
-(audit clean, PR open) → you merge. A ticket ship cannot converge on goes to
-`needs-human` with a draft PR; answer it and relabel `ready-for-ai`.
+The harness is code in this repo, tested like the app:
 
-**`ship` loops until it is satisfied, then stops.** It writes a spec into
-`specs/` as the branch's first commit, and an agent that did not write it
-audits the plan before any code exists. It writes a check that fails first,
-keeps the context docs true as it goes, and then, round after round: the gate
-(`scripts/gate.mjs` — every test, desktop and mobile), a red-check that the new
-tests fail without the change, independent auditors, and a skeptic that tries
-to refute each blocker before it costs a fix. **No pull request until a round
-comes back clean.** A ticket that will not converge goes to you as a **draft**
-saying what is still open. Most tickets are *small* — one auditor, Sonnet, two
-rounds; `ship:full` gets the whole loop. Every agent starts from
-[`docs/context/`](./docs/context/README.md), a map of the app, instead of
-reading the source, and every ticket carries a running **🧾 AI spend** comment.
+- `.claude/workflows/` — `ship.js`, `code-review.js`, `qa.js`: the control
+  flow, as scripts.
+- `docs/harness/` — the playbooks each step follows, and the
+  [overview](./docs/harness/README.md).
+- `scripts/` — the deterministic parts: `gate.mjs`, `red-check.mjs`,
+  `qa-facts.mjs` (review sizing), `ai-cost.mjs` (spend), `lane.mjs` (ports).
+- `tests/unit/` — the workflows run under stubs; `npm test` covers them.
+- `docs/context/harness.md` — the map for changing any of it.
 
-**Then two agents read it**, neither having seen the reasoning that produced it
-— the agent who wrote it cannot see its own misreading. Each publishes a
-**confidence**, meaning coverage rather than conviction: a low-confidence pass
-shows as *unproven*, not green.
-
-Comment `@claude …` on the pull request and it makes the change and replies.
-You still merge.
-
-## How we review
-
-Every agent pull request gets an independent **code review** and **QA** pass —
-but how hard they look follows the risk, the way a real team's would, and a
-red review is information for the person merging, not a gate.
-
-- **Machines gate; agents advise.** The tests, the gate re-run and the red-check
-  are deterministic and cheap — those are what a team would make required. The
-  AI passes publish a verdict with a confidence and never block a merge.
-- **Depth follows risk.** A docs change gets one reader and no QA; a small app
-  change, or one `ship` already audited, gets one combined reviewer on Sonnet;
-  the harness, the server's rules and large changes get every lens, on Opus.
-  QA skips exploring a cosmetic change its tests already pin.
-- **The team sets the dial.** *Settings → Secrets and variables → Actions →
-  Variables*: `REVIEW_DEPTH` = `fast`, `balanced` (default) or `thorough`.
-- **Reviews converge.** A re-review checks the previous blockers and only what
-  changed since; a blocker must name a realistic path to harm, and anything
-  less becomes a `follow-up` issue while the check stays green.
-- **We measure whether it is enough.** A blocker found after `ship` opened its
-  pull request is labelled `harness-escape`, and an agent proposes the lesson —
-  so the dial is tuned with data, not argued about.
+An agent in CI may not edit `.claude/`; a ticket that needs to is handed back
+to be built locally.
 
 ## Set up your fork
 
@@ -176,6 +181,9 @@ you arrive mid-conference and the clock ticks while you watch. Pin it with
   themselves, what confidence means, and what a ticket costs.
 - **[CLAUDE.md](./CLAUDE.md)** — architecture, conventions, and *why*. What the
   review agent checks a change against.
+- **[`.claude/skills/`](./.claude/skills/)** — the product side:
+  `listen-to-meeting`, `transcribe-audio`, `process-requirements`,
+  `create-tasks`, `update-context`.
 - **[docs/context/](./docs/context/README.md)** — one doc per area of the app;
   what agents read instead of the source.
 - **[specs/](./specs/)** — one file per ticket, written before the code.

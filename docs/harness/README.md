@@ -113,6 +113,11 @@ A low-confidence pass reads as *unproven*, not green. Neither pass can block a
 merge: machines gate (the tests, the gate re-run, the red-check); agents
 advise.
 
+**Reviews converge.** A re-review re-checks the previous blockers and reads
+only what changed since. A blocker has to name a realistic path to harm — how
+an attendee reaches it and what they lose; anything less is filed as a
+`follow-up` issue while the check stays green.
+
 ## What it costs
 
 Every ticket carries one **🧾 AI spend** comment, updated after every ship,
