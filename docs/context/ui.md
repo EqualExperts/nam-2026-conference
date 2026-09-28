@@ -126,7 +126,12 @@ sticky `glass` header, `<main id="main">`, and the footer.
   bootstrap and a plain `<a href="/api/bootstrap">`.
 - `UserSwitcher` sits in the header once `ready`: a `listbox` of
   `useConference().users`, calls `setCurrentUserId`; closes on outside pointer
-  or Escape.
+  or Escape. Each row shows "N on agenda"; every row but the signed-in
+  attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but
+  the active row counts `'confirmed'` entries in `useConference().reservations`
+  instead, since that's the only attendee the store keeps reservation state
+  for live — so booking or releasing a seat updates your own row without a
+  reload, while everyone else's stays as `/bootstrap` had it.
 
 **`RouteChange`** — on `pathname` change only (not search), scrolls to top and
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
