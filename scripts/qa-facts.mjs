@@ -64,14 +64,15 @@ const SIZES = ['tiny', 'small', 'large'];
 /**
  * tiny | small | large. The diff sets the floor, the ticket can raise it
  * (ship sized it full: never tiny, and large once it is more than a small
- * change), risk raises it a step, and the team's dial moves it a step.
+ * change), risk does too (never tiny, and large past 150 lines rather than
+ * 300 — a 70-line refactor of server/lib is not a large change), and the
+ * team's dial moves it a step.
  */
 export function sizeFor({ codeLines: n, docsOnly: prose, risky: danger, ticket, depth }) {
   if (depth === 'thorough') return 'large';
   if (prose && !danger) return 'tiny';
   let i = n <= 30 ? 0 : n <= 300 ? 1 : 2;
-  if (ticket === 'full') i = Math.max(i, n > 150 ? 2 : 1);
-  if (danger) i += 1;
+  if (ticket === 'full' || danger) i = Math.max(i, n > 150 ? 2 : 1);
   if (depth === 'fast') i -= 1;
   return SIZES[Math.max(0, Math.min(2, i))];
 }

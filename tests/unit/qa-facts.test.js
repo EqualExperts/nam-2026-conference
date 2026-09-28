@@ -55,11 +55,13 @@ describe('size: how hard code review and QA work', () => {
     assert.equal(size({ codeLines: 200, ticket: 'full' }), 'large');
   });
 
-  test('risk raises a step: the seat rules and the harness', () => {
+  test('risk means never tiny, and large sooner: the seat rules and the harness', () => {
     assert.ok(risky('server/lib/seats.js'));
     assert.ok(risky('.claude/workflows/ship.js'));
     assert.ok(!risky('src/pages/HomePage.jsx\nserver/routes/users.js'));
     assert.equal(size({ codeLines: 2, risky: true }), 'small');
+    assert.equal(size({ codeLines: 73, risky: true }), 'small');
+    assert.equal(size({ codeLines: 200, risky: true }), 'large');
   });
 
   test('the dial moves it a step, and thorough is always large', () => {
