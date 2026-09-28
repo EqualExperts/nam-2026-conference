@@ -44,14 +44,24 @@ export function worktreeOf(cwd = process.cwd()) {
   return execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' }).trim();
 }
 
-/** Can we actually listen on this port right now? */
-export function portFree(port) {
+/** Can we listen on this port on one host? A host this machine lacks does not count against it. */
+function freeOn(port, host) {
   return new Promise((done) => {
     const probe = createServer();
-    probe.once('error', () => done(false));
+    probe.once('error', (err) => done(err.code === 'EADDRNOTAVAIL' || err.code === 'EAFNOSUPPORT'));
     probe.once('listening', () => probe.close(() => done(true)));
-    probe.listen(port, '127.0.0.1');
+    probe.listen(port, host);
   });
+}
+
+/**
+ * Can we actually listen on this port right now — on IPv4 *and* IPv6
+ * localhost? Vite binds `[::1]`, where an IPv4-only probe succeeds: QA on #73
+ * was handed a lane whose web port a dev server already held, and spent ten
+ * turns waiting on it before inventing a lane of its own.
+ */
+export async function portFree(port) {
+  return (await freeOn(port, '127.0.0.1')) && (await freeOn(port, '::1'));
 }
 
 const lockPath = (root, port) => join(root, `${port}.json`);

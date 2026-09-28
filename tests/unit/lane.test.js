@@ -178,3 +178,16 @@ test('a lane can be released by the label it was claimed with', async () => {
   assert.equal(freed.label, '29');
   assert.equal(list(root).length, 0);
 });
+
+test('a port held only on IPv6 localhost is not free — Vite binds [::1]', async () => {
+  const { createServer } = await import('node:net');
+  const { portFree } = await import('../../scripts/lane.mjs');
+  const held = createServer();
+  await new Promise((done) => held.listen(0, '::1', done));
+  const { port } = held.address();
+  try {
+    assert.equal(await portFree(port), false);
+  } finally {
+    await new Promise((done) => held.close(done));
+  }
+});
