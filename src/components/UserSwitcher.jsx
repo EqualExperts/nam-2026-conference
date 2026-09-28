@@ -8,7 +8,7 @@ import { Icon } from './Icon.jsx';
  * attendee is selected, and each has their own agenda and follows.
  */
 export function UserSwitcher() {
-  const { users = [], currentUser, setCurrentUserId } = useConference();
+  const { users = [], currentUser, setCurrentUserId, reservations } = useConference();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -59,6 +59,12 @@ export function UserSwitcher() {
           <ul className="max-h-[26rem] overflow-y-auto p-1.5">
             {users.map((u) => {
               const active = u.id === currentUser.id;
+              // The store only ever holds live reservation state for the
+              // signed-in attendee, so only their row can read it live; every
+              // other row keeps the count `/bootstrap` gave it on load.
+              const agendaCount = active
+                ? Array.from(reservations.values()).filter((status) => status === 'confirmed').length
+                : u.reservedCount ?? 0;
               return (
                 <li key={u.id}>
                   <button
@@ -83,7 +89,7 @@ export function UserSwitcher() {
                       </div>
                       <div className="truncate text-[11px] text-muted">{u.jobTitle}</div>
                       <div className="truncate text-[11px] text-faint">
-                        {u.company} · {u.reservedCount ?? 0} on agenda
+                        {u.company} · {agendaCount} on agenda
                       </div>
                     </div>
                     {active && <Icon name="check" className="size-4 shrink-0 text-violet-300" />}
