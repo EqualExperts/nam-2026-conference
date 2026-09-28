@@ -33,3 +33,7 @@ export const relativeDate = (iso, clock) => {
 };
 
 export const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+
+/** The schedule rail's "N sessions · M today"/"M on Day 1" line. `dayPhrase` is the caller's job. */
+export const agendaSummary = (total, bookedOnDay, dayPhrase) =>
+  `${total === 1 ? 'session' : 'sessions'} · ${bookedOnDay} ${dayPhrase}`;

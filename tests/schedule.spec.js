@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor } from './helpers.js';
+import { API, visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor, MID_SESSION_TIME } from './helpers.js';
 
 
 test.describe('Schedule', () => {
@@ -8,6 +8,18 @@ test.describe('Schedule', () => {
     await waitForResults(page);
     await expect(page.getByTestId('result-count')).toContainText(/\d+ sessions/);
     await expect(page.locator('article').first()).toBeVisible();
+  });
+
+  test('the agenda line names the selected day instead of assuming today', async ({ page }) => {
+    const days = await conferenceDays();
+    const rail = page.getByTestId('starred-count').locator('..');
+
+    await visit(page, '/schedule', { at: await momentOn(0, MID_SESSION_TIME) });
+    await expect(rail).toContainText('today');
+
+    await visit(page, `/schedule?day=${days[1]}`, { at: await momentOn(0, MID_SESSION_TIME) });
+    await expect(rail).toContainText('on Day 2');
+    await expect(rail).not.toContainText('today');
   });
 
   test('switching day changes the results', async ({ page }) => {

@@ -60,7 +60,10 @@ accent name (used for cuisines). A new colour needs a row in both maps.
 **`src/lib/format.js`.** `time('14:05')` → `2:05 PM`; `timeRange(a, b)`;
 `dayLabel(iso)` → `Tuesday, Sep 22`; `shortDay(iso)` → `Tue`;
 `relativeDate(iso, clock)` → `12m ago` / `3h ago` / `Sep 22`, measured against
-the conference clock, not the browser; `plural(n, one, many?)` → `"3 sessions"`.
+the conference clock, not the browser; `plural(n, one, many?)` → `"3 sessions"`;
+`agendaSummary(total, bookedOnDay, dayPhrase)` → `"session · 2 today"` /
+`"sessions · 2 on Day 1"`, the schedule rail's pluralised agenda line (the
+caller builds `dayPhrase`).
 Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 
 **`src/components/ui.jsx` exports:**

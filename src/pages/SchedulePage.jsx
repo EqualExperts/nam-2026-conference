@@ -4,7 +4,7 @@ import { useConference, useFetch } from '../lib/store.jsx';
 import { useMediaQuery } from '../lib/useMediaQuery.js';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
-import { dayLabel, plural, shortDay } from '../lib/format.js';
+import { agendaSummary, dayLabel, plural, shortDay } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { ScheduleGrid } from '../components/ScheduleGrid.jsx';
 import { SearchInput, Select } from '../components/FilterBar.jsx';
@@ -102,6 +102,9 @@ export function SchedulePage() {
 
   const topicTags = tags.filter((t) => t.kind === 'topic');
   const bookedToday = sessions.filter((s) => reservations.has(s.id)).length;
+  const dayPhrase = filters.day === clock.day
+    ? 'today'
+    : `on ${days.find((d) => d.date === filters.day)?.label ?? filters.day}`;
 
   const rail = (
     <div className="space-y-5">
@@ -121,7 +124,7 @@ export function SchedulePage() {
         </div>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="font-display text-2xl leading-none" data-testid="starred-count">{reservations.size}</span>
-          <span className="text-[11px] text-muted">sessions · {bookedToday} today</span>
+          <span className="text-[11px] text-muted">{agendaSummary(reservations.size, bookedToday, dayPhrase)}</span>
         </div>
       </div>
 
