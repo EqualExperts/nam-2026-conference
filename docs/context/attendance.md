@@ -90,8 +90,6 @@ Testids: `attendance-panel`, `check-in`, `checked-in`, `rating-form`,
 
 ## Gotchas
 
-- `checkIn` and `rateSession` call `db.prepare(...)` inside the transaction,
-  against the module-scope convention; move them up if you touch them.
 - The UI's "checked in at" time is `checkedInAt.slice(11, 16)` — the real UTC
   wall-clock stamp, not conference time.
 - `attendanceWindow` compares days as `YYYY-MM-DD` strings; keep that format.
