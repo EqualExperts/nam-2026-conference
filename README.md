@@ -23,18 +23,48 @@ Run as many tickets at once as you like. Every ticket shows what it cost.
 > **Forked this repo?** It needs an API key and one setup click first —
 > [five minutes, once ↓](#set-up-your-fork)
 
+## 👀 See it for real
+
+Everything the harness does leaves a trail on GitHub. Two real tickets, start
+to finish:
+
+| | The ticket | What came back |
+| --- | --- | --- |
+| 🔵 **A full ticket** — a rule across the app | [#69 Stop offering a seat in sessions that have ended](https://github.com/EqualExperts/nam-2026-conference/issues/69) | [PR #77](https://github.com/EqualExperts/nam-2026-conference/pull/77) — spec, audit rounds, code review and QA verdicts, cost |
+| 🟢 **A small ticket** — tighter validation | [#66 Return 400/404, not 500/409, for bad rating requests](https://github.com/EqualExperts/nam-2026-conference/issues/66) | [PR #72](https://github.com/EqualExperts/nam-2026-conference/pull/72) — the same trail, a lighter loop |
+
+Open the issue to see the AI spend comment; open the PR to see what the agents
+wrote, checked and found.
+
 ## Two ways to work
 
 ### 🌐 In GitHub — no terminal needed
 
 | | |
 | --- | --- |
-| **1. Write the issue** | Why, what, and a **Done when:** list a test could check |
+| **1. Write the issue** | Why, what, and a **Done when:** list a test could check — *New issue → Ticket for the agents* gives you the shape |
 | **2. Label it `ready-for-ai`** | An agent picks it up and posts its progress on the issue |
 | **3. Review the pull request** | Comment `@claude …` and it makes the change and replies |
 | **4. Merge** | Or don't — nothing merges itself |
 
 Label ten issues and ten agents get to work.
+
+<details>
+<summary><b>What a good ticket looks like</b></summary>
+
+> **Pluralise the schedule's agenda count**
+>
+> The *My agenda* count in the schedule's filter rail reads "1 sessions", and
+> calls the selected day "today" even when it is not.
+>
+> **Done when**
+> - With exactly one reservation the rail reads "1 session", not "1 sessions".
+> - With another day selected, the rail names that day instead of "today".
+> - The `starred-count` test id still contains only the bare number.
+
+Short, specific, and every line is something a test can check. That shipped as
+[#74](https://github.com/EqualExperts/nam-2026-conference/pull/74).
+</details>
 
 ### 💻 In Claude Code — from your terminal
 
