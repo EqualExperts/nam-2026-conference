@@ -355,7 +355,10 @@ setup = await agent(
   `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
-  `later phase would run commands that do not exist in the worktree. Do not write the spec or any code. Return proceed=false with the ` +
+  `later phase would run commands that do not exist in the worktree. \`gh\` works on the repository origin points ` +
+  `at, as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
+  `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the worktree. ` +
+  `Do not write the spec or any code. Return proceed=false with the ` +
   `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Size it: small ` +
   `unless it carries the ship:full label or the size description says otherwise — most tickets are small.`,
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'low', model: 'sonnet' },
