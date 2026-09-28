@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { time, timeRange, dayLabel, shortDay, relativeDate, plural } from '../../src/lib/format.js';
+import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary } from '../../src/lib/format.js';
 
 describe('Clock times read as people say them', () => {
   test('midnight and noon are twelve, not zero', () => {
@@ -103,5 +103,20 @@ describe('Counts are pluralised', () => {
 
   test('a count over a thousand keeps its thousands separator', () => {
     assert.equal(plural(1098, 'seat'), '1,098 seats');
+  });
+});
+
+describe('The schedule rail\'s agenda line pluralises on the total and names the day it is given', () => {
+  test('exactly one reservation reads singular', () => {
+    assert.equal(agendaSummary(1, 2, 'today'), 'session · 2 today');
+  });
+
+  test('any other total reads plural', () => {
+    assert.equal(agendaSummary(3, 2, 'today'), 'sessions · 2 today');
+    assert.equal(agendaSummary(0, 0, 'today'), 'sessions · 0 today');
+  });
+
+  test('a day other than the clock\'s is named instead of assumed to be today', () => {
+    assert.equal(agendaSummary(3, 2, 'on Day 1'), 'sessions · 2 on Day 1');
   });
 });
