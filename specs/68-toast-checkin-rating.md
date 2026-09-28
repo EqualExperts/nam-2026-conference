@@ -87,12 +87,24 @@ saved"/"Rating updated") and, on a rejected write, a message from
 **`tests/helpers.js`** — two new `LANES` rows, next to `'agenda.next-up-done'`
 (line 129), one per new test below (check-in and rating each burn a real,
 un-undoable check-in, so they need attendees/days nothing else in this file
-uses on day index 2):
+uses):
 
 ```js
-'attendance.checkin-toast': { desktop: { user: kenji, day: 2 },  mobile: { user: amara, day: 2 } },
-'attendance.rating-toast':  { desktop: { user: marcus, day: 2 }, mobile: { user: priya, day: 2 } },
+'attendance.checkin-toast': { desktop: { user: kenji, day: 2, slot: '09:00' },  mobile: { user: amara, day: 2, slot: '09:00' } },
+'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00' }, mobile: { user: priya, day: 0, slot: '09:00' } },
 ```
+
+The rating lane must land on day index 0 (`today`), not day index 2: it
+rates for real, and `smoke.spec.js`'s "no session in the future carries a
+rating" — run concurrently by `npm run verify` — fails the moment any session
+on a later day picks up a rating, which day index 2 always is. (This was
+caught by the gate after the day-2 version above shipped; the check-in lane
+has no such constraint, since a real check-in never touches `ratingCount`.)
+Day 0 is otherwise fully claimed by other lanes with no slot of their own
+(`'seats.waitlist'`, `'seats.queue'`, `'session.add'`), so reusing marcus/priya
+there means giving `'seats.queue'` a slot too, purely so `lanes.test.js`'s
+attendee+day rule sees the two apart — `'seats.queue'` already ignores the
+`slot` field in its own lookup, so this changes nothing it asserts.
 
 **`tests/attendance.spec.js`** — two new tests inside `describe('Check in and
 rate', ...)`, after the existing rating tests. Both use `laneFor`, `momentOn`
