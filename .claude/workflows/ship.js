@@ -281,13 +281,18 @@ async function audit(lenses, run) {
 let setup, ticket, spec
 // Everything any audit confirmed, across every loop — what Learn works from.
 const history = []
-const inTree = () =>
-  `Work in ${setup.workdir} on branch ${setup.branch} (based on ${BASE}): cd there at the start of every Bash command.` +
+// Every turn re-reads the agent's whole context (~50k tokens and up), and
+// the spec writer on #65 spent 28 turns on one grep or sed each. Batching
+// what it already knows it needs is the cheapest cut there is.
+const BATCH = `Each turn re-reads your whole context, so batch: when you know you need several reads — greps, seds, ` +
+  `cats — put them in one Bash command, separated by \`; echo ---;\`.`
+const inTree = ({ releases = false } = {}) =>
+  `Work in ${setup.workdir} on branch ${setup.branch} (based on ${BASE}): cd there at the start of every Bash command. ${BATCH}` +
   (setup.runner
     ? ''
     : ` This is a laptop with other agents on it, so prefix anything that boots the app or runs Playwright with ` +
-      `\`eval "$(node scripts/lane.mjs claim ${issue})" &&\` — shell state does not persist between commands. ` +
-      `Never release the lane: it belongs to the whole run, and the workflow releases it at the end.`)
+      `\`eval "$(node scripts/lane.mjs claim ${issue})" &&\` — shell state does not persist between commands.` +
+      (releases ? '' : ` Never release the lane: it belongs to the whole run, and the last step releases it.`))
 
 async function handBack(stage, why, open, alsoOpen) {
   log(`handing #${issue} back at ${stage}: ${why}`)
@@ -350,7 +355,7 @@ phase('Setup')
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
-  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
+  `${BATCH} Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
@@ -444,7 +449,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   phase('Spec Audit')
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
     agent(
-      `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
+      `You are auditing a spec you did not write. ${BATCH} ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
       `(in ${setup.workdir}) and the docs/context/ docs for the files it names. ${MAP} ${l.ask}\n\n` +
       `You are judging the plan, not building it: open source only for a line the spec cites that the docs do ` +
       `not settle, and do not run tests or read node_modules — the build and the gate prove whether it works. ` +
@@ -579,7 +584,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   if (gate.ok) {
     phase('Code Audit')
     const run = (l, retry) => agent(
-      `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ` +
+      `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ${BATCH} ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
@@ -705,7 +710,7 @@ const auditTable = [
 // screenshots are a judgement — gets more than the rote model.
 const visible = built.ui !== false
 const pr = await agent(
-  `${ticket}\n\n${inTree()}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
+  `${ticket}\n\n${inTree({ releases: true })}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
   `not re-read the spec, the playbook or the code, and do not run tests. \`git diff --stat origin/${BASE}...HEAD\` ` +
   `and \`git log --oneline origin/${BASE}..HEAD\` are all you need for *Changed*. If \`git log ${gate.sha}..HEAD\` ` +
   `shows a commit touching anything outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +

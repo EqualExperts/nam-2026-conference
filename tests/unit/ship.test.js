@@ -359,7 +359,9 @@ describe('ship', () => {
     const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
     assert.equal(calls.at(-1), 'open-pr');
     assert.match(prompts['open-pr'], /node scripts\/lane\.mjs release 7/);
+    assert.doesNotMatch(prompts['open-pr'], /Never release the lane/, 'the PR agent is told both to release and not to');
     assert.match(prompts.implement, /Never release the lane/);
+    assert.match(prompts.implement, /batch/);
   });
 
   test('the PR agent is handed the body, re-verifies nothing, and a change nobody sees opens on the rote model', async () => {
