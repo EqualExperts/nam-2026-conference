@@ -55,5 +55,6 @@ move only.
 
 ## Audit
 
-- Spec round 1: 0 raised, 0 confirmed.
+- Spec round 1: 1 raised, 0 confirmed — the reviewer's finding did not survive
+  the skeptic, so the spec above shipped as written.
 - Build round 1: unit 313 passed, browser 169 passed; 0 raised, 0 confirmed.
