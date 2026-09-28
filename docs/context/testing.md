@@ -152,7 +152,9 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   totalled across the conference — the hours tile, a whole-plan count — still moves when
   another lane writes for the same attendee on a different day; assert those from one
   payload, or pick an attendee no other lane uses at all.
-- Before claiming a lane, check the whole `LANES` table *and* the read-only fixtures in its
+- `tests/unit/lanes.test.js` fails `npm test` when two panes share an attendee and day
+  (unless one is `readOnly: true` or both pin distinct `slot`s) — mark a lane that books
+  nothing `readOnly`. Before claiming a lane, check the whole `LANES` table *and* the read-only fixtures in its
   comment: the promotion test picks its session (and therefore its day) at runtime, so the
   day it occupies is not visible in the table.
 - Tests that mutate one shared fixture run on one project only:

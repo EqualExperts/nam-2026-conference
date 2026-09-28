@@ -108,7 +108,7 @@ export async function clearAgendaFor(request, userId, day) {
  * test may clear the whole day; everywhere else, release only what you booked.
  */
 const { jonas, amara, kenji, sofia, marcus, priya } = ATTENDEES;
-const LANES = {
+export const LANES = {
   'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: amara, day: 2, slot: '11:30' } },
   'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: priya, day: 2, slot: '10:15' } },
   'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: amara, day: 2, slot: '16:00' } },
@@ -118,7 +118,7 @@ const LANES = {
   'conflict.api':     { desktop: { user: priya, day: 3 },                 mobile: { user: jonas, day: 3 } },
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
   // read-only: it books nothing, and needs a day the seed sells sessions out on
-  'schedule.seats':   { desktop: { user: kenji, day: 1 },                 mobile: { user: marcus, day: 0 } },
+  'schedule.seats':   { desktop: { user: kenji, day: 1, readOnly: true }, mobile: { user: marcus, day: 0, readOnly: true } },
   'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
   // Kenji and Marcus only attend days 1–2, so day index 2 is unbooked for both —
