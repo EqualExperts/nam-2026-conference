@@ -68,6 +68,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - uses: anthropics/claude-code-action@v1
+        id: claude
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # This one pushes, so it takes the ship workflow's token: a push made with
@@ -81,3 +82,18 @@ jobs:
             --model claude-sonnet-5 --max-turns 150
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
             --append-system-prompt "You are answering a comment on a pull request in a repo with an engineering harness. Make the change asked for, and nothing else. Before you push, run node scripts/gate.mjs once and put its verdict in your reply: its ok field, and the unit and browser counts. If it is red, say what failed and do not claim the change works. If the comment asks you to build or redo a whole ticket, do not attempt it here: say that an @claude comment on the issue runs the ship workflow for that."
+
+      # The ticket's running AI spend gains this run's row (see agent-ship.yml).
+      - name: 🧾 Record the AI spend
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.issue.number || github.event.pull_request.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EXECUTION: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          [ -f "$EXECUTION" ] || exit 0
+          issue=$(gh pr view "$PR" --json closingIssuesReferences -q '.closingIssuesReferences[0].number' 2>/dev/null || true)
+          node scripts/ai-cost.mjs record ${issue:+--issue "$issue"} --kind "@claude" --run "$RUN" --stream "$EXECUTION"

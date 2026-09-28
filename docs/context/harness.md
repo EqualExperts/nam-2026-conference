@@ -24,6 +24,7 @@ files:
   - scripts/agent-run.sh
   - scripts/agent-summary.mjs
   - scripts/ship-progress.mjs
+  - scripts/ai-cost.mjs
   - docs/context/README.md
   - specs/README.md
 tests:
@@ -35,6 +36,7 @@ tests:
   - tests/unit/qa-facts.test.js
   - tests/unit/agent-summary.test.js
   - tests/unit/ship-progress.test.js
+  - tests/unit/ai-cost.test.js
 related: [testing]
 ---
 
@@ -402,3 +404,15 @@ cannot start another round.
   detail they defer to lives in the code-review and qa playbooks.
 - The PR body → §8 of the playbook; `ship.js` only adds the audit table.
 - The context format → `docs/context/README.md` and `scripts/context.mjs`.
+
+## AI spend
+
+`scripts/ai-cost.mjs` turns a run's usage into tokens and dollars. Every agent
+job ends with a *🧾 Record the AI spend* step that adds the run's row to one
+comment on the issue — marker `orbit-ai-spend`, rows as JSON inside it — so the
+ticket carries its running total; ship also comments its own line on the PR it
+opened. CI rows are what the CLI billed (`modelUsage[*].costUSD` in the final
+`result`); a local run is a subscription, so `record --transcripts <workflow
+dir>` prices the per-agent transcripts with `RATES` and marks the row `~`. The
+step is `continue-on-error` and the script catches everything: reporting cost
+never fails the job that did the work.

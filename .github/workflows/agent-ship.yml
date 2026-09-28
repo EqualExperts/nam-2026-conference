@@ -169,6 +169,22 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           scripts/agent-run.sh "/ship $N $NOTES" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
 
+      # What the run cost, on the ticket and on the pull request it opened: one
+      # comment on the issue keeps every run's row and the total, so the
+      # ticket says what AI spent on it. Never fails the job.
+      - name: 🧾 Record the AI spend
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          pr=$(jq -r '.pr // empty' "$RUNNER_TEMP/workflow-result.json" 2>/dev/null | grep -o '[0-9]*$' || true)
+          node scripts/ai-cost.mjs record --issue "$N" --kind ship --run "$RUN" --stream "$RUNNER_TEMP/claude-run.jsonl" ${pr:+--pr "$pr"} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
       # The transcript is the only record of what the agent did. Without it a
       # run that dies mid-way (#61: exit 1 after 18 minutes, nothing in the
       # log) cannot be diagnosed, and the job summary is not readable from

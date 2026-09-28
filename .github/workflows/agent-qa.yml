@@ -114,7 +114,7 @@ jobs:
           # The harness must not review itself: a pull request that edits the
           # review workflow, its playbook or CLAUDE.md would otherwise be
           # judged by its own version of them. Run the base branch's.
-          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs scripts/ship-progress.mjs; do
+          for p in .claude CLAUDE.md docs/harness scripts/agent-run.sh scripts/agent-summary.mjs scripts/qa-facts.mjs scripts/ship-progress.mjs scripts/ai-cost.mjs; do
             git cat-file -e "origin/$BASE:$p" 2>/dev/null && git checkout -q "origin/$BASE" -- "$p"
           done
           # Sonnet: this pass is coverage, not insight.
@@ -126,6 +126,20 @@ jobs:
           ticket=${TICKET:-$(case "$HEAD_REF" in issue-[0-9]*-*) echo small ;; esac)}
           facts=$(node scripts/qa-facts.mjs "origin/$BASE" --ticket="$ticket" --depth="$DEPTH")
           scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
+
+      # The ticket's running AI spend gains this pass's row (see agent-ship.yml).
+      - name: 🧾 Record the AI spend
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue=$(gh pr view "$PR" --json closingIssuesReferences -q '.closingIssuesReferences[0].number' 2>/dev/null || true)
+          node scripts/ai-cost.mjs record ${issue:+--issue "$issue"} --kind "QA" --run "$RUN" --stream "$RUNNER_TEMP/claude-run.jsonl" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
 
       # The transcript is the only record of what the agent did. Without it a
       # run that dies mid-way (#61: exit 1 after 18 minutes, nothing in the
