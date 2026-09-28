@@ -67,7 +67,13 @@ not exist. The attendance GET still does not check that the user exists.
 the panel spreads `...clock` into the rating body. `AttendancePanel({ session
 })` (rendered on `SessionPage` under `SeatPanel`) fetches with `useFetch` keyed
 on `clock.day` and `clock.time`, so it refetches on every clock tick, and calls
-`reload()` after each write. It renders:
+`reload()` after each write. It also toasts: a success message ("Checked in",
+"Rating saved"/"Rating updated") on the write that just landed, or, on a
+rejected write, a sentence from the module-level `REJECTION_MESSAGES` map
+(keyed on the response's `rejected` value; falls back to `err.message`) —
+`submit()` catches the rejection itself, so nothing escapes as an unhandled
+promise rejection and the button always returns to its idle label. It
+renders:
 
 - nothing until the first response, and nothing for a `future` session you
   hold no confirmed seat for;
