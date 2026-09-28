@@ -69,7 +69,8 @@ eval "$(node scripts/lane.mjs claim <n>)"
 Before changing any code, write `specs/<n>-<short-slug>.md` and push it as the
 branch's **first commit**, so a reviewer reads what you intend before the diff.
 Headings: *What this changes* (in terms of what an attendee sees), *Where*
-(file by file), *How it will be proved* (the check, and which layer), and only
+(file by file — the function or line to change, the test file, and the lane or
+helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer), and only
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
@@ -97,6 +98,10 @@ step, so "unchanged" true of one step says nothing about another, and a spec
 that gets this wrong ships a follower with nothing to read.
 
 ## 4. Find the change site
+
+If the spec's *Where* names the files, the lines and the test helpers, that is
+your map — open those and nothing else; the spec writer already searched. Only
+when *Where* is thin or wrong:
 
 ```bash
 node scripts/context.mjs index

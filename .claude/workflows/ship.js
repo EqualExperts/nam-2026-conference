@@ -64,6 +64,10 @@ if (!Number.isInteger(issue) || issue <= 0) {
 }
 
 const SKILL = 'docs/harness/ship-playbook.md'
+// The sections a step needs, as one read. Told "follow §4–§6", every agent
+// on #64 spent two to four turns grepping the playbook's headings and paging
+// through it; this prints exactly those sections in one command.
+const sections = (from, to) => `\`awk '/^## ${from}\\./,/^## ${to}\\./' ${SKILL}\``
 
 // Every agent is a fresh context. Without this line each one re-reads the
 // source to learn how the app fits together, and that is most of the bill.
@@ -346,7 +350,7 @@ phase('Setup')
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
-  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly: read the ticket, decide whether ` +
+  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
@@ -388,8 +392,10 @@ ticket =
 // ── 2. Spec ──────────────────────────────────────────────────────────────────
 phase('Spec')
 spec = await agent(
-  `${ticket}\n\n${inTree()}\n\nWrite the spec, following §3b of ${SKILL}: specs/${issue}-${setup.slug}.md, ` +
-  `commit it as the branch's first commit, push, and comment the link on the issue. Set editsHarness if the ` +
+  `${ticket}\n\n${inTree()}\n\nWrite the spec, following §3b of ${SKILL} (${sections('3b', '4')} prints it): specs/${issue}-${setup.slug}.md, ` +
+  `commit it as the branch's first commit, push, and comment the link on the issue. Its *Where* is the builder's ` +
+  `map — name each file, the function or line to change, the test file, and the lane or helpers the test will ` +
+  `use (tests/helpers.js), so the builder opens those and searches for nothing. Set editsHarness if the ` +
   `plan changes any file under .claude/. ${MAP} Every Done-when ` +
   `criterion must map to a named check at a named layer.`,
   { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN, model: T.think },
@@ -483,7 +489,9 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
 // ── 4. Implement ─────────────────────────────────────────────────────────────
 phase('Implement')
 const built = await agent(
-  `${ticket}\n\n${inTree()}\n\n${MAP}\n\nImplement ${spec.path}, following §4–§6 of ${SKILL}: write the check first and ` +
+  `${ticket}\n\n${inTree()}\n\n${MAP}\n\nImplement ${spec.path}, following §4–§6 of ${SKILL} (${sections(4, '7')} prints them). The spec's *Where* is your map: open ` +
+  `those files directly — the spec writer has already found them, so do not search for the change site again ` +
+  `unless *Where* turns out wrong. Write the check first and ` +
   `confirm it fails for the reason you expect — then commit it on its own, red, as "test(…)", before any fix; ` +
   `that commit is the evidence the check proves something. Then implement, running \`npm test\` after every edit. Commit ` +
   `in Conventional Commits and push. Do NOT run the Playwright suite or the gate — the next phase does, once. Return ok=false ` +
@@ -656,7 +664,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
 
   const fixed = await agent(
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
-    `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} still hold: never ` +
+    `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} (${sections(5, '6')}) still hold: never ` +
     `edit an existing test to make it pass, never skip or delete one. If a finding shows the spec was wrong, ` +
     `fix the spec too and say so in the summary. \`npm test\` after every edit; do not run the Playwright ` +
     `suite. Leave \`git status\` clean. Commit and push.`,
@@ -710,7 +718,7 @@ const pr = await agent(
   `and \`git log --oneline origin/${BASE}..HEAD\` are all you need for *Changed*. If \`git log ${gate.sha}..HEAD\` ` +
   `shows a commit touching anything outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
   (visible
-    ? `Something an attendee sees changed: add screenshots as §8 of ${SKILL} says (one shot of the new state, or ` +
+    ? `Something an attendee sees changed: add screenshots as §8 of ${SKILL} says (${sections(8, '9')}; one shot of the new state, or ` +
       `before/after for a fix), via \`node scripts/pr-media.mjs\`, where the body shows <media>.\n\n`
     : `Nothing visible changed: no screenshots, and drop the <media> line.\n\n`) +
   `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts:\n\n` +
