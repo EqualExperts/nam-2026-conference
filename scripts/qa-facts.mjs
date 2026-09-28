@@ -1,10 +1,13 @@
 /**
- * Facts for QA's triage, from git — never the planner's word.
+ * Facts for code review and QA, from git — never an agent's word.
  *
- *   node scripts/qa-facts.mjs origin/main      # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no
+ *   node scripts/qa-facts.mjs origin/main [--ticket=small|full] [--depth=fast|balanced|thorough]
+ *   # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no --code-lines=N --size=tiny|small|large
  *
- * QA may skip exploring a change only if it is UI-only and small. The planner
- * judges whether it is cosmetic; these two facts it does not get to judge.
+ * `--size` is how hard both passes work: a one-line fix should not get the
+ * review a thousand-line change does. It weighs the ticket (ship sized it,
+ * and says so with the ship:full label), the code the diff actually changes,
+ * and whether that code is where a missed defect is expensive.
  */
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -34,6 +37,45 @@ export function totalLines(numstat) {
   return n;
 }
 
+/**
+ * Lines a reviewer has to reason about: everything but the spec and the
+ * context docs, which every ship pull request carries (~80 lines of spec on
+ * a one-line fix) and which say what the code does rather than do it.
+ */
+export function codeLines(numstat) {
+  let n = 0;
+  for (const line of numstat.split('\n').filter(Boolean)) {
+    const [add, del, file] = line.split('\t');
+    if (/^(specs|docs\/context)\//.test(file || '') || file === 'README.md') continue;
+    n += add === '-' ? BINARY_LINES : Number(add) + Number(del);
+  }
+  return n;
+}
+
+/** Where a missed defect costs an attendee's seat or every later ticket. */
+export function risky(names) {
+  return names.split('\n').filter(Boolean).some(f =>
+    /^(server\/lib\/|\.claude\/|\.github\/|scripts\/|docs\/harness\/)/.test(f)
+    || ['CLAUDE.md', 'server/db.js', 'server/seed.js'].includes(f));
+}
+
+const SIZES = ['tiny', 'small', 'large'];
+
+/**
+ * tiny | small | large. The diff sets the floor, the ticket can raise it
+ * (ship sized it full: never tiny, and large once it is more than a small
+ * change), risk raises it a step, and the team's dial moves it a step.
+ */
+export function sizeFor({ codeLines: n, docsOnly: prose, risky: danger, ticket, depth }) {
+  if (depth === 'thorough') return 'large';
+  if (prose && !danger) return 'tiny';
+  let i = n <= 30 ? 0 : n <= 300 ? 1 : 2;
+  if (ticket === 'full') i = Math.max(i, n > 150 ? 2 : 1);
+  if (danger) i += 1;
+  if (depth === 'fast') i -= 1;
+  return SIZES[Math.max(0, Math.min(2, i))];
+}
+
 /** Docs-only: every changed file is prose — docs/, specs/ or a markdown file — and none is a harness playbook. */
 export function docsOnly(names) {
   const files = names.split('\n').filter(Boolean);
@@ -56,12 +98,16 @@ export function uiOnly(names) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const base = process.argv[2] || 'origin/main';
+  const base = process.argv.slice(2).find(a => !a.startsWith('--')) || 'origin/main';
+  const opt = (k) => (process.argv.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1] || '';
   const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8' }); } catch { return ''; } };
   const range = `${base}...HEAD`;
   // No diff (an unknown base) gives no facts that allow a skip.
   const numstat = git('diff', '--numstat', range);
   const names = git('diff', '--name-only', range);
+  const size = names ? sizeFor({ codeLines: codeLines(numstat), docsOnly: docsOnly(names), risky: risky(names),
+    ticket: opt('ticket'), depth: opt('depth') }) : 'large';
   console.log(`--app-lines=${appLines(numstat)} --ui-only=${uiOnly(names) ? 'yes' : 'no'} ` +
-    `--lines=${totalLines(numstat)} --docs-only=${docsOnly(names) ? 'yes' : 'no'}`);
+    `--lines=${totalLines(numstat)} --docs-only=${docsOnly(names) ? 'yes' : 'no'} ` +
+    `--code-lines=${codeLines(numstat)} --size=${size}`);
 }

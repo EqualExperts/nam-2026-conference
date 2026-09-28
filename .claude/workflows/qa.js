@@ -30,6 +30,11 @@ const UI_ONLY = typeof args === 'object' && args ? args.uiOnly === true : /--ui-
 // is not QA's to exercise, and "thorough" never lets the planner skip.
 const DEPTH = (/--depth=(fast|balanced|thorough)\b/.exec(argText) || [])[1] || (typeof args === 'object' && args && args.depth) || 'balanced'
 const DOCS_ONLY = typeof args === 'object' && args ? args.docsOnly === true : /--docs-only=yes\b/.test(argText)
+// How hard to look, from the job (scripts/qa-facts.mjs weighs the ticket, the
+// code lines and the risk). A one-line fix gets two probes on Sonnet; a large
+// change gets five on the session model. No size: large, as before.
+const SIZE = (/--size=(tiny|small|large)\b/.exec(argText) || [])[1] || (typeof args === 'object' && args && args.size) || 'large'
+const MODEL = SIZE === 'large' ? undefined : 'sonnet'
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
 // pass `{ pr, workdir }` — a worktree of the PR branch — so nothing runs
@@ -45,7 +50,7 @@ const PLAYBOOK = 'docs/harness/qa-playbook.md'
 const PROBE_FILE = 'tests/qa-probe.spec.js'
 // Five, not eight: each browser probe runs on both viewports on a 2-core
 // runner, and eight of them plus reproductions ran QA past its time limit.
-const MAX_PROBES = 5
+const MAX_PROBES = { tiny: 2, small: 3, large: 5 }[SIZE] || 5
 // Exploring a relabelled button is ceremony. The planner may call a change
 // covered by its tests — but only a cosmetic one this small, whatever it says.
 const TRIVIAL_LINES = 30
@@ -235,18 +240,18 @@ plan = await agent(
   `cosmetic change — copy, a label, a colour, spacing — that the tests already pin needs no probes; say ` +
   `enough=true, why, and appLines, and return no probes. Anything with logic, data, an API, state or a flow ` +
   `in it is never enough. Write nothing.${SCOPE}`,
-  { phase: 'Plan', label: 'plan', schema: PLAN },
+  { phase: 'Plan', label: 'plan', schema: PLAN, model: MODEL },
 )
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
 // Triage: the planner judged the tests enough, and the change is small
 // enough to take its word. Past the line cap it is explored regardless.
-const mayTriage = DEPTH !== 'thorough' && Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY
+const mayTriage = DEPTH !== 'thorough' && (SIZE === 'tiny' || (Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY))
 // A skip re-runs nothing, so it is never taken over previous bugs: that
 // would publish a clean marker and close them unexamined.
 if (plan.enough === true && mayTriage && !recheck.length) {
   log(`QA triage: skipped — ${plan.enoughWhy || 'cosmetic, covered by tests'}`)
   return publish({ verdict: 'pass', confidence: 'medium', skipped: true,
-    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${APP_LINES} UI lines)`, probes: [] })
+    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${SIZE} change, ${APP_LINES} app lines)`, probes: [] })
 }
 // Over the cap, or no count: the planner said "enough" and so planned no
 // probes. Ask again for a real plan — logging "exploring anyway" and then
@@ -262,7 +267,7 @@ if (plan.enough === true && mayTriage) {
     `Do not return enough=true. Otherwise plan exactly as before: read the ticket's Done when, \`gh pr diff ${pr}\` ` +
     `and the tests it adds, then pick ${budget} in the order §1 of ${PLAYBOOK} gives — ` +
     `browser probes, or command probes for what a browser cannot reach. Write nothing.${SCOPE}`,
-    { phase: 'Plan', label: 'plan-again', schema: PLAN },
+    { phase: 'Plan', label: 'plan-again', schema: PLAN, model: MODEL },
   )
   if (!again) return publish({ verdict: 'none', why: 'the planner did not finish' })
   plan.surface = again.surface
@@ -293,7 +298,7 @@ const ranCommands = commandProbes.length ? await agent(
   `what happened), not-run if it could not be run. Put scratch files under a mktemp -d directory; change no ` +
   `tracked file; touch nothing on GitHub.\n\n` +
   commandProbes.map(p => `- ${p.id}: \`${p.run || p.what}\` — ${p.what}; expect: ${p.expect}`).join('\n'),
-  { phase: 'Probe', label: 'probe-commands', schema: RAN },
+  { phase: 'Probe', label: 'probe-commands', schema: RAN, model: MODEL },
 ) : { results: [] }
 const ranBrowser = browserProbes.length ? await agent(
   `${HERE}Write ${PROBE_FILE} with one Playwright test per probe below, titled with its id, following §2 of ` +
@@ -302,7 +307,7 @@ const ranBrowser = browserProbes.length ? await agent(
   `--project=desktop --reporter=json\`, then mobile — and report each probe's result from the JSON. Leave ` +
   `the file in place; a later phase needs it.\n\n` +
   browserProbes.map(p => `- ${p.id}${p.viewport && p.viewport !== 'both' ? ` (${p.viewport} only)` : ''}: ${p.what} — expect: ${p.expect}`).join('\n'),
-  { phase: 'Probe', label: 'probe', schema: RAN },
+  { phase: 'Probe', label: 'probe', schema: RAN, model: MODEL },
 ) : { results: [] }
 if (!ranCommands || !ranBrowser) return publish({ verdict: 'none', why: 'the probes never ran', cleanup: true })
 const ran = { results: [...ranCommands.results, ...ranBrowser.results] }
@@ -326,7 +331,7 @@ for (const p of failing) {
     `worktree add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, run the same command there, and ` +
     `remove the worktree — never check out another commit in this tree. onBase is not-applicable when what it ` +
     `runs does not exist on the base.`,
-    { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO },
+    { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO, model: MODEL },
   ) : await agent(
     `${HERE}A QA probe failed on pull request #${pr}: "${p.id}" (${project}) — ${p.what}; expected ${p.expect}; got ` +
     `${r.happened || 'a failure'}. Follow §3 of ${PLAYBOOK}. Run it again on this checkout: ` +
@@ -335,7 +340,7 @@ for (const p of failing) {
     `remove the worktree — never check out another commit in this tree. If it reproduces on the branch and the ` +
     `result would help a reviewer, take a screenshot and put it through \`node scripts/pr-media.mjs ` +
     `${plan.issue || pr} <png>\`.`,
-    { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO },
+    { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO, model: MODEL },
   )
   const again = RECHECK_IDS.has(p.id)
   // A probe nobody could re-run is a question, not a bug.
@@ -359,7 +364,7 @@ for (const p of failing) {
       `left by another test, timing), or if it is behaviour the ticket or a human on the PR asked for. If you ` +
       `cannot tell, it is NOT refuted. If it is real but only reachable with an input nobody gives in normal ` +
       `use — a hand-edited URL or localStorage value, a forged request — say contrived, and why.`,
-      { phase: 'Reproduce', label: `skeptic:${p.id}`, schema: REFUTATION, effort: 'medium' },
+      { phase: 'Reproduce', label: `skeptic:${p.id}`, schema: REFUTATION, effort: 'medium', model: MODEL },
     )
     // A skeptic that died refuted nothing.
     if (v && v.refuted === true) { kind = 'question'; doubt = String(v.why || '').trim() || 'the skeptic refuted it without giving a reason' }
@@ -376,7 +381,7 @@ for (const p of failing) {
 const wants = p => (p.kind === 'command' ? ['command'] : p.viewport && p.viewport !== 'both' ? [p.viewport] : ['desktop', 'mobile'])
 const bothRan = plan.probes.filter(p => { const r = byId.get(p.id); return r && wants(p).every(v => r[v] !== 'not-run') }).length
 const ratio = plan.probes.length ? bothRan / plan.probes.length : 0
-const confidence = ratio === 1 && plan.probes.length >= 4 ? 'high' : ratio >= 0.5 ? 'medium' : 'low'
+const confidence = ratio === 1 && plan.probes.length >= Math.min(4, MAX_PROBES) ? 'high' : ratio >= 0.5 ? 'medium' : 'low'
 const bugs = findings.filter(f => f.kind === 'bug')
 return publish({
   verdict: bugs.length ? 'fail' : 'pass',

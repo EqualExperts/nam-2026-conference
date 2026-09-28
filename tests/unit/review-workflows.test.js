@@ -801,6 +801,11 @@ describe('review depth follows risk', () => {
     assert.ok(lenses.includes('review:docs'));
   });
 
+  test('the size the job computed decides: tiny and small get one reviewer, large the lenses', async () => {
+    assert.deepEqual((await lensesAndModel(['server/lib/seats.js'], '42 --size=tiny')).lenses, ['review:combined']);
+    assert.ok((await lensesAndModel(['src/components/A.jsx'], '42 --size=large')).lenses.length >= 3);
+  });
+
   test('with no facts from the job it reviews in full, as before', async () => {
     const { lenses } = await lensesAndModel(['src/components/A.jsx'], '42');
     assert.ok(lenses.length >= 3);

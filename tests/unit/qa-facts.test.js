@@ -1,6 +1,6 @@
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appLines, uiOnly, totalLines, docsOnly, BINARY_LINES } from '../../scripts/qa-facts.mjs';
+import { appLines, uiOnly, totalLines, docsOnly, codeLines, risky, sizeFor, BINARY_LINES } from '../../scripts/qa-facts.mjs';
 
 /** The facts QA's triage is not allowed to take from the planner. */
 
@@ -35,4 +35,36 @@ test('docs-only: prose about the app, never the harness playbooks or CLAUDE.md',
   assert.equal(docsOnly('docs/harness/qa-playbook.md'), false);
   assert.equal(docsOnly('CLAUDE.md'), false);
   assert.equal(docsOnly(''), false);
+});
+
+describe('size: how hard code review and QA work', () => {
+  const size = (o) => sizeFor({ codeLines: 10, docsOnly: false, risky: false, ticket: '', depth: 'balanced', ...o });
+
+  test('code lines leave out the spec and context docs every ship pull request carries', () => {
+    assert.equal(codeLines('80\t0\tspecs/61-x.md\n6\t2\tdocs/context/agenda.md\n3\t1\tserver/routes/users.js'), 4);
+  });
+
+  test('a one-line fix is tiny; a thousand-line change is large', () => {
+    assert.equal(size({ codeLines: 2 }), 'tiny');
+    assert.equal(size({ codeLines: 120 }), 'small');
+    assert.equal(size({ codeLines: 1000 }), 'large');
+  });
+
+  test('a ticket ship sized full is never tiny, and large once it is more than small', () => {
+    assert.equal(size({ codeLines: 2, ticket: 'full' }), 'small');
+    assert.equal(size({ codeLines: 200, ticket: 'full' }), 'large');
+  });
+
+  test('risk raises a step: the seat rules and the harness', () => {
+    assert.ok(risky('server/lib/seats.js'));
+    assert.ok(risky('.claude/workflows/ship.js'));
+    assert.ok(!risky('src/pages/HomePage.jsx\nserver/routes/users.js'));
+    assert.equal(size({ codeLines: 2, risky: true }), 'small');
+  });
+
+  test('the dial moves it a step, and thorough is always large', () => {
+    assert.equal(size({ codeLines: 120, depth: 'fast' }), 'tiny');
+    assert.equal(size({ codeLines: 2, depth: 'thorough' }), 'large');
+    assert.equal(size({ docsOnly: true, codeLines: 0 }), 'tiny');
+  });
 });

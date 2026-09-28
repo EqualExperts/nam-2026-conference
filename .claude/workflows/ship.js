@@ -693,7 +693,9 @@ const auditTable = [
 ].join('\n')
 const pr = await agent(
   `${ticket}\n\n${inTree()}\n\nOpen the pull request against ${BASE}, following §8 of ${SKILL} — ready for review, screenshots ` +
-  `only if something visible changed, the body in the shape given there. In the *Proof* table use: ` +
+  `only if something visible changed, the body in the shape given there. ` +
+  (SIZE === 'full' ? `Label it ship:full (\`--label ship:full\`) — code review and QA size themselves from it. ` : '') +
+  `In the *Proof* table use: ` +
   `\`node scripts/gate.mjs\` → ${gateLine(gate)}, at ${gate.sha.slice(0, 7)}. If \`git log ${gate.sha}..HEAD\` ` +
   `shows later commits, say in one line that they touch only docs — and if any touches code, stop and ` +
   `return ok=false instead. After it, add this section verbatim:\n\n` +

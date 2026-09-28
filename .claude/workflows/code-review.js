@@ -32,6 +32,7 @@ const FACTS = {
   lines: Number.isInteger(Number(flag('lines'))) && flag('lines') !== undefined ? Number(flag('lines')) : null,
   docsOnly: flag('docs-only') === 'yes' || flag('docsOnly') === true,
   shipped: flag('shipped') === 'yes' || flag('shipped') === true,
+  size: ['tiny', 'small', 'large'].includes(flag('size')) ? flag('size') : null,
 }
 if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `code-review needs a PR number, got ${JSON.stringify(args)}` }
 // In Actions the job has already checked the pull request out. On a laptop,
@@ -268,10 +269,12 @@ const LENSES = [
   },
 ]
 
-// Light: one combined reviewer on Sonnet. Full: the lenses by kind, on the
-// session model. The harness and the server's rules always get full — they are
-// where a missed defect costs every later ticket, or an attendee's seat.
-function tierFor({ depth, lines, docsOnly, shipped }, kinds, files) {
+// How hard to look. The job's `--size` (scripts/qa-facts.mjs: the ticket,
+// the code lines, the risk, the dial) decides; tiny and small get one
+// combined reviewer on Sonnet, large the lenses by kind on the session model.
+// Without a size — an older job, or a laptop run with no facts — the old rule.
+function tierFor({ depth, lines, docsOnly, shipped, size }, kinds, files) {
+  if (size) return size === 'large' ? 'full' : 'light'
   if (depth === 'thorough') return 'full'
   if (docsOnly) return 'light'
   const risky = kinds.has('actions') || kinds.has('orchestration') || files.some(f => f.startsWith('server/lib/'))
@@ -293,7 +296,7 @@ const kinds = kindsOf(ctx.files)
 const TIER = tierFor({ depth: DEPTH, ...FACTS }, kinds, ctx.files)
 const MODEL = TIER === 'light' ? 'sonnet' : undefined
 const ACTIVE = TIER === 'light' ? [COMBINED] : LENSES.filter(l => l.when(kinds))
-log(`depth ${DEPTH} · tier ${TIER} · kinds: ${[...kinds].join(', ') || 'none'} → lenses: ${ACTIVE.map(l => l.key).join(', ')}`)
+log(`depth ${DEPTH} · size ${FACTS.size || 'unknown'} · tier ${TIER} · kinds: ${[...kinds].join(', ') || 'none'} → lenses: ${ACTIVE.map(l => l.key).join(', ')}`)
 
 phase('Review')
 const lens = (l, retry) => agent(
@@ -304,7 +307,7 @@ const lens = (l, retry) => agent(
   `name. A blocker names \`how\` — the path through normal use that reaches it — and \`harm\` — what that ` +
   `person loses; if you cannot name both, it is a follow-up. Change nothing, post nothing. Nothing to flag is ` +
   `the usual correct answer.${SCOPE}`,
-  { phase: 'Review', label: `review:${l.key}${retry}`, schema: FINDINGS, model: MODEL },
+  { phase: 'Review', label: `review:${l.key}${retry}`, schema: FINDINGS, model: MODEL, effort: FACTS.size === 'tiny' ? 'low' : undefined },
 )
 const first = await parallel(ACTIVE.map(l => () => lens(l, '')))
 const reports = await parallel(ACTIVE.map((l, i) => async () => first[i] || lens(l, '-retry')))

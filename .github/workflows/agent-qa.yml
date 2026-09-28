@@ -100,6 +100,8 @@ jobs:
           BASE: ${{ github.base_ref }}
           PR: ${{ github.event.pull_request.number }}
           DEPTH: ${{ vars.REVIEW_DEPTH || 'balanced' }}
+          TICKET: ${{ contains(github.event.pull_request.labels.*.name, 'ship:full') && 'full' || '' }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
           NO_OPEN: "1"
           # Neither ticket needing this asks for a pre-checkout post — there
           # is no "within about a minute" criterion here — so these three are
@@ -119,7 +121,10 @@ jobs:
           # Facts for QA's triage, from git — never the planner's word; see
           # scripts/qa-facts.mjs (restored from the base above, like the rest
           # of the harness, so a PR cannot change how its own facts are made).
-          facts=$(node scripts/qa-facts.mjs "origin/$BASE")
+          # The ticket's size: ship labels a pull request it sized full; one it
+          # built without the label was a small ticket; anyone else's, unknown.
+          ticket=${TICKET:-$(case "$HEAD_REF" in issue-[0-9]*-*) echo small ;; esac)}
+          facts=$(node scripts/qa-facts.mjs "origin/$BASE" --ticket="$ticket" --depth="$DEPTH")
           scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
 
       # The transcript is the only record of what the agent did. Without it a

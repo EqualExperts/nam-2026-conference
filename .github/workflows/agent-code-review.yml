@@ -90,6 +90,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           DEPTH: ${{ vars.REVIEW_DEPTH || 'balanced' }}
+          TICKET: ${{ contains(github.event.pull_request.labels.*.name, 'ship:full') && 'full' || '' }}
           # Neither ticket needing this asks for a pre-checkout post — there
           # is no "within about a minute" criterion here — so these three are
           # what let agent-run.sh start the follower at all, and what it
@@ -107,7 +108,10 @@ jobs:
           # How deep to review is the team's dial (Settings → Variables →
           # REVIEW_DEPTH: fast | balanced | thorough) applied to facts from git;
           # code-review.js's tierFor() decides light or full.
-          facts=$(node scripts/qa-facts.mjs "origin/$BASE")
+          # The ticket's size: ship labels a pull request it sized full; one it
+          # built without the label was a small ticket; anyone else's, unknown.
+          ticket=${TICKET:-$(case "$HEAD_REF" in issue-[0-9]*-*) echo small ;; esac)}
+          facts=$(node scripts/qa-facts.mjs "origin/$BASE" --ticket="$ticket" --depth="$DEPTH")
           case "$HEAD_REF" in issue-[0-9]*-*) shipped=yes ;; *) shipped=no ;; esac
           scripts/agent-run.sh "/code-review $PR --no-publish $facts --shipped=$shipped --depth=$DEPTH" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
 
