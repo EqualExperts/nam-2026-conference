@@ -80,13 +80,17 @@ banners render first as full-width rows (`5rem 1fr`), then a cell row if any roo
 has a session. Columns use a CSS var `--grid: 5rem repeat(n, minmax(9rem, 1fr))`
 inside `min-w-[52rem]`. Cells show live (rose) / booked (emerald) / done (faded)
 only when `sessions[0].day === clock.day`, and seats from `seatsFor` over the payload.
+A seat button on a session that `hasEnded` and is not held is disabled and named
+"Session ended" (banner) / "<title> has ended" (cell).
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`
 prefixes `MM-DD`. The **feature** treatment is not a variant: `feature = session.isKeynote`
 adds `sm:col-span-2`, a `GeneratedCover variant="orbit"` banner with seat count,
 bigger title and a 3-line abstract. Both read `reservationFor`, `seatsFor`, `clock`
-from `useConference()`; the seat toggle is `SeatButton` from `ui.jsx`.
+from `useConference()`; the seat toggle is `SeatButton` from `ui.jsx`. Both roots
+carry `data-testid="session-card"` and `data-done`; done (dimmed, seat button
+`ended`) is `hasEnded(session, clock)`, so a past day's cards are done too.
 
 **`FilterBar.jsx`** exports `SearchInput`, `Select` (visually hidden label),
 `TabStrip`, `ChipGroup`. Schedule uses the first two; `SpeakersPage` and `FoodPage`

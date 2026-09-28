@@ -3,7 +3,7 @@ import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
 import { plural, time as fmtTime } from '../lib/format.js';
-import { relativeToNow } from '../lib/clock.js';
+import { hasEnded, relativeToNow } from '../lib/clock.js';
 import { assessTravel } from '../lib/travel.js';
 import { Button, Chip, SeatButton, Skeleton, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
@@ -219,7 +219,7 @@ export function TodayPanel() {
                     {s.title}
                   </Link>
                   <span className="hidden shrink-0 text-[11px] text-faint sm:inline">{s.room.name}</span>
-                  <SeatButton size="sm" status={reservationFor(s.id)} onClick={() => toggleSeat(s.id)} />
+                  <SeatButton size="sm" status={reservationFor(s.id)} ended={hasEnded(s, clock)} onClick={() => toggleSeat(s.id)} />
                 </li>
               );
             })}

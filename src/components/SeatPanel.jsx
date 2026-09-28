@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useConference } from '../lib/store.jsx';
 import { plural } from '../lib/format.js';
+import { hasEnded } from '../lib/clock.js';
 import { Button, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
@@ -12,7 +13,7 @@ import { Icon } from './Icon.jsx';
  * when the room is full it puts you on a waitlist instead.
  */
 export function SeatPanel({ session }) {
-  const { reservationFor, seatsFor, reserveSeat, releaseSeat } = useConference();
+  const { reservationFor, seatsFor, reserveSeat, releaseSeat, clock } = useConference();
   const [busy, setBusy] = useState(false);
 
   // Live counts win over whatever the page was rendered with.
@@ -31,6 +32,8 @@ export function SeatPanel({ session }) {
 
   const pct = capacity ? Math.min(100, Math.round((seatsTaken / capacity) * 100)) : 0;
   const isFull = seatsLeft === 0;
+  // Over: no seat to offer. A seat already held keeps its status and can still be released.
+  const ended = hasEnded(session, clock);
   const tone = pct >= 100 ? 'bg-rose-400' : pct >= 85 ? 'bg-amber-400' : 'bg-emerald-400';
 
   const act = async (fn) => {
@@ -95,6 +98,11 @@ export function SeatPanel({ session }) {
           onClick={() => act(releaseSeat)} data-testid="release-seat">
           {busy ? 'Working…' : status === 'waitlisted' ? 'Leave the waitlist' : 'Release my seat'}
         </Button>
+      ) : ended ? (
+        <Button variant="ghost" className="w-full" disabled data-testid="session-ended-seat">
+          <Icon name="clock" className="size-4" />
+          Session ended
+        </Button>
       ) : (
         <Button variant="primary" className="w-full" disabled={busy}
           onClick={() => act(reserveSeat)} data-testid="reserve-seat">
@@ -103,7 +111,7 @@ export function SeatPanel({ session }) {
         </Button>
       )}
 
-      {session.requiresRsvp && !status && (
+      {session.requiresRsvp && !status && !ended && (
         <p className="text-[11px] text-amber-300">
           This one needs a reservation — hands-on rooms are not open to walk-ups.
         </p>

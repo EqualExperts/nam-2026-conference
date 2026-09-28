@@ -69,6 +69,17 @@ export function useConferenceClock(days = []) {
 
 export const toMinutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
+/**
+ * Whether a session is over: an earlier day, or the same day at or after its
+ * end. The same rule the API uses to refuse a seat (`reserveSeat` in
+ * server/lib/seats.js). Without a clock nothing is treated as over.
+ */
+export function hasEnded(session, clock) {
+  if (!clock?.day) return false;
+  if (session.day < clock.day) return true;
+  return session.day === clock.day && toMinutes(session.endsAt) <= toMinutes(clock.time);
+}
+
 /** How far through a session we are, 0–1. */
 export function progressOf(session, nowHHMM) {
   const now = toMinutes(nowHHMM);
