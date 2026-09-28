@@ -93,6 +93,22 @@ export function shiftTime(hhmm, mins) {
  * everyone a plan, and the overlap guard is per attendee, so a test that wants
  * to book freely starts by clearing the board.
  */
+/**
+ * A seeded attendee and a Day 1 morning session they checked in to and rated
+ * (`{ userId, session, stars }`) — the seed rates every check-in it makes, so
+ * a rating or check-in test needs no clock games to reach the insert. For an
+ * attended-but-unrated session, check in yourself inside the window
+ * (`startsAt − 15` … `endsAt`) and rate after `endsAt`.
+ */
+export async function attendedSession(api) {
+  for (const u of await api.json('/users')) {
+    const full = await api.json(`/users/${u.id}`);
+    const rating = full.ratings.find((r) => full.checkIns.includes(r.sessionId));
+    if (rating) return { userId: u.id, session: await api.json(`/sessions/${rating.sessionId}`), stars: rating.stars };
+  }
+  throw new Error('the seed has no attendee with a rated check-in');
+}
+
 export async function clearAgenda(api, userId) {
   const { reservations } = await api.json(`/users/${userId}`);
   for (const r of reservations) await api.del(`/users/${userId}/reservations/${r.sessionId}`);

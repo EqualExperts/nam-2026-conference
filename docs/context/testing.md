@@ -56,7 +56,12 @@ line). `api` is `client(base)`: `get(path, headers)`, `put(path, body)`,
 verbatim, for malformed-JSON tests); `json(path)` returns the body or throws on non-200.
 Paths are relative to `/api`. Also exported: `days(api)`, `overlaps(a, b)`,
 `shiftTime('10:15', 30)`, `clearAgenda(api, userId)` (every reservation, all days),
-`keysDeep(value)` → `Set` of every key. One `startApi()` per file, in `before`, and
+`keysDeep(value)` → `Set` of every key, and `attendedSession(api)` →
+`{ userId, session, stars }`: a seeded attendee's checked-in, rated Day 1 morning
+session. **The seed rates every check-in it makes** (9 check-ins, 9 ratings, 5
+attendees) — there is no attended-but-unrated session to find; make one by
+checking in inside the window (`startsAt − 15` … `endsAt`) and rating after
+`endsAt`, with `day`/`time` in the body. One `startApi()` per file, in `before`, and
 `close()` in `after`; files run in separate processes, so nothing is shared.
 
 **Browser** (`tests/*.spec.js`). `playwright.config.js`: `testMatch: '**/*.spec.js'`,
