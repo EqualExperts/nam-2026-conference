@@ -82,4 +82,20 @@ test.describe('Session detail', () => {
     await expect(page.getByTestId('reserve-seat')).toHaveCount(0);
     await shotForPR(page, 'ended-session');
   });
+
+  test('an unknown session id shows a real not-found page, not a retry prompt', async ({ page }) => {
+    await visit(page, '/sessions/999999');
+    await expect(page.getByRole('heading', { name: 'Session not found' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try again' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'Browse the schedule' })).toBeVisible();
+    await expect(page).toHaveTitle("Not found · ORBIT '26");
+  });
+
+  test('a genuine failure loading a session still offers a retry', async ({ page }) => {
+    await page.route('**/api/sessions/1**', (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+    await visit(page, '/sessions/1');
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
 });
