@@ -166,6 +166,7 @@ const DONE = {
     summary: { type: 'string' },
     url: { type: 'string' },
     ui: { type: 'boolean', description: 'implement only: did anything an attendee sees in a browser change' },
+    browserTest: { type: 'boolean', description: 'implement only: did you add or change a Playwright test (tests/*.spec.js) that drives the changed behaviour' },
   },
 }
 
@@ -509,7 +510,8 @@ const built = await agent(
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
   `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
-  `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset.` +
+  `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset. Set browserTest=true if you ` +
+  `added or changed a Playwright test that drives the changed behaviour.` +
   (carried.length ? `\n\nThe spec audit left these open; resolve each in the build, and say how in the summary:\n${listFindings(carried)}` : ''),
   { phase: 'Implement', label: 'implement', schema: DONE, model: T.build },
 )
@@ -564,8 +566,12 @@ const CODE_LENSES_ALL = [
 // lens name: the small tier's `combined` lens once missed it entirely.
 const TRACES_CRITERIA = new Set(['criteria', 'combined'])
 // Small tickets only get a browser pass when something visible changed.
+// On a small ticket a browser test the branch added already runs in the gate on
+// both viewports, and QA explores the browser once the PR opens; a second
+// exploration inside ship cost #64 1.6M context tokens to probe two edges.
 const CODE_LENSES = CODE_LENSES_ALL.filter(l =>
-  T.codeLenses.includes(l.key) && (l.key !== 'browser' || SIZE === 'full' || built.ui !== false))
+  T.codeLenses.includes(l.key) &&
+  (l.key !== 'browser' || SIZE === 'full' || (built.ui !== false && built.browserTest !== true)))
 
 const rounds = []
 const streak = new Map() // finding key → consecutive rounds confirmed
@@ -598,8 +604,13 @@ for (let round = 1; ; round++) {
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ${BATCH} ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
-      (l.key === 'browser' ? '' : `The gate has just run the whole suite at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
-        `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
+      (l.key === 'browser'
+        ? `The gate has just run the whole suite green at ${gate.sha.slice(0, 7)} — do not run \`npm test\` or the suite; ` +
+          `read the branch's own tests only to aim your probes past them. Write every probe into one file and run it ` +
+          `once for both viewports (\`npx playwright test tests/qa-probe.spec.js\` runs both projects)` +
+          `${setup.runner ? '' : `, behind \`eval "$(node scripts/lane.mjs claim ${issue})" &&\`; never release the lane — it belongs to the run`}.\n\n`
+        : `The gate has just run the whole suite at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+          `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
         : '') +

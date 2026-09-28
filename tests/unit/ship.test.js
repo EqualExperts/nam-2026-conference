@@ -417,6 +417,18 @@ describe('ship', () => {
       assert.deepEqual(calls.filter(c => c.startsWith('audit:combined')), ['audit:combined#2', 'audit:combined#3']);
     });
 
+    test('a small ticket whose visible change already has a browser test leaves the browser to the gate and QA', async () => {
+      const { calls } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+      assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1']);
+    });
+
+    test('a full ticket keeps its browser audit, told not to re-run the suite or release the lane', async () => {
+      const { calls, prompts } = await run({ setup: { ...SETUP, runner: false }, implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+      assert.ok(calls.includes('audit:browser#1'));
+      assert.match(prompts['audit:browser#1'], /do not run `npm test`/);
+      assert.match(prompts['audit:browser#1'], /never release the lane/);
+    });
+
     test('a small ticket with nothing visible changed skips the browser pass', async () => {
       const { calls } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: false } });
       assert.ok(!calls.some(c => c.startsWith('audit:browser')));
