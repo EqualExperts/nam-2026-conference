@@ -56,9 +56,12 @@ unique on `(user_id, session_id)`, and the roll-up columns
 | `PUT /users/:id/checkins/:sessionId` body `{day,time}` | `checkIn` | body |
 | `PUT /users/:id/ratings/:sessionId` body `{stars,comment,day,time}` | `rateSession` | body |
 
-`rejected` → 409 with the state body. The ratings route returns 400 unless
-`stars` is an integer 1–5, before looking anything up. Neither the attendance
-GET nor the ratings PUT checks that the user exists.
+`rejected` → 409 with the state body. The ratings route validates the request
+before looking anything up: 400 unless `stars` is an integer 1–5, then 400
+unless `comment` is `undefined`, `null`, or a string of at most 1000
+characters, then 404 `{ error: 'Attendee not found' }` via `userExists` (the
+same prepared statement `/:id/checkins/:sessionId` uses) if the attendee does
+not exist. The attendance GET still does not check that the user exists.
 
 **Client.** `src/lib/api.js` has `getAttendance`, `checkIn`, `rateSession`;
 the panel spreads `...clock` into the rating body. `AttendancePanel({ session

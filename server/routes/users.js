@@ -120,6 +120,11 @@ usersRouter.put('/:id/ratings/:sessionId', (req, res) => {
   if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
     return res.status(400).json({ error: 'stars must be an integer from 1 to 5' });
   }
+  const { comment } = req.body ?? {};
+  if (comment !== undefined && comment !== null && (typeof comment !== 'string' || comment.length > 1000)) {
+    return res.status(400).json({ error: 'comment must be a string of at most 1000 characters' });
+  }
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
   const state = rateSession(Number(req.params.id), Number(req.params.sessionId),
     { stars, comment: req.body?.comment }, { day: req.body?.day, time: req.body?.time });
   if (!state) return res.status(404).json({ error: 'Session not found' });
