@@ -500,6 +500,9 @@ async function publish(r) {
         `followed by " → <the PR comment url>" — the findings stay on the pull request.\n\n`
       : '') +
     (line ? `Then write exactly this one line to /tmp/qa-verdict:\n${line}\n` : `Write nothing to /tmp/qa-verdict.\n`) +
+    // On a laptop the probes claimed a lane in the PR's worktree, and nothing
+    // else gives it back: qa-71 was still holding its ports hours later.
+    (WORKDIR ? `Finally \`cd ${WORKDIR} && node scripts/lane.mjs release\` — the probes' lane; "nothing to release" is fine.\n` : '') +
     `Change no code and open no pull request.`,
     { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low', model: 'haiku' },
   )

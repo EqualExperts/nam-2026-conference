@@ -485,6 +485,9 @@ async function publish(r) {
     (line
       ? `Then write exactly this one line to /tmp/review-verdict:\n${line}\n`
       : `Write nothing to /tmp/review-verdict — no file publishes as unproven, which is the truth.\n`) +
+    // A reviewer that booted the app on a laptop claimed a lane nothing else
+    // releases (code-review-73 was still held after the PR merged).
+    (WORKDIR ? `Finally \`cd ${WORKDIR} && node scripts/lane.mjs release\`; "nothing to release" is fine.\n` : '') +
     `Never approve, request changes or merge.`,
     { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low', model: 'haiku' },
   )
