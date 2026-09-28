@@ -439,12 +439,16 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
     agent(
       `You are auditing a spec you did not write. ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
-      `(in ${setup.workdir}) and the code it names. ${MAP} ${l.ask}\n\nBlockers only for something that would make ` +
+      `(in ${setup.workdir}) and the docs/context/ docs for the files it names. ${MAP} ${l.ask}\n\n` +
+      `You are judging the plan, not building it: open source only for a line the spec cites that the docs do ` +
+      `not settle, and do not run tests or read node_modules — the build and the gate prove whether it works. ` +
+      `A spec audit that re-derives the implementation costs more than the implementation.\n\n` +
+      `Blockers only for something that would make ` +
       `the change wrong or unprovable; everything else is minor. Use category scope only when the TICKET itself ` +
       `is contradictory, unclear about what to build, or asks for something that cannot be built as written — ` +
       `that is what goes to a person; a flaw in the spec's plan is spec-gap or logic. Cite file and line. Empty ` +
       `is a good answer.`,
-      { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: T.think },
+      { phase: 'Spec Audit', label: `spec-audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: T.think, effort: SIZE === 'small' ? 'low' : undefined },
     ))
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
   const found = specAudit.reports.flatMap(r => r.findings)
