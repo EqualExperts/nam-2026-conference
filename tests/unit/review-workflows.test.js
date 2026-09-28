@@ -374,11 +374,12 @@ describe('code-review', () => {
 describe('qa', () => {
   const probe = (id) => ({ id, what: `visit /my-agenda as kenji (${id})`, expect: 'no live badge', why: 'empty-or-extreme' });
   const HEAD = 'headsha1';
-  const SCOPE = { head: HEAD, files: ['src/components/NextUpCard.jsx'] };
+  const SCOPE = { head: HEAD, files: ['src/components/NextUpCard.jsx', 'tests/home.spec.js'] };
   const bug = (id) => ({ id, happened: 'LIVE badge shown', probe: probe(id) });
   const was = (bugs = [], extra = {}) => ({ pass: 'qa', commit: 'oldsha', inHistory: true, bugs, followUps: [], ...extra });
   const ranAll = (ids) => ({ results: ids.map(id => ({ id, desktop: 'pass', mobile: 'pass' })) });
-  const PLAN = { issue: 27, base: 'main', surface: true, probes: ['a', 'b', 'c', 'd'].map(probe) };
+  const PLAN = { issue: 27, base: 'main', surface: true, probes: ['a', 'b', 'c', 'd'].map(probe),
+    criteria: [{ criterion: 'works', by: 'probe', ref: 'a' }] };
   const allPass = { results: PLAN.probes.map(p => ({ id: p.id, desktop: 'pass', mobile: 'pass' })) };
   const withFail = (id) => ({ results: allPass.results.map(r => (r.id === id ? { ...r, mobile: 'fail', happened: 'LIVE badge shown' } : r)) });
   const run = runner('qa', (label) => {
@@ -461,8 +462,22 @@ describe('qa', () => {
     assert.equal(result.confidence, 'high');
   });
 
+  test('confidence is criteria coverage: a criterion nothing exercises caps it at medium', async () => {
+    const plan = { ...PLAN, criteria: [{ criterion: 'works', by: 'probe', ref: 'a' }, { criterion: 'edge', by: 'none' }] };
+    assert.equal((await run({ plan })).result.confidence, 'medium');
+  });
+
+  test('a criterion counts as pinned by a test only if the diff changes that test file', async () => {
+    const inDiff = SCOPE.files.find(f => f.startsWith('tests/'));
+    const ok = { ...PLAN, criteria: [{ criterion: 'works', by: 'test', ref: inDiff }] };
+    const claimed = { ...PLAN, criteria: [{ criterion: 'works', by: 'test', ref: 'tests/api/not-in-this-diff.test.js' }] };
+    assert.equal((await run({ plan: ok })).result.confidence, 'high');
+    assert.equal((await run({ plan: claimed })).result.confidence, 'medium');
+  });
+
   const cmd = (id) => ({ id, kind: 'command', run: `node scripts/gate.mjs --x ${id}`, what: `run ${id}`, expect: 'exit 0', why: 'failure-path' });
-  const CMD_PLAN = { issue: 0, base: 'main', surface: true, probes: ['c1', 'c2', 'c3', 'c4'].map(cmd) };
+  const CMD_PLAN = { issue: 0, base: 'main', surface: true, probes: ['c1', 'c2', 'c3', 'c4'].map(cmd),
+    criteria: [{ criterion: 'works', by: 'probe', ref: 'c1' }] };
   const cmdPass = { results: CMD_PLAN.probes.map(p => ({ id: p.id, command: 'pass' })) };
 
   test('a change with no browser surface is probed by running it, not passed unexamined', async () => {

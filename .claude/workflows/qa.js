@@ -96,6 +96,19 @@ const PLAN = {
     enough: { type: 'boolean', description: 'true only if the change is cosmetic — copy, a label, a colour, spacing, an icon — touches no logic, data, API, state or flow, and the tests the PR adds or already has pin what changed. Then no probes.' },
     enoughWhy: { type: 'string', description: 'if enough: what changed and which tests cover it, in one sentence' },
     appLines: { type: 'integer', description: 'lines added + removed under src/ and server/ in the diff' },
+    criteria: {
+      type: 'array',
+      description: "every Done-when criterion of the ticket, each mapped to what exercises it: one of your probes, or a test file this pull request changes that asserts it",
+      items: {
+        type: 'object',
+        required: ['criterion', 'by'],
+        properties: {
+          criterion: { type: 'string' },
+          by: { enum: ['probe', 'test', 'none'] },
+          ref: { type: 'string', description: 'probe: its id. test: the test file path, as the diff names it' },
+        },
+      },
+    },
     probes: {
       type: 'array',
       maxItems: MAX_PROBES,
@@ -239,7 +252,9 @@ plan = await agent(
   `is genuinely nothing to exercise. Before any of that, decide whether exploring is worth it at all: a ` +
   `cosmetic change — copy, a label, a colour, spacing — that the tests already pin needs no probes; say ` +
   `enough=true, why, and appLines, and return no probes. Anything with logic, data, an API, state or a flow ` +
-  `in it is never enough. Write nothing.${SCOPE}`,
+  `in it is never enough. Finally map every Done-when criterion (criteria) to the probe or the test file in ` +
+  `this diff that exercises it — honestly: \`none\` where nothing does. A criterion a test in the diff already ` +
+  `pins needs no probe; spend probes on what nothing covers and on §1's edges. Write nothing.${SCOPE}`,
   { phase: 'Plan', label: 'plan', schema: PLAN, model: MODEL },
 )
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
@@ -250,8 +265,10 @@ const mayTriage = DEPTH !== 'thorough' && (SIZE === 'tiny' || (Number.isInteger(
 // would publish a clean marker and close them unexamined.
 if (plan.enough === true && mayTriage && !recheck.length) {
   log(`QA triage: skipped — ${plan.enoughWhy || 'cosmetic, covered by tests'}`)
-  return publish({ verdict: 'pass', confidence: 'medium', skipped: true,
-    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${SIZE} change, ${APP_LINES} app lines)`, probes: [] })
+  const pinned = criteriaCovered(plan.criteria, new Set())
+  return publish({ verdict: 'pass', confidence: pinned.all ? 'high' : 'medium', skipped: true,
+    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${SIZE} change, ${APP_LINES} app lines; ` +
+      `criteria pinned by tests in the diff ${pinned.n}/${pinned.of})`, probes: [] })
 }
 // Over the cap, or no count: the planner said "enough" and so planned no
 // probes. Ask again for a real plan — logging "exploring anyway" and then
@@ -381,17 +398,32 @@ for (const p of failing) {
 const wants = p => (p.kind === 'command' ? ['command'] : p.viewport && p.viewport !== 'both' ? [p.viewport] : ['desktop', 'mobile'])
 const bothRan = plan.probes.filter(p => { const r = byId.get(p.id); return r && wants(p).every(v => r[v] !== 'not-run') }).length
 const ratio = plan.probes.length ? bothRan / plan.probes.length : 0
-const confidence = ratio === 1 && plan.probes.length >= Math.min(4, MAX_PROBES) ? 'high' : ratio >= 0.5 ? 'medium' : 'low'
+const ranIds = new Set(plan.probes.filter(p => { const r = byId.get(p.id); return r && wants(p).every(v => r[v] !== 'not-run') }).map(p => p.id))
+const cover = criteriaCovered(plan.criteria, ranIds)
+const confidence = ratio === 1 && cover.all ? 'high' : ratio >= 0.5 ? 'medium' : 'low'
 const bugs = findings.filter(f => f.kind === 'bug')
 return publish({
   verdict: bugs.length ? 'fail' : 'pass',
   confidence,
-  covered: `${bothRan}/${plan.probes.length} probes ran as planned: ${plan.probes.map(p => p.id).join(', ')}` +
+  covered: `${bothRan}/${plan.probes.length} probes ran as planned: ${plan.probes.map(p => p.id).join(', ')}; ` +
+    `criteria exercised ${cover.n}/${cover.of}` +
     (recheck.length ? ` (re-checked from the last pass: ${recheck.map(p => p.id).join(', ')})` : ''),
   probes: plan.probes,
   findings,
   cleanup: true,
 })
+
+// Confidence means coverage: every Done-when criterion exercised by a probe
+// that ran, or by a test file this pull request changes — checked against the
+// diff's file list, not the planner's word. Probe count was the old proxy, and
+// a refactor with one thing worth probing could never read as covered.
+function criteriaCovered(criteria, ranIds) {
+  const list = Array.isArray(criteria) ? criteria : []
+  const ok = c => c && ((c.by === 'probe' && ranIds.has(c.ref)) ||
+    (c.by === 'test' && typeof c.ref === 'string' && files.includes(c.ref.split(/[:#\s]/)[0]) && /(^|\/)tests\//.test(c.ref)))
+  const n = list.filter(ok).length
+  return { n, of: list.length, all: list.length > 0 && n === list.length }
+}
 
 async function publish(r) {
   const CALLOUT = { high: ['TIP', '●●●'], medium: ['NOTE', '●●○'], low: ['WARNING', '●○○'] }
