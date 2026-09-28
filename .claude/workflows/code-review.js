@@ -148,7 +148,7 @@ const ctx = await agent(
   `\`<!-- ${MARK} {…} -->\`, take the NEWEST such comment, parse the JSON between the tag and \`-->\`, and ` +
   `return it as \`previous\`, unchanged, with \`inHistory\` set by whether \`git merge-base --is-ancestor ` +
   `<its commit> <head>\` exits 0 (fetch the head first if it is missing). No such comment: omit \`previous\`.`,
-  { phase: 'Context', label: 'context', schema: CONTEXT, effort: 'low' },
+  { phase: 'Context', label: 'context', schema: CONTEXT, effort: 'low', model: 'sonnet' },
 )
 if (!ctx) return publish({ verdict: 'none', why: 'could not read the pull request' })
 
@@ -484,7 +484,7 @@ async function publish(r) {
       ? `Then write exactly this one line to /tmp/review-verdict:\n${line}\n`
       : `Write nothing to /tmp/review-verdict — no file publishes as unproven, which is the truth.\n`) +
     `Never approve, request changes or merge.`,
-    { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low' },
+    { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low', model: 'haiku' },
   )
   return { ...out, commentUrl: posted ? posted.url : null }
 }

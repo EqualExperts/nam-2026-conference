@@ -192,7 +192,7 @@ const scope = await agent(
   `\`<!-- ${MARK} {…} -->\`, take the NEWEST such comment, parse the JSON between the tag and \`-->\`, and ` +
   `return it as \`previous\`, unchanged, with \`inHistory\` set by whether \`git merge-base --is-ancestor ` +
   `<its commit> <head>\` exits 0 (fetch the head first if it is missing). No such comment: omit \`previous\`.`,
-  { phase: 'Plan', label: 'scope', schema: SCOPE_OF, effort: 'low' },
+  { phase: 'Plan', label: 'scope', schema: SCOPE_OF, effort: 'low', model: 'sonnet' },
 )
 // Planning blind would silently close every previous bug.
 if (!scope) return publish({ verdict: 'none', why: 'could not read the pull request' })
@@ -492,7 +492,7 @@ async function publish(r) {
       : '') +
     (line ? `Then write exactly this one line to /tmp/qa-verdict:\n${line}\n` : `Write nothing to /tmp/qa-verdict.\n`) +
     `Change no code and open no pull request.`,
-    { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low' },
+    { phase: 'Publish', label: 'publish', schema: POSTED, effort: 'low', model: 'haiku' },
   )
   return { ...out, posted: !!(posted && posted.ok) }
 }
