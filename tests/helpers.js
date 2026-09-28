@@ -127,6 +127,9 @@ export const LANES = {
   // day index 2 the seats.* lanes above leave alone — rather than a dynamic
   // pick that could otherwise land on one of their sessions.
   'agenda.next-up-done': { desktop: { user: marcus, day: 2, slot: '17:15', clean: true }, mobile: { user: kenji, day: 2, slot: '17:15', clean: true } },
+  // marcus/day 3 desktop and jonas/day 0 mobile are each used by no other lane,
+  // so concurrent tests cannot collide on these attendee+day pairs.
+  'switcher.live-count': { desktop: { user: marcus, day: 3 }, mobile: { user: jonas, day: 0, clean: true } },
 };
 
 /**
