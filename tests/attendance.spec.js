@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES, failOnPageErrors } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES, failOnPageErrors, shotForPR } from './helpers.js';
 
 /**
  * A non-keynote, non-Social session on `day` this attendee has not checked
@@ -218,6 +218,7 @@ test.describe('Check in and rate', () => {
     await page.getByTestId('check-in').click();
     await expect(page.getByTestId('toaster')).toContainText('Checked in');
     await expect(page.getByTestId('checked-in')).toBeVisible();
+    await shotForPR(page, 'check-in-toast');
 
     expect(unexpected(errors)).toEqual([]);
   });
