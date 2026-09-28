@@ -145,8 +145,9 @@ Actions runs ship; code review and QA run when the PR opens. `@claude` on a
 pull request asks for a change to that diff. Setup, keys and tokens:
 [`github.md`](./github.md).
 
-**On a laptop** — `/ship 42`, then `/code-review <pr>` and `/qa <pr>`. Each
-ticket gets its own worktree, `orbit-wt-<n>` beside the main checkout, and its
+**On a laptop** — `/ship 42`, or `/ship 64 65 66` for several at once (one
+whole ship per ticket, in parallel), then `/code-review <pr>` and `/qa <pr>`.
+Each ticket gets its own worktree, `orbit-wt-<n>` beside the main checkout, and its
 own **lane** — a port pair from `scripts/lane.mjs` — so several tickets can
 build, boot the app and run the suite at once without testing each other's
 code. The gate stops any server its own worktree left running before it boots
