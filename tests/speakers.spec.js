@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, ATTENDEES } from './helpers.js';
+import { API, visit, ATTENDEES, shotForPR } from './helpers.js';
 
 
 test.describe('Speakers', () => {
@@ -106,6 +106,7 @@ test.describe('Speakers', () => {
     await expect(page.getByRole('button', { name: 'Try again' })).not.toBeVisible();
     await expect(page.getByRole('link', { name: 'All speakers' })).toBeVisible();
     await expect(page).toHaveTitle("Not found · ORBIT '26");
+    await shotForPR(page, 'speaker-not-found');
   });
 
   test('a genuine failure loading a speaker still offers a retry', async ({ page }) => {

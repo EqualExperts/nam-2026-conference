@@ -89,6 +89,7 @@ test.describe('Session detail', () => {
     await expect(page.getByRole('button', { name: 'Try again' })).not.toBeVisible();
     await expect(page.getByRole('link', { name: 'Browse the schedule' })).toBeVisible();
     await expect(page).toHaveTitle("Not found · ORBIT '26");
+    await shotForPR(page, 'session-not-found');
   });
 
   test('a genuine failure loading a session still offers a retry', async ({ page }) => {
