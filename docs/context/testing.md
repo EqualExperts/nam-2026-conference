@@ -126,12 +126,21 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 ## Invariants
 
 - No spec reads or writes state another concurrently running test can touch — one data
-  lane per test per project, released or cleared afterwards.
+  lane per test per project, released or cleared afterwards. Desktop and mobile run at
+  the same time, so a new entry's `user`+`day` must be unique across **every** `desktop`
+  and `mobile` value in the whole `LANES` table, not just within its own row or project.
 - `lane 0` must still set `ORBIT_LANE` truthy (`'0'` as a string) — `lane.test.js` pins it.
 - A lane never exports `ORBIT_DB`; each worktree seeds its own `data/orbit.db`.
 
 ## Gotchas
 
+- Adding a lane: grep `tests/helpers.js` for the `user`+`day` pair you're about to use
+  before writing it down — across all entries, desktop and mobile alike, plus the
+  read-only fixtures in the `LANES` comment. A pair that looks free because no *other*
+  row shares its name can still be sitting in another row's `desktop` while yours claims
+  it for `mobile` (or vice versa); a comment asserting "no other lane touches this" is
+  not a check. The promotion test also picks its session, and so its day, at runtime, so
+  that day never appears in the table at all.
 - Build a fixture the way the thing that produces it does — the same truncation,
   the same field order, the same event order. Data sized by hand proves the reader
   and nothing else: a payload trimmed to fit, or an assertion on a value the real
