@@ -1,25 +1,32 @@
 
 https://github.com/user-attachments/assets/7f3ea661-2e85-4895-b7b2-63f3d77a1674
 
-# ORBIT '26
+# An AI engineering harness — shipping ORBIT '26
 
-A conference companion app for a fictional applied-AI conference in Las Vegas —
-four days, ~140 sessions, 110 speakers, two venues six miles apart.
+This repo is a working demo of an **AI engineering harness**: you write a
+GitHub Issue, and agents turn it into a pull request that has already been
+specified, tested, independently audited and fixed — then two more agents
+review and QA it, and **you decide what merges**. Every ticket shows what it
+cost in AI tokens.
 
-It is the sample application for a workshop on using AI across the software
-delivery lifecycle, and it ships with the **engineering harness** that builds
-it: a GitHub Issue goes in, a specified, tested and independently audited pull
-request comes out, and you decide what merges.
+- **ship** — issue → spec → audit → failing check → build → full test suite ⇄
+  independent audit, until a round comes back clean → pull request
+- **code review** and **QA** — independent passes sized to the change, each
+  with a confidence that means coverage, never a vote
+- **the gate** — deterministic checks the agents cannot talk their way past
+
+The thing it builds is **ORBIT '26**, a conference companion app for a
+fictional applied-AI conference in Las Vegas (four days, ~140 sessions, 110
+speakers, two venues). It is real enough that the harness has real bugs to
+find: seats, waitlists, clashes, check-in windows, ratings, a clock that runs.
 
 ```bash
-npm install && npm run dev     # seeds, starts API + web on :5173
+npm install && npm run dev     # the app, seeded, on :5173
 ```
 
-No login — pick an attendee from the switcher. Two of them are also speaking.
-**The conference is always today:** seeding makes Day 1 the day you run it, so
-you arrive mid-conference and the clock ticks while you watch (pin it with
-`?at=YYYY-MM-DDTHH:MM`). Node 22 · Express · better-sqlite3 · React 18 · Vite 6
-· Tailwind v4 · Playwright — no ORM, no state library, no component kit.
+No login — pick an attendee from the switcher. **The conference is always
+today:** seeding makes Day 1 the day you run it (pin the clock with
+`?at=YYYY-MM-DDTHH:MM`).
 
 > [!IMPORTANT]
 > **Forked or copied this repo? The agents will not run until you do this.**
