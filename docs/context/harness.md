@@ -416,3 +416,9 @@ opened. CI rows are what the CLI billed (`modelUsage[*].costUSD` in the final
 dir>` prices the per-agent transcripts with `RATES` and marks the row `~`. The
 step is `continue-on-error` and the script catches everything: reporting cost
 never fails the job that did the work.
+
+**Rote agents.** Ship's verify and PR steps run as `.claude/agents/ship-rote.md`
+(`agentType: 'ship-rote'`): Haiku, a two-line system prompt and
+`omitClaudeMd: true`, so they start ~26% lighter (13.6k against 18.4k tokens,
+measured). Only steps that run given commands and relay output belong there —
+anything that judges needs CLAUDE.md's rules.

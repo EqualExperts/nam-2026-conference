@@ -45,6 +45,10 @@ const TIERS = {
 }
 // Phases that run a command and copy its output back need no judgement.
 const ROTE = 'haiku'
+// …nor CLAUDE.md or a long system prompt: .claude/agents/ship-rote.md omits
+// both, and its context starts ~26% smaller than a general agent's (13.6k
+// against 18.4k tokens, measured) — paid again on every turn it takes.
+const ROTE_AGENT = 'ship-rote'
 let T = TIERS.full
 // The same finding confirmed this many rounds running means the fixer cannot
 // fix it. Escalate early instead of spending the remaining rounds.
@@ -616,7 +620,7 @@ for (let round = 1; ; round++) {
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Change nothing and interpret nothing.`,
-    { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
+    { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE, agentType: ROTE_AGENT },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
@@ -792,7 +796,7 @@ const pr = await agent(
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +
   `for review: <url>"\`; \`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
   (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
-  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: ROTE },
+  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: ROTE, agentType: ROTE_AGENT },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
