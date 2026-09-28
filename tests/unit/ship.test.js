@@ -369,6 +369,7 @@ describe('ship', () => {
     assert.match(prompts['open-pr'], /do not run tests/);
     assert.match(prompts['open-pr'], /### Audit loop/);
     assert.doesNotMatch(prompts['open-pr'], /following §8/);
+    assert.match(prompts.implement, /shotForPR/);
     assert.equal(models['open-pr'], 'haiku');
   });
 
@@ -401,7 +402,9 @@ describe('ship', () => {
       assert.equal(result.size, 'small');
       assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), ['spec-audit:combined#1']);
       assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1', 'audit:browser#1']);
-      for (const l of ['write-spec', 'implement', 'audit:combined#1', 'open-pr']) assert.equal(models[l], 'sonnet', l);
+      for (const l of ['write-spec', 'implement', 'audit:combined#1']) assert.equal(models[l], 'sonnet', l);
+      // Opening the PR is rote now — its body is given and its picture comes from the proving test.
+      assert.equal(models['open-pr'], 'haiku');
     });
 
     test('a red gate does not spend a small ticket\'s audit budget', async () => {

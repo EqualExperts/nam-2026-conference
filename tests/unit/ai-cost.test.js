@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromStream, line, ledgerBody, parseLedger, priced, total, tokens } from '../../scripts/ai-cost.mjs';
+import { fromStream, line, ledgerBody, parseLedger, priced, runComment, total, tokens } from '../../scripts/ai-cost.mjs';
 
 // The shape `claude -p --output-format stream-json` ends with, from a real run.
 const RESULT = {
@@ -48,6 +48,15 @@ describe('ai-cost', () => {
 
   test('claude-code-action\'s execution file — one JSON array — reads the same', () => {
     assert.equal(fromStream(JSON.stringify([{ type: 'system' }, RESULT])).models['claude-haiku-4-5-20251001'].cost, 0.0239229);
+  });
+
+  test('a run comment leads with the cost and splits it by model in a table', () => {
+    const c = runComment('ship', fromStream(stream), 'https://x/9');
+    assert.match(c, /^### 🧾 ship: \$\d+\.\d\d · 1\.1M tokens/);
+    assert.match(c, /\| Opus \| Sonnet \| Haiku \| Total \|/);
+    assert.match(c, /\| — \| \$\d+\.\d\d \| \$0\.02 \| \*\*\$/);
+    assert.match(c, /<sub>.*\[run\]\(https:\/\/x\/9\)<\/sub>/);
+    assert.doesNotMatch(c, /@claude/);
   });
 
   test('a stream with no result records nothing rather than a zero row', () => {

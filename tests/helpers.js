@@ -129,6 +129,19 @@ export const LANES = {
   'agenda.next-up-done': { desktop: { user: marcus, day: 2, slot: '17:15', clean: true }, mobile: { user: kenji, day: 2, slot: '17:15', clean: true } },
 };
 
+/**
+ * The picture a pull request shows, taken by the test that proves the change —
+ * it already drives the app to exactly the state worth seeing. A no-op unless
+ * PR_SHOTS is set, so the suite and the gate never write files; ship's PR step
+ * re-runs the one test with PR_SHOTS=1 and uploads what lands in
+ * `.screenshots/pr/`. On #64 the PR agent spent 20 turns rebuilding that state
+ * with a script of its own.
+ */
+export async function shotForPR(page, name) {
+  if (!process.env.PR_SHOTS) return;
+  await page.screenshot({ path: `.screenshots/pr/${name}-${page.viewportSize()?.width ?? 0}w.png` });
+}
+
 /** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */
 export async function laneFor(name, testInfo) {
   const lane = LANES[name][testInfo.project.name];

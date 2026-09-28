@@ -94,6 +94,24 @@ export function line(usage) {
     `${usage.estimated ? '~' : ''}${dollars(t.cost)}${models ? ` — ${models}` : ''}`;
 }
 
+/** One run's cost as a pull request comment: a heading, the split by model, the detail in small print. */
+export function runComment(kind, usage, run) {
+  const t = total(usage);
+  const est = usage.estimated ? '~' : '';
+  const by = (f) => Object.entries(usage.models).filter(([n]) => family(n) === f).reduce((a, [, u]) => a + u.cost, 0);
+  return [
+    `### 🧾 ${kind}: ${est}${dollars(t.cost)} · ${human(tokens(t))} tokens`,
+    '',
+    `| ${FAMILIES.map((f) => f[0].toUpperCase() + f.slice(1)).join(' | ')} | Total |`,
+    `| ${FAMILIES.map(() => '---').join(' | ')} | --- |`,
+    `| ${FAMILIES.map((f) => (by(f) ? `${est}${dollars(by(f))}` : '—')).join(' | ')} | **${est}${dollars(t.cost)}** |`,
+    '',
+    `<sub>${human(t.read)} cached reads · ${human(t.write)} cache writes · ${human(t.in)} input · ${human(t.out)} output` +
+      `${usage.estimated ? ' · a local run, priced from its transcripts at list rates' : ' · billed at list prices'}` +
+      `${run ? ` · [run](${run})` : ''}</sub>`,
+  ].join('\n');
+}
+
 /** The ledger kept in the issue comment: rows in, markdown (with the rows hidden in it) out. */
 const FAMILIES = ['opus', 'sonnet', 'haiku'];
 
@@ -144,10 +162,7 @@ function record(opts) {
       gh(['api', `repos/${repo}/issues/${opts.issue}/comments`, '-F', 'body=@-'], ledgerBody([row]));
     }
   }
-  if (opts.pr) {
-    gh(['api', `repos/${repo}/issues/${opts.pr}/comments`, '-F', 'body=@-'],
-      `🧾 **${opts.kind}** run: ${text}${opts.run ? ` · [run](${opts.run})` : ''}`);
-  }
+  if (opts.pr) gh(['api', `repos/${repo}/issues/${opts.pr}/comments`, '-F', 'body=@-'], runComment(opts.kind, usage, opts.run));
   console.log(text);
 }
 

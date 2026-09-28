@@ -507,7 +507,9 @@ const built = await agent(
   `added runs before you hand over, alone: \`npx playwright test <file> -g "<its title>"\` (on a laptop, behind ` +
   `the lane prefix). On #64 an unpinned clock in a new spec cost a whole red gate and a fix round. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
-  `Set ui=true if anything an attendee sees in a browser changed.` +
+  `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
+  `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
+  `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset.` +
   (carried.length ? `\n\nThe spec audit left these open; resolve each in the build, and say how in the summary:\n${listFindings(carried)}` : ''),
   { phase: 'Implement', label: 'implement', schema: DONE, model: T.build },
 )
@@ -727,8 +729,11 @@ const pr = await agent(
   `and \`git log --oneline origin/${BASE}..HEAD\` are all you need for *Changed*. If \`git log ${gate.sha}..HEAD\` ` +
   `shows a commit touching anything outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
   (visible
-    ? `Something an attendee sees changed: add screenshots as §8 of ${SKILL} says (${sections(8, '9')}; one shot of the new state, or ` +
-      `before/after for a fix), via \`node scripts/pr-media.mjs\`, where the body shows <media>.\n\n`
+    ? `Something an attendee sees changed. The branch's browser test calls shotForPR at the moment worth seeing: ` +
+      `run the test files this branch added or changed with \`PR_SHOTS=1 npx playwright test <files> --project=desktop\`` +
+      `${setup.runner ? '' : ' (behind the lane prefix)'}, then \`node scripts/pr-media.mjs ${issue} .screenshots/pr/*.png\` and ` +
+      `put what it prints where the body shows <media>. If no file appears, drop the <media> line — do not write a ` +
+      `script, start a server or drive a browser to make one.\n\n`
     : `Nothing visible changed: no screenshots, and drop the <media> line.\n\n`) +
   `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts:\n\n` +
   `Closes #${issue}\n\n<one sentence: what an attendee (or a developer) gets now that they did not before>\n\n` +
@@ -748,7 +753,7 @@ const pr = await agent(
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +
   `for review: <url>"\`; \`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
   (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
-  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: visible ? T.think : ROTE },
+  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: ROTE },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
