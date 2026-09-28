@@ -404,6 +404,16 @@ describe('ship', () => {
       for (const l of ['write-spec', 'implement', 'audit:combined#1', 'open-pr']) assert.equal(models[l], 'sonnet', l);
     });
 
+    test('a red gate does not spend a small ticket\'s audit budget', async () => {
+      const { result, calls } = await run({
+        setup: SMALL,
+        verify: (n) => (n === 1 ? RED([{ test: '[mobile] plan.spec.js:40 › x', error: 'e' }]) : GREEN),
+        'audit:combined': (n) => ({ covered: 'all', findings: n === 2 ? [blocker('the lane collides')] : [] }),
+      });
+      assert.equal(result.outcome, 'shipped');
+      assert.deepEqual(calls.filter(c => c.startsWith('audit:combined')), ['audit:combined#2', 'audit:combined#3']);
+    });
+
     test('a small ticket with nothing visible changed skips the browser pass', async () => {
       const { calls } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: false } });
       assert.ok(!calls.some(c => c.startsWith('audit:browser')));

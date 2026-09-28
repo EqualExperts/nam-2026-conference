@@ -571,7 +571,12 @@ let gate
 let open = []
 let minors = []
 
-for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
+// A round that stops at a red gate never reached an auditor, so it does not
+// spend the audit budget — on #64 a red gate took round 1 of a small ticket's
+// two, and the only audit that ran was also the last. Red rounds get two
+// extra rounds of slack; the same failure twice is caught as stuck anyway.
+let audited = 0
+for (let round = 1; ; round++) {
   phase('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
   // baseline before it runs anything, and red-check needs no judgement.
@@ -586,6 +591,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   gate = readGate(ran)
 
   if (gate.ok) {
+    audited++
     phase('Code Audit')
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ${BATCH} ` +
@@ -676,7 +682,7 @@ for (let round = 1; round <= MAX_BUILD_ROUNDS; round++) {
   const stuck = open.filter(f => streak.get(key(f)) > STUCK_AFTER)
   for (const k of [...streak.keys()]) if (!open.some(f => key(f) === k)) streak.delete(k)
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
-  if (round === MAX_BUILD_ROUNDS) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
+  if (audited >= MAX_BUILD_ROUNDS || round >= MAX_BUILD_ROUNDS + 2) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
 
   const fixed = await agent(
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
