@@ -544,10 +544,12 @@ const CODE_LENSES_ALL = [
   {
     key: 'browser',
     ask: `Drive the change in a real browser and try to break it, following docs/harness/qa-playbook.md §1–§3 ` +
+      `(\`awk '/^## 1\\./,/^## 4\\./' docs/harness/qa-playbook.md\` prints them) ` +
       `(probes in tests/qa-probe.spec.js, both projects, re-run before calling anything a bug, delete the probe ` +
       `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
       `probe on main, \`git worktree add ../orbit-main-${issue} origin/${BASE}\`, symlink node_modules into it, and ` +
-      `remove it after. Budget: six probes. A reproduced bug in this change is a blocker; pre-existing is ` +
+      `remove it after. Budget: ${SIZE === 'full' ? 'five probes' : 'two probes — a small change; spend them where the tests it added do not reach'}. ` +
+      `A reproduced bug in this change is a blocker; pre-existing is ` +
       `minor. If nothing visible changed, say so in covered and return no findings.`,
     model: 'sonnet',
     // Boots the app and runs Playwright, so it runs after the readers rather
