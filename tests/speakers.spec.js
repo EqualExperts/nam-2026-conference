@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, ATTENDEES } from './helpers.js';
+import { API, visit, ATTENDEES, shotForPR } from './helpers.js';
 
 
 test.describe('Speakers', () => {
@@ -98,6 +98,23 @@ test.describe('Speakers', () => {
     expect(byName.map((n) => n.split('\n')[0])).toEqual(
       [...byName.map((n) => n.split('\n')[0])].sort((a, b) => a.localeCompare(b)),
     );
+  });
+
+  test('an unknown speaker id shows a real not-found page, not a retry prompt', async ({ page }) => {
+    await visit(page, '/speakers/999999');
+    await expect(page.getByRole('heading', { name: 'Speaker not found' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try again' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'All speakers' })).toBeVisible();
+    await expect(page).toHaveTitle("Not found · ORBIT '26");
+    await shotForPR(page, 'speaker-not-found');
+  });
+
+  test('a genuine failure loading a speaker still offers a retry', async ({ page }) => {
+    await page.route('**/api/speakers/1**', (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+    await visit(page, '/speakers/1');
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 });
 

@@ -221,6 +221,17 @@ export function ErrorState({ error, onRetry }) {
   );
 }
 
+/** For a 404 that can never succeed on retry — a link back, not a "Try again". */
+export function NotFoundState({ title, backTo, backLabel }) {
+  return (
+    <EmptyState
+      icon="search"
+      title={title}
+      action={<Button to={backTo} variant="primary" size="sm">{backLabel}</Button>}
+    />
+  );
+}
+
 /* ---------------------------------- Stat --------------------------------- */
 /** `note` is a second, quieter line under the label — a caveat on the number. */
 export function Stat({ value, label, accent: accentName = 'violet', testId, note = null }) {

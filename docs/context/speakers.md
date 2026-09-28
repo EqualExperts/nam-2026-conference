@@ -88,7 +88,10 @@ falls back to `Avatar` when `imageUrl` is null. The heading is the speaker name.
 
 **`SpeakerPage`** (`data-testid="speaker-detail"`) — `useFetch(api.getSpeaker,
 [id, following])`: it refetches when you (un)follow so `followerCount` stays
-right. Header uses `GeneratedCover variant="strata"`; name is
+right. An unknown id (`error.status === 404`) renders `NotFoundState`
+("Speaker not found", back to `/speakers`) instead of `ErrorState` — a 404
+can never succeed on retry; any other failure still shows `ErrorState` with
+"Try again". Header uses `GeneratedCover variant="strata"`; name is
 `data-testid="speaker-name"`; the follow button is
 `data-testid="follow-speaker"` with `aria-pressed`. Socials (`SOCIALS` +
 `handleOf`) render as plain spans with `BrandIcon`, never links. Sessions are

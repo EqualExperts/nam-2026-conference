@@ -8,7 +8,7 @@ import { SessionCard } from '../components/SessionCard.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SeatPanel } from '../components/SeatPanel.jsx';
 import { AttendancePanel } from '../components/AttendancePanel.jsx';
-import { Avatar, Button, Chip, EmptyState, ErrorState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
+import { Avatar, Button, Chip, ErrorState, NotFoundState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 import { hasEnded } from '../lib/clock.js';
@@ -47,7 +47,8 @@ export function SessionPage() {
   const { id } = useParams();
   const { currentUserId, reservationFor, toggleSeat, seatsFor, clock } = useConference();
   const { data: session, loading, error, reload } = useFetch(() => api.getSession(id, currentUserId), [id, currentUserId]);
-  useDocumentTitle(session?.title);
+  const notFound = error?.status === 404;
+  useDocumentTitle(notFound ? 'Not found' : session?.title);
 
   if (loading) {
     return (
@@ -58,8 +59,9 @@ export function SessionPage() {
       </div>
     );
   }
+  if (notFound) return <NotFoundState title="Session not found" backTo="/schedule" backLabel="Browse the schedule" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
-  if (!session) return <EmptyState title="Session not found" />;
+  if (!session) return <NotFoundState title="Session not found" backTo="/schedule" backLabel="Browse the schedule" />;
 
   const a = accent(session.track.color);
   const reservation = reservationFor(session.id);
