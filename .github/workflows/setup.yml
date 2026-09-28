@@ -73,10 +73,14 @@ jobs:
                 -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
                 -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}')
               problem=$(printf '%s' "$reply" | jq -r 'if .type == "error" then .error.message else empty end' 2>/dev/null || echo "no reply from the API")
+              # Also as an annotation: the summary page is not readable from
+              # the API, and "does the key work" is the question people ask.
               if [ -z "$problem" ]; then
                 echo "| \`ANTHROPIC_API_KEY\` secret | ✅ set, and it works |"
+                echo "::notice title=API key::works" >&2
               else
                 echo "| \`ANTHROPIC_API_KEY\` secret | ❌ **set, but the API refuses it:** $problem |"
+                echo "::error title=API key::$problem" >&2
               fi
             else
               echo "| \`ANTHROPIC_API_KEY\` secret | ❌ **missing — nothing will run** |"
