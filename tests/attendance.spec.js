@@ -1,16 +1,29 @@
 import { test, expect } from '@playwright/test';
 import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES, failOnPageErrors } from './helpers.js';
 
-/** The first non-keynote, non-Social session on `day` this attendee has not checked into. */
-async function unattendedFor(request, userId, day) {
+/**
+ * A non-keynote, non-Social session on `day` this attendee has not checked
+ * into, starting at `slot` — the lane's pin, so a concurrently running seats
+ * lane on the same attendee and day never lands on the same session.
+ */
+async function unattendedFor(request, userId, day, slot) {
   const me = await (await request.get(`${API}/users/${userId}`)).json();
   const been = new Set(me.checkIns ?? []);
   const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
   return all
-    .filter((s) => !s.isKeynote && s.format !== 'Social' && !been.has(s.id))
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+    .filter((s) => !s.isKeynote && s.format !== 'Social' && !been.has(s.id) && s.startsAt === slot)
+    .sort((a, b) => a.id - b.id)[0];
 }
 
+/**
+ * `failOnPageErrors`'s console listener also catches Chromium's own "Failed
+ * to load resource: the server responded with a status of 409" log line,
+ * which the browser prints for any non-2xx fetch regardless of whether the
+ * app handles it. The two tests below force a 409 on purpose, so that line
+ * is expected noise, not the "unhandled promise rejection" the assertion is
+ * actually checking for; a `pageerror` (the real thing) is still fatal.
+ */
+const unexpected = (errors) => errors.filter((e) => !e.startsWith('Failed to load resource:'));
 
 /** The first slot where this attendee can book at least two sessions with seats. */
 async function busySlot(request, userId, day) {
@@ -186,8 +199,8 @@ test.describe('Check in and rate', () => {
   });
 
   test('checking in toasts a confirmation, and a rejected check-in toasts instead of throwing', async ({ page, request }, testInfo) => {
-    const { user, day } = await laneFor('attendance.checkin-toast', testInfo);
-    const target = await unattendedFor(request, user, day);
+    const { user, day, slot } = await laneFor('attendance.checkin-toast', testInfo);
+    const target = await unattendedFor(request, user, day, slot);
     test.skip(!target, 'no un-attended session left on this day');
 
     const errors = failOnPageErrors(page);
@@ -206,12 +219,12 @@ test.describe('Check in and rate', () => {
     await expect(page.getByTestId('toaster')).toContainText('Checked in');
     await expect(page.getByTestId('checked-in')).toBeVisible();
 
-    expect(errors).toEqual([]);
+    expect(unexpected(errors)).toEqual([]);
   });
 
   test('rating toasts Rating saved, then Rating updated, and a rejection toasts too', async ({ page, request }, testInfo) => {
-    const { user, day } = await laneFor('attendance.rating-toast', testInfo);
-    const target = await unattendedFor(request, user, day);
+    const { user, day, slot } = await laneFor('attendance.rating-toast', testInfo);
+    const target = await unattendedFor(request, user, day, slot);
     test.skip(!target, 'no un-attended session left on this day');
 
     await request.put(`${API}/users/${user}/checkins/${target.id}`, {
@@ -239,7 +252,7 @@ test.describe('Check in and rate', () => {
     await expect(page.getByTestId('toaster')).toContainText('You need to check in before you can rate this');
     await expect(page.getByTestId('submit-rating')).toHaveText('Update rating');
 
-    expect(errors).toEqual([]);
+    expect(unexpected(errors)).toEqual([]);
   });
 });
 

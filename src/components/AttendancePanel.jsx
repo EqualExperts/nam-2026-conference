@@ -4,6 +4,7 @@ import * as api from '../lib/api.js';
 import { time as fmtTime } from '../lib/format.js';
 import { Button, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { useToast } from './Toaster.jsx';
 
 /**
  * Turning up, and saying what you thought.
@@ -12,6 +13,17 @@ import { Icon } from './Icon.jsx';
  * Rating is gated on having checked in — otherwise a rating is an opinion
  * about a title, which is how session scores become meaningless.
  */
+
+// The `rejected` reason attendance.js puts on a 409 body, mapped to a short
+// sentence. `unknown` and anything else fall through to `err.message` — the
+// UI cannot trigger `unknown` since the clock is always present.
+const REJECTION_MESSAGES = {
+  future: 'Check-in has not opened yet',
+  past: 'This session has already finished',
+  'not-checked-in': 'You need to check in before you can rate this',
+  'too-early': 'You can rate this once the session ends',
+};
+
 function Stars({ value, onChange, readOnly }) {
   const [hover, setHover] = useState(0);
   const shown = hover || value;
@@ -47,6 +59,7 @@ export function AttendancePanel({ session }) {
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   // Start the form from the saved rating, so editing moves the stars and a
   // comment can be cleared. Keyed on the saved values, not the payload, so a
@@ -61,9 +74,17 @@ export function AttendancePanel({ session }) {
   if (!data) return null;
   const holdsSeat = reservationFor(session.id) === 'confirmed';
 
-  const submit = async (fn) => {
+  const submit = async (fn, successMessage) => {
     setBusy(true);
-    try { await fn(); reload(); } finally { setBusy(false); }
+    try {
+      await fn();
+      reload();
+      toast({ message: successMessage, icon: 'check' });
+    } catch (err) {
+      toast({ message: REJECTION_MESSAGES[err.payload?.rejected] ?? err.message, icon: 'alert' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   // Before the doors open — nothing to do yet.
@@ -94,7 +115,7 @@ export function AttendancePanel({ session }) {
             className="w-full"
             disabled={busy}
             data-testid="check-in"
-            onClick={() => submit(() => api.checkIn(currentUserId, session.id, clock))}
+            onClick={() => submit(() => api.checkIn(currentUserId, session.id, clock), 'Checked in')}
           >
             <Icon name="check" className="size-4" />
             {busy ? 'Checking in…' : 'Check in'}
@@ -144,7 +165,7 @@ export function AttendancePanel({ session }) {
                   stars,
                   comment,
                   ...clock,
-                }))}
+                }), data.myRating ? 'Rating updated' : 'Rating saved')}
               >
                 {busy ? 'Saving…' : data.myRating ? 'Update rating' : 'Submit rating'}
               </Button>

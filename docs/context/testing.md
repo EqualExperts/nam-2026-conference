@@ -188,6 +188,10 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   `bookableFor`, which can land on a seat-count lane's session. Check the whole table, not
   just lanes for the same attendee. Mark `clean: true` only if the seed books nothing for
   that attendee that day (seed doc lists who has which days). Read it with
-  `const { user, day } = await laneFor('area.case', testInfo)`.
+  `const { user, day } = await laneFor('area.case', testInfo)`. A lane whose test never
+  reserves or releases a seat — check-in, rating — cannot move `seatsLeft`, so it may reuse
+  a seat-count lane's slot on day index 2; it still needs a `slot` distinct from any other
+  entry for the *same* attendee and day, because `lanes.test.js` checks that pairing, not
+  what the test writes (`attendance.checkin-toast`/`attendance.rating-toast` do this).
 - New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex.
 - New endpoint: `tests/api/endpoints.test.js` (see architecture).
