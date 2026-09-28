@@ -16,6 +16,10 @@ npm install && npm run dev     # seeds, starts API + web on :5173
 ```
 
 No login — pick an attendee from the switcher. Two of them are also speaking.
+**The conference is always today:** seeding makes Day 1 the day you run it, so
+you arrive mid-conference and the clock ticks while you watch (pin it with
+`?at=YYYY-MM-DDTHH:MM`). Node 22 · Express · better-sqlite3 · React 18 · Vite 6
+· Tailwind v4 · Playwright — no ORM, no state library, no component kit.
 
 > [!IMPORTANT]
 > **Forked or copied this repo? The agents will not run until you do this.**
@@ -155,24 +159,6 @@ forty of them.
 
 Then open an issue with a **Done when:** clause, label it `ready-for-ai`, and
 watch the Actions tab.
-
-## Commands
-
-| | |
-| --- | --- |
-| `npm run dev` | Seed, then API + web together |
-| `npm test` | Unit + API — no browser, under a second |
-| `npm run verify` | Playwright, desktop and mobile (`node scripts/gate.mjs` is both suites, as the agents run them) |
-| `npm run shot -- /schedule` | Screenshot a route |
-| `npm run db:reset` | Rebuild the database — Day 1 becomes today |
-| `node scripts/lane.mjs claim 42` | A port pair, so several agents can work at once |
-
-Node 22 · Express · better-sqlite3 · React 18 · Vite 6 · Tailwind v4 ·
-Playwright. No ORM, no state library, no component kit.
-
-**The conference is always today.** Seeding makes Day 1 the day you run it, so
-you arrive mid-conference and the clock ticks while you watch. Pin it with
-`?at=YYYY-MM-DDTHH:MM`.
 
 ## Read next
 
