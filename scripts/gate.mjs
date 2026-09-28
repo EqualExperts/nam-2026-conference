@@ -97,7 +97,37 @@ export function isDirty(porcelain, pinned = []) {
 
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 
+/**
+ * The processes to stop before the suite boots its own app: listeners on this
+ * run's ports whose working directory is inside this checkout — a dev server an
+ * agent started and never stopped. On #67 the spec writer ran `npm run dev &`
+ * to look at a 404, and an hour later the gate could not start its app on the
+ * same port. A listener from anywhere else is never touched.
+ * `listeners`: [{ pid, cwd }].
+ */
+export function strays(listeners, root) {
+  const inside = (dir) => dir === root || dir.startsWith(root.endsWith('/') ? root : `${root}/`);
+  return listeners.filter((l) => l.cwd && inside(l.cwd)).map((l) => l.pid);
+}
+
+function listenersOn(ports) {
+  const out = [];
+  for (const port of ports) {
+    const pids = spawnSync('lsof', ['-t', `-iTCP:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).stdout || '';
+    for (const pid of pids.split('\n').filter(Boolean)) {
+      const cwd = (spawnSync('lsof', ['-a', '-p', pid, '-d', 'cwd', '-Fn'], { encoding: 'utf8' }).stdout || '')
+        .split('\n').find((l) => l.startsWith('n'))?.slice(1);
+      out.push({ pid: Number(pid), cwd });
+    }
+  }
+  return out;
+}
+
 function main() {
+  for (const pid of strays(listenersOn([process.env.PORT ?? 3001, process.env.WEB_PORT ?? 5173]), ROOT)) {
+    try { process.kill(pid); console.error(`gate: stopped a server this checkout left running (pid ${pid})`); } catch { /* gone */ }
+  }
+
   mkdirSync(OUT, { recursive: true });
   const json = join(OUT, 'gate-playwright.json');
   const sha = git('rev-parse', 'HEAD');

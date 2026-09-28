@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -96,5 +96,19 @@ describe('a tree with work the pull request will not contain', () => {
     const status = ' M playwright.config.js\n M scripts/gate.mjs';
     assert.equal(isDirty(status, ['playwright.config.js', 'scripts/gate.mjs']), false);
     assert.equal(isDirty(status + '\n M src/App.jsx', ['playwright.config.js', 'scripts/gate.mjs']), true);
+  });
+});
+
+describe('strays', () => {
+  test('stops only a listener this checkout started, never another worktree\'s', () => {
+    const root = '/w/orbit-wt-67';
+    const listeners = [
+      { pid: 1, cwd: '/w/orbit-wt-67' },
+      { pid: 2, cwd: '/w/orbit-wt-67/server' },
+      { pid: 3, cwd: '/w/orbit-wt-670' },
+      { pid: 4, cwd: '/w/orbit-wt-65' },
+      { pid: 5, cwd: undefined },
+    ];
+    assert.deepEqual(strays(listeners, root), [1, 2]);
   });
 });

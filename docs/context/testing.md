@@ -14,6 +14,7 @@ files:
   - .github/workflows/verify.yml
 tests:
   - tests/unit/lane.test.js
+  - tests/unit/lanes.test.js
   - tests/smoke.spec.js
 related: [seed, architecture, clock, seats, harness]
 ---
