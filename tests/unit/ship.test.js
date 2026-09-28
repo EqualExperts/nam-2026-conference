@@ -61,6 +61,27 @@ async function run(answers = {}, args = 7) {
   return { result, calls, prompts, models };
 }
 
+describe('ship-rote', () => {
+  test('the rote steps ask for the lean agent type, and fall back to a plain agent where it is not loaded', async () => {
+    const seen = [];
+    const agent = async (prompt, opts) => {
+      seen.push([opts.label, opts.agentType]);
+      if (opts.agentType === 'ship-rote') throw new Error("agent({agentType}): agent type 'ship-rote' not found. Available agents: claude");
+      if (opts.label === 'setup') return SETUP;
+      if (opts.label.startsWith('verify')) return GREEN;
+      if (opts.label.includes('audit')) return { covered: 'all', findings: [] };
+      if (opts.label === 'write-spec') return { path: 'specs/7-hours.md', summary: 's' };
+      if (opts.label === 'open-pr') return { ok: true, summary: 'ok', url: 'u' };
+      return { ok: true, summary: 'done' };
+    };
+    const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
+    const result = await script(7, agent, parallel, () => {}, () => {});
+    assert.equal(result.outcome, 'shipped');
+    assert.deepEqual(seen.filter(([l]) => l === 'verify#1' || l === 'open-pr'),
+      [['verify#1', 'ship-rote'], ['verify#1', undefined], ['open-pr', 'ship-rote'], ['open-pr', undefined]]);
+  });
+});
+
 describe('ship', () => {
   test('a clean ticket runs every phase once and ships', async () => {
     const { result, calls } = await run();

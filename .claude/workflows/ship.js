@@ -49,6 +49,14 @@ const ROTE = 'haiku'
 // both, and its context starts ~26% smaller than a general agent's (13.6k
 // against 18.4k tokens, measured) — paid again on every turn it takes.
 const ROTE_AGENT = 'ship-rote'
+// A session loads its agent types when it starts, so one opened before
+// ship-rote.md existed throws "agent type 'ship-rote' not found" — and the
+// whole run with it. Fall back to a plain agent: slower, never broken.
+const rote = (prompt, opts) => agent(prompt, { ...opts, agentType: ROTE_AGENT }).catch((e) => {
+  if (!/agent type .* not found/i.test(String(e && e.message))) throw e
+  log(`${ROTE_AGENT} is not loaded in this session — ${opts.label} runs as a plain agent`)
+  return agent(prompt, opts)
+})
 let T = TIERS.full
 // The same finding confirmed this many rounds running means the fixer cannot
 // fix it. Escalate early instead of spending the remaining rounds.
@@ -615,12 +623,12 @@ for (let round = 1; ; round++) {
   phase('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
   // baseline before it runs anything, and red-check needs no judgement.
-  const ran = await agent(
+  const ran = await rote(
     `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Change nothing and interpret nothing.`,
-    { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE, agentType: ROTE_AGENT },
+    { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
@@ -766,7 +774,7 @@ const auditTable = [
 // shape is given here, nothing is re-verified, and only a visible change —
 // screenshots are a judgement — gets more than the rote model.
 const visible = built.ui !== false
-const pr = await agent(
+const pr = await rote(
   `${ticket}\n\n${inTree({ releases: true })}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
   `not re-read the spec, the playbook or the code, and do not run tests. \`git diff --stat origin/${BASE}...HEAD\` ` +
   `and \`git log --oneline origin/${BASE}..HEAD\` are all you need for *Changed*. If \`git log ${gate.sha}..HEAD\` ` +
@@ -796,7 +804,7 @@ const pr = await agent(
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +
   `for review: <url>"\`; \`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
   (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
-  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: ROTE, agentType: ROTE_AGENT },
+  { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: ROTE },
 )
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
