@@ -63,12 +63,33 @@ let T = TIERS.full
 const STUCK_AFTER = 2
 
 // `/ship 42`, `/ship 42 <what the person said>` (a comment that asked for
-// this run), or `{ issue, base, notes }`.
+// this run), `/ship 42 43 44` (several tickets, in parallel), or
+// `{ issue, base, notes }`.
 const argText = typeof args === 'object' && args ? '' : String(args ?? '').trim()
-const issue = Number(typeof args === 'object' && args ? args.issue : (/^#?(\d+)/.exec(argText) || [])[1])
+// The leading run of issue numbers: `42`, `42 43 44`, `#42, #43 and #44`.
+const LEAD = (/^#?\d+(?:(?:\s*,\s*|\s+and\s+|\s+)#?\d+)*/.exec(argText) || [''])[0]
+const ISSUES = [...new Set((LEAD.match(/\d+/g) || []).map(Number))]
+const issue = Number(typeof args === 'object' && args ? args.issue : ISSUES[0])
 const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small)\b/.exec(argText) || [])[1]
-const NOTES = String((typeof args === 'object' && args ? args.notes : argText.replace(/^#?\d+\s*/, '')) || '')
+const NOTES = String((typeof args === 'object' && args ? args.notes : argText.slice(LEAD.length)) || '')
   .replace(/@claude\b/gi, '').replace(/--(full|small)\b/g, '').trim()
+
+// Several tickets: one whole ship per ticket, all at once. Each gets its own
+// worktree and lane, so they build, boot the app and run the suite side by
+// side; each sizes itself, so a copy fix and a feature in the same batch get
+// the loops they need. A ticket that fails does not stop the others.
+if (ISSUES.length > 1 && !(typeof args === 'object' && args)) {
+  if (typeof workflow !== 'function') {
+    return { outcome: 'error', reason: 'shipping several tickets needs the workflow() hook — run each with /ship <n>' }
+  }
+  log(`shipping ${ISSUES.length} tickets in parallel: ${ISSUES.map(n => `#${n}`).join(', ')}`)
+  const runs = await parallel(ISSUES.map(n => () =>
+    workflow('ship', { issue: n, notes: NOTES, ...(FORCED ? { size: FORCED } : {}) })))
+  return {
+    outcome: 'batch',
+    runs: runs.map((r, i) => r || { outcome: 'error', issue: ISSUES[i], reason: 'the run died' }),
+  }
+}
 // The branch the work starts from and the pull request targets. `main`
 // unless this ticket stacks on another pull request that has not landed.
 const BASE = (typeof args === 'object' && args && args.base) || 'main'

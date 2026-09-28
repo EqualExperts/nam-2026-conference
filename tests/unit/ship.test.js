@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('../../.claude/workflows/ship.js', import.meta.url), 'utf8')
   .replace(/^export const meta/m, 'const meta');
 const AsyncFunction = (async () => {}).constructor;
-const script = new AsyncFunction('args', 'agent', 'parallel', 'phase', 'log', source);
+const script = new AsyncFunction('args', 'agent', 'parallel', 'phase', 'log', 'workflow', source);
 
 const SETUP = {
   proceed: true, reason: 'ok', title: 'Total hours', slug: 'hours', branch: 'issue-7-hours',
@@ -60,6 +60,33 @@ async function run(answers = {}, args = 7) {
   const result = await script(args, agent, parallel, () => {}, () => {});
   return { result, calls, prompts, models };
 }
+
+describe('several tickets at once', () => {
+  const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
+  const agent = async () => { throw new Error('the batch itself runs no agent'); };
+
+  test('`/ship 64 65 66` runs one whole ship per ticket, in parallel, with the notes and size passed on', async () => {
+    const calls = [];
+    const workflow = async (name, a) => { calls.push([name, a]); return { outcome: 'shipped', issue: a.issue }; };
+    const result = await script('64, #65 and 66 keep it small --small', agent, parallel, () => {}, () => {}, workflow);
+    assert.equal(result.outcome, 'batch');
+    assert.deepEqual(calls.map(([n, a]) => [n, a.issue]), [['ship', 64], ['ship', 65], ['ship', 66]]);
+    assert.equal(calls[0][1].notes, 'keep it small');
+    assert.equal(calls[0][1].size, 'small');
+    assert.deepEqual(result.runs.map(r => r.outcome), ['shipped', 'shipped', 'shipped']);
+  });
+
+  test('one ticket that dies does not stop the others', async () => {
+    const workflow = async (name, a) => (a.issue === 65 ? null : { outcome: 'shipped', issue: a.issue });
+    const result = await script('64 65', agent, parallel, () => {}, () => {}, workflow);
+    assert.deepEqual(result.runs.map(r => r.outcome), ['shipped', 'error']);
+  });
+
+  test('a single number with notes that contain numbers is still one ticket', async () => {
+    const { prompts } = await run({}, '7 the total should read 12 hours');
+    assert.match(prompts['write-spec'] || prompts.setup, /the total should read 12 hours/);
+  });
+});
 
 describe('ship-rote', () => {
   test('the rote steps ask for the lean agent type, and fall back to a plain agent where it is not loaded', async () => {
