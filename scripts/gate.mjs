@@ -36,9 +36,13 @@ export function summarise(report) {
   // Named, not just counted: a flake in the test the branch just added is a
   // finding, and a count cannot say which one it was.
   const flakyTests = [];
+  // file › title → the status on each project, to find a test no project ran.
+  const byTest = new Map();
   const walk = (suite, file) => {
     for (const spec of suite.specs || []) {
       for (const t of spec.tests || []) {
+        const k = `${spec.file || file} › ${spec.title}`;
+        byTest.set(k, [...(byTest.get(k) || []), t.status]);
         if (t.status === 'flaky') { flakyTests.push(`[${t.projectName}] ${spec.file || file}:${spec.line} › ${spec.title}`); continue; }
         if (t.status !== 'unexpected') continue;
         const last = (t.results || []).at(-1) || {};
@@ -56,7 +60,34 @@ export function summarise(report) {
     failed.push({ test: e.location ? `${e.location.file}:${e.location.line}` : 'playwright', error: msg.split('\n').slice(0, 6).join('\n') });
   }
   const st = report.stats || {};
-  return { passed: st.expected || 0, failed, flaky: st.flaky || 0, flakyTests, skipped: st.skipped || 0 };
+  const neverRan = [...byTest].filter(([, statuses]) => statuses.every(x => x === 'skipped')).map(([k]) => k);
+  return { passed: st.expected || 0, failed, flaky: st.flaky || 0, flakyTests, skipped: st.skipped || 0, neverRan };
+}
+
+/** A unified diff → `file › title` of every browser test it adds. */
+export function addedTests(diff) {
+  const out = [];
+  let file = null;
+  for (const line of diff.split('\n')) {
+    const header = /^diff --git a\/\S+ b\/(\S+)/.exec(line);
+    if (header) { file = header[1].replace(/^tests\//, ''); continue; }
+    const t = file && file.endsWith('.spec.js') && /^\+\s*test\(\s*(['"`])(.+?)\1/.exec(line);
+    if (t) out.push(`${file} › ${t[2].replace(/\\'/g, "'")}`);
+  }
+  return out;
+}
+
+/**
+ * The tests this branch added that skipped on every project: they never ran,
+ * so they prove nothing — yet the gate passed them, and on #76 code review and
+ * QA both counted them as coverage. Each is a failure to aim a fix at.
+ */
+export function neverRanAdded(neverRan, added) {
+  const mine = new Set(added);
+  return neverRan.filter(k => mine.has(k)).map(test => ({
+    test,
+    error: 'skipped on every project — a test the branch added that never ran proves nothing; make its precondition hold (a lane, a slot, a pinned clock) rather than skipping',
+  }));
 }
 
 /** A unified diff of tests/ → the lines that weaken the suite. */
@@ -155,6 +186,10 @@ function main() {
   // another pull request.
   const base = process.env.GATE_BASE || 'origin/main';
   try { diff = git('diff', `${base}...HEAD`, '--', ...WATCHED); } catch { /* no base to compare with */ }
+
+  let testDiff = '';
+  try { testDiff = git('diff', `${base}...HEAD`, '--', 'tests/'); } catch { /* no base */ }
+  browser.failed.push(...neverRanAdded(browser.neverRan || [], addedTests(testDiff)));
 
   const unitFailed = unit.status !== 0;
   const result = {

@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -110,5 +110,40 @@ describe('strays', () => {
       { pid: 5, cwd: undefined },
     ];
     assert.deepEqual(strays(listeners, root), [1, 2]);
+  });
+});
+
+describe('a test the branch added that never ran', () => {
+  // The shape Playwright's JSON reporter writes: one suite per project.
+  const spec = (title, status) => ({ file: 'attendance.spec.js', line: 1, title, tests: [{ projectName: 'x', status }] });
+  const report = {
+    suites: [
+      { file: 'attendance.spec.js', specs: [spec('rating toasts', 'skipped'), spec('old desktop-only test', 'skipped'), spec('checks in', 'expected')] },
+      { file: 'attendance.spec.js', specs: [spec('rating toasts', 'skipped'), spec('old desktop-only test', 'expected'), spec('checks in', 'skipped')] },
+    ],
+    stats: { expected: 3, skipped: 3 },
+  };
+  const diff = [
+    'diff --git a/tests/attendance.spec.js b/tests/attendance.spec.js',
+    "+  test('rating toasts', async ({ page }) => {",
+    "+  test('checks in', async ({ page }) => {",
+    '+    test.skip(!target, "no un-attended session left on this day");',
+  ].join('\n');
+
+  test('is a failure only when it skipped on every project and the branch added it — #76', () => {
+    const { neverRan } = summarise(report);
+    assert.deepEqual(neverRan, ['attendance.spec.js › rating toasts']);
+    const failed = neverRanAdded(neverRan, addedTests(diff));
+    assert.deepEqual(failed.map(f => f.test), ['attendance.spec.js › rating toasts']);
+    assert.match(failed[0].error, /never ran proves nothing/);
+  });
+
+  test('an old test that skips everywhere is not the branch\'s to answer for', () => {
+    assert.deepEqual(neverRanAdded(['attendance.spec.js › legacy'], addedTests(diff)), []);
+  });
+
+  test('added titles are read from the diff, in any quote style', () => {
+    const d = 'diff --git a/tests/a.spec.js b/tests/a.spec.js\n+test("double", () => {})\n+  test(`tick`, () => {})\n-  test(\'removed\', () => {})';
+    assert.deepEqual(addedTests(d), ['a.spec.js › double', 'a.spec.js › tick']);
   });
 });

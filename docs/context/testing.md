@@ -162,6 +162,9 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   totalled across the conference — the hours tile, a whole-plan count — still moves when
   another lane writes for the same attendee on a different day; assert those from one
   payload, or pick an attendee no other lane uses at all.
+- **A browser test the branch added that skips on every project fails the gate** (`neverRanAdded` in
+  `scripts/gate.mjs`): it never ran, so it proves nothing. Make its precondition hold — a lane, a
+  slot, a pinned clock — rather than letting `test.skip(!target, …)` fire.
 - `tests/unit/lanes.test.js` fails `npm test` when two panes share an attendee and day
   (unless one is `readOnly: true`, exactly one is `agenda: false`, or both pin distinct
   `slot`s) — mark a lane that reads only `readOnly`, and one that writes check-ins or
