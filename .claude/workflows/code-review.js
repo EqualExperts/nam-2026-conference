@@ -300,7 +300,8 @@ log(`depth ${DEPTH} · size ${FACTS.size || 'unknown'} · tier ${TIER} · kinds:
 
 phase('Review')
 const lens = (l, retry) => agent(
-  `${HERE}You are reviewing a pull request you did not write. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
+  `${HERE}You are reviewing a pull request you did not write. Each turn re-reads everything before it, so batch ` +
+  `the reads you know you need into one command, and do not run the test suite — the gate has. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
   `\`gh pr diff ${pr}\`, the spec in specs/ if the branch has one, and the docs/context/ docs that own the ` +
   `changed files (\`node scripts/context.mjs for <files>\`, then \`show <doc>\` for its outline and \`show <doc> <part>\` ` +
   `for the parts you need — not whole docs). Your lens only: ${l.ask}\n\n` +

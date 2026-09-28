@@ -47,6 +47,13 @@ const HERE = WORKDIR
   : ''
 
 const PLAYBOOK = 'docs/harness/qa-playbook.md'
+// A section of the playbook in one read, and the reading discipline every QA
+// agent needs: each turn re-reads everything before it, so a turn per grep and
+// a whole doc "for context" are what a QA pass mostly pays for.
+const qaSection = (from, to) => `\`awk '/^## ${from}\\./,/^## ${to}\\./' ${PLAYBOOK}\``
+const LEAN = `Batch the reads you already know you need into one command (\`; echo ---;\` between them), read ` +
+  `docs by the part (\`node scripts/context.mjs show <doc> <part>\`), and do not run \`npm test\` or the whole ` +
+  `suite — only your probes. `
 const PROBE_FILE = 'tests/qa-probe.spec.js'
 // Five, not eight: each browser probe runs on both viewports on a 2-core
 // runner, and eight of them plus reproductions ran QA past its time limit.
@@ -312,7 +319,7 @@ const browserProbes = plan.probes.filter(p => (p.kind || 'browser') === 'browser
 const commandProbes = plan.probes.filter(p => p.kind === 'command')
 phase('Probe')
 const ranCommands = commandProbes.length ? await agent(
-  `${HERE}Run each of these command probes for pull request #${pr} in this checkout, exactly as written, ` +
+  `${HERE}${LEAN}Run each of these command probes for pull request #${pr} in this checkout, exactly as written, ` +
   `and report each id's result as \`command\`: pass if what happened is what was expected, fail if not (say ` +
   `what happened), not-run if it could not be run. Put scratch files under a mktemp -d directory; change no ` +
   `tracked file; touch nothing on GitHub.\n\n` +
@@ -320,10 +327,10 @@ const ranCommands = commandProbes.length ? await agent(
   { phase: 'Probe', label: 'probe-commands', schema: RAN, model: MODEL },
 ) : { results: [] }
 const ranBrowser = browserProbes.length ? await agent(
-  `${HERE}Write ${PROBE_FILE} with one Playwright test per probe below, titled with its id, following §2 of ` +
-  `${PLAYBOOK}: \`visit(page, path, { as, at })\` from tests/helpers.js, roles and test ids, a pinned clock. ` +
-  `Do not start the app yourself. Run it once per project — \`npx playwright test ${PROBE_FILE} ` +
-  `--project=desktop --reporter=json\`, then mobile — and report each probe's result from the JSON. Leave ` +
+  `${HERE}${LEAN}Write ${PROBE_FILE} with one Playwright test per probe below, titled with its id, following §2 of ` +
+  `${PLAYBOOK} (${qaSection(2, 3)}): \`visit(page, path, { as, at })\` from tests/helpers.js, roles and test ids, a pinned clock. ` +
+  `Do not start the app yourself. Run it once for both projects — \`npx playwright test ${PROBE_FILE} ` +
+  `--reporter=json\` runs desktop and mobile together — and report each probe's result from the JSON. Leave ` +
   `the file in place; a later phase needs it.\n\n` +
   browserProbes.map(p => `- ${p.id}${p.viewport && p.viewport !== 'both' ? ` (${p.viewport} only)` : ''}: ${p.what} — expect: ${p.expect}`).join('\n'),
   { phase: 'Probe', label: 'probe', schema: RAN, model: MODEL },
@@ -346,14 +353,14 @@ for (const p of failing) {
   const project = r.command === 'fail' ? 'command' : r.desktop === 'fail' ? 'desktop' : 'mobile'
   const repro = p.kind === 'command' ? await agent(
     `${HERE}A command probe failed on pull request #${pr}: "${p.id}" — \`${p.run || p.what}\`; expected ${p.expect}; ` +
-    `got ${r.happened || 'a failure'}. Follow §3 of ${PLAYBOOK}. Run it again here. Then on the base: \`git ` +
+    `got ${r.happened || 'a failure'}. ${LEAN}Follow §3 of ${PLAYBOOK} (${qaSection(3, 4)}). Run it again here. Then on the base: \`git ` +
     `worktree add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, run the same command there, and ` +
     `remove the worktree — never check out another commit in this tree. onBase is not-applicable when what it ` +
     `runs does not exist on the base.`,
     { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO, model: MODEL },
   ) : await agent(
     `${HERE}A QA probe failed on pull request #${pr}: "${p.id}" (${project}) — ${p.what}; expected ${p.expect}; got ` +
-    `${r.happened || 'a failure'}. Follow §3 of ${PLAYBOOK}. Run it again on this checkout: ` +
+    `${r.happened || 'a failure'}. ${LEAN}Follow §3 of ${PLAYBOOK} (${qaSection(3, 4)}). Run it again on this checkout: ` +
     `\`npx playwright test ${PROBE_FILE} -g "${p.id}" --project=${project}\`. Then on the base: \`git worktree ` +
     `add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, copy the probe file in, run it there, and ` +
     `remove the worktree — never check out another commit in this tree. If it reproduces on the branch and the ` +
@@ -376,7 +383,7 @@ for (const p of failing) {
   if (kind === 'bug' && !again) {
     const v = await agent(
       `${HERE}QA reproduced this on pull request #${pr} and not on its base: "${p.id}" — ${p.what}; expected ` +
-      `${p.expect}; happened: ${repro.happened}. Try to REFUTE that it is a bug in this change. Read the probe ` +
+      `${p.expect}; happened: ${repro.happened}. Try to REFUTE that it is a bug in this change. ${LEAN}Read the probe ` +
       `(${PROBE_FILE} or the command) and \`gh pr diff ${pr}\`. Refute if the probe itself is wrong (a wrong ` +
       `selector, a wrong expectation, the ticket asking for this behaviour), if it tests code or tests the PR ` +
       `adds against the base's version of the code they cover, if the failure is the environment (ports, data ` +
