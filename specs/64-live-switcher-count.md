@@ -52,6 +52,15 @@ This is false on `main` today: the switcher renders `reservedCount` for every
 row unconditionally, so steps 3 and 4 currently see no change at all (the
 label stays at `before` throughout, not `before + 1` then `before` again).
 
+**Correction:** the test visits the session page without pinning the clock.
+The mobile lane books on day index 0 — the live conference day — so an
+unpinned clock projects the real time of day onto it, same as any other page;
+late enough in the day, the session `bookableFor` happens to pick has already
+"ended" by the projected clock, and `reserveSeat` returns its `rejected: 'ended'`
+409 instead of confirming, so `reservation-confirmed` never appears. Every
+other booking test in this file pins the clock to `momentOn(0, '07:00')` for
+exactly this reason; this test now does the same.
+
 ## Out of scope
 
 Anything about how a seat is booked or released — `server/lib/seats.js` and

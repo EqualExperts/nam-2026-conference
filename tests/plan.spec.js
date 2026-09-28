@@ -118,7 +118,11 @@ test.describe('My Agenda', () => {
     const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);
     expect(target, 'nothing bookable in this lane').toBeTruthy();
 
-    await visit(page, `/sessions/${target.id}`, { as: lane.user });
+    // Pin the clock: this lane books on day index 0, the live conference day, so
+    // an unpinned clock projects the real time of day onto it — late enough and
+    // the picked session already "ended", and reserveSeat 409s instead of
+    // confirming. Every other booking test in this file pins for the same reason.
+    await visit(page, `/sessions/${target.id}`, { as: lane.user, at: await momentOn(0, '07:00') });
 
     const digitOf = async (locator) => Number((await locator.textContent()).match(/(\d+) on agenda/)[1]);
 
