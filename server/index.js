@@ -10,6 +10,8 @@ import { usersRouter } from './routes/users.js';
 
 const PORT = process.env.PORT ?? 3001;
 
+const countSessions = db.prepare('SELECT COUNT(*) n FROM sessions');
+
 if (!existsSync(DB_PATH)) {
   console.error('✗ No database found. Run `npm run db:seed` first.');
   process.exit(1);
@@ -25,7 +27,7 @@ app.use('/api/speakers', speakersRouter);
 app.use('/api/users', usersRouter);
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, sessions: db.prepare('SELECT COUNT(*) n FROM sessions').get().n });
+  res.json({ ok: true, sessions: countSessions.get().n });
 });
 
 app.use('/api', (req, res) => res.status(404).json({ error: `No route for ${req.method} ${req.originalUrl}` }));
