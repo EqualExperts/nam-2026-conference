@@ -438,7 +438,7 @@ describe('ship', () => {
     assert.match(prompts['open-pr'], /do not run tests/);
     assert.match(prompts['open-pr'], /<summary>Audit rounds<\/summary>/);
     assert.match(prompts['open-pr'], /## What changes/);
-    assert.match(prompts['open-pr'], /## ✅ Done when\n- \[x\] /);
+    assert.match(prompts["open-pr"], /## ✅ Done when\n<one line per criterion, each in a few words/);
     assert.match(prompts['open-pr'], /## 🛡️ Checks\nAll tests pass — 178 unit · 155 browser/);
     assert.doesNotMatch(prompts['open-pr'], /following §8/);
     assert.match(prompts.implement, /shotForPR/);

@@ -856,7 +856,8 @@ const pr = await rote(
   `developer sees or gets now — not how it was built>\n\n` +
   `<media — each screenshot on its own line with a one-line bold caption above it>\n\n` +
   (built.tryIt ? `## 🧪 Try it\n${built.tryIt}\n\n` : '') +
-  `## ✅ Done when\n` + (setup.doneWhen || []).map(c => `- [x] ${c} — \`<the test that proves it>\``).join('\n') + `\n\n` +
+  `## ✅ Done when\n<one line per criterion, each in a few words — the full text is on the issue — then the test ` +
+  `that proves it:>\n` + (setup.doneWhen || []).map(c => `- [x] <${c.replace(/[<>]/g, '')}, shortened> — \`<test>\``).join('\n') + `\n\n` +
   (spec.decisions && spec.decisions.length
     ? `## 🤔 Decisions for you\n` + spec.decisions.map(d => `- ${d}`).join('\n') + `\n\n`
     : '') +
