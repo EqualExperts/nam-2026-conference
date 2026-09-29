@@ -77,6 +77,11 @@ workflow, the Actions YAML or a doc is probed by running it:
 
 Nothing that touches GitHub, and nothing that changes a tracked file.
 
+
+**Time is an edge.** When the change depends on the clock, one probe pins it before
+the change applies — Day 1 08:00, before the seed's already-attended morning has
+happened. #89 read "Rated ★5" for a talk an hour away, and only that probe saw it.
+
 ## 2. Write probes where Playwright will find them
 
 **Do not start the app yourself.** `playwright.config.js` has a `webServer`

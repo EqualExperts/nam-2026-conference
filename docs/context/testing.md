@@ -134,6 +134,10 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 
 ## Gotchas
 
+- **Pin the clock at every boundary the change depends on**, not only mid-morning:
+  before the first session of Day 1 (the seed's morning is already attended),
+  during a session, after it, and a later day. A test that only pins 10:30 passes
+  a UI that is wrong at 08:00 (#89).
 - Adding a lane: grep `tests/helpers.js` for the `user`+`day` pair you're about to use
   before writing it down — across all entries, desktop and mobile alike, plus the
   read-only fixtures in the `LANES` comment. A pair that looks free because no *other*

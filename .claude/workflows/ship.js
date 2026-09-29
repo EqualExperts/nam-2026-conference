@@ -567,6 +567,9 @@ const built = await agent(
   `added runs before you hand over, alone: \`npx playwright test <file> -g "<its title>"\` (on a laptop, behind ` +
   `the lane prefix). On #64 an unpinned clock in a new spec cost a whole red gate and a fix round. Return ok=false ` +
   `only if you hit something you cannot resolve; the summary names the proving test and the files changed. ` +
+  `Every state the change adds gets its own assertion — each branch of a status or label, the empty case, and, ` +
+  `when a state depends on the clock, a moment before it applies (Day 1 08:00: the seed's morning is already ` +
+  `attended and rated). On #70 an untested branch became a follow-up and an unpinned early morning an escape. ` +
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
   `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
   `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset. Set browserTest=true if you ` +
@@ -614,6 +617,8 @@ const CODE_LENSES_ALL = [
       `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
       `probe on main, \`git worktree add ../orbit-main-${issue} origin/${BASE}\`, symlink node_modules into it, and ` +
       `remove it after. Budget: ${SIZE === 'full' ? 'five probes' : 'two probes — a small change; spend them where the tests it added do not reach'}. ` +
+      `If the change depends on the time, one probe pins the clock before it applies — Day 1 08:00, when the ` +
+      `seed's morning has not happened yet. ` +
       `A reproduced bug in this change is a blocker; pre-existing is ` +
       `minor. If nothing visible changed, say so in covered and return no findings.`,
     model: 'sonnet',

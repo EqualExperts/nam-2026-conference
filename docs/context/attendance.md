@@ -99,6 +99,11 @@ Testids: `attendance-panel`, `check-in`, `checked-in`, `rating-form`,
 
 ## Gotchas
 
+- **The seed's past is already attended.** Day 1's morning is checked in to and
+  rated in the seed, so any status built from `check_ins` or `ratings` looks
+  right at 10:30 and lies at 08:00 — #89 showed "Rated ★5" for a talk an hour
+  away. Show nothing until the session's check-in opens, and prove it with the
+  clock pinned **before** the first session as well as after.
 - The UI's "checked in at" time is `checkedInAt.slice(11, 16)` — the real UTC
   wall-clock stamp, not conference time.
 - `attendanceWindow` compares days as `YYYY-MM-DD` strings; keep that format.
