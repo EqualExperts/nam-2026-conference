@@ -1,165 +1,151 @@
-# How the engineering harness works
+<div align="center">
 
-A GitHub Issue goes in; a pull request that has already been specified,
-tested, audited and fixed comes out — and then two independent passes judge it
-before a person merges. This page is the whole machine in one place: what runs,
-how hard each part works and why, and what it costs. The playbooks beside this
-file say how each step is *done*; `docs/context/harness.md` is the map an agent
-reads to change the machinery.
+# How the harness works
 
-```
-issue ──ship──▶ pull request ──▶ code review ─┐
-  ▲                                   QA ─────┼──▶ you merge
-  └── needs-human (draft PR + what is open) ◀─┘ (advisory, never blocking)
-```
+**Every step, every check, and why it is there**
 
-## The three workflows
+</div>
 
-| Workflow | Starts from | Does |
-| --- | --- | --- |
-| `ship` (`.claude/workflows/ship.js`) | `ready-for-ai` label, `@claude` on the issue, or `/ship 42` locally | Ticket → spec → spec audit → implement → gate ⇄ code audit → learn → PR |
-| `code-review` (`code-review.js`) | the PR opening, or being marked ready | Reads the ticket first, then the diff; blockers must survive a skeptic |
-| `qa` (`qa.js`) | the same | Plans probes, drives the app on both viewports, reproduces each failure on the branch **and** its base |
+![How agents work in this repo: a GitHub Issue goes to Ship, where an agent loop specs, builds, tests, audits and fixes until clean; then a pull request, independent code review and QA, and a person merges. A ticket that will not converge goes to needs-human with a draft PR.](../images/harness-flow.png)
 
-Each is a script, not a prompt: the control flow — loops, round limits, who
-judges what — is code, and every step is a fresh agent that never sees the
-reasoning of the one before it. That independence is what makes an audit an
+The [main README](../../README.md) shows what the harness does. This page is
+how: what runs, how hard each part works, what it costs, and what to do when it
+goes wrong. The playbooks next to this file say how each step is *done*;
+[`docs/context/harness.md`](../context/harness.md) is the map for changing the
+machinery itself.
+
+## 🧩 The pieces
+
+| | Workflow | Starts when | What it does |
+| --- | --- | --- | --- |
+| 🚢 | **ship** — [`ship.js`](../../.claude/workflows/ship.js) | `ready-for-ai` on an issue, `@claude` on an issue, or `/ship 42` | Ticket → plan → build → test ⇄ audit → pull request |
+| 🔍 | **code review** — [`code-review.js`](../../.claude/workflows/code-review.js) | a pull request opens, or is marked ready | Reads the ticket first, then the diff; every blocker must survive a skeptic |
+| 🧪 | **QA** — [`qa.js`](../../.claude/workflows/qa.js) | the same | Drives the app on desktop and mobile, and reproduces each failure on the branch **and** on `main` |
+| 💬 | **respond** — [`agent-respond.yml`](../../.github/workflows/agent-respond.yml) | `@claude …` on a pull request | Makes the change you asked for, runs the gate, replies |
+
+Each workflow is a **script, not a prompt**: the loops, the round limits and
+who judges what are code. Every step is a fresh agent that never sees the
+reasoning of the one before it — that independence is what makes an audit an
 audit.
 
-## Ship
+## 🚢 Inside ship
 
-### The loop
+| Step | What happens |
+| --- | --- |
+| **1. Setup** | Reads the ticket, checks it can be built, claims it (`ai-working`), makes an isolated workspace, and **sizes it** |
+| **2. Plan** | A spec in `specs/<n>-<slug>.md`, the branch's first commit. Its *Where* names the files, lines, test file and helpers, so the builder searches for nothing |
+| **3. Plan audit** | *Full tickets:* fresh agents judge the plan against the ticket. *Small tickets:* setup writes the plan and the code auditor checks its reading of the ticket later — two agents fewer |
+| **4. Build** | The test first, committed while it still fails; then the change; every state it adds gets its own assertion, including the moment before a time-dependent one applies. The docs that describe what changed are updated in the same push |
+| **5. Gate** | `scripts/gate.mjs`: every unit and browser test, desktop and mobile. Fails if any test fails — or if a test the branch added skipped everywhere and so never ran |
+| **6. Red-check** | `scripts/red-check.mjs` puts the old code back and reruns the new tests. Tests that still pass prove nothing |
+| **7. Audit** | Independent auditors — the ticket's criteria, `CLAUDE.md`'s rules, and a browser. **Every blocker faces a skeptic** that tries to refute it before it costs a fix |
+| **8. Fix, and loop** | Back to the gate until a round comes back clean. A red gate does not use up an audit round |
+| **9. Learn** | If the audits caught something, the lesson goes into the docs so the next ticket does not repeat it |
+| **10. Pull request** | Ready for review: the spec, the proof, a table of every audit round, and the run's cost |
 
-1. **Setup** — reads the ticket, decides whether it is shippable, claims it
-   (`ai-working`), makes the workspace, and **sizes it** (below).
-2. **Spec** — `specs/<n>-<slug>.md`, pushed as the branch's first commit. Its
-   *Where* is the builder's map: the files, the lines, the test file and the
-   helpers, so the implementer searches for nothing.
-3. **Spec audit** (full tickets) — a fresh agent judges the *plan* against the
-   ticket and the context docs: does every Done-when map to a check that fails
-   today? A finding that questions the ticket itself goes to a person; anything
-   technical is decided in the spec and carried into the build. On a small
-   ticket setup writes the spec and the code auditor checks its reading of the
-   ticket — two agents fewer, each of which costs its whole context to start.
-4. **Implement** — the check first, committed red; then the change; `npm test`
-   after every edit; any browser test it wrote, run alone. It keeps the
-   `docs/context/` docs that own what it changed true in the same push.
-5. **Verify ⇄ code audit**, round after round:
-   - **The gate** (`scripts/gate.mjs`): every unit test and the whole
-     Playwright suite on desktop and mobile. Red → a fix round (a red gate does
-     not spend the audit budget).
-   - **Red-check** (`scripts/red-check.mjs`): reverts the app code and reruns
-     the new tests. Tests that pass without the change prove nothing.
-   - **Independent auditors** — the ticket's criteria, `CLAUDE.md`'s rules, a
-     browser — and **a skeptic per blocker** that tries to refute it before it
-     costs a fix. A minor never costs a round.
-   - Clean round → out. The same finding surviving two fixes, or the round
-     limit, → a **draft** PR and `needs-human`, with everything still open
-     written down.
-6. **Learn** — what the audits caught that the implementer missed, written
-   back into the context docs, so the next ticket does not repeat it.
-7. **PR** — ready for review, with the spec, the proof, and a table of every
-   audit round.
+> **When it will not converge** — the same finding surviving two fixes, or the
+> round limit — ship stops and opens a **draft** pull request labelled
+> `needs-human`, with everything still open written down. It never burns
+> rounds on a problem it cannot solve.
 
-### Small and full
+## ⚖️ Small tickets and full tickets
 
-Setup sizes every ticket. **Most are small.** A ticket is **full** if the issue
-has the `ship:full` label, or it changes a rule in `server/lib`, the schema or
-the seed, an API shape, several areas at once, or has more than four Done-when
-criteria. Override with `/ship 42 --full` or `--small` (or `@claude --full` on
-the issue).
+Setup sizes every ticket before any work starts. **Most are small.** A ticket is
+**full** if it carries the `ship:full` label, or it changes a rule in
+`server/lib`, the schema or the seed, an API shape, several areas at once, or
+has more than four Done-when criteria. Override with `/ship 42 --full` or
+`--small`.
 
-| | Small | Full |
+| | 🟢 **Small** | 🔵 **Full** |
 | --- | --- | --- |
-| Model | Sonnet; Haiku for rote steps (gate, PR) | the session model (Opus in CI) |
-| Spec | written by setup; its reading of the ticket checked by the code auditor | its own writer; criteria + fit auditors, up to 3 rounds |
-| Code audit | 1 combined auditor | criteria + rules + browser lenses |
-| Browser audit | only if something visible changed; 2 probes | always; 5 probes |
-| Audited rounds | up to 2 | up to 4 |
+| **Models** | Sonnet; Haiku for rote steps | Opus; Haiku for rote steps |
+| **Plan** | written by setup | its own writer, then criteria + fit auditors, up to 3 rounds |
+| **Audit** | one combined auditor | criteria, rules and browser auditors |
+| **Browser audit** | only when something visible changed *and* no browser test covers it — 2 probes | always — 5 probes |
+| **Audited rounds** | up to 2 | up to 4 |
+| **Typical ship cost** | **~$1.70–2.70** | **~$5.50–6.25** |
 
 Both keep what makes the result trustworthy: the gate, the red-check, an
-independent audit and a skeptic on every blocker. What small drops is
-redundancy. Ship puts `ship:full` on the PR of a full ticket, so code review
-and QA scale with it.
+independent audit and a skeptic on every blocker. Small drops redundancy, not
+rigour. Ship labels a full ticket's pull request `ship:full`, so code review and
+QA scale up with it.
 
-## Code review and QA size themselves too
+## 🔍 How code review and QA size themselves
 
 A one-line fix should not get the review a thousand-line change does.
-`scripts/qa-facts.mjs` computes a size from facts, never from an agent's word:
+[`scripts/qa-facts.mjs`](../../scripts/qa-facts.mjs) decides from facts, never
+from an agent's word:
 
-- **code lines** — the diff without the spec and context docs every ship PR
-  carries;
-- **the ticket** — full if the PR is labelled `ship:full`;
-- **risk** — `server/lib`, the schema and seed, the harness itself: never tiny,
-  and large past 150 lines instead of 300;
-- **the team's dial** — the `REVIEW_DEPTH` repository variable: `fast` moves a
-  step down, `thorough` is always large.
+- 📏 **Code lines** — the diff, minus the spec and context docs every ship PR carries
+- 🎫 **The ticket** — large if the PR is labelled `ship:full`
+- ⚠️ **Risk** — `server/lib`, the schema, the seed, the harness: never tiny, and large past 150 lines
+- 🎚️ **The team's dial** — the `REVIEW_DEPTH` variable: `fast` goes a step down, `thorough` is always large
 
 | Size | Code review | QA |
 | --- | --- | --- |
-| tiny (≤30 lines) | one combined reviewer, Sonnet, low effort | ≤2 probes on Sonnet; may skip if the tests already pin it |
-| small (≤300) | one combined reviewer, Sonnet | ≤3 probes on Sonnet |
-| large | a lens per kind of file, on Opus | 5 probes on Opus |
+| **tiny** (≤30 lines, or docs only) | one reviewer, Sonnet, quick | ≤2 probes, Sonnet — skips when the PR's own tests already pin every criterion |
+| **small** (≤300 lines) | one reviewer, Sonnet | ≤3 probes, Sonnet |
+| **large** | a reviewer per kind of file, Opus | 5 probes, Opus |
 
 ### Confidence means coverage
 
-Every verdict carries a confidence, and it is not a feeling:
+Every verdict carries a confidence — never a feeling:
 
-- **Code review** — how much of the change the reviewers could actually judge.
-- **QA** — every Done-when criterion mapped to what exercised it: a probe that
-  ran, or a test file **this diff changes** (checked against the diff, so the
-  planner cannot claim coverage it does not have). All covered and every probe
-  ran → high.
+- **Code review:** how much of the change the reviewers could actually judge.
+- **QA:** every Done-when criterion must be exercised — by a probe that ran, or
+  by a test file **this diff changes** (checked against the diff, so it cannot
+  claim coverage it does not have). A criterion about how the code is written,
+  rather than what it does, is left to code review and named in the verdict.
 
-A low-confidence pass reads as *unproven*, not green. Neither pass can block a
-merge: machines gate (the tests, the gate re-run, the red-check); agents
-advise.
+A low-confidence pass shows as *unproven*, not green. Neither pass can block a
+merge: **machines gate, agents advise.**
 
-**Reviews converge.** A re-review re-checks the previous blockers and reads
-only what changed since. A blocker has to name a realistic path to harm — how
-an attendee reaches it and what they lose; anything less is filed as a
-`follow-up` issue while the check stays green.
+**Reviews converge.** A re-review checks the previous blockers and only what
+changed since. A blocker must name a realistic path to harm — who reaches it
+and what they lose; anything less becomes a `follow-up` issue and the check
+stays green.
 
-## What it costs
+## 🧾 What it costs
 
-Every ticket carries one **🧾 AI spend** comment, updated after every ship,
-code review, QA and respond run: tokens and dollars per run, split by Opus,
-Sonnet and Haiku, and the running total. Ship also comments its own run's line
-on the PR it opened.
+Every issue keeps one **AI spend** comment, updated after every ship, review,
+QA and respond run — tokens and dollars per run, split by Opus, Sonnet and
+Haiku, with the total. Ship also posts its own run's cost on the pull request.
 
-- **In CI** the numbers are what the CLI billed (list prices).
-- **Locally** the runs use your Claude subscription, so there is no bill; the
-  rows are priced from the transcripts at list rates and marked `~`.
+- **In GitHub Actions** — what the API billed, at list prices.
+- **Locally** — your Claude subscription pays; the rows are priced from the
+  run's transcripts at list rates and marked `~`. `/ship 64 65 66` is split per
+  ticket.
 
-Most of a run's cost is not output — it is every turn re-reading the agent's
-context (~45k tokens before it does anything) and every agent writing that
-context to the cache. So the harness is tuned for **fewer agents and fewer
-turns**: steps read only the playbook sections they need, in one command; the
-spec hands the implementer its map; rote steps (the gate, the PR) run on
-Haiku; agents batch their reads; nothing re-runs a suite the gate just ran.
+**Where the money goes:** hardly any of it is output. It is every turn
+re-reading the agent's context — about 45k tokens before it does anything — and
+every agent writing that context to the cache. So the harness is tuned for
+**fewer agents and fewer turns**:
 
-## Running it
+| Saving | How |
+| --- | --- |
+| Cheaper cache | 5-minute cache writes (1.25× input) instead of 1-hour (2×) |
+| Fewer agents | small tickets plan in setup; red-check runs inside the gate step; docs are kept true by the builder, not a separate agent |
+| Lighter agents | the gate and the PR run on `ship-rote` — Haiku, no `CLAUDE.md`, ~26% less context |
+| Fewer turns | reads batched into one command; playbook sections and context docs read by the piece; nothing re-runs a suite the gate just ran |
 
-**On GitHub** — label an issue `ready-for-ai` (or comment `@claude` on it).
-Actions runs ship; code review and QA run when the PR opens. `@claude` on a
-pull request asks for a change to that diff. Setup, keys and tokens:
-[`github.md`](./github.md).
+## ▶️ Running it
 
-**On a laptop** — `/ship 42`, or `/ship 64 65 66` for several at once (one
-whole ship per ticket, in parallel), then `/code-review <pr>` and `/qa <pr>`.
-Each ticket gets its own worktree, `orbit-wt-<n>` beside the main checkout, and its
-own **lane** — a port pair from `scripts/lane.mjs` — so several tickets can
-build, boot the app and run the suite at once without testing each other's
-code. The gate stops any server its own worktree left running before it boots
-its own.
+**On GitHub** — label an issue `ready-for-ai`, or comment `@claude` on it. Code
+review and QA run when the pull request opens; `@claude` on the pull request
+asks for a change. Keys, tokens and triggers: [`github.md`](./github.md).
 
-## When it goes wrong
+**In Claude Code** — `/ship 42`, or `/ship 64 65 66` for several tickets in
+parallel; then `/code-review <pr>` and `/qa <pr>`. Every ticket gets its own git
+worktree and its own **lane** — a pair of ports from
+[`scripts/lane.mjs`](../../scripts/lane.mjs) — so several tickets can build,
+boot the app and run the whole suite at once without touching each other. The
+gate stops any dev server its own worktree left running before it starts.
 
-- **`needs-human`** — ship could not converge; the draft PR and the issue
-  comment say what is still open. Answer it, relabel `ready-for-ai`.
-- **An escape** — a blocker found after ship opened its PR is labelled
-  `harness-escape`, and an agent proposes the lesson for the docs. That count
-  is how the harness is tuned: with data, not argument.
-- **Nothing ran** — a hand-back that quotes an `API Error` is the key's spend
-  limit, not the code; every agent job keeps its transcript as an artifact for
-  two weeks.
+## 🚑 When it goes wrong
+
+| You see | It means | Do this |
+| --- | --- | --- |
+| `needs-human` on the issue | Ship could not converge | Read its comment and the draft PR, answer, relabel `ready-for-ai` |
+| `harness-escape` on a PR | Review or QA found a blocker ship's own loop missed | An agent proposes the lesson for the docs — that count is how the harness gets tuned |
+| A hand-back quoting `API Error` | The API key's spend limit, not the code | Raise the limit; *Actions → Set up the harness* checks the key really works |
+| Anything else odd | — | Every agent job keeps its full transcript as an artifact for two weeks |
