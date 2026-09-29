@@ -395,6 +395,15 @@ cannot start another round.
   rejected *Decision* ("No new browser test") for two more review rounds, because
   nothing in the fix flow — or the human comment that triggered it — asked
   anyone to check the spec back against what shipped.
+- **Agent worktrees are full checkouts *inside* the repo**, at
+  `.claude/worktrees/` — `wt-<n>` for a ticket, `main-<n>` for ship's browser
+  probe, `qa-base` for QA's base comparison — kept out of `git status` by
+  `.gitignore`. Each is created from the repo root
+  (`dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`),
+  because the agent making one is usually standing in another and a relative
+  path would nest them. So anything walking the tree must enumerate with
+  `git ls-files`: a recursive readdir descends into a worktree holding another
+  branch's copy of the same file and reads it as this branch's.
 
 ## Where to change…
 

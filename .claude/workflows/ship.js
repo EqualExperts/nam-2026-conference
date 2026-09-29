@@ -432,7 +432,7 @@ setup = await agent(
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
-  `worktree + npm install on a laptop, at exactly the path §3 gives (orbit-wt-${issue} beside the main checkout) — from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
+  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
   `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
@@ -626,7 +626,10 @@ const CODE_LENSES_ALL = [
       `(\`awk '/^## 1\\./,/^## 4\\./' docs/harness/qa-playbook.md\` prints them) ` +
       `(probes in tests/qa-probe.spec.js, both projects, re-run before calling anything a bug, delete the probe ` +
       `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
-      `probe on main, \`git worktree add ../orbit-main-${issue} origin/${BASE}\`, symlink node_modules into it, and ` +
+      `probe on main, \`git worktree add "$(dirname "$(git rev-parse --path-format=absolute ` +
+      `--git-common-dir)")/.claude/worktrees/main-${issue}" origin/${BASE}\` — you are already standing in a ` +
+      `worktree, so that resolves to the repo root rather than nesting one worktree inside another. Symlink ` +
+      `node_modules into it, and ` +
       `remove it after. Budget: ${SIZE === 'full' ? 'five probes' : 'two probes — a small change; spend them where the tests it added do not reach'}. ` +
       `If the change depends on the time, one probe pins the clock before it applies — Day 1 08:00, when the ` +
       `seed's morning has not happened yet. ` +

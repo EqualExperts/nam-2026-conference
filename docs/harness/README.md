@@ -136,7 +136,7 @@ asks for a change. Keys, tokens and triggers: [`github.md`](./github.md).
 
 **In Claude Code** — `/ship 42`, or `/ship 64 65 66` for several tickets in
 parallel; then `/code-review <pr>` and `/qa <pr>`. Every ticket gets its own git
-worktree and its own **lane** — a pair of ports from
+worktree, under `.claude/worktrees/` inside the repo, and its own **lane** — a pair of ports from
 [`scripts/lane.mjs`](../../scripts/lane.mjs) — so several tickets can build,
 boot the app and run the whole suite at once without touching each other. The
 gate stops any dev server its own worktree left running before it starts.

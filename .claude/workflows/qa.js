@@ -46,6 +46,13 @@ const HERE = WORKDIR
     `than the pull request's base. Prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim qa-${pr})" &&\`.\n\n`
   : ''
 
+// Where a probe gets a copy of the base to compare against: inside the repo,
+// with the other agent worktrees. Every QA agent starts in a worktree of its
+// own, so the path is computed from the repo root — relative, it would nest
+// the base inside the pull request's checkout. Named once so the three
+// prompts that mention it cannot drift apart.
+const BASE_WT = '"$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/qa-base"'
+
 const PLAYBOOK = 'docs/harness/qa-playbook.md'
 // A section of the playbook in one read, and the reading discipline every QA
 // agent needs: each turn re-reads everything before it, so a turn per grep and
@@ -354,7 +361,7 @@ for (const p of failing) {
   const repro = p.kind === 'command' ? await agent(
     `${HERE}A command probe failed on pull request #${pr}: "${p.id}" — \`${p.run || p.what}\`; expected ${p.expect}; ` +
     `got ${r.happened || 'a failure'}. ${LEAN}Follow §3 of ${PLAYBOOK} (${qaSection(3, 4)}). Run it again here. Then on the base: \`git ` +
-    `worktree add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, run the same command there, and ` +
+    `worktree add ${BASE_WT} origin/${plan.base}\`, symlink node_modules, run the same command there, and ` +
     `remove the worktree — never check out another commit in this tree. onBase is not-applicable when what it ` +
     `runs does not exist on the base.`,
     { phase: 'Reproduce', label: `repro:${p.id}`, schema: REPRO, model: MODEL },
@@ -362,7 +369,7 @@ for (const p of failing) {
     `${HERE}A QA probe failed on pull request #${pr}: "${p.id}" (${project}) — ${p.what}; expected ${p.expect}; got ` +
     `${r.happened || 'a failure'}. ${LEAN}Follow §3 of ${PLAYBOOK} (${qaSection(3, 4)}). Run it again on this checkout: ` +
     `\`npx playwright test ${PROBE_FILE} -g "${p.id}" --project=${project}\`. Then on the base: \`git worktree ` +
-    `add ../orbit-qa-base origin/${plan.base}\`, symlink node_modules, copy the probe file in, run it there, and ` +
+    `add ${BASE_WT} origin/${plan.base}\`, symlink node_modules, copy the probe file in, run it there, and ` +
     `remove the worktree — never check out another commit in this tree. If it reproduces on the branch and the ` +
     `result would help a reviewer, take a screenshot and put it through \`node scripts/pr-media.mjs ` +
     `${plan.issue || pr} <png>\`.`,
@@ -492,7 +499,7 @@ async function publish(r) {
 
   phase('Publish')
   const posted = await agent(
-    HERE + (r.cleanup ? `First delete ${PROBE_FILE} and any ../orbit-qa-base worktree, and leave \`git status\` clean.\n\n` : '') +
+    HERE + (r.cleanup ? `First delete ${PROBE_FILE} and any worktree at ${BASE_WT}, and leave \`git status\` clean.\n\n` : '') +
     `Post this as ONE comment on pull request #${pr}, exactly as written — write it to a file and use ` +
     `\`gh pr comment ${pr} --body-file <file>\`:\n\n${comment}\n\n` +
     // In CI the job files these; on a laptop nothing else would, and the

@@ -59,16 +59,17 @@ On a laptop, other agents may hold other tickets, so take a worktree and a
 lane, or you will eventually test another branch's code and pass:
 
 ```bash
-wt="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/../orbit-wt-<n>"
+wt="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/wt-<n>"
 git worktree add -b issue-<n>-<short-slug> "$wt" origin/main   # or, continuing: git worktree add "$wt" issue-<n>-…
 cd "$wt" && npm install
 eval "$(node scripts/lane.mjs claim <n>)"
 ```
 
-Always that path — `orbit-wt-<n>` beside the main checkout, whichever
-directory or worktree you start in. A relative `../` landed runs in three
-different places, and a worktree nobody can find is one nobody cleans up. If
-it already exists from an earlier attempt, reuse it.
+Always that path — `.claude/worktrees/wt-<n>` inside the main checkout, which
+`.gitignore` keeps out of `git status`, whichever directory or worktree you
+start in. A relative `../` landed runs in three different places, and a
+worktree nobody can find is one nobody cleans up. If it already exists from an
+earlier attempt, reuse it.
 
 ## 3b. Write the spec first
 
@@ -323,5 +324,5 @@ Laptop only; a runner disappears on its own.
 
 ```bash
 node scripts/lane.mjs release
-git worktree remove ../orbit-wt-<n>
+git worktree remove "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/wt-<n>"
 ```
