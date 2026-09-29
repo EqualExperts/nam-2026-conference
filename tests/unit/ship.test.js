@@ -412,10 +412,21 @@ describe('ship', () => {
     assert.match(prompts.implement, /batch/);
   });
 
+  test('the PR leads with what changed and how to see it, from what the builder returned', async () => {
+    const { prompts } = await run({ implement: { ok: true, summary: 'done', ui: true,
+      tryIt: 'Open /schedule?at=2026-10-02T10:00 as Marcus', keyFiles: [{ file: 'src/lib/clock.js', why: 'the ended rule' }] } });
+    assert.match(prompts['open-pr'], /## 🧪 Try it\nOpen \/schedule\?at=2026-10-02T10:00 as Marcus/);
+    assert.match(prompts['open-pr'], /## 👀 Where to look\n- `src\/lib\/clock\.js` — the ended rule/);
+    assert.doesNotMatch(prompts['open-pr'], /fail without the change/, 'no red-check ran, so the PR does not claim one');
+  });
+
   test('the PR agent is handed the body, re-verifies nothing, and a change nobody sees opens on the rote model', async () => {
     const { prompts, models } = await run({ implement: { ok: true, summary: 'done', ui: false } });
     assert.match(prompts['open-pr'], /do not run tests/);
-    assert.match(prompts['open-pr'], /### Audit loop/);
+    assert.match(prompts['open-pr'], /<summary>Audit rounds<\/summary>/);
+    assert.match(prompts['open-pr'], /## What changes/);
+    assert.match(prompts['open-pr'], /## ✅ Done when\n- \[x\] /);
+    assert.match(prompts['open-pr'], /## 🛡️ Checks\nAll tests pass — 178 unit · 155 browser/);
     assert.doesNotMatch(prompts['open-pr'], /following §8/);
     assert.match(prompts.implement, /shotForPR/);
     assert.equal(models['open-pr'], 'haiku');

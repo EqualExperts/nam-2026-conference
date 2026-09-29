@@ -213,6 +213,12 @@ const DONE = {
     url: { type: 'string' },
     ui: { type: 'boolean', description: 'implement only: did anything an attendee sees in a browser change' },
     browserTest: { type: 'boolean', description: 'implement only: did you add or change a Playwright test (tests/*.spec.js) that drives the changed behaviour' },
+    tryIt: { type: 'string', description: 'implement only: how a reviewer sees the change in one or two steps — a URL with ?at= to pin the clock and which attendee to pick, or a command for a non-visual change' },
+    keyFiles: {
+      type: 'array', maxItems: 3,
+      description: 'implement only: the one to three files where the change actually lives, for a reviewer to start with',
+      items: { type: 'object', required: ['file', 'why'], properties: { file: { type: 'string' }, why: { type: 'string' } } },
+    },
   },
 }
 
@@ -573,7 +579,9 @@ const built = await agent(
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
   `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
   `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset. Set browserTest=true if you ` +
-  `added or changed a Playwright test that drives the changed behaviour.` +
+  `added or changed a Playwright test that drives the changed behaviour. For the pull request, return tryIt — how a ` +
+  `reviewer sees the change in a step or two (a URL with ?at=YYYY-MM-DDTHH:MM and the attendee to pick, or a command) — and ` +
+  `keyFiles, the one to three files where the change actually lives, each with why in a few words.` +
   (carried.length ? `\n\nThe spec audit left these open; resolve each in the build, and say how in the summary:\n${listFindings(carried)}` : ''),
   { phase: 'Implement', label: 'implement', schema: DONE, model: T.build },
 )
@@ -650,6 +658,7 @@ let minors = []
 // two, and the only audit that ran was also the last. Red rounds get two
 // extra rounds of slack; the same failure twice is caught as stuck anyway.
 let audited = 0
+let lastRed = null // the last red-check, for the PR's one-line summary
 for (let round = 1; ; round++) {
   phase('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
@@ -706,6 +715,7 @@ for (let round = 1; ; round++) {
         return r
       } catch { return null }
     })()
+    lastRed = redCheck
     if (redCheck && redCheck.checked && redCheck.failedOnBase === false) {
       log(`build round ${round}: red-check — the new tests pass without the change`)
     }
@@ -805,6 +815,12 @@ const auditTable = [
 // shape is given here, nothing is re-verified, and only a visible change —
 // screenshots are a judgement — gets more than the rote model.
 const visible = built.ui !== false
+const fixed = rounds.reduce((n, r) => n + r.confirmed, 0) + specRounds.reduce((n, r) => n + r.confirmed, 0)
+const checksLine = [
+  `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
+  ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
+  `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
+].join(' · ')
 const pr = await rote(
   `${ticket}\n\n${inTree({ releases: true })}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
   `not re-read the spec, the playbook or the code, and do not run tests. Gather what *Changed* needs in ONE command, ` +
@@ -819,19 +835,29 @@ const pr = await rote(
       `put what it prints where the body shows <media>. If no file appears, drop the <media> line — do not write a ` +
       `script, start a server or drive a browser to make one.\n\n`
     : `Nothing visible changed: no screenshots, and drop the <media> line.\n\n`) +
-  `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts:\n\n` +
-  `Closes #${issue}\n\n<one sentence: what an attendee (or a developer) gets now that they did not before>\n\n` +
-  `[Spec](https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path})\n\n` +
-  `### Changed\n- \`<file>\` — <what, in a few words> (one line per file that matters)\n\n<media>\n\n` +
-  `### Proof\n| Check | Result |\n| --- | --- |\n| \`<each test the change added>\` | red before, green after |\n` +
-  `| \`node scripts/gate.mjs\` | ${gateLine(gate)}, at \`${gate.sha.slice(0, 7)}\` |\n\n` +
-  `### Audit loop\n| Round | Gate | Independent audit | Confirmed / covered |\n| --- | --- | --- | --- |\n${auditTable}\n\n` +
-  (gate.browser.flakyTests && gate.browser.flakyTests.length ? `Flaky on retry — ${gate.browser.flakyTests.join(', ')}.\n\n` : '') +
-  (lessons.length ? `Lessons: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n\n` : '') +
+  // Written for the person who has to decide: what changed for an attendee,
+  // what it looks like, how to see it, which criteria are proved, where to
+  // look first — the machine detail folded away. #77's body led with eleven
+  // file paths and a table of agent shorthand.
+  `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts in plain words:\n\n` +
+  `Closes #${issue} · 📄 [Spec](https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path})\n\n` +
+  `## What changes\n<one or two sentences: what an attendee (or a developer) sees or gets now, not how it was built>\n\n` +
+  `<media — each screenshot on its own line with a one-line bold caption above it saying what it shows>\n\n` +
+  (built.tryIt ? `## 🧪 Try it\n${built.tryIt}\n\n` : '') +
+  `## ✅ Done when\n` + (setup.doneWhen || []).map(c => `- [x] ${c} — <the test that proves it, as \`file › title\`>`).join('\n') + `\n\n` +
+  (built.keyFiles && built.keyFiles.length
+    ? `## 👀 Where to look\n` + built.keyFiles.map(k => `- \`${k.file}\` — ${k.why}`).join('\n') + `\n\n`
+    : '') +
+  `## 🛡️ Checks\n${checksLine}\n\n` +
   (minors.length
     ? `<details><summary>Worth a closer look</summary>\n\n<only those of these unconfirmed notes a reviewer would ` +
       `want, one line each:\n${listFindings(minors)}>\n</details>\n\n`
     : '') +
+  `<details><summary>Every file changed</summary>\n\n<from git diff --stat: one line per file — \`file\` — what, in a few words>\n</details>\n\n` +
+  `<details><summary>Audit rounds</summary>\n\n| Round | Gate | Independent audit | Covered |\n| --- | --- | --- | --- |\n${auditTable}\n` +
+  (gate.browser.flakyTests && gate.browser.flakyTests.length ? `\nFlaky, passed on retry: ${gate.browser.flakyTests.join(', ')}.\n` : '') +
+  (lessons.length ? `\nLessons written to the docs: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n` : '') +
+  `</details>\n\n` +
   `Then, from the worktree: \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
   `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +

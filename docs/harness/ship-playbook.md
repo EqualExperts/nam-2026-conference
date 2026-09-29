@@ -254,35 +254,34 @@ That issue comment matters: `Closes #<n>` does not reliably register when a
 pull request is opened by automation, so without it nothing on the ticket
 points at your work. Keep the keyword too — it still closes on merge.
 
-The body is read in a narrow column beside the diff. Keep it scannable, and
-resist adding to this shape:
+The body is read by the person who decides whether it merges — in a narrow
+column beside the diff. Lead with what changed for an attendee and how to see
+it; fold the machine detail away:
 
 ```markdown
-Closes #<n>
+Closes #<n> · 📄 [Spec](<link to the spec on this branch>)
 
-<One sentence: what an attendee sees now that they did not before.>
+## What changes
+<One or two sentences: what an attendee (or a developer) sees now.>
 
-[Spec](specs/<n>-<short-slug>.md)
+**<Caption>**
+<screenshot from pr-media.mjs>
 
-### Changed
-- `<file>` — <what, in a few words>
+## 🧪 Try it
+<A URL with ?at= pinning the clock, and which attendee to pick.>
 
-<the line pr-media.mjs printed — or, for a before-and-after, the two-column
-table so they sit side by side>
+## ✅ Done when
+- [x] <each criterion from the ticket> — `<the test that proves it>`
 
-### Proof
-| Check | Result |
-| --- | --- |
-| `<the test that proves the ticket>` | red before, green after |
-| `node scripts/gate.mjs` | unit 178 passed · browser 155 passed, at `abc1234` |
+## 👀 Where to look
+- `<the one to three files where the change lives>` — <why>
 
-<details>
-<summary>Worth a closer look</summary>
+## 🛡️ Checks
+All tests pass — <unit> unit · <browser> browser, desktop and mobile · the new
+tests fail without the change · independent audit: clean after <n> round(s)
 
-<Only a trade-off you made, a criterion you could not test, or something in
-the ticket that turned out to be wrong. Two short paragraphs. Omit the block
-entirely if there is nothing.>
-</details>
+<details><summary>Every file changed</summary> … </details>
+<details><summary>Audit rounds</summary> … </details>
 ```
 
 ## 9. If you cannot finish
