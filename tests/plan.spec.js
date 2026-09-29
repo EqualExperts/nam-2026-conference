@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, shotForPR, ATTENDEES } from './helpers.js';
 
 /** Hours are rounded per day and then summed, on the page and here alike. */
 const hours = (minutes) => Math.round(minutes / 60);
@@ -187,5 +187,59 @@ test.describe('Speaker view', () => {
   test('a non-speaking attendee sees no speaker panel', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.kenji });
     await expect(page.getByTestId('speaking-panel')).toHaveCount(0);
+  });
+});
+
+test.describe('What is left to rate', () => {
+  /*
+   * On Day 2 the home page only talks about Day 2, so My Agenda is where a
+   * Day 1 talk you sat through but never rated still gets asked about.
+   */
+  test('lists a checked-in, unrated session from an earlier day, and not a rated one', async ({ page, request }, testInfo) => {
+    const { user, day, slot } = await laneFor('agenda.to-rate', testInfo);
+    const plan = await (await request.get(`${API}/users/${user}/schedule`)).json();
+    const onDay = plan.days.find((d) => d.date === day)?.sessions ?? [];
+    const target = onDay.find((s) => s.startsAt === slot && s.reservation === 'confirmed');
+    expect(target, `the seed gives attendee ${user} a seat at ${slot} on Day 1`).toBeTruthy();
+    const rated = onDay.find((s) => s.reservation === 'confirmed' && s.myStars != null);
+    expect(rated, `the seed gives attendee ${user} a rated Day 1 session`).toBeTruthy();
+
+    const checked = await request.put(`${API}/users/${user}/checkins/${target.id}`, {
+      data: { day, time: target.startsAt },
+    });
+    expect(checked.ok()).toBeTruthy();
+
+    await visit(page, '/my-agenda', { as: user, at: await momentOn(1, '10:30') });
+
+    const callout = page.getByTestId('to-rate');
+    await expect(callout).toBeVisible();
+    await expect(callout.locator(`a[href="/sessions/${target.id}"]`)).toBeVisible();
+    await expect(callout.locator(`a[href="/sessions/${rated.id}"]`)).toHaveCount(0);
+
+    const dayPlan = page.getByTestId(`plan-day-${day}`);
+    const rowOf = (s) => dayPlan.getByTestId('session-card')
+      .filter({ has: page.locator(`h3`, { hasText: s.title }) });
+    const targetStatus = rowOf(target).getByTestId('attendance-status');
+    await expect(targetStatus).toContainText('Checked in');
+    await expect(targetStatus.getByRole('link', { name: /rate/i })).toHaveAttribute('href', `/sessions/${target.id}`);
+    await expect(rowOf(rated).getByTestId('attendance-status')).toContainText(`Rated ★${rated.myStars}`);
+
+    await callout.scrollIntoViewIfNeeded();
+    await shotForPR(page, 'my-agenda-to-rate');
+  });
+
+  test('claims no attendance for a session that has not opened yet', async ({ page }) => {
+    // The seed rates Marcus's Day 1 morning; at 08:00 on Day 1 none of it has
+    // happened, so no row may say Rated, Checked in or Missed — found by QA on #89.
+    await visit(page, '/my-agenda', { as: ATTENDEES.marcus, at: await momentOn(0, '08:00') });
+    await expect(page.getByTestId('session-card').first()).toBeVisible();
+    await expect(page.getByTestId('attendance-status')).toHaveCount(0);
+  });
+
+  test('shows no callout when everything attended is rated', async ({ page }) => {
+    // Marcus rated every seeded check-in; no lane checks him in to a seat he holds.
+    await visit(page, '/my-agenda', { as: ATTENDEES.marcus, at: await momentOn(1, '10:30') });
+    await expect(page.getByTestId('attendance-status').filter({ hasText: 'Rated ★' }).first()).toBeVisible();
+    await expect(page.getByTestId('to-rate')).toHaveCount(0);
   });
 });

@@ -9,6 +9,49 @@ import { LiveBadge } from './LiveNow.jsx';
 import { hasEnded, progressOf, toMinutes } from '../lib/clock.js';
 
 /**
+ * Where a held seat stands once the doors have opened: rated, checked in (with
+ * a way to rate it once it is over), or missed. Upcoming sessions and waitlist
+ * places say nothing — the caller passes `attendance` only for confirmed seats.
+ */
+function AttendanceStatus({ session, attendance }) {
+  const { clock } = useConference();
+  if (!attendance) return null;
+  // Nothing may claim to be true before it can be: the seed records Day 1's
+  // morning as attended and rated, so at 08:00 a 09:00 talk would read
+  // "Rated ★5". Status starts when check-in opens, 15 minutes before.
+  const open = clock.day > session.day ||
+    (clock.day === session.day && toMinutes(clock.time) >= toMinutes(session.startsAt) - 15);
+  if (!open) return null;
+  const { ended, checkedIn, myStars } = attendance;
+  let body;
+  if (myStars != null) {
+    body = <span className="font-semibold text-violet-200">Rated ★{myStars}</span>;
+  } else if (checkedIn) {
+    body = (
+      <>
+        <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+          <Icon name="check" className="size-3" /> Checked in
+        </span>
+        {ended && (
+          // above the card's full-cover link, so it is its own target
+          <Link to={`/sessions/${session.id}`} aria-label={`Rate ${session.title}`}
+            className="relative z-10 font-semibold text-violet-300 underline-offset-2 hover:text-violet-200 hover:underline">
+            Rate it
+          </Link>
+        )}
+      </>
+    );
+  } else if (ended) {
+    body = <span className="text-faint">Missed</span>;
+  } else {
+    return null;
+  }
+  return (
+    <span data-testid="attendance-status" className="inline-flex items-center gap-2">{body}</span>
+  );
+}
+
+/**
  * The workhorse card, in two layouts:
  *   variant="grid" — schedule grid and search results
  *   variant="row"  — compact, used inside day timelines and speaker pages
@@ -17,7 +60,7 @@ import { hasEnded, progressOf, toMinutes } from '../lib/clock.js';
  * the body, then a footer strip. The bands are what let you scan a wall of
  * these without every card melting into the next.
  */
-export function SessionCard({ session, variant = 'grid', showDay = false }) {
+export function SessionCard({ session, variant = 'grid', showDay = false, attendance = null }) {
   const { toggleSeat, clock, reservationFor, seatsFor } = useConference();
   const reservation = reservationFor(session.id);
   const onAgenda = Boolean(reservation);
@@ -73,6 +116,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
                   <Icon name="car" className="size-3" /> {session.venue.shortName}
                 </span>
               )}
+              <AttendanceStatus session={session} attendance={attendance} />
               {reservation === 'waitlisted' && (
                 <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
                   <Icon name="clock" className="size-3" /> Waitlisted

@@ -85,7 +85,10 @@ A seat button on a session that `hasEnded` and is not held is disabled and named
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`
-prefixes `MM-DD`. The **feature** treatment is not a variant: `feature = session.isKeynote`
+prefixes `MM-DD`. Row only: an optional `attendance` prop (`{ ended, checkedIn, myStars }`,
+passed by My Agenda for confirmed seats) renders `attendance-status` in the meta line —
+`Rated ★N`, `Checked in` (+ a `Rate it` link, `relative z-10` above the cover link, once
+ended), or `Missed`; `null` renders nothing. The **feature** treatment is not a variant: `feature = session.isKeynote`
 adds `sm:col-span-2`, a `GeneratedCover variant="orbit"` banner with seat count,
 bigger title and a 3-line abstract. Both read `reservationFor`, `seatsFor`, `clock`
 from `useConference()`; the seat toggle is `SeatButton` from `ui.jsx`. Both roots

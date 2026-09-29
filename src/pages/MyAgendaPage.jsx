@@ -9,6 +9,7 @@ import { NextUpCard } from '../components/NextUpCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
+import { hasEnded } from '../lib/clock.js';
 
 /**
  * Shown only for attendees whose account is linked to a speaker profile.
@@ -140,7 +141,39 @@ function ConflictBanner({ day, conflicts }) {
   );
 }
 
+/**
+ * Every talk they sat through and have not rated, on any day. The home page
+ * only asks about today, so without this a Day 1 session is never asked about
+ * again once Day 2 starts. Drawn from the agenda, so only seats they still hold.
+ */
+function ToRateCallout({ days }) {
+  const { clock, reservationFor } = useConference();
+  const toRate = days.flatMap((d) => d.sessions).filter((s) =>
+    reservationFor(s.id) === 'confirmed' && hasEnded(s, clock) && s.checkedIn && s.myStars == null);
+  if (!toRate.length) return null;
+
+  return (
+    <section className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-5" data-testid="to-rate">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-violet-200">
+        <Icon name="star" className="size-4" />
+        {plural(toRate.length, 'session')} to rate
+      </h2>
+      <ul className="mt-3 space-y-1.5">
+        {toRate.map((s) => (
+          <li key={s.id} className="flex min-w-0 items-baseline gap-2.5 text-[13px]">
+            <span className="shrink-0 font-mono text-[11px] text-faint">{dayLabel(s.day).replace(',', ' ·')}</span>
+            <Link to={`/sessions/${s.id}`} className="truncate text-muted underline-offset-2 hover:text-ink hover:underline">
+              {s.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function DayPlan({ day, isToday }) {
+  const { clock, reservationFor } = useConference();
   const venues = day.venuesVisited;
   return (
     <section data-testid={`plan-day-${day.date}`} className="scroll-mt-24" id={`day-${day.date}`}>
@@ -173,7 +206,12 @@ function DayPlan({ day, isToday }) {
       <ConflictBanner day={day} conflicts={day.conflicts} />
 
       <div className="mt-4 space-y-2">
-        {day.sessions.map((s) => <SessionCard key={s.id} session={s} variant="row" />)}
+        {day.sessions.map((s) => (
+          <SessionCard key={s.id} session={s} variant="row"
+            attendance={reservationFor(s.id) === 'confirmed'
+              ? { ended: hasEnded(s, clock), checkedIn: s.checkedIn, myStars: s.myStars }
+              : null} />
+        ))}
       </div>
     </section>
   );
@@ -255,6 +293,8 @@ export function MyAgendaPage() {
 
       {data && (
         <>
+          <ToRateCallout days={days} />
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
             <Stat

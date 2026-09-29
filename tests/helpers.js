@@ -140,6 +140,9 @@ export const LANES = {
   // Rates for real, so it must land on day index 0 — `today` — per
   // smoke.spec.js's "no session in the future carries a rating".
   'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: priya, day: 0, slot: '09:00', agenda: false } },
+  // Checks in to the attendee's seeded 17:15 seat on Day 1 and never rates it,
+  // so My Agenda has something to list in its to-rate callout. Books nothing.
+  'agenda.to-rate':           { desktop: { user: kenji, day: 0, slot: '17:15', agenda: false }, mobile: { user: sofia, day: 0, slot: '17:15', agenda: false } },
 };
 
 /**

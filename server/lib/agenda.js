@@ -16,7 +16,7 @@ import { SESSION_SELECT, hydrateSessions, toMinutes } from './query.js';
 
 const myReservations = db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?');
 const myCheckIns = db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?');
-const myRatings = db.prepare('SELECT session_id FROM ratings WHERE user_id = ?');
+const myRatings = db.prepare('SELECT session_id, stars FROM ratings WHERE user_id = ?');
 
 const reservedOnDay = db.prepare(`${SESSION_SELECT}
   JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
@@ -92,8 +92,17 @@ function suggestionsFor(userId, day, slot) {
 
 export function scheduleFor(userId) {
   const status = new Map(myReservations.all(userId).map((r) => [r.session_id, r.status]));
+  // Attendance on every day, not just today, so My Agenda can ask about a
+  // Day 1 talk that is still unrated on Day 3.
+  const checkedIn = new Set(myCheckIns.all(userId).map((r) => r.session_id));
+  const stars = new Map(myRatings.all(userId).map((r) => [r.session_id, r.stars]));
   const sessions = hydrateSessions(reservedEver.all(userId))
-    .map((s) => ({ ...s, reservation: status.get(s.id) ?? null }));
+    .map((s) => ({
+      ...s,
+      reservation: status.get(s.id) ?? null,
+      checkedIn: checkedIn.has(s.id),
+      myStars: stars.get(s.id) ?? null,
+    }));
 
   const byDay = new Map();
   for (const s of sessions) {
