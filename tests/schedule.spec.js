@@ -158,4 +158,30 @@ test.describe('Ended sessions', () => {
     await waitForResults(page);
     await expect(page.getByTestId('session-card').first()).toHaveAttribute('data-done', 'false');
   });
+
+  test('the grid disables the banner and cell seat buttons for ended sessions', async ({ page }) => {
+    // Read-only: nothing here can reach the API, so no lane is needed.
+    const days = await conferenceDays();
+    const at = await momentOn(1, '10:00');
+    const reservationCalls = [];
+    page.on('request', (req) => { if (req.url().includes('/reservations')) reservationCalls.push(req.url()); });
+
+    await visit(page, `/schedule?view=grid&day=${days[0]}`, { as: ATTENDEES.marcus, at });
+    const grid = page.getByTestId('schedule-grid');
+    await expect(grid).toBeVisible();
+
+    const banner = grid.getByRole('button', { name: 'Session ended' }).first();
+    await expect(banner).toBeVisible();
+    await expect(banner).toBeDisabled();
+    await banner.click({ force: true });
+
+    const cell = grid.getByRole('button', { name: /has ended$/i }).first();
+    await expect(cell).toBeVisible();
+    await expect(cell).toBeDisabled();
+    await cell.click({ force: true });
+
+    await page.waitForTimeout(300);
+    expect(reservationCalls).toEqual([]);
+    await expect(page.getByTestId('toaster')).toHaveText('');
+  });
 });
