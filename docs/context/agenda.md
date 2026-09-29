@@ -57,8 +57,9 @@ its topic tags in that set; sort `affinity` desc then `avgRating` desc; top
 
 **`GET /api/users/:id/schedule`** → `{ user: toUser(row), days: scheduleFor(id) }`.
 `agenda.js:scheduleFor` returns one entry per day that has any reservation:
-`{ date, sessions (each with reservation), conflicts, totalMinutes, waitlistedMinutes,
-venuesVisited }`. The two minute totals split by status — `totalMinutes` counts
+`{ date, sessions (each with reservation, checkedIn, myStars), conflicts, totalMinutes,
+waitlistedMinutes, venuesVisited }`. `checkedIn` (bool) and `myStars` (number or `null`)
+are this attendee's attendance on *every* day, not just today. The two minute totals split by status — `totalMinutes` counts
 **confirmed seats only**, `waitlistedMinutes` the queued time — because hours
 mean hours you hold a chair for.
 `clashesIn` is an O(n²) pairwise overlap test over that day's sessions (both
@@ -74,7 +75,11 @@ per day), waitlisted, clashes, cross-town days. Any waitlisted time adds a
 `Stat note` under the hours label — `stat-hours-waitlisted`, `+Nh waitlisted`,
 rounded and summed the same way — and a matching note beside that day's hours
 line; with none, neither renders. `DayPlan` (`plan-day-<date>`)
-renders `ConflictBanner` (`conflict-banner`, max 3 listed) and `SessionCard variant="row"`.
+renders `ConflictBanner` (`conflict-banner`, max 3 listed) and `SessionCard variant="row"`,
+passing confirmed rows an `attendance` prop (`{ ended: hasEnded(s, clock), checkedIn, myStars }`)
+that shows as `attendance-status`. `ToRateCallout` (`to-rate`, first inside `{data && …}`)
+lists every confirmed, ended, checked-in, unrated session across all days, each linking
+to `/sessions/:id`, and self-hides when empty — the home page's `unrated` stays today-only.
 Export button `export-calendar` → `api.agendaCalendarUrl`.
 
 **`NextUpCard`** (`next-up`, My Agenda only) derives current/next/done in the
