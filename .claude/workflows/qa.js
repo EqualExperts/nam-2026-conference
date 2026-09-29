@@ -111,7 +111,7 @@ const PLAN = {
         required: ['criterion', 'by'],
         properties: {
           criterion: { type: 'string' },
-          by: { enum: ['probe', 'test', 'none'] },
+          by: { enum: ['probe', 'test', 'code', 'none'], description: "code: the criterion is about how the code is written (a statement at module scope, no db.prepare in a handler) — nothing a caller or attendee can observe, so code review judges it, not QA" },
           ref: { type: 'string', description: 'probe: its id. test: the test file path, as the diff names it' },
         },
       },
@@ -262,7 +262,7 @@ plan = await agent(
   `cosmetic change — copy, a label, a colour, spacing — that the tests already pin needs no probes; say ` +
   `enough=true, why, and appLines, and return no probes. Anything with logic, data, an API, state or a flow ` +
   `in it is never enough. Finally map every Done-when criterion (criteria) to the probe or the test file in ` +
-  `this diff that exercises it — honestly: \`none\` where nothing does. A criterion a test in the diff already ` +
+  `this diff that exercises it — honestly: \`none\` where nothing does, \`code\` where the criterion is about how the code is written rather than anything a caller or attendee can observe. A criterion a test in the diff already ` +
   `pins needs no probe; spend probes on what nothing covers and on §1's edges. Write nothing.${SCOPE}`,
   { phase: 'Plan', label: 'plan', schema: PLAN, model: MODEL },
 )
@@ -415,7 +415,7 @@ return publish({
   verdict: bugs.length ? 'fail' : 'pass',
   confidence,
   covered: `${bothRan}/${plan.probes.length} probes ran as planned: ${plan.probes.map(p => p.id).join(', ')}; ` +
-    `criteria exercised ${cover.n}/${cover.of}` +
+    `criteria exercised ${cover.n}/${cover.of}${cover.codeOnly ? ` (+${cover.codeOnly} about the code itself, for code review)` : ''}` +
     (recheck.length ? ` (re-checked from the last pass: ${recheck.map(p => p.id).join(', ')})` : ''),
   probes: plan.probes,
   findings,
@@ -427,11 +427,15 @@ return publish({
 // diff's file list, not the planner's word. Probe count was the old proxy, and
 // a refactor with one thing worth probing could never read as covered.
 function criteriaCovered(criteria, ranIds) {
-  const list = Array.isArray(criteria) ? criteria : []
+  // A criterion about the code's shape is code review's to judge — no probe can
+  // exercise it, and counting it capped every refactor at medium (#87: 2/3).
+  const all = Array.isArray(criteria) ? criteria : []
+  const codeOnly = all.filter(c => c && c.by === 'code').length
+  const list = all.filter(c => !(c && c.by === 'code'))
   const ok = c => c && ((c.by === 'probe' && ranIds.has(c.ref)) ||
     (c.by === 'test' && typeof c.ref === 'string' && files.includes(c.ref.split(/[:#\s]/)[0]) && /(^|\/)tests\//.test(c.ref)))
   const n = list.filter(ok).length
-  return { n, of: list.length, all: list.length > 0 && n === list.length }
+  return { n, of: list.length, codeOnly, all: n === list.length && (list.length > 0 || codeOnly > 0) }
 }
 
 async function publish(r) {

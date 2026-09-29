@@ -467,6 +467,13 @@ describe('qa', () => {
     assert.equal((await run({ plan })).result.confidence, 'medium');
   });
 
+  test('a criterion about the code itself is left to code review, not counted against QA — #87', async () => {
+    const plan = { ...PLAN, criteria: [{ criterion: 'no db.prepare in the handler', by: 'code' }, { criterion: 'works', by: 'probe', ref: 'a' }] };
+    const { result, verdictLine } = await run({ plan });
+    assert.equal(result.confidence, 'high');
+    assert.match(verdictLine, /criteria exercised 1\/1 \(\+1 about the code itself, for code review\)/);
+  });
+
   test('a criterion counts as pinned by a test only if the diff changes that test file', async () => {
     const inDiff = SCOPE.files.find(f => f.startsWith('tests/'));
     const ok = { ...PLAN, criteria: [{ criterion: 'works', by: 'test', ref: inDiff }] };
