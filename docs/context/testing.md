@@ -165,6 +165,9 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - **A browser test the branch added that skips on every project fails the gate** (`neverRanAdded` in
   `scripts/gate.mjs`): it never ran, so it proves nothing. Make its precondition hold — a lane, a
   slot, a pinned clock — rather than letting `test.skip(!target, …)` fire.
+- **Never open `data/orbit.db` to learn the seed** — `node -e "require('better-sqlite3')…"` from an
+  agent's shell crashed on #78 and #70. Read `docs/context/seed.md`, or ask the API: `attendedSession()`
+  in `tests/api/harness.js`, `bookableFor()` in `tests/helpers.js`, or `curl localhost:$PORT/api/…`.
 - `tests/unit/lanes.test.js` fails `npm test` when two panes share an attendee and day
   (unless one is `readOnly: true`, exactly one is `agenda: false`, or both pin distinct
   `slot`s) — mark a lane that reads only `readOnly`, and one that writes check-ins or

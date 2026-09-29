@@ -406,7 +406,12 @@ const specAsk = (path) =>
   `map — name each file, the function or line to change, the test file, and the lane or helpers the test will ` +
   `use (tests/helpers.js), so the builder opens those and searches for nothing. Set editsHarness if the ` +
   `plan changes any file under .claude/. ${MAP} Every Done-when ` +
-  `criterion must map to a named check at a named layer.`
+  `criterion must map to a named check at a named layer — judged by reading, not by running anything: the ` +
+  `red-check proves it after the build. Never open data/orbit.db; the seed doc and the API say what it holds. ` +
+  `Do not read other specs for the format; it is this, half a page:\n` +
+  `# <title>\n## What this changes\n<what an attendee or caller sees now>\n## Where\n- \`<file>\` — <function or line>; ` +
+  `test in \`<test file>\` using <lane or helper>\n## How it will be proved\n| Done when | Check | Layer |\n| --- | --- | --- |\n` +
+  `## Decisions\n<only if the ticket left something open>\n## Out of scope\n<only if needed>`
 
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
 phase('Setup')
@@ -797,9 +802,11 @@ const auditTable = [
 const visible = built.ui !== false
 const pr = await rote(
   `${ticket}\n\n${inTree({ releases: true })}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
-  `not re-read the spec, the playbook or the code, and do not run tests. \`git diff --stat origin/${BASE}...HEAD\` ` +
-  `and \`git log --oneline origin/${BASE}..HEAD\` are all you need for *Changed*. If \`git log ${gate.sha}..HEAD\` ` +
-  `shows a commit touching anything outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
+  `not re-read the spec, the playbook or the code, and do not run tests. Gather what *Changed* needs in ONE command, ` +
+  `then write — on #70 this step took 22 turns one command at a time:\n` +
+  `\`git diff --stat origin/${BASE}...HEAD; echo ---; git log --oneline origin/${BASE}..HEAD; echo ---; ` +
+  `git log --name-only --format=%h ${gate.sha}..HEAD; echo ---; git remote get-url origin\`\n` +
+  `If the third part lists a file outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
   (visible
     ? `Something an attendee sees changed. The branch's browser test calls shotForPR at the moment worth seeing: ` +
       `run the test files this branch added or changed with \`PR_SHOTS=1 npx playwright test <files> --project=desktop\`` +

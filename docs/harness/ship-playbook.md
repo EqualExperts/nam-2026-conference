@@ -81,8 +81,11 @@ where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
 Every row of *How it will be proved* must name an assertion that is **false on
-main today** — run the scenario against the branch point before you write the
-row. A row whose assertions all already hold (typically because it names an
+main today** — judge that by reading the code the row is about, not by running
+anything: writing a draft test, breaking the source and reverting it is the
+build's job, and `scripts/red-check.mjs` proves it for real once the change
+exists. To learn what the seed holds, read `docs/context/seed.md` or ask the API
+(`attendedSession()`, `bookableFor()`); never open `data/orbit.db` directly. A row whose assertions all already hold (typically because it names an
 absence, or a side effect the change happens to keep) proves nothing, and it
 reads as proof right through the audit.
 
