@@ -412,6 +412,19 @@ describe('ship', () => {
     assert.match(prompts.implement, /batch/);
   });
 
+  test('the PR asks the reviewer to confirm its decisions, says what it did not verify, and flags test changes', async () => {
+    const g = gateResult({ tampered: ['tests/seats.spec.js: -    expect(count).toBe(3)'] });
+    const { prompts } = await run({
+      'write-spec': { path: 'specs/7-hours.md', summary: 's', decisions: ['Hide the badge before check-in opens — OK?'] },
+      verify: { json: JSON.stringify(g) },
+    });
+    assert.match(prompts['open-pr'], /## 🤔 Decisions for you\n- Hide the badge before check-in opens — OK\?/);
+    assert.match(prompts['open-pr'], /\*\*Not verified:\*\* no red-check ran/);
+    assert.match(prompts['open-pr'], /⚠️ \*\*This changes tests or CI config\*\* — look at these first: `tests\/seats\.spec\.js`/);
+    assert.match(prompts['open-pr'], /<sub>🤖 Built by ship · full ticket · Opus/);
+    assert.match(prompts['open-pr'], /never a test that is not in the diff/);
+  });
+
   test('the PR leads with what changed and how to see it, from what the builder returned', async () => {
     const { prompts } = await run({ implement: { ok: true, summary: 'done', ui: true,
       tryIt: 'Open /schedule?at=2026-10-02T10:00 as Marcus', keyFiles: [{ file: 'src/lib/clock.js', why: 'the ended rule' }] } });

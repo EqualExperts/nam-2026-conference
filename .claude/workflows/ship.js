@@ -138,6 +138,7 @@ const SETUP = {
         path: { type: 'string' },
         summary: { type: 'string', description: 'two sentences: the approach and how it will be proved' },
         editsHarness: { type: 'boolean', description: 'true if the plan changes any file under .claude/' },
+        decisions: { type: 'array', items: { type: 'string' }, description: 'choices the ticket left open that you made, each phrased as a yes/no question for the reviewer ("Show nothing before check-in opens, rather than a greyed status — OK?"); empty if none' },
       },
     },
   },
@@ -150,6 +151,7 @@ const SPEC_WRITTEN = {
     path: { type: 'string' },
     summary: { type: 'string', description: 'two sentences: the approach and how it will be proved' },
     editsHarness: { type: 'boolean', description: 'true if the plan changes any file under .claude/' },
+    decisions: { type: 'array', items: { type: 'string' }, description: 'choices the ticket left open that you made, each phrased as a yes/no question for the reviewer ("Show nothing before check-in opens, rather than a greyed status — OK?"); empty if none' },
   },
 }
 
@@ -417,7 +419,8 @@ const specAsk = (path) =>
   `Do not read other specs for the format; it is this, half a page:\n` +
   `# <title>\n## What this changes\n<what an attendee or caller sees now>\n## Where\n- \`<file>\` — <function or line>; ` +
   `test in \`<test file>\` using <lane or helper>\n## How it will be proved\n| Done when | Check | Layer |\n| --- | --- | --- |\n` +
-  `## Decisions\n<only if the ticket left something open>\n## Out of scope\n<only if needed>`
+  `## Decisions\n<only if the ticket left something open>\n## Out of scope\n<only if needed>\n` +
+  `Return each Decision as decisions, phrased as a yes/no question for the reviewer.`
 
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
 phase('Setup')
@@ -816,6 +819,14 @@ const auditTable = [
 // screenshots are a judgement — gets more than the rote model.
 const visible = built.ui !== false
 const fixed = rounds.reduce((n, r) => n + r.confirmed, 0) + specRounds.reduce((n, r) => n + r.confirmed, 0)
+// What the loop did not prove, said plainly: an agent PR that claims more than
+// it did merges far less often, and "not verified" is where a reviewer looks.
+const notVerified = [
+  ...(!(lastRed && lastRed.checked) ? ['no red-check ran — no app code changed, or it could not'] : []),
+  ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
+  ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
+  ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
+]
 const checksLine = [
   `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
@@ -841,14 +852,21 @@ const pr = await rote(
   // file paths and a table of agent shorthand.
   `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts in plain words:\n\n` +
   `Closes #${issue} · 📄 [Spec](https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path})\n\n` +
-  `## What changes\n<one or two sentences: what an attendee (or a developer) sees or gets now, not how it was built>\n\n` +
-  `<media — each screenshot on its own line with a one-line bold caption above it saying what it shows>\n\n` +
+  `## What changes\n<two or three short sentences: why this was needed (from the ticket), then what an attendee or ` +
+  `developer sees or gets now — not how it was built>\n\n` +
+  `<media — each screenshot on its own line with a one-line bold caption above it>\n\n` +
   (built.tryIt ? `## 🧪 Try it\n${built.tryIt}\n\n` : '') +
-  `## ✅ Done when\n` + (setup.doneWhen || []).map(c => `- [x] ${c} — <the test that proves it, as \`file › title\`>`).join('\n') + `\n\n` +
+  `## ✅ Done when\n` + (setup.doneWhen || []).map(c => `- [x] ${c} — \`<the test that proves it>\``).join('\n') + `\n\n` +
+  (spec.decisions && spec.decisions.length
+    ? `## 🤔 Decisions for you\n` + spec.decisions.map(d => `- ${d}`).join('\n') + `\n\n`
+    : '') +
   (built.keyFiles && built.keyFiles.length
     ? `## 👀 Where to look\n` + built.keyFiles.map(k => `- \`${k.file}\` — ${k.why}`).join('\n') + `\n\n`
     : '') +
-  `## 🛡️ Checks\n${checksLine}\n\n` +
+  `## 🛡️ Checks\n${checksLine}` +
+  (notVerified.length ? `\n\n**Not verified:** ${notVerified.join('; ')}.` : '') +
+  (gate.tampered.length ? `\n\n⚠️ **This changes tests or CI config** — look at these first: ${[...new Set(gate.tampered.map(t => t.split(':')[0]))].map(f => `\`${f}\``).join(', ')}` : '') +
+  `\n\n` +
   (minors.length
     ? `<details><summary>Worth a closer look</summary>\n\n<only those of these unconfirmed notes a reviewer would ` +
       `want, one line each:\n${listFindings(minors)}>\n</details>\n\n`
@@ -858,6 +876,10 @@ const pr = await rote(
   (gate.browser.flakyTests && gate.browser.flakyTests.length ? `\nFlaky, passed on retry: ${gate.browser.flakyTests.join(', ')}.\n` : '') +
   (lessons.length ? `\nLessons written to the docs: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n` : '') +
   `</details>\n\n` +
+  `<sub>🤖 Built by ship · ${SIZE} ticket · ${SIZE === 'full' ? 'Opus' : 'Sonnet'} · its cost is posted below · ` +
+  `to ask for a change, comment \`@claude …\` — put all your comments in one review</sub>\n\n` +
+  `Keep everything above the folded sections under 250 words. In *Done when*, cite only tests in files that ` +
+  `\`git diff --stat\` shows this branch changed — never a test that is not in the diff.\n\n` +
   `Then, from the worktree: \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
   `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +

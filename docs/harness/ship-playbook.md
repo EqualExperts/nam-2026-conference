@@ -262,7 +262,7 @@ it; fold the machine detail away:
 Closes #<n> · 📄 [Spec](<link to the spec on this branch>)
 
 ## What changes
-<One or two sentences: what an attendee (or a developer) sees now.>
+<Two or three sentences: why it was needed, then what an attendee (or a developer) sees now.>
 
 **<Caption>**
 <screenshot from pr-media.mjs>
@@ -273,6 +273,9 @@ Closes #<n> · 📄 [Spec](<link to the spec on this branch>)
 ## ✅ Done when
 - [x] <each criterion from the ticket> — `<the test that proves it>`
 
+## 🤔 Decisions for you
+- <each choice the ticket left open, as a yes/no question — only if there are any>
+
 ## 👀 Where to look
 - `<the one to three files where the change lives>` — <why>
 
@@ -280,9 +283,18 @@ Closes #<n> · 📄 [Spec](<link to the spec on this branch>)
 All tests pass — <unit> unit · <browser> browser, desktop and mobile · the new
 tests fail without the change · independent audit: clean after <n> round(s)
 
+**Not verified:** <what the loop skipped or could not prove>.
+⚠️ **This changes tests or CI config** — <only when it does>
+
 <details><summary>Every file changed</summary> … </details>
 <details><summary>Audit rounds</summary> … </details>
+
+<sub>🤖 Built by ship · <size> ticket · <model> · comment `@claude …` to ask for a change</sub>
 ```
+
+Under 250 words above the folds. Claim only what the diff and the gate show:
+an agent PR whose description promises a test or change that is not in the diff
+merges far less often (28% against 80% in a study of 23,000 agent PRs).
 
 ## 9. If you cannot finish
 
