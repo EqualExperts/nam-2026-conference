@@ -302,6 +302,18 @@ cannot start another round.
 
 ## Gotchas
 
+- **Every path in a prompt is absolute** — an agent's cwd is a worktree, not
+  the repo root, so a relative path lands in a different place for each one.
+  Agent worktrees are full checkouts *inside* the repo, at `.claude/worktrees/`
+  — `wt-<n>` for a ticket, `main-<n>` for ship's browser probe, `qa-base` for
+  QA's base comparison — kept out of `git status` by `.gitignore`, and every
+  prompt that makes one builds the path from the repo root
+  (`dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`), so a
+  base worktree lands beside the ticket's instead of inside it, where removing
+  the ticket's would delete a registered worktree. Anything walking the tree
+  enumerates with `git ls-files`: a recursive readdir descends into a worktree
+  holding another branch's copy of the same file and reads it as this branch's.
+
 - **A script-composed prompt carries only what an earlier agent already
   returned, and an early `return publish(…)` runs before the later `const`s
   exist.** A prompt that needs a sha or the PR's files gets a Context agent
@@ -395,16 +407,6 @@ cannot start another round.
   rejected *Decision* ("No new browser test") for two more review rounds, because
   nothing in the fix flow — or the human comment that triggered it — asked
   anyone to check the spec back against what shipped.
-- **Agent worktrees are full checkouts *inside* the repo**, at
-  `.claude/worktrees/` — `wt-<n>` for a ticket, `main-<n>` for ship's browser
-  probe, `qa-base` for QA's base comparison — kept out of `git status` by
-  `.gitignore`. Each is created from the repo root
-  (`dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`),
-  because the agent making one is usually standing in another and a relative
-  path would nest them. So anything walking the tree must enumerate with
-  `git ls-files`: a recursive readdir descends into a worktree holding another
-  branch's copy of the same file and reads it as this branch's.
-
 ## Where to change…
 
 - Round caps or escalation → the knobs at the top of `ship.js`, then

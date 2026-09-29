@@ -81,6 +81,11 @@ helpers the test will use, so the builder searches for nothing), *How it will be
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
+A question the ticket asks outright — *decide whether…*, *say which in the
+spec* — is answered by name in one of those two, whichever way it goes. It is
+the one gap an auditor is certain to find, because the ticket wrote it down;
+and if the answer changes behaviour, name the test that pins it today.
+
 Every row of *How it will be proved* must name an assertion that is **false on
 main today** — judge that by reading the code the row is about, not by running
 anything: writing a draft test, breaking the source and reverting it is the
