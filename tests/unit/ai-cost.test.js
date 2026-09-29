@@ -1,6 +1,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromStream, line, ledgerBody, parseLedger, priced, runComment, total, tokens } from '../../scripts/ai-cost.mjs';
+import { createRequire } from 'node:module';
+import { fromStream, fromTranscripts, line, ledgerBody, parseLedger, priced, runComment, total, tokens } from '../../scripts/ai-cost.mjs';
+const require = createRequire(import.meta.url);
 
 // The shape `claude -p --output-format stream-json` ends with, from a real run.
 const RESULT = {
@@ -63,6 +65,18 @@ describe('ai-cost', () => {
     assert.match(c, /\| — \| \$\d+\.\d\d \| \$0\.02 \| \*\*\$/);
     assert.match(c, /<sub>.*\[run\]\(https:\/\/x\/9\)<\/sub>/);
     assert.doesNotMatch(c, /@claude/);
+  });
+
+  test('5-minute writes survive being summed across messages — #70 read \$7.15 for \$5.58', () => {
+    const { mkdtempSync, writeFileSync } = require('node:fs');
+    const dir = mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'ai-cost-'));
+    const msg = (id) => JSON.stringify({ type: 'assistant', message: { id, model: 'claude-sonnet-5', usage: {
+      input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 1_000_000,
+      cache_creation: { ephemeral_5m_input_tokens: 1_000_000 } } } });
+    writeFileSync(`${dir}/agent-a.jsonl`, [msg('m1'), msg('m2')].join('\n'));
+    writeFileSync(`${dir}/agent-a.meta.json`, JSON.stringify({ model: 'sonnet', workflowPhase: '▸ ship #2' }));
+    assert.equal(total(fromTranscripts(dir)).cost, 7.5);
+    assert.equal(tokens(total(fromTranscripts(dir, '▸ ship'))), 0, 'a phase matches exactly, not by prefix');
   });
 
   test('a stream with no result records nothing rather than a zero row', () => {

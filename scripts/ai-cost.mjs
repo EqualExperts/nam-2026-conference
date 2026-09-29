@@ -3,7 +3,7 @@
  *
  *   node scripts/ai-cost.mjs line --stream <claude-run.jsonl>        # one line, for a summary
  *   node scripts/ai-cost.mjs record --issue 42 --kind ship --run <url> \
- *     (--stream <claude-run.jsonl> | --transcripts <workflow transcript dir>) [--pr 57]
+ *     (--stream <claude-run.jsonl> | --transcripts <workflow transcript dir> [--phase '▸ ship #2']) [--pr 57]
  *
  * `record` keeps one comment on the issue — every ship, code review, QA and
  * respond run as a row, and the total — so the ticket says what AI spent on
@@ -35,7 +35,8 @@ const family = (model) => (/haiku/.test(model) ? 'haiku' : /opus/.test(model) ? 
 export const MARKER = 'orbit-ai-spend';
 
 const empty = () => ({ in: 0, out: 0, read: 0, write: 0, cost: 0 });
-const add = (a, b) => ({ in: a.in + b.in, out: a.out + b.out, read: a.read + b.read, write: a.write + b.write, cost: a.cost + b.cost });
+const add = (a, b) => ({ in: a.in + b.in, out: a.out + b.out, read: a.read + b.read, write: a.write + b.write,
+  write5m: (a.write5m || 0) + (b.write5m || 0), cost: a.cost + b.cost });
 export const tokens = (u) => u.in + u.out + u.read + u.write;
 export const priced = (model, u) => {
   const r = RATES[family(model)];
@@ -59,11 +60,14 @@ export function fromStream(text) {
 }
 
 /** A local workflow's transcript dir (agent-*.jsonl + .meta.json) → usage by model, priced by RATES. */
-export function fromTranscripts(dir) {
+export function fromTranscripts(dir, phase = null) {
   const models = {};
   for (const f of readdirSync(dir).filter((f) => /^agent-.*\.jsonl$/.test(f))) {
-    let model = 'sonnet';
-    try { model = JSON.parse(readFileSync(join(dir, f.replace(/\.jsonl$/, '.meta.json')), 'utf8')).model || model; } catch { /* default */ }
+    let model = 'sonnet', meta = {};
+    try { meta = JSON.parse(readFileSync(join(dir, f.replace(/\.jsonl$/, '.meta.json')), 'utf8')); model = meta.model || model; } catch { /* default */ }
+    // `/ship 64 65 66` writes every ticket's agents into one directory; each
+    // child run's are tagged with its phase group (▸ ship, ▸ ship #2, …).
+    if (phase && meta.workflowPhase !== phase) continue;
     const byMessage = new Map();
     for (const line of readFileSync(join(dir, f), 'utf8').split('\n').filter(Boolean)) {
       let e; try { e = JSON.parse(line); } catch { continue; }
@@ -74,8 +78,8 @@ export function fromTranscripts(dir) {
     }
     let u = empty();
     for (const m of byMessage.values()) {
-      u = add(u, { in: m.input_tokens || 0, out: m.output_tokens || 0, read: m.cache_read_input_tokens || 0, write: m.cache_creation_input_tokens || 0, cost: 0 });
-      u.write5m = (u.write5m || 0) + (m.cache_creation?.ephemeral_5m_input_tokens || 0);
+      u = add(u, { in: m.input_tokens || 0, out: m.output_tokens || 0, read: m.cache_read_input_tokens || 0,
+        write: m.cache_creation_input_tokens || 0, write5m: m.cache_creation?.ephemeral_5m_input_tokens || 0, cost: 0 });
     }
     u.cost = priced(model, u);
     const key = family(model);
@@ -150,7 +154,7 @@ function gh(args, input) {
 }
 
 function record(opts) {
-  const usage = opts.stream ? fromStream(readFileSync(opts.stream, 'utf8')) : fromTranscripts(opts.transcripts);
+  const usage = opts.stream ? fromStream(readFileSync(opts.stream, 'utf8')) : fromTranscripts(opts.transcripts, opts.phase || null);
   const t = total(usage);
   const text = line(usage);
   if (!tokens(t)) { console.log(`no usage found — nothing recorded`); return; }
