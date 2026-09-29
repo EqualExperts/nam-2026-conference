@@ -100,7 +100,7 @@ describe('a tree with work the pull request will not contain', () => {
 });
 
 describe('strays', () => {
-  test('stops only a listener this checkout started, never another worktree\'s', () => {
+  test('stops only a listener this checkout started, never a sibling worktree\'s', () => {
     const root = '/w/orbit-wt-67';
     const listeners = [
       { pid: 1, cwd: '/w/orbit-wt-67' },
@@ -108,8 +108,12 @@ describe('strays', () => {
       { pid: 3, cwd: '/w/orbit-wt-670' },
       { pid: 4, cwd: '/w/orbit-wt-65' },
       { pid: 5, cwd: undefined },
+      // An agent worktree now lives inside the checkout. One that never
+      // claimed a lane and left `npm run dev` on these ports is the stale
+      // server strays() exists to stop, so it stays inside the net.
+      { pid: 6, cwd: '/w/orbit-wt-67/.claude/worktrees/wt-99' },
     ];
-    assert.deepEqual(strays(listeners, root), [1, 2]);
+    assert.deepEqual(strays(listeners, root), [1, 2, 6]);
   });
 });
 

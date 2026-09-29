@@ -1,6 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 /**
  * The ship workflow's control flow, with every agent stubbed.
@@ -684,5 +685,36 @@ describe('ship', () => {
     });
     assert.match(prompts['hand-back'], /contradictory outcomes/);
     assert.match(prompts['hand-back'], /Also still open[\s\S]*does not pin --repo/);
+  });
+});
+
+/**
+ * Where a run puts its worktrees. Both paths are strings in a prompt, so what
+ * the test can prove is what the agent is told to type — and the point of the
+ * ticket is exactly that: one git-ignored directory inside the checkout that
+ * `ls .claude/worktrees` accounts for.
+ */
+describe('worktree paths', () => {
+  test('the ticket workspace and the base probe are made inside the checkout', async () => {
+    const { prompts } = await run({
+      setup: { ...SETUP, runner: false },
+      implement: { ok: true, summary: 's', ui: true, browserTest: true },
+    });
+    assert.match(prompts.setup, /\.claude\/worktrees\/wt-7/);
+    // The whole expression, not just its tail: the probe agent's cwd is the
+    // ticket worktree, so a relative path would nest one inside the other.
+    assert.match(prompts['audit:browser#1'], /--git-common-dir[^\n]*\/\.claude\/worktrees\/main-7/);
+    assert.doesNotMatch(prompts.setup, /orbit-(wt|main|qa)-/);
+    assert.doesNotMatch(prompts['audit:browser#1'], /orbit-(wt|main|qa)-/);
+  });
+
+  test('nothing the harness or the docs tell an agent to make sits beside the checkout', () => {
+    const root = new URL('../../', import.meta.url);
+    // `git ls-files`, not a walk: a worktree under .claude/ holds another
+    // branch's copy of these same files, and a readdir would read those.
+    const files = execFileSync('git', ['ls-files', '.claude', 'docs'], { cwd: root, encoding: 'utf8' })
+      .split('\n').filter(Boolean);
+    const offenders = files.filter(f => /orbit-(wt|main|qa)-/.test(readFileSync(new URL(f, root), 'utf8')));
+    assert.deepEqual(offenders, []);
   });
 });

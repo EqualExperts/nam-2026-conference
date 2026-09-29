@@ -403,6 +403,10 @@ describe('qa', () => {
     assert.equal(result.verdict, 'fail');
     assert.equal(verdictLine, 'FAIL b: LIVE badge shown');
     assert.match(prompts['repro:b'], /--project=mobile/);
+    // The base worktree is made, and cleaned up, inside the checkout — and the
+    // agent is already standing in one, so the path is computed from the root.
+    assert.match(prompts['repro:b'], /--git-common-dir[^\n]*\/\.claude\/worktrees\/qa-base/);
+    assert.match(prompts.publish, /--git-common-dir[^\n]*\/\.claude\/worktrees\/qa-base/);
     assert.match(prompts.publish, /a bug in this change/);
   });
 
@@ -504,6 +508,7 @@ describe('qa', () => {
     assert.equal(result.verdict, 'fail');
     assert.match(prompts['repro:c2'], /command probe failed/);
     assert.match(prompts['repro:c2'], /node scripts\/gate\.mjs --x c2/);
+    assert.match(prompts['repro:c2'], /--git-common-dir[^\n]*\/\.claude\/worktrees\/qa-base/);
   });
 
   test('browser and command probes in one plan both run', async () => {
