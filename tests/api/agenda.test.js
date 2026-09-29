@@ -1,6 +1,6 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearAgenda, overlaps, startApi } from './harness.js';
+import { attendedSession, clearAgenda, overlaps, startApi } from './harness.js';
 
 /**
  * The agenda payload — `GET /api/users/:id/schedule`.
@@ -45,5 +45,29 @@ describe('A day on the schedule', () => {
     const held = new Map(day.sessions.map((s) => [s.id, s.reservation]));
     assert.equal(held.get(seat.id), 'confirmed');
     assert.equal(held.get(queue.id), 'waitlisted');
+  });
+});
+
+describe('Attendance on the schedule', () => {
+  /*
+   * My Agenda marks every session that is over as rated, checked in or
+   * missed, on every day — so the agenda payload has to say, per session,
+   * whether this attendee checked in and what they gave it.
+   */
+  test('carries checkedIn and myStars for each session held', async () => {
+    const { userId, session, stars } = await attendedSession(api);
+    const { days } = await api.json(`/users/${userId}/schedule`);
+    const all = days.flatMap((d) => d.sessions);
+
+    const attended = all.find((s) => s.id === session.id);
+    assert.ok(attended, 'the attended session should be on their agenda');
+    assert.equal(attended.checkedIn, true);
+    assert.equal(attended.myStars, stars);
+
+    // The seed only checks people in on Day 1 morning, so a later day is untouched.
+    const future = all.find((s) => s.day > session.day);
+    assert.ok(future, 'the seed should give them a session on a later day');
+    assert.equal(future.checkedIn, false);
+    assert.equal(future.myStars, null);
   });
 });
