@@ -14,7 +14,14 @@ import { hasEnded, progressOf, toMinutes } from '../lib/clock.js';
  * places say nothing — the caller passes `attendance` only for confirmed seats.
  */
 function AttendanceStatus({ session, attendance }) {
+  const { clock } = useConference();
   if (!attendance) return null;
+  // Nothing may claim to be true before it can be: the seed records Day 1's
+  // morning as attended and rated, so at 08:00 a 09:00 talk would read
+  // "Rated ★5". Status starts when check-in opens, 15 minutes before.
+  const open = clock.day > session.day ||
+    (clock.day === session.day && toMinutes(clock.time) >= toMinutes(session.startsAt) - 15);
+  if (!open) return null;
   const { ended, checkedIn, myStars } = attendance;
   let body;
   if (myStars != null) {

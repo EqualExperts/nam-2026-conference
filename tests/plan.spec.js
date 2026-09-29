@@ -228,6 +228,14 @@ test.describe('What is left to rate', () => {
     await shotForPR(page, 'my-agenda-to-rate');
   });
 
+  test('claims no attendance for a session that has not opened yet', async ({ page }) => {
+    // The seed rates Marcus's Day 1 morning; at 08:00 on Day 1 none of it has
+    // happened, so no row may say Rated, Checked in or Missed — found by QA on #89.
+    await visit(page, '/my-agenda', { as: ATTENDEES.marcus, at: await momentOn(0, '08:00') });
+    await expect(page.getByTestId('session-card').first()).toBeVisible();
+    await expect(page.getByTestId('attendance-status')).toHaveCount(0);
+  });
+
   test('shows no callout when everything attended is rated', async ({ page }) => {
     // Marcus rated every seeded check-in; no lane checks him in to a seat he holds.
     await visit(page, '/my-agenda', { as: ATTENDEES.marcus, at: await momentOn(1, '10:30') });
