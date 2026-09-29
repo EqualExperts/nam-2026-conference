@@ -84,6 +84,13 @@ The naming rule is mechanical: `orbit-X` becomes `.claude/worktrees/X` with the
   `/--git-common-dir[^\n]*\/\.claude\/worktrees\/qa-base/`. In the
   command-probe test at line 491 (which already asserts on `prompts['repro:c2']`):
   the same match. That covers all three of qa.js's mentions.
+- **`tests/unit/gate.test.js`** — the existing `describe('strays')` case gains
+  one listener, `{ pid: 6, cwd: '/w/orbit-wt-67/.claude/worktrees/wt-99' }`,
+  expected in the result (`[1, 2, 6]`), and its title narrows from "never
+  another worktree's" to "never a *sibling* worktree's". `scripts/gate.mjs` is
+  not touched — see the Decision below. (The fixture's `/w/orbit-wt-67` paths
+  are invented listener cwds, not references to a real directory, and
+  `tests/` is outside the `git ls-files .claude docs` scan either way.)
 - No lane and no data lane: every check here is `node --test`. `tests/helpers.js`
   is not involved.
 
@@ -96,6 +103,7 @@ The naming rule is mechanical: `orbit-X` becomes `.claude/worktrees/X` with the
 | `qa.js`'s base worktree is `.claude/worktrees/qa-base` in all three places | `prompts['repro:b']`, `prompts['repro:c2']`, `prompts.publish` each match it, `--git-common-dir` spine included | unit |
 | `docs/harness/README.md` no longer says "beside the main checkout" | the file scan (line 150 is its only `orbit-wt-`) | unit |
 | Nothing under `.claude/` or `docs/` names `../orbit-wt-`, `../orbit-main-`, `../orbit-qa-` | the `git ls-files .claude docs` scan | unit |
+| `strays()` still stops an unlaned nested worktree's dev server | the new listener in `tests/unit/gate.test.js` | unit |
 | `npm test` passes | `npm test` | command |
 | `git status` clean with a worktree present | `git worktree add .claude/worktrees/wt-probe origin/main && git status --porcelain` is empty, then `git worktree remove` | command |
 
@@ -105,8 +113,10 @@ Red at the branch point, verified before writing these rows: `git ls-files
 `docs/harness/ship-playbook.md` and `docs/harness/README.md` — so the scan test
 and all five prompt assertions fail on main today.
 
-The last two rows are **not** red today: `npm test` is green at the branch
-point, and `.gitignore:28` already keeps a nested worktree out of `git status`.
+The last three rows are **not** red today: `strays()` already returns a
+listener whose cwd sits under the root, so the new case passes before the
+change as well; `npm test` is green at the branch point; and `.gitignore:28`
+already keeps a nested worktree out of `git status`.
 They are regression guards on the criteria as written, not evidence of the
 change, and should not be read as proof of it.
 
@@ -135,6 +145,22 @@ change, and should not be read as proof of it.
 - **The name for the base probe is `main-<n>`**, mirroring `orbit-main-<n>`,
   even though it is created from `origin/${BASE}` and the base is not always
   `main`. Renaming it is a separate argument from moving it.
+
+- **`strays()` in `scripts/gate.mjs` is left unguarded; only its test is
+  re-pinned.** The ticket asks whether to exclude `.claude/worktrees/` from the
+  prefix test (`gate.mjs:140`) now that the main checkout's root is a prefix of
+  every worktree's root. Leave it. Two processes cannot hold the same port, so
+  the only case the nesting changes is a nested worktree that never claimed a
+  lane and left `npm run dev` on 3001/5173 — the exact stale server `strays()`
+  was written to stop, and one the gate could not boot past anyway. Guarding it
+  would have the gate spare that server and then fail to start its own app,
+  which is worse than the thing being guarded against. A worktree that did
+  claim a lane is on 4300–4398 (`FIRST_PORT`, `scripts/lane.mjs:33`), so its
+  processes are never among the listeners `listenersOn` collects. What the
+  nesting does invalidate is the wording of the test that pins the behaviour:
+  "never another worktree's" is now true of siblings only, so the fixture gains
+  a nested worktree it is expected to stop and the title says *sibling*. That
+  keeps the decision checkable rather than only written down.
 
 ## Out of scope
 
