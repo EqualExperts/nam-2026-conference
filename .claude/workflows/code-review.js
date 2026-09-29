@@ -302,7 +302,8 @@ phase('Review')
 const lens = (l, retry) => agent(
   `${HERE}You are reviewing a pull request you did not write. Each turn re-reads everything before it, so batch ` +
   `the reads you know you need into one command, and do not run the test suite — the gate has. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
-  `\`gh pr diff ${pr}\`, the spec in specs/ if the branch has one, and the docs/context/ docs that own the ` +
+  `\`gh pr diff ${pr}\`, the spec in specs/ if the branch has one, the rule file in .claude/rules/ for each area the diff ` +
+  `touches (ui.md for src/, server.md for server/ — a diff does not load them), and the docs/context/ docs that own the ` +
   `changed files (\`node scripts/context.mjs for <files>\`, then \`show <doc>\` for its outline and \`show <doc> <part>\` ` +
   `for the parts you need — not whole docs). Your lens only: ${l.ask}\n\n` +
   `§2–§4 of ${PLAYBOOK} say what never to flag. Cite file:line read from the line, never inferred from a ` +

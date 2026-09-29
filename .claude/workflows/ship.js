@@ -590,7 +590,7 @@ const CODE_LENSES_ALL = [
       `satisfies it and the test that proves it — one with nothing satisfying it is a blocker, and so is a test ` +
       `that would pass before the change or an existing test weakened when the ticket did not ask for it ` +
       `(test-weakened). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
-      `line), or a logic error with an input and the wrong output it produces. Last, \`node scripts/context.mjs ` +
+      `line) or a rule in .claude/rules/ for an area the diff touches, or a logic error with an input and the wrong output it produces. Last, \`node scripts/context.mjs ` +
       `for <changed files>\`: a docs/context/ doc that now describes the code wrongly is docs-stale (a minor ` +
       `unless an agent following it would build the wrong thing). ` +
       `docs/harness/code-review-playbook.md §2–§4 says what not to flag.`,
