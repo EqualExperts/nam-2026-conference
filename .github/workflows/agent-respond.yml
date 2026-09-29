@@ -38,7 +38,8 @@ jobs:
       !contains(github.event.comment.body, 'Claude finished') &&
       !contains(github.event.comment.body, '<!-- orbit-') &&
       !contains(github.event.comment.body, '<!-- ship-progress') &&
-      (github.event_name != 'issue_comment' || github.event.issue.pull_request)
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association)
     runs-on: ubuntu-latest
     # On #41 it confirmed a review blocker, found a second bug, and died at
     # 19 minutes before pushing either — out of turns. A fix plus the gate

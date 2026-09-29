@@ -39,7 +39,9 @@ jobs:
     # A draft is what `ship` opens when it hands a ticket back: it already
     # knows what is wrong, and says so on the pull request. Marking it ready
     # is what asks for this pass.
-    if: ${{ !github.event.pull_request.draft }}
+    # The repository is public: a stranger's fork gets no secrets, so the
+    # agent could only fail. Only pull requests from branches of this repo.
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     # A killed run publishes nothing: QA on PR #38 hit 23 minutes mid-probe
     # and the check read "did not finish". This bounds a hung run, not a slow one.
