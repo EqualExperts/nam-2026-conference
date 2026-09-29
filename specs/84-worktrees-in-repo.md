@@ -34,13 +34,22 @@ The naming rule is mechanical: `orbit-X` becomes `.claude/worktrees/X` with the
 - **`.claude/workflows/ship.js`** — two prompt strings, no control flow.
   Line 421 (the `setup` prompt): `(orbit-wt-${issue} beside the main checkout)`
   → `(.claude/worktrees/wt-${issue} inside the checkout)`. Line 610 (the
-  `browser` entry of `CODE_LENSES`, the base probe): `git worktree add
-  ../orbit-main-${issue} origin/${BASE}` → `git worktree add
-  .claude/worktrees/main-${issue} origin/${BASE}`.
-- **`.claude/workflows/qa.js`** — three prompt strings, no control flow. Line
-  357 (the command-probe `repro` prompt), line 365 (the browser-probe `repro`
-  prompt) and line 491 (the `publish` prompt's `r.cleanup` clause): each
-  `../orbit-qa-base` → `.claude/worktrees/qa-base`.
+  `browser` entry of `CODE_LENSES`, the base probe) takes the same absolute
+  expression as §3 rather than a relative path, because that agent's cwd is
+  `setup.workdir` — the ticket worktree (ship.js:337) — so a relative path
+  would nest the probe inside it: `git worktree add "$(dirname "$(git rev-parse
+  --path-format=absolute --git-common-dir)")/.claude/worktrees/main-${issue}"
+  origin/${BASE}`.
+- **`.claude/workflows/qa.js`** — three prompt strings and one module-scope
+  constant, no control flow. QA's agents also run inside a worktree (`workdir`,
+  a checkout of the PR branch — qa.js:40), so the path is computed the same
+  way, and named once beside `HERE` so the three mentions cannot drift:
+  `const BASE_WT = '"$(dirname "$(git rev-parse --path-format=absolute
+  --git-common-dir)")/.claude/worktrees/qa-base"'`. Line 357 (the command-probe
+  `repro` prompt) and line 365 (the browser-probe `repro` prompt): `git worktree
+  add ../orbit-qa-base origin/${plan.base}` → `git worktree add ${BASE_WT}
+  origin/${plan.base}`. Line 491 (the `publish` prompt's `r.cleanup` clause):
+  "any `../orbit-qa-base` worktree" → "any worktree at ${BASE_WT}".
 - **`docs/harness/README.md`**, line 150, in *Running it*: "its own worktree,
   `orbit-wt-<n>` beside the main checkout" → the git-ignored
   `.claude/worktrees/wt-<n>` inside it.
@@ -57,7 +66,9 @@ The naming rule is mechanical: `orbit-X` becomes `.claude/worktrees/X` with the
   with two tests. (1) Using the existing `run()` stub (default `args = 7`, so
   the issue number in a prompt is `7`): `prompts.setup` matches
   `/\.claude\/worktrees\/wt-7/` and `prompts['audit:browser#1']` matches
-  `/\.claude\/worktrees\/main-7/`; neither matches `/orbit-(wt|main|qa)-/`. The
+  `/--git-common-dir[^\n]*\/\.claude\/worktrees\/main-7/` — the whole
+  expression, not just its tail, so re-relativizing the path fails the test;
+  neither matches `/orbit-(wt|main|qa)-/`. The
   browser lens only runs on a `full` ticket with a visible change, so this
   reuses the arguments the existing `audit:browser#1` test at line 474 passes:
   `run({ setup: { ...SETUP, runner: false }, implement: { ok: true, summary: 's', ui: true, browserTest: true } })`. (2) A file scan:
@@ -68,7 +79,9 @@ The naming rule is mechanical: `orbit-X` becomes `.claude/worktrees/X` with the
 - **`tests/unit/review-workflows.test.js`** — two assertions in the existing QA
   `describe`, no new fixtures. In the browser-repro test at line 401 (`run({
   probe: withFail('b') })`, which already asserts on `prompts['repro:b']` and
-  `prompts.publish`): both match `/\.claude\/worktrees\/qa-base/`. In the
+  `prompts.publish` — the normal publish path sets `cleanup: true` at
+  qa.js:422, so the clause is present): both match
+  `/--git-common-dir[^\n]*\/\.claude\/worktrees\/qa-base/`. In the
   command-probe test at line 491 (which already asserts on `prompts['repro:c2']`):
   the same match. That covers all three of qa.js's mentions.
 - No lane and no data lane: every check here is `node --test`. `tests/helpers.js`
@@ -80,7 +93,7 @@ The naming rule is mechanical: `orbit-X` becomes `.claude/worktrees/X` with the
 | --- | --- | --- |
 | Playbook §3 creates `.claude/worktrees/wt-<n>`, §10 removes that path | the file scan in `ship.test.js` — the playbook's only `orbit-wt-` lines are 62, 68 and 312, all three in §3 and §10 — plus reading the two blocks | unit |
 | `ship.js` names both paths under `.claude/worktrees/` | `prompts.setup` → `wt-7`, `prompts['audit:browser#1']` → `main-7` | unit |
-| `qa.js`'s base worktree is `.claude/worktrees/qa-base` in all three places | `prompts['repro:b']`, `prompts['repro:c2']`, `prompts.publish` each match it | unit |
+| `qa.js`'s base worktree is `.claude/worktrees/qa-base` in all three places | `prompts['repro:b']`, `prompts['repro:c2']`, `prompts.publish` each match it, `--git-common-dir` spine included | unit |
 | `docs/harness/README.md` no longer says "beside the main checkout" | the file scan (line 150 is its only `orbit-wt-`) | unit |
 | Nothing under `.claude/` or `docs/` names `../orbit-wt-`, `../orbit-main-`, `../orbit-qa-` | the `git ls-files .claude docs` scan | unit |
 | `npm test` passes | `npm test` | command |
@@ -104,6 +117,18 @@ change, and should not be read as proof of it.
   name carries what distinguishes one worktree from another and nothing else.
 - **§10 recomputes the path rather than reusing `$wt`.** Each phase of a ship
   run is a fresh agent with a fresh shell, so no variable survives from §3.
+- **The base worktrees are siblings of the ticket worktree, not children of
+  it.** ship.js's browser lens and every qa.js agent start with their cwd
+  already inside a worktree, so a relative `.claude/worktrees/main-<n>` would
+  land at `<repo>/.claude/worktrees/wt-<n>/.claude/worktrees/main-<n>`. Two
+  things break there. `ls .claude/worktrees` at the repo root stops accounting
+  for every worktree, which is the point of the ticket. And §10's `git worktree
+  remove` of `wt-<n>` then deletes a directory that still holds a registered
+  worktree, leaving a prunable entry in `.git/worktrees` — exactly the
+  invisible leftover this change exists to end. So both prompts use the §3
+  expression, which resolves to the repo root from any worktree. Who removes
+  what is unchanged: each base worktree is removed by the agent that made it,
+  as both prompts already say, and §10 removes only `wt-<n>`.
 - **Removing the worktree you are standing in is unchanged.** It was already the
   case with `../orbit-wt-<n>`, and this ticket is about where the directory
   lives, not about who runs §10 from where.
@@ -118,5 +143,8 @@ change, and should not be read as proof of it.
 - Migrating or deleting any `../orbit-wt-*` directory already on a laptop. The
   playbook's "reuse it if it exists" now looks only at the new path; an old one
   is a leftover to remove by hand.
+- Keying QA's base worktree on the pull request. `qa-base` is a fixed name, so
+  two QA runs at once collide on it — as they already did on `../orbit-qa-base`,
+  whose workdirs sit in the same parent directory. Unchanged, not introduced.
 - Any change to `scripts/lane.mjs`. A lane is keyed on the worktree's top-level
   directory, which is still distinct for a nested worktree.
