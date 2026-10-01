@@ -25,19 +25,18 @@ Run as many tickets at once as you like. Every ticket shows what it cost.
 
 ## 👀 See it for real
 
-Everything the harness does leaves a trail on GitHub. One real ticket, start to
-finish — label to merged pull request, nobody touching a terminal:
+Everything the harness does leaves a trail on GitHub. Two real tickets, label to
+merged pull request on GitHub Actions, nobody touching a terminal:
 
-> **[PR #96 — Say what was searched for when the speakers page finds nothing](https://github.com/EqualExperts/nam-2026-conference/pull/96)**
+| | 🟢 A small ticket | 🔵 A bigger ticket |
+| --- | --- | --- |
+| **Pull request** | [PR #96 — name the search when nothing matches](https://github.com/EqualExperts/nam-2026-conference/pull/96) | [PR #97 — fix Undo after removing an ended seat](https://github.com/EqualExperts/nam-2026-conference/pull/97) |
+| 🚢 **Ship** | 12 min — Sonnet, one audit round | 22 min — Opus, plan audit and three audit lenses |
+| 🔍 **Code review** | High confidence, about a minute | High confidence, about a minute |
+| 🧪 **QA** | Skipped in 16 seconds — two lines, covered by the PR's own tests | High confidence — 3 browser probes, every criterion exercised |
+| 🧾 **AI spend** | **$0.91** | **$7.99** |
 
-| | |
-| --- | --- |
-| 🚢 **Ship** | 12 minutes on GitHub Actions — a plan, a failing test, the change, every test on desktop and mobile, an independent audit, a screenshot |
-| 🔍 **Code review** | High confidence, in about a minute |
-| 🧪 **QA** | Skipped in 16 seconds — two lines of app code, already covered by the PR's own tests |
-| 🧾 **AI spend** | **$0.91 in total** — $0.66 to build it, $0.25 to review it |
-
-The pull request has it all — what the agents wrote, checked and found, the
+Each pull request has it all — what the agents wrote, checked and found, the
 screenshots, the verdicts, the cost — and links back to its issue.
 
 ## Two ways to work
