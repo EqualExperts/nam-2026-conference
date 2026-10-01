@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from './api.js';
-import { useConferenceClock } from './clock.js';
+import { hasEnded, useConferenceClock } from './clock.js';
 import { useToast } from '../components/Toaster.jsx';
 
 /**
@@ -116,20 +116,27 @@ export function ConferenceProvider({ children }) {
     return state;
   }, [currentUserId, applySeatState, toast, clock]);
 
-  const releaseSeat = useCallback(async (sessionId) => {
+  /**
+    * Give a seat back. Pass the session too: Undo is a fresh `reserveSeat`, and
+    * the API refuses one for a session that is over, so offering the button
+    * there is an error waiting to happen. No session means no Undo, so a caller
+    * cannot re-open that by forgetting to pass it.
+    */
+  const releaseSeat = useCallback(async (sessionId, session) => {
     const state = await api.releaseSeat(currentUserId, sessionId);
     applySeatState(state);
+    const canUndo = session ? !hasEnded(session, clock) : false;
     toast({
       message: state.promoted ? 'Removed — your seat went to someone on the waitlist' : 'Removed from your agenda',
       icon: 'check',
-      action: { label: 'Undo', onClick: () => reserveSeat(sessionId) },
+      ...(canUndo ? { action: { label: 'Undo', onClick: () => reserveSeat(sessionId) } } : {}),
     });
     return state;
-  }, [currentUserId, applySeatState, toast, reserveSeat]);
+  }, [currentUserId, applySeatState, toast, reserveSeat, clock]);
 
   /** Toggle a session on or off the agenda. */
   const toggleSeat = useCallback(
-    (sessionId) => (reservations.has(sessionId) ? releaseSeat(sessionId) : reserveSeat(sessionId)),
+    (sessionId, session) => (reservations.has(sessionId) ? releaseSeat(sessionId, session) : reserveSeat(sessionId)),
     [reservations, reserveSeat, releaseSeat],
   );
 

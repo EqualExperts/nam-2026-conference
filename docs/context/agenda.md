@@ -69,7 +69,8 @@ statuses) → `{ type: 'overlap', sessionIds: [a, b] }`. `venuesVisited` is venu
 **My Agenda** (`MyAgendaPage`) fetches `api.getSchedule` once, then in a `useMemo`
 re-filters every day through `reservationFor(s.id)` from the store and
 **recomputes** `conflicts`, both minute totals and `venuesVisited` client-side, dropping
-empty days — so a removal disappears immediately and Undo restores it. Stat tiles:
+empty days — so a removal disappears immediately and Undo restores it (no Undo is offered
+for a session that has already ended). Stat tiles:
 seats booked, hours (`stat-hours-booked` = sum of per-day `hoursOn`, i.e. rounded
 per day), waitlisted, clashes, cross-town days. Any waitlisted time adds a
 `Stat note` under the hours label — `stat-hours-waitlisted`, `+Nh waitlisted`,
