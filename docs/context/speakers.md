@@ -57,6 +57,7 @@ key): `q`, `track` (sent as `trackSlug`), `day`, `show`
 - Client-side (in the `all` memo): `show=following` filters by `followingIds`;
   every `sort` except `featured` re-sorts (the server order *is* "featured").
 - `narrowed` = any of `q`, `track`, `day`, `show` set. Sort does not count.
+- The empty state heading is `No speakers match “<q>”` when a search is active, plain `No speakers match` otherwise; the following view keeps `You are not following anyone yet`.
 
 **Tiering** (three sections, each self-hides when empty):
 
