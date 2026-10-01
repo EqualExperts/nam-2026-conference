@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, ATTENDEES, shotForPR } from './helpers.js';
+import { API, visit, ATTENDEES, shotForPR, conferenceDays } from './helpers.js';
 
 
 test.describe('Speakers', () => {
@@ -151,5 +151,32 @@ test.describe('Headliner spotlight', () => {
     }
     // the programme size is not the point — that every one of them is consistent is
     expect(speakers.length).toBeGreaterThan(50);
+  });
+
+  test('an empty search names what was searched for', async ({ page }) => {
+    await visit(page, '/speakers?q=zzqx');
+    await expect(page.getByRole('heading', { name: 'No speakers match “zzqx”', exact: true })).toBeVisible();
+    await shotForPR(page, 'the empty state naming the search');
+  });
+
+  test('filters without a search keep the plain heading, and following is unchanged', async ({ page, request }) => {
+    const days = await conferenceDays();
+    const { tracks } = await (await request.get(`${API}/bootstrap`)).json();
+    let pick = null;
+    for (const day of days) {
+      for (const t of tracks) {
+        const found = await (await request.get(`${API}/speakers?day=${day}&trackSlug=${t.slug}`)).json();
+        const list = Array.isArray(found) ? found : found.speakers;
+        if (list.length === 0) { pick = { day, slug: t.slug }; break; }
+      }
+      if (pick) break;
+    }
+    if (pick) {
+      await visit(page, `/speakers?day=${pick.day}&track=${pick.slug}`);
+      await expect(page.getByRole('heading', { name: 'No speakers match', exact: true })).toBeVisible();
+    }
+    // the following view keeps its own message even with a search that finds nobody
+    await visit(page, '/speakers?show=following&q=zzqx');
+    await expect(page.getByRole('heading', { name: 'You are not following anyone yet', exact: true })).toBeVisible();
   });
 });
