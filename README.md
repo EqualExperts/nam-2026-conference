@@ -25,16 +25,21 @@ Run as many tickets at once as you like. Every ticket shows what it cost.
 
 ## 👀 See it for real
 
-Everything the harness does leaves a trail on GitHub. Two real tickets, start
-to finish:
+Everything the harness does leaves a trail on GitHub. One real ticket, start to
+finish — label to merged pull request, nobody touching a terminal:
 
-| | The ticket | What came back |
-| --- | --- | --- |
-| 🔵 **A full ticket** — a rule across the app | [#69 Stop offering a seat in sessions that have ended](https://github.com/EqualExperts/nam-2026-conference/issues/69) | [PR #77](https://github.com/EqualExperts/nam-2026-conference/pull/77) — spec, audit rounds, code review and QA verdicts, cost |
-| 🟢 **A small ticket** — tighter validation | [#66 Return 400/404, not 500/409, for bad rating requests](https://github.com/EqualExperts/nam-2026-conference/issues/66) | [PR #72](https://github.com/EqualExperts/nam-2026-conference/pull/72) — the same trail, a lighter loop |
+> **[#95 Say what was searched for when the speakers page finds nothing](https://github.com/EqualExperts/nam-2026-conference/issues/95)**
+> → **[PR #96](https://github.com/EqualExperts/nam-2026-conference/pull/96)**
 
-Open the issue to see the AI spend comment; open the PR to see what the agents
-wrote, checked and found.
+| | |
+| --- | --- |
+| 🚢 **Ship** | 12 minutes on GitHub Actions — a plan, a failing test, the change, every test on desktop and mobile, an independent audit, a screenshot |
+| 🔍 **Code review** | High confidence, in about a minute |
+| 🧪 **QA** | Skipped in 16 seconds — two lines of app code, already covered by the PR's own tests |
+| 🧾 **AI spend** | **$0.91 in total** — $0.66 to build it, $0.25 to review it |
+
+Open the issue for the running AI spend; open the PR for what the agents wrote,
+checked and found.
 
 ## Two ways to work
 
