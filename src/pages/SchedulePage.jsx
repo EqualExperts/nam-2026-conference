@@ -285,7 +285,7 @@ export function SchedulePage() {
 
           {!loading && !error && sessions.length === 0 && (
             <EmptyState
-              title="No sessions match"
+              title={filters.q ? `No sessions match “${filters.q}”` : 'No sessions match'}
               description="Try widening the filters — or clearing them entirely."
               action={<Button size="sm" onClick={clearAll}>Clear filters</Button>}
             />

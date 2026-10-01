@@ -56,6 +56,7 @@ lists are plain `toSession` — no speakers/tags. **`/:id.ics`** is registered
 Page keys map to API keys in the `useFetch` call (`track→trackSlug`,
 `venue→venueId`, `tag→tagSlug`). `set(key, value)` deletes the key for `'all'`/empty
 and writes with `{ replace: true }`; `clearAll` keeps `day` and an explicit `view`.
+The empty state's heading is `No sessions match`, followed by the search text in curly quotes when `q` is set.
 
 **Grid vs list.** `requestedView = ?view ?? (useMediaQuery('(min-width: 1024px)') ? 'grid' : 'list')`.
 `BLOCKERS` is `[key, human phrase]` for `q`, `track`, `tag`, `level`, `format`;
