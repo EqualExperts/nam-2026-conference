@@ -49,7 +49,7 @@ jobs:
       issues: write         # file a follow-up issue for anything that did not block
       checks: write         # publish the verdict as a check on the PR
       id-token: write
-      actions: read
+      actions: write        # start learn-escape.yml when an escape is found
 
     steps:
       - uses: actions/checkout@v7
@@ -180,9 +180,22 @@ jobs:
             echo "### 🧯 Harness escape — ship's loop let this through: ${line#FAIL }" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # Hand the escape to learn-escape.yml as its own run — only when there is
+      # one, so a clean pull request shows no skipped check.
+      - name: 🎓 Learn from the escape
+        if: ${{ !cancelled() && steps.escape.outputs.escape == 'true' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          FINDING: ${{ steps.escape.outputs.finding }}
+        run: gh workflow run learn-escape.yml --ref "${{ github.event.repository.default_branch }}" -f pr="$PR" -f source="code review" -f finding="$FINDING"
+
       # Red means a blocker was found, not that merging is forbidden — nothing
       # here is a required check. It puts the blocker where a skim-reader sees
       # it instead of three comments down.
+
       - name: 📣 Publish the verdict
         if: ${{ !cancelled() }}
         env:
@@ -271,17 +284,3 @@ jobs:
               || { echo "could not file: $title"; continue; }
             echo "- [$title]($url)" >> "$GITHUB_STEP_SUMMARY"
           done
-
-  learn:
-    needs: fresh-context
-    if: ${{ always() && needs.fresh-context.outputs.escape == 'true' }}
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: read
-    uses: ./.github/workflows/learn-escape.yml
-    with:
-      pr: ${{ github.event.pull_request.number }}
-      source: code review
-      finding: ${{ needs.fresh-context.outputs.finding }}
-    secrets: inherit

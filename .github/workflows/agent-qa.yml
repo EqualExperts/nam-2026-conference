@@ -57,7 +57,7 @@ jobs:
       issues: write        # a one-line verdict back on the ticket
       checks: write         # publish the verdict as a check on the PR
       id-token: write
-      actions: read
+      actions: write        # start learn-escape.yml when an escape is found
 
     steps:
       - uses: actions/checkout@v7
@@ -192,9 +192,22 @@ jobs:
             echo "### 🧯 Harness escape — ship's loop let this through: ${line#FAIL }" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # Hand the escape to learn-escape.yml as its own run — only when there is
+      # one, so a clean pull request shows no skipped check.
+      - name: 🎓 Learn from the escape
+        if: ${{ !cancelled() && steps.escape.outputs.escape == 'true' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          FINDING: ${{ steps.escape.outputs.finding }}
+        run: gh workflow run learn-escape.yml --ref "${{ github.event.repository.default_branch }}" -f pr="$PR" -f source="QA" -f finding="$FINDING"
+
       # The verdict is a file the agent writes, not a mood. No file means the
       # pass did not finish, which is not the same as finding nothing — say so
       # rather than quietly passing.
+
       - name: 📣 Publish the verdict
         if: ${{ !cancelled() }}
         env:
@@ -291,17 +304,3 @@ jobs:
               || { echo "could not file: $title"; continue; }
             echo "- [$title]($url)" >> "$GITHUB_STEP_SUMMARY"
           done
-
-  learn:
-    needs: exploratory
-    if: ${{ always() && needs.exploratory.outputs.escape == 'true' }}
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: read
-    uses: ./.github/workflows/learn-escape.yml
-    with:
-      pr: ${{ github.event.pull_request.number }}
-      source: QA
-      finding: ${{ needs.exploratory.outputs.finding }}
-    secrets: inherit

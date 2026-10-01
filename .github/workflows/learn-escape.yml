@@ -13,6 +13,20 @@
 name: 🧯 Learn from an escape
 
 on:
+  # Started by code review or QA with `gh workflow run` when they find an
+  # escape. It used to be a reusable job inside them, which GitHub listed as a
+  # "Skipped" check on every clean pull request.
+  workflow_dispatch:
+    inputs:
+      pr:
+        type: number
+        required: true
+      source:
+        type: string   # "code review" or "QA"
+        required: true
+      finding:
+        type: string
+        required: true
   workflow_call:
     inputs:
       pr:
