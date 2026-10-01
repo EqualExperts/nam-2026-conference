@@ -67,6 +67,36 @@ test.describe('Schedule', () => {
     await visit(page, '/schedule?q=zzzznotathing&view=list');
     await expect(page.getByRole('heading', { name: /No sessions match/i })).toBeVisible();
   });
+
+  test('an empty search names what was searched for', async ({ page }) => {
+    await visit(page, '/schedule?q=zzqx&view=list');
+    await expect(page.getByRole('heading', { name: 'No sessions match “zzqx”', exact: true })).toBeVisible();
+    await shotForPR(page, 'the empty state naming the search');
+  });
+
+  test('filters without a search keep the plain empty-state heading', async ({ page, request }) => {
+    const days = await conferenceDays();
+    const { tracks } = await (await request.get(`${API}/bootstrap`)).json();
+    let pick = null;
+    for (const day of days) {
+      for (const t of tracks) {
+        const found = await (await request.get(`${API}/sessions?day=${day}&trackSlug=${t.slug}`)).json();
+        const list = Array.isArray(found) ? found : found.sessions;
+        if (list.length === 0) { pick = { day, slug: t.slug }; break; }
+      }
+      if (pick) break;
+    }
+    test.skip(!pick, 'every track has sessions on every day');
+    await visit(page, `/schedule?day=${pick.day}&track=${pick.slug}&view=list`);
+    await expect(page.getByRole('heading', { name: 'No sessions match', exact: true })).toBeVisible();
+  });
+
+  test('Clear filters clears the search and brings sessions back', async ({ page }) => {
+    await visit(page, '/schedule?q=zzqx&view=list');
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(page).not.toHaveURL(/q=/);
+    await expect(page.locator('article').first()).toBeVisible();
+  });
 });
 
 test.describe('Schedule grid', () => {
