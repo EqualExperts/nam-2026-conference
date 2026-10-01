@@ -74,9 +74,13 @@ the body; `api()` throws on non-2xx but keeps `err.status` and `err.payload`.
 - `reserveSeat` sends `clock`, catches a 409 and uses `err.payload`. `'ended'`
   → toast only; `'overlap'` → `setConflict(state)` and nothing applied;
   otherwise `applySeatState` + toast ("Seat booked" or the waitlist position).
-- `releaseSeat` → `applySeatState` + toast with `action: { label: 'Undo',
-  onClick: () => reserveSeat(id) }`; the message differs when `promoted`.
-- `toggleSeat(id)` picks release or reserve from `reservations.has(id)`;
+- `releaseSeat(id, session)` → `applySeatState` + toast; the message differs
+  when `promoted`. The `action: { label: 'Undo', onClick: () => reserveSeat(id) }`
+  is attached **only** when a `session` is passed and `hasEnded(session, clock)`
+  is false — Undo is a fresh reservation and the API refuses one for a finished
+  session, so no session means no Undo.
+- `toggleSeat(id, session)` picks release or reserve from `reservations.has(id)`;
+  every caller passes the session object it already rendered;
   `reservationFor(id)` → status or `null`; `onAgenda(id)` → boolean;
   `seatsFor(id)` → the live counts or `null`.
 - `resolveConflict(swap)` — on swap, releases `conflict.conflictsWith.id`, then
@@ -124,7 +128,9 @@ Testids: `seat-panel`, `seat-count`, `seats-left`, `reservation-confirmed`,
 - An overlap 409 applies nothing to the store; after a swap the store is
   updated from both responses, so do not refetch the page to "fix" it.
 - Undo on a released seat is a fresh `reserveSeat` — it goes to the back of any
-  queue and can itself hit the overlap guard.
+  queue and can itself hit the overlap guard, which is why it is not offered at
+  all once the session has ended (the 409 `ended` toast in `reserveSeat` now
+  only covers a session that ends between page load and click).
 - `SeatPanel` must not read `session.seats.status`: that payload is stale after
   a release (see CLAUDE.md § There is exactly one action).
 - The API tests use `startApi()` and need no cleanup; `tests/seats.spec.js`

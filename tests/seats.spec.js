@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, shotForPR, ATTENDEES } from './helpers.js';
 
 
 /**
@@ -46,7 +46,7 @@ async function findPromotionFixture(request) {
 }
 
 test.describe('Seat reservation', () => {
-  test('reserving moves the seat count, and releasing gives it back', async ({ page, request }, testInfo) => {
+  test('releasing gives the seat back, and offers Undo only while the session can still be joined', async ({ page, request }, testInfo) => {
     const lane = await laneFor('seats.count', testInfo);
     const open = await openSessionFor(request, lane);
     expect(open, `no open session at ${lane.slot}`).toBeTruthy();
@@ -55,14 +55,32 @@ test.describe('Seat reservation', () => {
     await ensureNotReserved(page);
 
     const count = page.getByTestId('seat-count');
+    const toaster = page.getByTestId('toaster');
     const start = await count.innerText();
 
     await page.getByTestId('reserve-seat').click();
     await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
     await expect(count).not.toHaveText(start);
+    const held = await count.innerText();
 
+    // Day 1, 07:00: the session has not started, so Undo is offered and works.
     await page.getByTestId('release-seat').click();
     await expect(page.getByTestId('reserve-seat')).toBeVisible();
+    await expect(count).toHaveText(start);
+    await toaster.getByRole('button', { name: 'Undo' }).click();
+    await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
+    await expect(count).toHaveText(held);
+
+    // Same seat, same session, but now the session is over: the API would
+    // refuse to give the seat back, so no Undo may be offered.
+    await page.goto(`/sessions/${open.id}?at=${lane.day}T23:30`);
+    await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
+    await page.getByTestId('release-seat').click();
+    await expect(page.getByTestId('session-ended-seat')).toBeVisible();
+    await expect(toaster.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+    await expect(toaster).toContainText('Removed from your agenda');
+    await shotForPR(page, 'removing an ended seat offers no Undo');
+
     await expect(count).toHaveText(start); // no leaked seat
   });
 

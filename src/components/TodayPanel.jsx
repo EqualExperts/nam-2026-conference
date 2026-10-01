@@ -219,7 +219,7 @@ export function TodayPanel() {
                     {s.title}
                   </Link>
                   <span className="hidden shrink-0 text-[11px] text-faint sm:inline">{s.room.name}</span>
-                  <SeatButton size="sm" status={reservationFor(s.id)} ended={hasEnded(s, clock)} onClick={() => toggleSeat(s.id)} />
+                  <SeatButton size="sm" status={reservationFor(s.id)} ended={hasEnded(s, clock)} onClick={() => toggleSeat(s.id, s)} />
                 </li>
               );
             })}

@@ -38,7 +38,7 @@ export function SeatPanel({ session }) {
 
   const act = async (fn) => {
     setBusy(true);
-    try { await fn(session.id); } finally { setBusy(false); }
+    try { await fn(session.id, session); } finally { setBusy(false); }
   };
 
   return (

@@ -128,7 +128,7 @@ export function SessionPage() {
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Button
               variant={reservation || closed ? 'ghost' : 'primary'}
-              onClick={() => { if (!closed) toggleSeat(session.id); }}
+              onClick={() => { if (!closed) toggleSeat(session.id, session); }}
               disabled={closed}
               data-testid="save-session"
             >

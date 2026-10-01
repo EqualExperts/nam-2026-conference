@@ -106,7 +106,7 @@ export function ScheduleGrid({ sessions }) {
                           aria-label={seat ? 'Remove from my agenda' : closed ? 'Session ended' : 'Add to my agenda'}
                           aria-pressed={Boolean(seat)}
                           disabled={closed}
-                          onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id); }}
+                          onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
                           className={cx('relative z-10 shrink-0 rounded p-1',
                             seat ? 'text-emerald-300' : closed ? 'cursor-not-allowed text-faint/50' : 'text-faint hover:text-emerald-300')}
                         >
@@ -166,7 +166,7 @@ export function ScheduleGrid({ sessions }) {
                                   : closed ? `${s.title} has ended` : `Add ${s.title} to my agenda`}
                                 aria-pressed={Boolean(seat)}
                                 disabled={closed}
-                                onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id); }}
+                                onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
                                 className={cx('relative z-10 -mr-1 -mt-1 shrink-0 rounded p-1 transition-colors',
                                   seat ? 'text-emerald-300'
                                     : closed ? 'cursor-not-allowed text-faint/50 opacity-0 group-hover:opacity-100'
