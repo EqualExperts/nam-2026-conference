@@ -63,7 +63,7 @@ has more than four Done-when criteria. Override with `/ship 42 --full` or
 | **Audit** | one combined auditor | criteria, rules and browser auditors |
 | **Browser audit** | only when something visible changed *and* no browser test covers it — 2 probes | always — 5 probes |
 | **Audited rounds** | up to 2 | up to 4 |
-| **Typical ship cost** | **~$1.70–2.70** | **~$5.50–6.25** |
+| **Typical ship cost** | **~$0.70** | **~$6.50** |
 
 Both keep what makes the result trustworthy: the gate, the red-check, an
 independent audit and a skeptic on every blocker. Small drops redundancy, not

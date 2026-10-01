@@ -28,8 +28,7 @@ Run as many tickets at once as you like. Every ticket shows what it cost.
 Everything the harness does leaves a trail on GitHub. One real ticket, start to
 finish — label to merged pull request, nobody touching a terminal:
 
-> **[#95 Say what was searched for when the speakers page finds nothing](https://github.com/EqualExperts/nam-2026-conference/issues/95)**
-> → **[PR #96](https://github.com/EqualExperts/nam-2026-conference/pull/96)**
+> **[PR #96 — Say what was searched for when the speakers page finds nothing](https://github.com/EqualExperts/nam-2026-conference/pull/96)**
 
 | | |
 | --- | --- |
@@ -38,8 +37,8 @@ finish — label to merged pull request, nobody touching a terminal:
 | 🧪 **QA** | Skipped in 16 seconds — two lines of app code, already covered by the PR's own tests |
 | 🧾 **AI spend** | **$0.91 in total** — $0.66 to build it, $0.25 to review it |
 
-Open the issue for the running AI spend; open the PR for what the agents wrote,
-checked and found.
+The pull request has it all — what the agents wrote, checked and found, the
+screenshots, the verdicts, the cost — and links back to its issue.
 
 ## Two ways to work
 
@@ -95,7 +94,7 @@ sized before any work starts:
 | Models | Sonnet · Haiku for routine steps | Opus |
 | Checks | one independent auditor | several, each with its own focus, plus a browser |
 | Fix rounds | up to 2 | up to 4 |
-| Typical cost | **~$2.70** | **~$6** |
+| Typical ship cost | **~$0.70** | **~$6.50** |
 
 Code review and QA size themselves the same way: a copy fix gets one reviewer
 and a couple of browser checks; a change to the booking rules gets everything.
@@ -104,17 +103,13 @@ Add the `ship:full` label to any issue to ask for the thorough loop.
 ## 🧾 See what every ticket costs
 
 Every issue keeps a running **AI spend** comment — updated after each agent run,
-split by model, in dollars — and each pull request shows its own run's cost:
+split by Opus, Sonnet and Haiku, in dollars — and each pull request shows its
+own run's cost. Two real tickets, run end to end on GitHub Actions:
 
-| Run | Tokens | Opus | Sonnet | Haiku | Cost |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| ship | 5.4M | — | $3.56 | $0.15 | $3.71 |
-| code review | 1.4M | $0.99 | $0.77 | — | $1.76 |
-| QA | 2.0M | $0.94 | $2.03 | — | $2.97 |
-| **Total** | **8.7M** | **$1.93** | **$6.36** | **$0.15** | **$8.44** |
-
-<sub>A real small ticket (#66), from before this week's cost work — a small
-ticket's ship run is now about $2.70.</sub>
+| Ticket | Size | Ship | Code review | QA | Total |
+| --- | --- | ---: | ---: | ---: | ---: |
+| [PR #96](https://github.com/EqualExperts/nam-2026-conference/pull/96) — name the search when nothing matches | 🟢 small | $0.66 | $0.25 | skipped | **$0.91** |
+| [PR #97](https://github.com/EqualExperts/nam-2026-conference/pull/97) — fix Undo after removing an ended seat | 🔵 full | $6.54 | $0.28 | $1.17 | **$7.99** |
 
 ## 🛡️ Why you can trust what comes back
 
