@@ -844,7 +844,9 @@ const pr = await rote(
   `If the third part lists a file outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
   (visible
     ? `Something an attendee sees changed. The branch's browser test calls shotForPR at the moment worth seeing: ` +
-      `run the test files this branch added or changed with \`PR_SHOTS=1 npx playwright test <files> --project=desktop\`` +
+      `run only the tests this branch added — their titles are the \`+  test('…'\` lines in \`git diff origin/${BASE}...HEAD -- tests/\` — ` +
+      `with \`PR_SHOTS=1 npx playwright test <files> -g "<title>|<title>" --project=desktop\` (an older test in the same file ` +
+      `takes its own picture, and #96 showed one that had nothing to do with the change)` +
       `${setup.runner ? '' : ' (behind the lane prefix)'}, then \`node scripts/pr-media.mjs ${issue} .screenshots/pr/*.png\` and ` +
       `put what it prints where the body shows <media>. If no file appears, drop the <media> line — do not write a ` +
       `script, start a server or drive a browser to make one.\n\n`
