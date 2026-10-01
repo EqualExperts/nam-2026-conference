@@ -243,6 +243,9 @@ export function makeGh(env, run = ghApi) {
     async patch(id, body) {
       run(['api', `repos/${repo}/issues/comments/${id}`, '-X', 'PATCH', '-F', 'body=@-'], body);
     },
+    async remove(id) {
+      run(['api', `repos/${repo}/issues/comments/${id}`, '-X', 'DELETE']);
+    },
     async read(id) {
       return run(['api', `repos/${repo}/issues/comments/${id}`, '--jq', '.body']);
     },
@@ -372,6 +375,18 @@ export async function finish({
   const settled = env.SHIP_PROGRESS_KIND ? verdictKnown : state.ended && shipOutcome;
   const diedReason = settled ? null : 'the step timed out or was cancelled';
   const final = { ...state, ended: true, diedReason };
+
+  // A review or QA that reached its verdict posts that verdict as its own
+  // comment straight after this step; the progress line, rewritten into a copy
+  // of it, only repeated it (#94). Remove it. One that did not finish keeps its
+  // line, which says so — the only place that is said.
+  if (env.SHIP_PROGRESS_KIND && settled && gh.remove) {
+    try {
+      const id = env.SHIP_PROGRESS_COMMENT_ID || (await gh.findByMarker(runId));
+      if (id) await gh.remove(id);
+    } catch { /* a stray progress line is untidy, not wrong */ }
+    return;
+  }
 
   let body;
   try { body = bodyFor(env, final, { issue, runUrl: env.SHIP_PROGRESS_RUN, runId, repo: env.GH_REPO, now: t, started: startedAt }); }

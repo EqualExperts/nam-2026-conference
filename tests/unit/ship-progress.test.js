@@ -376,6 +376,23 @@ describe('finish()', () => {
     assert.match(patched, /Review did not finish/);
   });
 
+  test('review/QA: once the verdict is in, the progress line is removed, not turned into a copy of it (#94)', async () => {
+    let removed = null, patched = false;
+    const gh = { remove: async (id) => { removed = id; }, patch: async () => { patched = true; }, create: async () => 'x', findByMarker: async () => 'q1' };
+    const lines = [notification('completed', '/out.json')];
+    const readOutputFile = () => ({ result: { verdictLine: 'PASS high 3/3 probes ran as planned' } });
+    await finish({ env: { SHIP_PROGRESS_PR: '9', SHIP_PROGRESS_KIND: 'qa', SHIP_PROGRESS_RUN: 'https://github.com/x/y/actions/runs/1', GH_REPO: 'x/y' }, gh, readAll: readAll(lines), readOutputFile, now: () => NOW });
+    assert.equal(removed, 'q1');
+    assert.equal(patched, false);
+  });
+
+  test('makeGh removes a comment with a DELETE', async () => {
+    const calls = [];
+    const gh = makeGh({ GH_REPO: 'o/r', SHIP_PROGRESS_PR: '7' }, (args) => { calls.push(args); return ''; });
+    await gh.remove('55');
+    assert.deepEqual(calls[0], ['api', 'repos/o/r/issues/comments/55', '-X', 'DELETE']);
+  });
+
   test('with neither SHIP_PROGRESS_ISSUE nor SHIP_PROGRESS_PR set, it does nothing', async () => {
     let called = false;
     await finish({ env: {}, readAll: async () => { called = true; return []; } });
