@@ -471,6 +471,21 @@ describe('qa', () => {
     assert.equal((await run({ plan })).result.confidence, 'medium');
   });
 
+  test('a tiny PR whose own tests pin every criterion passes without the planner — #94', async () => {
+    const quick = { criteria: [{ criterion: 'heading names the search', by: 'test', ref: 'tests/home.spec.js' }] };
+    const { result, calls } = await run({ covered: quick }, '42 --no-publish --size=tiny');
+    assert.equal(result.verdict, 'pass');
+    assert.equal(result.confidence, 'high');
+    assert.ok(!calls.includes('plan'), 'no planner, no probes');
+    assert.match(result.comment, /its own tests pin every Done-when criterion/);
+  });
+
+  test('a tiny PR with a criterion its tests do not pin is still explored', async () => {
+    const quick = { criteria: [{ criterion: 'heading names the search', by: 'none' }] };
+    const { calls } = await run({ covered: quick }, '42 --no-publish --size=tiny');
+    assert.ok(calls.includes('plan'));
+  });
+
   test('a criterion about the code itself is left to code review, not counted against QA — #87', async () => {
     const plan = { ...PLAN, criteria: [{ criterion: 'no db.prepare in the handler', by: 'code' }, { criterion: 'works', by: 'probe', ref: 'a' }] };
     const { result, verdictLine } = await run({ plan });

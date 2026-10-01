@@ -46,7 +46,10 @@ export function codeLines(numstat) {
   let n = 0;
   for (const line of numstat.split('\n').filter(Boolean)) {
     const [add, del, file] = line.split('\t');
-    if (/^(specs|docs\/context)\//.test(file || '') || file === 'README.md') continue;
+    // Tests are left out too: a test that covers a change makes it safer to
+    // review, not bigger — #94, a two-line copy change, counted its 30-line
+    // test and came out small, so QA explored what the test already proved.
+    if (/^(specs|docs\/context|tests)\//.test(file || '') || file === 'README.md') continue;
     n += add === '-' ? BINARY_LINES : Number(add) + Number(del);
   }
   return n;

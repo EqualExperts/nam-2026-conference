@@ -253,6 +253,30 @@ if (DOCS_ONLY && DEPTH !== 'thorough' && !recheck.length) {
   return publish({ verdict: 'pass', confidence: 'medium', skipped: true, covered: 'docs-only change — nothing for QA to exercise', probes: [] })
 }
 
+// A tiny change whose own tests already pin every Done-when needs no
+// exploring: one quick, cheap read of the ticket and the tests says so, and QA
+// passes in a minute instead of driving a browser for ten (#94: a two-line copy
+// change with its own browser test). Anything not pinned falls through to the
+// full plan below.
+if (SIZE === 'tiny' && DEPTH !== 'thorough' && !recheck.length) {
+  const quick = await agent(
+    `${HERE}Pull request #${pr} is a tiny change. Read its ticket's Done when (\`gh pr view ${pr}\`, then the issue) ` +
+    `and the tests the diff adds or changes (\`gh pr diff ${pr} -- tests/\`), in one command. Map every Done-when ` +
+    `criterion to the test file in this diff that asserts it (by: test, ref: the file path as the diff names it), ` +
+    `\`code\` if the criterion is about how the code is written, or \`none\` if no test in the diff asserts it. ` +
+    `Be honest: a test that only exercises nearby code does not count. Write nothing.`,
+    { phase: 'Plan', label: 'covered', schema: { type: 'object', required: ['criteria'], properties: { criteria: PLAN.properties.criteria } }, model: 'haiku', effort: 'low' },
+  )
+  const pinned = criteriaCovered(quick && quick.criteria, new Set())
+  if (pinned.all) {
+    log(`QA: every criterion is pinned by the PR's own tests — nothing to explore`)
+    return publish({ verdict: 'pass', confidence: 'high', skipped: true,
+      covered: `no exploration needed — a tiny change, and its own tests pin every Done-when criterion ` +
+        `(${pinned.n}/${pinned.of}${pinned.codeOnly ? `, +${pinned.codeOnly} about the code itself, for code review` : ''})`, probes: [] })
+  }
+  log(`QA: the PR's tests pin ${pinned.n}/${pinned.of} criteria — exploring the rest`)
+}
+
 plan = await agent(
   `${HERE}Plan exploratory QA for pull request #${pr}. Read its ticket's Done when (\`gh pr view ${pr}\`, then the ` +
   `issue), \`gh pr diff ${pr}\`, and the tests it adds — what they assert is already proven, so spend nothing ` +

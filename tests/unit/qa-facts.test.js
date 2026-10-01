@@ -42,6 +42,7 @@ describe('size: how hard code review and QA work', () => {
 
   test('code lines leave out the spec and context docs every ship pull request carries', () => {
     assert.equal(codeLines('80\t0\tspecs/61-x.md\n6\t2\tdocs/context/agenda.md\n3\t1\tserver/routes/users.js'), 4);
+    assert.equal(codeLines('1\t1\tsrc/pages/SchedulePage.jsx\n30\t0\ttests/schedule.spec.js'), 2, 'a covering test does not make a change bigger — #94');
   });
 
   test('a one-line fix is tiny; a thousand-line change is large', () => {
