@@ -458,7 +458,9 @@ describe('the workflows actually call it, with an environment', () => {
       const s = steps(yaml);
       const fin = s.find((x) => x.includes('ship-progress.mjs finish'));
       assert.ok(fin, `${name} has no step calling ship-progress.mjs finish`);
-      assert.match(fin, /if:\s*\$\{\{\s*always\(\)\s*\}\}/);
+      // always() — only QA's "too small to need it" skip, which starts no run
+      // and so has no progress comment to settle, may narrow it.
+      assert.match(fin, /if:\s*\$\{\{\s*always\(\)(\s*&&\s*steps\.facts\.outputs\.trivial != 'true')?\s*\}\}/);
       assert.match(fin, /continue-on-error:\s*true/);
       for (const n of envNames) assert.match(fin, new RegExp(n), `${name}'s finish step should name ${n}`);
     });
