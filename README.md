@@ -37,7 +37,9 @@ merged pull request on GitHub Actions, nobody touching a terminal:
 | 🧾 **AI spend** | **$0.91** | **$7.99** |
 
 Each pull request has it all — what the agents wrote, checked and found, the
-screenshots, the verdicts, the cost — and links back to its issue.
+screenshots, the verdicts, the cost — and links back to its issue. Every issue
+also keeps a running **🧾 AI spend** comment, updated after each agent run and
+split by Opus, Sonnet and Haiku, so a ticket always says what it cost.
 
 ## Two ways to work
 
@@ -98,17 +100,6 @@ sized before any work starts:
 Code review and QA size themselves the same way: a copy fix gets one reviewer
 and a couple of browser checks; a change to the booking rules gets everything.
 Add the `ship:full` label to any issue to ask for the thorough loop.
-
-## 🧾 See what every ticket costs
-
-Every issue keeps a running **AI spend** comment — updated after each agent run,
-split by Opus, Sonnet and Haiku, in dollars — and each pull request shows its
-own run's cost. Two real tickets, run end to end on GitHub Actions:
-
-| Ticket | Size | Ship | Code review | QA | Total |
-| --- | --- | ---: | ---: | ---: | ---: |
-| [PR #96](https://github.com/EqualExperts/nam-2026-conference/pull/96) — name the search when nothing matches | 🟢 small | $0.66 | $0.25 | skipped | **$0.91** |
-| [PR #97](https://github.com/EqualExperts/nam-2026-conference/pull/97) — fix Undo after removing an ended seat | 🔵 full | $6.54 | $0.28 | $1.17 | **$7.99** |
 
 ## 🛡️ Why you can trust what comes back
 
