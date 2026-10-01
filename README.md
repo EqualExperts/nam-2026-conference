@@ -114,11 +114,21 @@ Add the `ship:full` label to any issue to ask for the thorough loop.
 
 ## 🎙️ From meeting to ticket
 
-Tickets can start as a conversation. The skills in `.claude/skills/` listen to a
-meeting and flag gaps live (`listen-to-meeting`), transcribe it locally
-(`transcribe-audio`), turn it into a proposal (`process-requirements`), raise
-the issues (`create-tasks`) and fold what was agreed back into the docs
-(`update-context`).
+The harness builds tickets — but a ticket can start as a conversation. The
+product-side skills, from Abraham's [winnow](https://github.com/quiram/winnow),
+turn a meeting or a voice note into issues that are ready to ship:
+
+| Step | Skill | What you get |
+| --- | --- | --- |
+| 🎧 **Listen** | `listen-to-meeting` | A live transcript, and a flag the moment two people contradict each other or something is left unsaid — while it can still be settled in the room |
+| ✍️ **Transcribe** | `transcribe-audio` | A voice note or recording turned into text on your machine (Whisper) — no hosted service, no account |
+| 🧠 **Distil** | `process-requirements` | The decisions and the work pulled out of the noise, with gaps and conflicts raised for you to agree |
+| 🎫 **Raise** | `create-tasks` | GitHub issues — goal first, one goal each, no duplicates, each with a **Done when** list |
+| 📚 **Remember** | `update-context` | What was agreed written back into the docs the agents read, so the next ticket knows it |
+
+Then label the issues `ready-for-ai`, or `/ship` them, and the harness takes it
+from there. First time on a Mac? Run `setup-audio` once — it sets up the
+microphone, system audio and the Whisper model in one guided pass.
 
 <a id="set-up-your-fork"></a>
 
