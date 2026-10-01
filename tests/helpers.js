@@ -155,7 +155,9 @@ export const LANES = {
  */
 export async function shotForPR(page, name) {
   if (!process.env.PR_SHOTS) return;
-  await page.screenshot({ path: `.screenshots/pr/${name}-${page.viewportSize()?.width ?? 0}w.png` });
+  // A file name with spaces breaks the PR's markdown image link (#94).
+  const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  await page.screenshot({ path: `.screenshots/pr/${slug}-${page.viewportSize()?.width ?? 0}w.png` });
 }
 
 /** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */

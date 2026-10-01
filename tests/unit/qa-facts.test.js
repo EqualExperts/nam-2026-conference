@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appLines, uiOnly, totalLines, docsOnly, codeLines, risky, sizeFor, BINARY_LINES } from '../../scripts/qa-facts.mjs';
+import { appLines, uiOnly, totalLines, docsOnly, codeLines, risky, sizeFor, trivial, BINARY_LINES } from '../../scripts/qa-facts.mjs';
 
 /** The facts QA's triage is not allowed to take from the planner. */
 
@@ -69,5 +69,17 @@ describe('size: how hard code review and QA work', () => {
     assert.equal(size({ codeLines: 120, depth: 'fast' }), 'tiny');
     assert.equal(size({ codeLines: 2, depth: 'thorough' }), 'large');
     assert.equal(size({ docsOnly: true, codeLines: 0 }), 'tiny');
+  });
+});
+
+describe('too small for QA to start', () => {
+  test('a label or copy fix — tiny, nothing risky, a few app lines — skips QA entirely (#94)', () => {
+    assert.equal(trivial({ size: 'tiny', appLines: 2, risky: false, depth: 'balanced' }), true);
+  });
+  test('more app code, anything risky, a bigger size, or the thorough dial still gets QA', () => {
+    assert.equal(trivial({ size: 'tiny', appLines: 11, risky: false, depth: 'balanced' }), false);
+    assert.equal(trivial({ size: 'tiny', appLines: 2, risky: true, depth: 'balanced' }), false);
+    assert.equal(trivial({ size: 'small', appLines: 2, risky: false, depth: 'balanced' }), false);
+    assert.equal(trivial({ size: 'tiny', appLines: 2, risky: false, depth: 'thorough' }), false);
   });
 });

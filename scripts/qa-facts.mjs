@@ -71,6 +71,16 @@ const SIZES = ['tiny', 'small', 'large'];
  * 300 — a 70-line refactor of server/lib is not a large change), and the
  * team's dial moves it a step.
  */
+/**
+ * Too small for QA to start at all: a tiny change, nothing risky, at most ten
+ * lines of app code — a label, a copy fix. The PR's own tests, the gate and
+ * code review cover it, and an exploring agent would only re-prove them.
+ */
+export const TRIVIAL_APP_LINES = 10;
+export function trivial({ size, appLines: n, risky: danger, depth }) {
+  return depth !== 'thorough' && size === 'tiny' && !danger && n <= TRIVIAL_APP_LINES;
+}
+
 export function sizeFor({ codeLines: n, docsOnly: prose, risky: danger, ticket, depth }) {
   if (depth === 'thorough') return 'large';
   if (prose && !danger) return 'tiny';
@@ -111,7 +121,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const names = git('diff', '--name-only', range);
   const size = names ? sizeFor({ codeLines: codeLines(numstat), docsOnly: docsOnly(names), risky: risky(names),
     ticket: opt('ticket'), depth: opt('depth') }) : 'large';
+  const tiny = names && trivial({ size, appLines: appLines(numstat), risky: risky(names), depth: opt('depth') });
   console.log(`--app-lines=${appLines(numstat)} --ui-only=${uiOnly(names) ? 'yes' : 'no'} ` +
     `--lines=${totalLines(numstat)} --docs-only=${docsOnly(names) ? 'yes' : 'no'} ` +
-    `--code-lines=${codeLines(numstat)} --size=${size}`);
+    `--code-lines=${codeLines(numstat)} --size=${size} --trivial=${tiny ? 'yes' : 'no'}`);
 }
