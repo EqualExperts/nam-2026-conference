@@ -121,6 +121,19 @@ describe('readStream', () => {
     assert.equal(s.ended, true);
     assert.equal(s.outcome, null);
   });
+
+  // An agent's long shell command is backgrounded, and its notification lands
+  // in the same stream — on #100 and #101 that read as the end of the run.
+  test('a backgrounded shell command finishing does not end the workflow', () => {
+    const wf = JSON.stringify({ type: 'system', subtype: 'task_started', task_type: 'local_workflow', task_id: 'wf1', timestamp: '2026-10-02T19:22:40Z' });
+    const bash = JSON.stringify({ type: 'system', subtype: 'task_notification', task_id: 'sh1', status: 'completed', output_file: '/sh.out' });
+    const s = readStream([wf, ...MID_RUN, bash], () => assert.fail('a shell task has no outcome to read'));
+    assert.equal(s.ended, false);
+    const done = JSON.stringify({ type: 'system', subtype: 'task_notification', task_id: 'wf1', status: 'completed', output_file: '/out.json' });
+    const t = readStream([wf, ...MID_RUN, bash, done], () => ({ result: { outcome: 'shipped', pr: 'u' } }));
+    assert.equal(t.ended, true);
+    assert.equal(t.outcome.outcome, 'shipped');
+  });
 });
 
 describe('render', () => {

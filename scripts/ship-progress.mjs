@@ -65,11 +65,19 @@ export function readStream(lines, readOutputFile = defaultReadOutputFile) {
   let streamStarted = null;
   let lastProgress = null;
   let notification = null;
+  let workflowTask = null;
   for (const e of events) {
     if (e.type !== 'system') continue;
-    if (e.subtype === 'task_started' && e.task_type === 'local_workflow') streamStarted = e.timestamp || streamStarted;
+    if (e.subtype === 'task_started' && e.task_type === 'local_workflow') {
+      streamStarted = e.timestamp || streamStarted;
+      workflowTask = e.task_id || workflowTask;
+    }
     else if (e.subtype === 'task_progress' && Array.isArray(e.workflow_progress)) lastProgress = e.workflow_progress;
-    else if (e.subtype === 'task_notification') notification = e;
+    // Only the workflow's own notification ends the run. An agent's shell
+    // command that runs long is backgrounded and posts a task_notification
+    // into the same stream; taking that for the end called every live run
+    // dead a minute in (#100, #101).
+    else if (e.subtype === 'task_notification' && (!workflowTask || !e.task_id || e.task_id === workflowTask)) notification = e;
   }
 
   const progress = lastProgress || [];
