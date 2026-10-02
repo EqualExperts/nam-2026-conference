@@ -88,6 +88,7 @@ Four rules borrowed from real conferences; each writes state and gates the next:
    seats in overlapping slots** — the API returns 409 with the clashing session,
    and the UI offers a swap. Every real system blocks this rather than warning.
    Nor can you take a seat in a session that has already ended (also a 409).
+   A gap too short to cross between venues only warns.
 2. **Check in** → opens 15 minutes before the session starts, closes when it
    ends. You cannot check in to something that has not happened.
 3. **Rate it** → only if you checked in, only once it is over. One rating per
@@ -97,6 +98,16 @@ Four rules borrowed from real conferences; each writes state and gates the next:
 A clash is a **choice, not an error**: the 409 carries both sessions and the UI
 opens `<ConflictDialog>` side by side with Keep / Swap. Do not demote that to a
 toast — a toast disappears while the decision is still open.
+
+**Geography warns; it never blocks.** Two venues 6.2 miles apart mean a gap that
+looks fine on a clock can be unmakeable on the ground, so a booking across a gap
+too short to cross has to say so before the seat is taken, and then let you take
+it anyway — whether nothing makes the gap at all or only something you pay for
+does. The asymmetry with the overlap guard is deliberate: two seats in one slot
+is a state the data cannot represent honestly, while an attendee who accepts a
+tight commute has only made a trade-off, and it is theirs to make.
+`assessTravel` in `src/lib/travel.js` is the one travel calculation — never
+write a second.
 
 The rules run in transactions in `seats.js` and `attendance.js`, taking the
 clock from the *client*, because conference time is simulated. (how:
