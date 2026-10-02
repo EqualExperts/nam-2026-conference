@@ -168,6 +168,11 @@ app on the web port — another worktree's — and your specs pass against the
 
 **Tickets are GitHub Issues** — of the fork you are working in, never the upstream's.
 
+Opening one is not reserved for whoever has the repo cloned. That is what the
+deployment is for: someone who has never checked the code out can use the app,
+see what is missing and file the issue themselves — which is also what somebody
+asking for a demo actually wants, rather than watching you drive.
+
 ## Data model
 
 Four days from the day you seed, ~140 sessions, 110 speakers, **two venues 6.2
