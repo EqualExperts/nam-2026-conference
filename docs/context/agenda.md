@@ -81,6 +81,10 @@ passing confirmed rows an `attendance` prop (`{ ended: hasEnded(s, clock), check
 that shows as `attendance-status`. `ToRateCallout` (`to-rate`, first inside `{data && …}`)
 lists every confirmed, ended, checked-in, unrated session across all days, each linking
 to `/sessions/:id`, and self-hides when empty — the home page's `unrated` stays today-only.
+The waitlist tile (`stat-waitlist`) holds a `<button>` only while the count is above
+zero; it toggles `waitlist-list`, a panel under the tiles of `waitlist-item-<id>` links
+(`/sessions/:id`, day and start time, then title) built from the store-filtered days,
+soonest first, and closes itself when the count reaches 0.
 Export button `export-calendar` → `api.agendaCalendarUrl`.
 
 **`NextUpCard`** (`next-up`, My Agenda only) derives current/next/done in the

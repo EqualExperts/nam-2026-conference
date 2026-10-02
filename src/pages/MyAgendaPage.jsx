@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
-import { dayLabel, plural, timeRange } from '../lib/format.js';
+import { dayLabel, plural, time, timeRange } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { NextUpCard } from '../components/NextUpCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
@@ -249,6 +249,12 @@ export function MyAgendaPage() {
   const totalSessions = days.reduce((n, d) => n + d.sessions.length, 0);
   const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
   const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
+  const waitlisted = days.flatMap((d) => d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted'))
+    .sort((a, b) => a.day.localeCompare(b.day) || a.startsAt.localeCompare(b.startsAt));
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  // leaving the last waitlist place empties the panel, so close it rather than
+  // have it spring open again on the next place joined
+  useEffect(() => { if (!totalWaitlisted) setShowWaitlist(false); }, [totalWaitlisted]);
   const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
   /*
    * Summed from what each day heading shows rather than from the raw minutes:
@@ -306,10 +312,41 @@ export function MyAgendaPage() {
                 <span data-testid="stat-hours-waitlisted">+{waitlistedHours}h waitlisted</span>
               )}
             />
-            <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
+            <Stat
+              value={totalWaitlisted > 0 ? (
+                <button type="button" onClick={() => setShowWaitlist((v) => !v)} aria-expanded={showWaitlist}
+                  aria-controls="waitlist-list" className="underline decoration-dotted underline-offset-4">
+                  {totalWaitlisted}
+                </button>
+              ) : totalWaitlisted}
+              label="On a waitlist"
+              accent={totalWaitlisted ? 'amber' : 'emerald'}
+              testId="stat-waitlist"
+            />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
           </div>
+
+          {showWaitlist && waitlisted.length > 0 && (
+            <section id="waitlist-list" data-testid="waitlist-list" className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5">
+              <h2 className="text-sm font-semibold text-amber-200">
+                Waiting for a seat in {plural(waitlisted.length, 'session')}
+              </h2>
+              <ul className="mt-3 space-y-1.5">
+                {waitlisted.map((s) => (
+                  <li key={s.id}>
+                    <Link to={`/sessions/${s.id}`} data-testid={`waitlist-item-${s.id}`}
+                      className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-[13px] text-muted hover:text-ink">
+                      <span className="shrink-0 font-mono text-[11px] text-faint">
+                        {dayLabel(s.day).replace(',', ' ·')} · {time(s.startsAt)}
+                      </span>
+                      <span className="min-w-0 break-words underline-offset-2 hover:underline">{s.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {days.length === 0 ? (
             <EmptyState
