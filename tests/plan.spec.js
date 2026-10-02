@@ -124,6 +124,15 @@ test.describe('My Agenda', () => {
   });
 
   test('with no waitlist place the tile is plain text', async ({ page }) => {
+    // Every seeded attendee is some concurrent lane's, and several lanes join a
+    // waitlist, so no real attendee is reliably unqueued. Take the real profile
+    // and drop its waitlist places: the tile is what is under test, not the seed.
+    await page.route(/\/api\/users\/\d+$/, async (route) => {
+      const res = await route.fetch();
+      const user = await res.json();
+      user.reservations = (user.reservations ?? []).filter((r) => r.status !== 'waitlisted');
+      await route.fulfill({ response: res, json: user });
+    });
     await openPlan(page, ATTENDEES.jonas);
     await expect(page.getByTestId('stat-waitlisted')).toHaveText('0');
     await expect(page.getByRole('button', { name: /on a waitlist/i })).toHaveCount(0);
