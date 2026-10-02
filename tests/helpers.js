@@ -142,6 +142,9 @@ export const LANES = {
   'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: priya, day: 0, slot: '09:00', agenda: false } },
   // Checks in to the attendee's seeded 17:15 seat on Day 1 and never rates it,
   // so My Agenda has something to list in its to-rate callout. Books nothing.
+  // Joins a full session's waitlist over the API, then leaves it from the session
+  // page. jonas/day 1 and kenji/day 1 are the only pairs no other lane holds.
+  'agenda.waitlist':          { desktop: { user: jonas, day: 1 },                 mobile: { user: kenji, day: 1 } },
   'agenda.to-rate':           { desktop: { user: kenji, day: 0, slot: '17:15', agenda: false }, mobile: { user: sofia, day: 0, slot: '17:15', agenda: false } },
 };
 

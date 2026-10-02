@@ -96,6 +96,68 @@ test.describe('My Agenda', () => {
     await expect(page.getByTestId('stat-hours-waitlisted')).toHaveCount(0);
   });
 
+  test('the waitlist tile opens a list of those sessions, soonest first', async ({ page }) => {
+    const plan = await openPlan(page, ATTENDEES.amara);
+    const queued = plan.days.flatMap((d) => d.sessions).filter((s) => s.reservation === 'waitlisted')
+      .sort((a, b) => a.day.localeCompare(b.day) || a.startsAt.localeCompare(b.startsAt));
+    expect(queued.length, 'Amara must hold a waitlist place').toBeGreaterThan(0);
+
+    const tile = page.getByRole('button', { name: /on a waitlist/i });
+    await expect(page.getByTestId('waitlist-list')).toHaveCount(0);
+    await tile.click();
+
+    const rows = page.getByTestId('waitlist-row');
+    await expect(rows).toHaveCount(queued.length);
+    for (const [i, s] of queued.entries()) {
+      await expect(rows.nth(i)).toContainText(s.title);
+      await expect(rows.nth(i)).toContainText(s.startsAt);
+      await expect(rows.nth(i).getByRole('link')).toHaveAttribute('href', `/sessions/${s.id}`);
+    }
+
+    // phone-sized or not, the list must not push the page sideways
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    await shotForPR(page, 'My Agenda waitlist list');
+
+    await tile.click();
+    await expect(page.getByTestId('waitlist-list')).toHaveCount(0);
+  });
+
+  test('with no waitlist place the tile is plain text', async ({ page }) => {
+    await openPlan(page, ATTENDEES.jonas);
+    await expect(page.getByTestId('stat-waitlisted')).toHaveText('0');
+    await expect(page.getByRole('button', { name: /on a waitlist/i })).toHaveCount(0);
+  });
+
+  test('leaving a waitlist updates the tile and list without a reload', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('agenda.waitlist', testInfo);
+    const full = (await bookableFor(request, lane.user, lane.day)).find((s) => s.isFull);
+    expect(full, 'no full session this attendee can queue for').toBeTruthy();
+    const url = `${API}/users/${lane.user}/reservations/${full.id}`;
+    const at = await momentOn(0, '07:00');
+
+    try {
+      expect((await request.put(url)).ok()).toBe(true);
+      await visit(page, '/my-agenda', { as: lane.user, at });
+      const tile = page.getByRole('button', { name: /on a waitlist/i });
+      await expect(tile).toBeVisible();
+      const before = Number((await page.getByTestId('stat-waitlisted').textContent()).trim());
+      await tile.click();
+      await page.getByTestId('waitlist-row').filter({ hasText: full.title }).getByRole('link').click();
+
+      await page.getByTestId('release-seat').click();
+      await expect(page.getByTestId('reserve-seat')).toBeVisible();
+      await page.getByRole('banner').getByRole('link', { name: 'My Agenda' }).first().click();
+
+      await expect(page.getByTestId('stat-hours-booked')).toBeVisible();
+      await expect(page.getByTestId('stat-waitlisted')).toHaveText(String(before - 1));
+      await expect(page.getByTestId('waitlist-list')).toHaveCount(0);
+      if (before === 1) await expect(page.getByRole('button', { name: /on a waitlist/i })).toHaveCount(0);
+    } finally {
+      await request.delete(url);
+    }
+  });
+
   test('each attendee sees their own plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
     await expect(page.getByRole('heading', { name: /Sofia’s agenda/ })).toBeVisible();
