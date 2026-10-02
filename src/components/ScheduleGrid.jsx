@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
 import { useConference } from '../lib/store.jsx';
 import { hasEnded, toMinutes } from '../lib/clock.js';
-import { Avatar, cx } from './ui.jsx';
+import { seatActionLabel } from '../lib/format.js';
+import { Avatar, Tooltip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
 /**
@@ -87,6 +88,11 @@ export function ScheduleGrid({ sessions }) {
                   const seat = reservationFor(s.id);
                   // Over and not held: nothing left to offer, but a held seat can still go.
                   const closed = !seat && hasEnded(s, clock);
+                  // Live counts win over the payload, as everywhere else — a sold-out
+                  // room has to be named for the waitlist the click really joins.
+                  const label = seatActionLabel({
+                    status: seat, ended: closed, full: (seatsFor(s.id)?.seatsLeft ?? s.seatsLeft) === 0,
+                  });
                   return (
                     <div key={s.id} className="grid border-b border-hairline"
                       style={{ gridTemplateColumns: `5rem 1fr` }} role="row">
@@ -101,17 +107,19 @@ export function ScheduleGrid({ sessions }) {
                         </span>
                         <span className="truncate text-sm font-semibold group-hover:text-violet-200">{s.title}</span>
                         <span className="ml-auto shrink-0 text-[11px] text-faint">{s.room.name}</span>
-                        <button
-                          type="button"
-                          aria-label={seat ? 'Remove from my agenda' : closed ? 'Session ended' : 'Add to my agenda'}
-                          aria-pressed={Boolean(seat)}
-                          disabled={closed}
-                          onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
-                          className={cx('relative z-10 shrink-0 rounded p-1',
-                            seat ? 'text-emerald-300' : closed ? 'cursor-not-allowed text-faint/50' : 'text-faint hover:text-emerald-300')}
-                        >
-                          <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-4" />
-                        </button>
+                        <Tooltip text={label} testId="seat-tooltip">
+                          <button
+                            type="button"
+                            aria-label={label}
+                            aria-pressed={Boolean(seat)}
+                            disabled={closed}
+                            onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
+                            className={cx('relative z-10 shrink-0 rounded p-1',
+                              seat ? 'text-emerald-300' : closed ? 'cursor-not-allowed text-faint/50' : 'text-faint hover:text-emerald-300')}
+                          >
+                            <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-4" />
+                          </button>
+                        </Tooltip>
                       </Link>
                     </div>
                   );
@@ -141,6 +149,17 @@ export function ScheduleGrid({ sessions }) {
                       const live = sameDay && nowMins >= toMinutes(s.startsAt) && nowMins < toMinutes(s.endsAt);
                       const done = sameDay && nowMins >= toMinutes(s.endsAt);
                       const closed = !seat && hasEnded(s, clock);
+                      // The badge below needs these too; the button needs them first,
+                      // so a full room is named for the waitlist it will put you on.
+                      // (`live` above is "happening now", hence `seatsLive`.)
+                      const seatsLive = seatsFor(s.id);
+                      const left = seatsLive?.seatsLeft ?? s.seatsLeft;
+                      const waiting = seatsLive?.waitlistCount ?? s.waitlistCount ?? 0;
+                      const action = { status: seat, ended: closed, full: left === 0 };
+                      // The cell is *named* with the session in it, since a dozen
+                      // identical "Add to my agenda"s would tell a screen-reader user
+                      // nothing; the tooltip sits beside the title and needs only the verb.
+                      const label = seatActionLabel({ ...action, title: s.title });
 
                       return (
                         <div key={room.id} className="min-w-0 border-r border-hairline p-1.5 last:border-r-0" role="cell">
@@ -160,25 +179,23 @@ export function ScheduleGrid({ sessions }) {
                               <h4 className="line-clamp-3 text-[12px] font-semibold leading-snug group-hover:text-violet-200">
                                 {s.title}
                               </h4>
-                              <button
-                                type="button"
-                                aria-label={seat ? `Remove ${s.title} from my agenda`
-                                  : closed ? `${s.title} has ended` : `Add ${s.title} to my agenda`}
-                                aria-pressed={Boolean(seat)}
-                                disabled={closed}
-                                onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
-                                className={cx('relative z-10 -mr-1 -mt-1 shrink-0 rounded p-1 transition-colors',
-                                  seat ? 'text-emerald-300'
-                                    : closed ? 'cursor-not-allowed text-faint/50 opacity-0 group-hover:opacity-100'
-                                    : 'text-faint opacity-0 hover:text-emerald-300 group-hover:opacity-100 focus:opacity-100')}
-                              >
-                                <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-3.5" />
-                              </button>
+                              <Tooltip text={seatActionLabel(action)} testId="seat-tooltip" className="-mr-1 -mt-1">
+                                <button
+                                  type="button"
+                                  aria-label={label}
+                                  aria-pressed={Boolean(seat)}
+                                  disabled={closed}
+                                  onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
+                                  className={cx('relative z-10 shrink-0 rounded p-1 transition-colors',
+                                    seat ? 'text-emerald-300'
+                                      : closed ? 'cursor-not-allowed text-faint/50 opacity-0 group-hover:opacity-100'
+                                      : 'text-faint opacity-0 hover:text-emerald-300 group-hover:opacity-100 focus:opacity-100')}
+                                >
+                                  <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-3.5" />
+                                </button>
+                              </Tooltip>
                             </div>
                             {(() => {
-                              const live = seatsFor(s.id);
-                              const left = live?.seatsLeft ?? s.seatsLeft;
-                              const waiting = live?.waitlistCount ?? s.waitlistCount ?? 0;
                               if (left === 0) {
                                 return (
                                   <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">

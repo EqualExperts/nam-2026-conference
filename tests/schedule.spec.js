@@ -399,10 +399,14 @@ test.describe('Seat button tooltip', () => {
     await waitForResults(page);
     const seat = seatIn(page.getByTestId('session-card').filter({ hasText: target.title }).first());
 
-    await seat.tap();
-    await expect(seat).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByTestId(TIP)).toHaveCount(0);
-
-    await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
+    try {
+      await seat.tap();
+      await expect(seat).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByTestId(TIP)).toHaveCount(0);
+    } finally {
+      // Released even on a failure: the lane's next run would otherwise find
+      // its slot already taken and fail somewhere else entirely.
+      await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
+    }
   });
 });

@@ -37,3 +37,19 @@ export const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n =
 /** The schedule rail's "N sessions · M today"/"M on Day 1" line. `dayPhrase` is the caller's job. */
 export const agendaSummary = (total, bookedOnDay, dayPhrase) =>
   `${total === 1 ? 'session' : 'sessions'} · ${bookedOnDay} ${dayPhrase}`;
+
+/**
+ * What pressing the seat button will do, in words — the icon-only button's
+ * accessible name *and* the tooltip it shows, from one place so the two can
+ * never drift. `title` gives the long form the grid's cells are named with.
+ *
+ * A seat you already hold can be given back after the session has ended, so
+ * `ended` only speaks for a session you hold nothing in.
+ */
+export const seatActionLabel = ({ status, ended = false, full = false, title = null }) => {
+  if (status === 'waitlisted') return title ? `Leave the waitlist for ${title}` : 'Leave the waitlist';
+  if (status) return title ? `Remove ${title} from my agenda` : 'Remove from my agenda';
+  if (ended) return title ? `${title} has ended` : 'Session ended';
+  if (full) return title ? `Join the waitlist for ${title}` : 'Join the waitlist';
+  return title ? `Add ${title} to my agenda` : 'Add to my agenda';
+};

@@ -1,5 +1,8 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
+import { seatActionLabel } from '../lib/format.js';
 import { Icon } from './Icon.jsx';
 import { GeneratedAvatar } from './GeneratedAvatar.jsx';
 import { CountUp } from './CountUp.jsx';
@@ -111,48 +114,135 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
   );
 }
 
+/* --------------------------------- Tooltip ------------------------------- */
+/**
+ * A hover/focus label for an icon-only control.
+ *
+ * It renders through a portal and positions itself `fixed` from the anchor's
+ * measured rect, because every call site sits inside something that clips: the
+ * session card is `overflow-hidden`, the schedule grid is a card around an
+ * `overflow-x-auto` scroller, and a grid cell lifts on hover. An absolutely
+ * positioned span would be clipped out of sight while a test still saw it.
+ *
+ * The node is `aria-hidden` and referenced by nothing. Each call site already
+ * *names* its button with the phrase shown here, so pointing an
+ * `aria-describedby` at it would make a screen reader say the same words
+ * twice; this is a visual echo of the name and nothing more.
+ */
+export function Tooltip({ text, testId, className, children }) {
+  const anchor = useRef(null);
+  const tip = useRef(null);
+  // A pointer press focuses the button; that focus must not open what the
+  // pointer itself decided not to (a tap), so it is consumed here.
+  const pressed = useRef(false);
+  const [open, setOpen] = useState(false);
+  const [at, setAt] = useState(null);
+
+  // Measured before paint, so the first frame is already in the right place.
+  useLayoutEffect(() => {
+    if (!open) { setAt(null); return; }
+    const a = anchor.current?.getBoundingClientRect();
+    const t = tip.current?.getBoundingClientRect();
+    if (!a || !t) return;
+    const pad = 8;
+    const above = a.top - t.height - 6;
+    setAt({
+      left: Math.max(pad, Math.min(a.left + a.width / 2 - t.width / 2, window.innerWidth - t.width - pad)),
+      top: above >= pad ? above : Math.min(a.bottom + 6, window.innerHeight - t.height - pad),
+    });
+  }, [open, text]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = () => setOpen(false);
+    // Escape must work even when the tooltip was opened by hover and focus is
+    // still on the body, so the listener is on the document (WCAG 1.4.13).
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    // Fixed coordinates go stale the moment anything scrolls — the grid scrolls
+    // sideways under a sticky header — so close rather than drift off the button.
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={anchor}
+      className={cx('relative z-10 inline-grid shrink-0', className)}
+      // The wrapper owns the pointer handlers because a disabled button — the
+      // ended state — fires none of its own. Focus and blur bubble up from it.
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setOpen(true); }}
+      // A touch pointer stops existing the moment it lifts, so its pointerleave
+      // lands *before* the focus that same tap causes — only a mouse leaving
+      // may forget the press, or a tap would reopen what it chose not to.
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') pressed.current = false; setOpen(false); }}
+      onPointerDown={() => { pressed.current = true; }}
+      onFocus={() => { const viaPointer = pressed.current; pressed.current = false; if (!viaPointer) setOpen(true); }}
+      onBlur={() => { pressed.current = false; setOpen(false); }}
+    >
+      {children}
+      {open && text && createPortal(
+        <span
+          ref={tip}
+          aria-hidden="true"
+          data-testid={testId}
+          style={{ position: 'fixed', left: at?.left ?? 0, top: at?.top ?? 0, visibility: at ? 'visible' : 'hidden' }}
+          className="glass pointer-events-none z-50 animate-rise whitespace-nowrap rounded-lg border border-hairline px-2.5 py-1.5 text-[11px] text-ink shadow-lg shadow-black/50"
+        >
+          {text}
+        </span>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
 /* -------------------------------- SeatButton ------------------------------ */
 /**
  * The one action: add this session to my agenda, which takes a seat.
  * `status` is null | 'confirmed' | 'waitlisted'.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title, ended = false }) {
+export function SeatButton({ status, onClick, size = 'md', className, title, ended = false, full = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
   // An ended session offers no seat; a seat already held can still be released.
   const closed = ended && !on;
-  const label = on
-    ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
-    : closed ? 'Session ended'
-    : (title ?? 'Add to my agenda');
+  // `title` has always overridden the "add" wording, and still does.
+  const label = !on && !closed && title ? title : seatActionLabel({ status, ended, full });
 
   return (
-    <button
-      type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
-      disabled={closed}
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      className={cx(
-        // `relative z-10` keeps the button above the card's stretched link overlay,
-        // which otherwise covers the whole card and swallows the click.
-        'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
-        dims,
-        waiting
-          ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-          : on
-            ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-            : closed
-              ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
-              : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
-        className,
-      )}
-    >
-      <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
-    </button>
+    <Tooltip text={label} testId="seat-tooltip">
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
+        disabled={closed}
+        aria-pressed={on}
+        aria-label={label}
+        className={cx(
+          // `relative z-10` keeps the button above the card's stretched link overlay,
+          // which otherwise covers the whole card and swallows the click.
+          'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+          dims,
+          waiting
+            ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
+            : on
+              ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+              : closed
+                ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
+                : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
+          className,
+        )}
+      >
+        <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
+      </button>
+    </Tooltip>
   );
 }
 
