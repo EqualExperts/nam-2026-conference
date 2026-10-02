@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
@@ -138,37 +138,43 @@ export function Tooltip({ text, testId, className, children }) {
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState(null);
 
-  // Measured before paint, so the first frame is already in the right place.
-  useLayoutEffect(() => {
-    if (!open) { setAt(null); return; }
+  // Measured from the live anchor rect: before paint when it opens, and again
+  // whenever the page moves under it.
+  const place = useCallback(() => {
     const a = anchor.current?.getBoundingClientRect();
     const t = tip.current?.getBoundingClientRect();
     if (!a || !t) return;
     const pad = 8;
     const above = a.top - t.height - 6;
-    setAt({
-      left: Math.max(pad, Math.min(a.left + a.width / 2 - t.width / 2, window.innerWidth - t.width - pad)),
-      top: above >= pad ? above : Math.min(a.bottom + 6, window.innerHeight - t.height - pad),
-    });
-  }, [open, text]);
+    const left = Math.max(pad, Math.min(a.left + a.width / 2 - t.width / 2, window.innerWidth - t.width - pad));
+    const top = above >= pad ? above : Math.max(pad, Math.min(a.bottom + 6, window.innerHeight - t.height - pad));
+    setAt((prev) => (prev && prev.left === left && prev.top === top ? prev : { left, top }));
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) { setAt(null); return; }
+    place();
+  }, [open, text, place]);
 
   useEffect(() => {
     if (!open) return undefined;
-    const close = () => setOpen(false);
     // Escape must work even when the tooltip was opened by hover and focus is
     // still on the body, so the listener is on the document (WCAG 1.4.13).
-    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('keydown', onKey);
     // Fixed coordinates go stale the moment anything scrolls — the grid scrolls
-    // sideways under a sticky header — so close rather than drift off the button.
-    window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
+    // sideways under a sticky header — so the tooltip is placed again rather
+    // than closed. Closing would lose every keyboard tooltip below the fold:
+    // the focus that opens one scrolls its button into view itself, smoothly
+    // (index.css), and that scroll would take the tooltip away with it.
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
     return () => {
       document.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', close, true);
-      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
     };
-  }, [open]);
+  }, [open, place]);
 
   return (
     <span

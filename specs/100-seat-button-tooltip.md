@@ -5,8 +5,9 @@ Hovering or keyboard-focusing an icon-only seat button — on a session card
 (schedule list, My Agenda, home "Your day") *and* on the schedule grid's banner
 and cell buttons — shows a styled tooltip naming the action it will take: Add to
 my agenda, Join the waitlist (the room is full), Remove from my agenda, Leave the
-waitlist, or Session ended. It hides on mouse leave, on blur, on Escape and on
-scroll, and it follows the store after a click, so a seat just taken reads Remove
+waitlist, or Session ended. It hides on mouse leave, on blur and on
+Escape, follows its button when the page scrolls, and follows the store after a
+click, so a seat just taken reads Remove
 from my agenda without a reload. The native `title` goes (it said the same thing
 a beat later, in the browser's own chrome); the button keeps its `aria-label`,
 which is that same phrase (the grid cell's is that phrase with the session
@@ -53,15 +54,16 @@ Two things the first draft of this spec got wrong, and this one fixes:
   - While open: a `document` `keydown` listener closes it on Escape (a handler on
     the button would miss a tooltip opened by hover, with focus still on `body` —
     WCAG 1.4.13 wants it dismissible either way), and capture-phase `scroll` plus
-    `resize` listeners close it, since a `fixed` tooltip would otherwise drift off
-    its button when the grid is scrolled sideways.
+    `resize` listeners **re-place** it, since a `fixed` tooltip would otherwise
+    drift off its button when the grid is scrolled sideways.
   - Renders `createPortal(<span aria-hidden="true" data-testid={testId} …>,
     document.body)`. It carries no `id` and no `role="tooltip"`, because nothing
     references it and an `aria-hidden` node has no role in the tree: every call
     site's button is already *named* with the phrase the tooltip shows, so the
     tooltip is purely visual and the name does the announcing.
-  - `useLayoutEffect` measures anchor and tooltip and sets `position: fixed`
-    coordinates: centred on the button, clamped to `8px` from each viewport edge,
+  - One `place()` measures anchor and tooltip and sets `position: fixed`
+    coordinates — called from a `useLayoutEffect` when it opens, and from the
+    scroll and resize listeners after that: centred on the button, clamped to `8px` from each viewport edge,
     `6px` above it, flipped below when there is no room above (sticky grid
     header). It renders `visibility: hidden` until measured, and the measuring
     effect runs before paint, so there is no flash.
@@ -135,6 +137,7 @@ Two things the first draft of this spec got wrong, and this one fixes:
 | The five phrases are the right ones for each state, Leave the waitlist included | `seatActionLabel` over the matrix: none/confirmed/waitlisted × full × ended, each asserted twice — short form (the tooltip's text) and, with a `title`, the long form the grid cell is named with | unit |
 | Hover shows a tooltip naming the action, within ~300 ms | desktop: hover a bookable card's seat button, `expect(getByTestId('seat-tooltip')).toHaveText('Add to my agenda')` with the default 7 s expect timeout but no added delay in the code; a sold-out session on the `schedule.seats` lane reads `Join the waitlist`; a past day's disabled button reads `Session ended` | spec |
 | A sold-out session in the **grid** says what the click will really do | read-only, `schedule.seats` lane (kenji/day 1 desktop, marcus/day 0 mobile — both days the seed sells grid sessions out on), clock pinned to `07:00` so nothing has ended: pick from `GET /sessions?day=` a session with `isFull && !isKeynote && format !== 'Social'` that the lane's attendee does not already hold, open `?view=grid`, open its cell button's tooltip (hover on desktop, `focus()` on mobile) and expect `Join the waitlist` — and the button's own accessible name to be `Join the waitlist for <title>`, so name and tooltip agree about the waitlist. Books nothing, so no cleanup | spec |
+| Also on keyboard focus, including a button below the fold | `focus()` the **last** card's seat button, so the focus itself scrolls the page: the tooltip is there, and once the smooth scroll has settled it is still there and centred on its button, rather than closed or left where the button used to be | spec |
 | Also on keyboard focus; hides on blur, mouse leave, Escape | `focus()` shows it, `blur()` hides it; hover shows it, `mouse.move` away hides it; **hover with focus on `body`** then `keyboard.press('Escape')` hides it | spec |
 | After clicking, the text reflects the new state, no reload | still hovered: click → `Remove from my agenda` and `aria-pressed=true`; click again → `Add to my agenda`; no navigation in between | spec |
 | Accessible name kept, announced once and not twice | on all three buttons, while the tooltip is shown: `aria-label` is the phrase `seatActionLabel` gives for that state — the tooltip's text verbatim for the card and banner buttons, the long form with the session title for the cell — and unchanged from today's value in the states today already covers; `aria-describedby`, `aria-labelledby` and `title` all absent, so the phrase reaches the accessibility tree by exactly one route; the tooltip node is `aria-hidden="true"`. The name-vs-description check is made by the accessibility tree rather than by attribute spelunking: with the tooltip open, `getByRole('button', { name })` resolves for each button's own name (the card's `Add to my agenda`, the cell's `Add <title> to my agenda`), while the same query plus `description: /./` has count 0 — Playwright computes the accessible description per accname, so this row goes red the moment anything (an `aria-describedby`, a stray `title`) gives the button a second voice | spec |
@@ -177,8 +180,16 @@ Two things the first draft of this spec got wrong, and this one fixes:
   toggles and shows nothing at all. OK?
 - **No open delay** — the criterion is "within about 300 ms", so showing at once
   is the safest reading, and it matches a native `title` being replaced. OK?
-- **Also hides on scroll** (not in the ticket). A `fixed` tooltip would otherwise
-  sit where the button used to be once the grid is scrolled sideways. OK?
+- **A scroll re-places it rather than closing it** (not in the ticket). A
+  `fixed` tooltip would otherwise sit where the button used to be once the grid
+  is scrolled sideways. Closing on scroll — what this spec first said, and what
+  the first implementation did — breaks the focus half of the ticket outright:
+  `index.css` sets `scroll-behavior: smooth`, the focus that opens a tooltip on
+  a button below the fold scrolls that button into view itself, and the scroll
+  events it fires would close the tooltip that same focus had just opened.
+  Measuring the anchor again costs two `getBoundingClientRect`s per scroll event
+  (and sets no state when the coordinates come out unchanged), and following the
+  anchor is what a tooltip is expected to do anyway. OK?
 - **The grid's two buttons read `full` from the live counts, not from nothing.**
   The ticket names the grid's rightmost column, and a sold-out cell there is the
   case most likely to be wrong: without a `full` flag the tooltip would say "Add

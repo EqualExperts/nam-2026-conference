@@ -294,6 +294,44 @@ test.describe('Seat button tooltip', () => {
     await expect(tip).toHaveCount(0);
   });
 
+  test('a focus that scrolls the button into view still shows the tooltip', async ({ page }, testInfo) => {
+    // Read-only: it focuses, and books nothing.
+    const lane = await laneFor('schedule.seats', testInfo);
+    await visit(page, `/schedule?view=list&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    await waitForResults(page);
+    // The last card is thousands of pixels below the fold, so focusing its seat
+    // button scrolls the page itself — smoothly, per index.css. The tooltip has
+    // to survive the scroll its own focus caused, or a keyboard user only ever
+    // sees a tooltip on the buttons that happened to be on screen already.
+    const seat = seatIn(page.getByTestId('session-card').last());
+    const tip = page.getByTestId(TIP);
+    const box = await seat.boundingBox();
+    expect(box.y, 'the last card should start below the fold').toBeGreaterThan(page.viewportSize().height);
+
+    await seat.focus();
+    await expect(tip).toHaveCount(1);
+    // A scroll that has started and then held still for a frame has finished.
+    await page.waitForFunction(() => {
+      const y = window.scrollY;
+      const settled = y > 0 && window.__lastY === y;
+      window.__lastY = y;
+      return settled;
+    });
+
+    // Still open once the scroll stops, and on its button rather than left
+    // where the button used to be.
+    await expect(tip).toHaveCount(1);
+    const [b, t] = [await seat.boundingBox(), await tip.boundingBox()];
+    expect(b.y, 'the focus should have brought the button into view').toBeLessThan(page.viewportSize().height);
+    // Still spanning its button horizontally (centred on it, give or take the
+    // clamp that keeps a wide tooltip inside a narrow viewport)...
+    expect(t.x).toBeLessThanOrEqual(b.x + b.width);
+    expect(t.x + t.width).toBeGreaterThanOrEqual(b.x);
+    // ...and sitting against it, above or below.
+    const gap = Math.min(Math.abs(b.y - (t.y + t.height)), Math.abs(t.y - (b.y + b.height)));
+    expect(gap, 'the tooltip should sit against its button').toBeLessThan(10);
+  });
+
   test('a sold-out grid cell says the click will join the waitlist', async ({ page, request }, testInfo) => {
     // Read-only: the tooltip is only read, no waitlist place is taken.
     const lane = await laneFor('schedule.seats', testInfo);
@@ -309,7 +347,7 @@ test.describe('Seat button tooltip', () => {
     // The cell's own name carries the same correction the tooltip does.
     const seat = grid.getByRole('button', { name: `Join the waitlist for ${full.title}`, exact: true });
     await seat.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(100); // let the scroll settle: a scroll closes the tooltip
+    await page.waitForTimeout(100); // let the smooth scroll settle before hovering a moving target
     const tip = page.getByTestId(TIP);
 
     if (testInfo.project.name === 'desktop') await seat.hover();
