@@ -1,5 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
+import { seatActionLabel } from '../lib/format.js';
 import { Icon } from './Icon.jsx';
 import { GeneratedAvatar } from './GeneratedAvatar.jsx';
 import { CountUp } from './CountUp.jsx';
@@ -111,48 +114,128 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
   );
 }
 
+/* ----------------------------- Seat tooltip ------------------------------ */
+const HOVER_DELAY = 300;
+
+/**
+ * The words behind an icon-only seat button: hover it for a beat, or tab to it
+ * and they are there at once. Returns props for the button and the tooltip to
+ * render beside it, so the schedule grid's own hand-rolled seat buttons can say
+ * the same thing.
+ *
+ * The tooltip is `aria-hidden` and the button keeps its `aria-label` — one
+ * sentence, said once — and it never takes pointer events, so a tap on a phone
+ * always reaches the button underneath. It renders in a portal because the
+ * cards and the grid both clip their overflow, and is placed from the button's
+ * own rect so it cannot cross the right edge of the viewport.
+ */
+export function useSeatTooltip(label) {
+  const ref = useRef(null);
+  const timer = useRef(null);
+  const [at, setAt] = useState(null);
+
+  const hide = () => { clearTimeout(timer.current); setAt(null); };
+  const place = () => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    setAt({
+      // Right-aligned to the button, then held a thumb's width off the edge.
+      right: Math.max(8, window.innerWidth - rect.right),
+      // Above the button, unless it sits under the sticky header.
+      ...(rect.top < 80
+        ? { top: rect.bottom + 8 }
+        : { bottom: window.innerHeight - rect.top + 8 }),
+    });
+  };
+  const show = (delay) => {
+    clearTimeout(timer.current);
+    if (delay) timer.current = setTimeout(place, delay);
+    else place();
+  };
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (!at) return undefined;
+    // Escape dismisses it whether the button has focus or only the pointer.
+    const onKey = (e) => { if (e.key === 'Escape') hide(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [at]);
+
+  return {
+    triggerProps: {
+      ref,
+      onMouseEnter: () => show(HOVER_DELAY),
+      onMouseLeave: hide,
+      // A press is about to change the word, so take it away first.
+      onPointerDown: hide,
+      onFocus: (e) => { if (e.target.matches?.(':focus-visible')) show(0); },
+      onBlur: hide,
+    },
+    tooltip: at && createPortal(
+      <div
+        data-testid="seat-tooltip"
+        role="tooltip"
+        aria-hidden="true"
+        style={at}
+        className={cx(
+          'glass animate-rise pointer-events-none fixed z-50 rounded-lg border border-hairline',
+          'max-w-[min(14rem,calc(100vw-1rem))] px-2.5 py-1.5 text-[11px] font-semibold text-ink shadow-lg shadow-black/40',
+        )}
+      >
+        {label}
+      </div>,
+      document.body,
+    ),
+  };
+}
+
 /* -------------------------------- SeatButton ------------------------------ */
 /**
  * The one action: add this session to my agenda, which takes a seat.
  * `status` is null | 'confirmed' | 'waitlisted'.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title, ended = false }) {
+export function SeatButton({ status, onClick, size = 'md', className, ended = false, full = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
   // An ended session offers no seat; a seat already held can still be released.
   const closed = ended && !on;
-  const label = on
-    ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
-    : closed ? 'Session ended'
-    : (title ?? 'Add to my agenda');
+  const label = seatActionLabel({ status, ended, full });
+  const { triggerProps, tooltip } = useSeatTooltip(label);
 
   return (
-    <button
-      type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
-      disabled={closed}
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      className={cx(
-        // `relative z-10` keeps the button above the card's stretched link overlay,
-        // which otherwise covers the whole card and swallows the click.
-        'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
-        dims,
-        waiting
-          ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-          : on
-            ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-            : closed
-              ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
-              : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
-        className,
-      )}
-    >
-      <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
+        // `aria-disabled`, not `disabled`: a natively disabled button emits no
+        // hover and takes no focus, so it could never say why it does nothing.
+        // The click guard above is what actually makes it inert.
+        aria-disabled={closed || undefined}
+        aria-pressed={on}
+        aria-label={label}
+        {...triggerProps}
+        className={cx(
+          // `relative z-10` keeps the button above the card's stretched link overlay,
+          // which otherwise covers the whole card and swallows the click.
+          'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+          dims,
+          waiting
+            ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
+            : on
+              ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+              : closed
+                ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
+                : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
+          className,
+        )}
+      >
+        <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
+      </button>
+      {tooltip}
+    </>
   );
 }
 

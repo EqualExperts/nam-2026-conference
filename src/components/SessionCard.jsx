@@ -124,7 +124,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
               )}
             </div>
           </div>
-          <SeatButton size="sm" status={reservation} ended={isDone} onClick={() => toggleSeat(session.id, session)} />
+          <SeatButton size="sm" status={reservation} ended={isDone} full={isFull} onClick={() => toggleSeat(session.id, session)} />
         </div>
       </div>
     );
@@ -181,7 +181,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isLive && <LiveBadge />}
-          <SeatButton status={reservation} ended={isDone} onClick={() => toggleSeat(session.id, session)} />
+          <SeatButton status={reservation} ended={isDone} full={isFull} onClick={() => toggleSeat(session.id, session)} />
         </div>
       </div>
 

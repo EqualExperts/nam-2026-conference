@@ -37,3 +37,15 @@ export const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n =
 /** The schedule rail's "N sessions · M today"/"M on Day 1" line. `dayPhrase` is the caller's job. */
 export const agendaSummary = (total, bookedOnDay, dayPhrase) =>
   `${total === 1 ? 'session' : 'sessions'} · ${bookedOnDay} ${dayPhrase}`;
+
+/**
+ * What pressing the seat button will do, in words — the button's accessible
+ * name and its tooltip. A seat you hold can always be given back, even once
+ * the room is full or the session is over, so that branch comes first.
+ */
+export const seatActionLabel = ({ status = null, ended = false, full = false } = {}) =>
+  status === 'waitlisted' ? 'Leave the waitlist'
+  : status ? 'Remove from my agenda'
+  : ended ? 'Session ended'
+  : full ? 'Join the waitlist'
+  : 'Add to my agenda';

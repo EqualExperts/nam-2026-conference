@@ -301,21 +301,36 @@ test.describe('Seat button tooltip', () => {
     const seat = seatOn(page, roomy.title);
     const tip = page.getByTestId('seat-tooltip');
 
-    await seat.focus();
-    await expect(tip).toBeVisible();
-    await seat.blur();
+    // Hover cases first: `focus()` scrolls, and the page scrolls smoothly, so a
+    // hover straight after one lands where the button no longer is.
+    await seat.hover();
+    await expect(tip).toBeVisible({ timeout: 1_000 });
+    await page.mouse.move(0, 0);
     await expect(tip).toHaveCount(0);
 
     await seat.hover();
     await expect(tip).toBeVisible({ timeout: 1_000 });
     await page.keyboard.press('Escape');
     await expect(tip).toHaveCount(0);
+    await page.mouse.move(0, 0);
 
-    await page.mouse.move(0, 0);
-    await seat.hover();
-    await expect(tip).toBeVisible({ timeout: 1_000 });
-    await page.mouse.move(0, 0);
+    await seat.focus();
+    await expect(tip).toBeVisible();
+    await seat.blur();
     await expect(tip).toHaveCount(0);
+  });
+
+  test('a sold-out grid cell offers the waitlist, by name and in the tooltip', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('schedule.seats', testInfo);   // read-only
+    const full = (await unheldOn(request, lane.user, lane.day)).find((s) => s.isFull);
+    expect(full, 'no sold-out session on this day').toBeTruthy();
+
+    await visit(page, `/schedule?view=grid&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    const seat = page.getByTestId('schedule-grid')
+      .getByRole('button', { name: `Join the waitlist for ${full.title}`, exact: true });
+    await expect(seat).toBeVisible();
+    await seat.hover();
+    await expect(page.getByTestId('seat-tooltip')).toHaveText('Join the waitlist', { timeout: 1_000 });
   });
 
   test('the grid\'s rightmost seat button keeps its tooltip on screen', async ({ page }, testInfo) => {
@@ -356,7 +371,13 @@ test.describe('Seat button tooltip', () => {
       const tip = page.getByTestId('seat-tooltip');
       await expect(tip).toBeVisible({ timeout: 1_000 });
       await expect(tip).toHaveClass(/animate-rise/);
-      await expect(tip).toHaveCSS('animation-duration', '0.01ms');
+      // The motion is switched off, not merely quick: the reduced-motion block
+      // in index.css cuts every duration to a hundredth of a millisecond.
+      const seconds = await tip.evaluate((el) => {
+        const d = getComputedStyle(el).animationDuration;
+        return d.endsWith('ms') ? parseFloat(d) / 1000 : parseFloat(d);
+      });
+      expect(seconds).toBeLessThan(0.001);
     });
   });
 });

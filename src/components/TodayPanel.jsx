@@ -48,7 +48,7 @@ function BookedRow({ session, now, live }) {
  * today.
  */
 export function TodayPanel() {
-  const { currentUser, clock, days, venues, travel, toggleSeat, reservationFor } = useConference();
+  const { currentUser, clock, days, venues, travel, toggleSeat, reservationFor, seatsFor } = useConference();
   const { data, loading } = useFetch(
     () => api.getToday(currentUser.id, clock),
     [currentUser.id, clock.day, clock.time],
@@ -219,7 +219,8 @@ export function TodayPanel() {
                     {s.title}
                   </Link>
                   <span className="hidden shrink-0 text-[11px] text-faint sm:inline">{s.room.name}</span>
-                  <SeatButton size="sm" status={reservationFor(s.id)} ended={hasEnded(s, clock)} onClick={() => toggleSeat(s.id, s)} />
+                  <SeatButton size="sm" status={reservationFor(s.id)} ended={hasEnded(s, clock)}
+                    full={(seatsFor(s.id)?.seatsLeft ?? s.seatsLeft) === 0} onClick={() => toggleSeat(s.id, s)} />
                 </li>
               );
             })}

@@ -53,14 +53,18 @@ test.describe('My Agenda', () => {
     if (testInfo.project.name === 'mobile') await seat.tap(); else await seat.click();
     await expect(seat).toHaveAttribute('aria-pressed', 'true');
 
-    // The tooltip follows the click — same page load, new wording — and it can
-    // never intercept the next press.
-    await page.mouse.move(0, 0);
-    await seat.hover();
-    const tip = page.getByTestId('seat-tooltip');
-    await expect(tip).toHaveText('Remove from my agenda', { timeout: 1_000 });
-    await expect(tip).toHaveCSS('pointer-events', 'none');
-    await page.mouse.move(0, 0);
+    // The words follow the press, on the same page load and with no reload.
+    await expect(seat).toHaveAttribute('aria-label', 'Remove from my agenda');
+    if (testInfo.project.name === 'desktop') {
+      // Hovering again reads the new state back — and the tooltip takes no
+      // pointer events, so it can never sit between a finger and the button.
+      await page.mouse.move(0, 0);
+      await seat.hover();
+      const tip = page.getByTestId('seat-tooltip');
+      await expect(tip).toHaveText('Remove from my agenda', { timeout: 1_000 });
+      await expect(tip).toHaveCSS('pointer-events', 'none');
+      await page.mouse.move(0, 0);
+    }
 
     await page.goto('/my-agenda');
     await expect(page.getByText(target.title, { exact: false }).first()).toBeVisible();
