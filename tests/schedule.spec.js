@@ -215,3 +215,194 @@ test.describe('Ended sessions', () => {
     await expect(page.getByTestId('toaster')).toHaveText('');
   });
 });
+
+/**
+ * The seat button is icon-only, so what it will do has to be legible before
+ * you press it. These cover the five phrases through the views the ticket
+ * names — a list card and both of the grid's own buttons.
+ */
+test.describe('Seat button tooltip', () => {
+  const TIP = 'seat-tooltip';
+  /** The one aria-pressed control on a card or a grid cell. */
+  const seatIn = (scope) => scope.locator('button[aria-pressed]');
+
+  test('hovering names the action, and the text follows the click', async ({ page, request }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'hover needs a mouse; the touch path has its own test');
+    // Books, so it runs in its own lane and inside its pinned slot only.
+    const lane = await laneFor('seat.tooltip', testInfo);
+    const target = (await bookableFor(request, lane.user, lane.day))
+      .find((s) => s.startsAt === lane.slot && s.seatsLeft > 3);
+    expect(target, 'nothing this attendee can add in its slot').toBeTruthy();
+
+    // Day 1 at 07:00, so nothing on any day has ended and the button is live.
+    await visit(page, `/schedule?view=list&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    await waitForResults(page);
+    const card = page.getByTestId('session-card').filter({ hasText: target.title }).first();
+    const seat = seatIn(card);
+    const tip = page.getByTestId(TIP);
+    const url = page.url();
+
+    await expect(tip).toHaveCount(0);
+    await seat.hover();
+    await expect(tip).toHaveText('Add to my agenda');
+    await shotForPR(page, 'seat button tooltip');
+
+    // Announced once: the phrase is the button's name, and the tooltip itself
+    // is hidden from the tree and referenced by nothing, so the button has no
+    // second voice (an aria-describedby or a title would give it one).
+    await expect(tip).toHaveAttribute('aria-hidden', 'true');
+    await expect(card.getByRole('button', { name: 'Add to my agenda', exact: true })).toHaveCount(1);
+    await expect(card.getByRole('button', { name: 'Add to my agenda', exact: true, description: /./ })).toHaveCount(0);
+
+    await seat.click();
+    await expect(tip).toHaveText('Remove from my agenda');
+    await expect(seat).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByRole('button', { name: 'Remove from my agenda', exact: true, description: /./ })).toHaveCount(0);
+
+    await seat.click();
+    await expect(tip).toHaveText('Add to my agenda');
+    await expect(seat).toHaveAttribute('aria-pressed', 'false');
+    expect(page.url(), 'the card is a link; the seat button must not navigate').toBe(url);
+
+    await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
+  });
+
+  test('focus shows it; blur, mouse out and Escape all take it away', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'needs a mouse pointer as well as a keyboard');
+    // Read-only: it hovers and focuses, and books nothing.
+    const lane = await laneFor('schedule.seats', testInfo);
+    await visit(page, `/schedule?view=list&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    await waitForResults(page);
+    const seat = seatIn(page.getByTestId('session-card').first());
+    const tip = page.getByTestId(TIP);
+
+    await seat.focus();
+    await expect(tip).toHaveCount(1);
+    await seat.blur();
+    await expect(tip).toHaveCount(0);
+
+    await seat.hover();
+    await expect(tip).toHaveCount(1);
+    await page.mouse.move(2, 2);
+    await expect(tip).toHaveCount(0);
+
+    // Opened by hover, so focus is still on the body — Escape must reach it anyway.
+    await seat.hover();
+    await expect(tip).toHaveCount(1);
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+    await page.keyboard.press('Escape');
+    await expect(tip).toHaveCount(0);
+  });
+
+  test('a sold-out grid cell says the click will join the waitlist', async ({ page, request }, testInfo) => {
+    // Read-only: the tooltip is only read, no waitlist place is taken.
+    const lane = await laneFor('schedule.seats', testInfo);
+    const me = await (await request.get(`${API}/users/${lane.user}`)).json();
+    const held = new Set(me.reservations.map((r) => r.sessionId));
+    const all = await (await request.get(`${API}/sessions?day=${lane.day}`)).json();
+    const full = all.find((s) => s.isFull && !s.isKeynote && s.format !== 'Social' && !held.has(s.id));
+    expect(full, 'no sold-out room in the grid on this day').toBeTruthy();
+
+    await visit(page, `/schedule?view=grid&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    const grid = page.getByTestId('schedule-grid');
+    await expect(grid).toBeVisible();
+    // The cell's own name carries the same correction the tooltip does.
+    const seat = grid.getByRole('button', { name: `Join the waitlist for ${full.title}`, exact: true });
+    await seat.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(100); // let the scroll settle: a scroll closes the tooltip
+    const tip = page.getByTestId(TIP);
+
+    if (testInfo.project.name === 'desktop') await seat.hover();
+    else await seat.focus();
+    await expect(tip).toHaveText('Join the waitlist');
+    await shotForPR(page, 'sold out grid cell tooltip');
+  });
+
+  test('an ended session still says why, from a disabled button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'a disabled button cannot be focused, so this is hover only');
+    // Read-only: nothing here can reach the API, so no lane is needed.
+    const days = await conferenceDays();
+    await visit(page, `/schedule?view=list&day=${days[0]}`, { as: ATTENDEES.marcus, at: await momentOn(1, '10:00') });
+    await waitForResults(page);
+    const ended = page.getByTestId('session-card').getByRole('button', { name: 'Session ended', exact: true }).first();
+    await expect(ended).toBeDisabled();
+    // A disabled button fires no mouse events of its own, which is why the
+    // wrapper owns them; force past Playwright's enabled check to prove it.
+    await ended.hover({ force: true });
+    await expect(page.getByTestId(TIP)).toHaveText('Session ended');
+  });
+
+  test('nothing clips it and it stays inside the viewport', async ({ page }, testInfo) => {
+    // Read-only: hover and focus only.
+    const lane = await laneFor('schedule.seats', testInfo);
+    const tip = page.getByTestId(TIP);
+
+    if (testInfo.project.name === 'desktop') {
+      // The grid's rightmost room column, inside two overflow-hidden ancestors,
+      // an overflow-x-auto scroller and a cell that lifts on hover.
+      await visit(page, `/schedule?view=grid&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+      const grid = page.getByTestId('schedule-grid');
+      await expect(grid).toBeVisible();
+      const cells = grid.locator('[role="cell"] button[aria-pressed]');
+      const xs = await cells.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().x));
+      expect(xs.length).toBeGreaterThan(0);
+      await cells.nth(xs.indexOf(Math.max(...xs))).hover();
+    } else {
+      await visit(page, `/schedule?view=list&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+      await waitForResults(page);
+      await seatIn(page.getByTestId('session-card').first()).focus();
+    }
+
+    await expect(tip).toHaveCount(1);
+    const box = await tip.boundingBox();
+    const view = page.viewportSize();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(view.width);
+    // The portal is the proof: no overflow-hidden or transformed ancestor is
+    // left to clip it, which toBeVisible() would never have noticed.
+    expect(await tip.evaluate((el) => el.parentElement === document.body)).toBe(true);
+  });
+
+  test('it rises like the rest of the app, and not at all under reduced motion', async ({ page }, testInfo) => {
+    // Read-only: focus only.
+    const lane = await laneFor('schedule.seats', testInfo);
+    await visit(page, `/schedule?view=list&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    await waitForResults(page);
+    const seat = seatIn(page.getByTestId('session-card').first());
+    const tip = page.getByTestId(TIP);
+
+    await seat.focus();
+    await expect(tip).toHaveClass(/animate-rise/);
+    await expect(tip).toHaveClass(/glass/);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await seat.blur();
+    await seat.focus();
+    await expect(tip).toHaveCount(1);
+    const ms = await tip.evaluate((el) => {
+      const d = getComputedStyle(el).animationDuration;
+      return d.endsWith('ms') ? parseFloat(d) : parseFloat(d) * 1000;
+    });
+    expect(ms).toBeLessThan(1);
+  });
+
+  test('a tap toggles the seat straight away and opens no tooltip', async ({ page, request }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the touch path is the mobile project');
+    // Books, so it runs in its own lane and inside its pinned slot only.
+    const lane = await laneFor('seat.tooltip', testInfo);
+    const target = (await bookableFor(request, lane.user, lane.day))
+      .find((s) => s.startsAt === lane.slot && s.seatsLeft > 3);
+    expect(target, 'nothing this attendee can add in its slot').toBeTruthy();
+
+    await visit(page, `/schedule?view=list&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    await waitForResults(page);
+    const seat = seatIn(page.getByTestId('session-card').filter({ hasText: target.title }).first());
+
+    await seat.tap();
+    await expect(seat).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId(TIP)).toHaveCount(0);
+
+    await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
+  });
+});

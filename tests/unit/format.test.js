@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary } from '../../src/lib/format.js';
+import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary, seatActionLabel } from '../../src/lib/format.js';
 
 describe('Clock times read as people say them', () => {
   test('midnight and noon are twelve, not zero', () => {
@@ -118,5 +118,41 @@ describe('The schedule rail\'s agenda line pluralises on the total and names the
 
   test('a day other than the clock\'s is named instead of assumed to be today', () => {
     assert.equal(agendaSummary(3, 2, 'on Day 1'), 'sessions · 2 on Day 1');
+  });
+});
+
+// The seat button is icon-only: its accessible name and its tooltip both come
+// from here, so a sold-out or queued button has to be named for what the click
+// will really do — "Join the waitlist", not "Add to my agenda".
+describe('The seat button says what the click will do', () => {
+  test('an empty seat invites you in, a full room queues you', () => {
+    assert.equal(seatActionLabel({ status: null }), 'Add to my agenda');
+    assert.equal(seatActionLabel({ status: null, full: true }), 'Join the waitlist');
+  });
+
+  test('a seat you hold is given back, a place in the queue is left', () => {
+    assert.equal(seatActionLabel({ status: 'confirmed' }), 'Remove from my agenda');
+    assert.equal(seatActionLabel({ status: 'waitlisted' }), 'Leave the waitlist');
+  });
+
+  test('a session that is over offers nothing — unless you still hold something', () => {
+    assert.equal(seatActionLabel({ status: null, ended: true }), 'Session ended');
+    assert.equal(seatActionLabel({ status: null, ended: true, full: true }), 'Session ended');
+    assert.equal(seatActionLabel({ status: 'confirmed', ended: true }), 'Remove from my agenda');
+    assert.equal(seatActionLabel({ status: 'waitlisted', ended: true }), 'Leave the waitlist');
+  });
+
+  test('a full room you already hold a seat in still reads as a seat to give back', () => {
+    assert.equal(seatActionLabel({ status: 'confirmed', full: true }), 'Remove from my agenda');
+    assert.equal(seatActionLabel({ status: 'waitlisted', full: true }), 'Leave the waitlist');
+  });
+
+  test('with a session title it gives the long form the grid cell is named with', () => {
+    const title = 'Agents at the Edge';
+    assert.equal(seatActionLabel({ status: null, title }), 'Add Agents at the Edge to my agenda');
+    assert.equal(seatActionLabel({ status: null, full: true, title }), 'Join the waitlist for Agents at the Edge');
+    assert.equal(seatActionLabel({ status: 'confirmed', title }), 'Remove Agents at the Edge from my agenda');
+    assert.equal(seatActionLabel({ status: 'waitlisted', title }), 'Leave the waitlist for Agents at the Edge');
+    assert.equal(seatActionLabel({ status: null, ended: true, title }), 'Agents at the Edge has ended');
   });
 });

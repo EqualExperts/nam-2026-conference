@@ -141,6 +141,11 @@ export const LANES = {
   // Rates for real, so it must land on day index 0 — `today` — per
   // smoke.spec.js's "no session in the future carries a rating".
   'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: priya, day: 0, slot: '09:00', agenda: false } },
+  // Both panes are Kenji on day index 1: that day has no slot-owning lane left
+  // and every other attendee is spoken for there, so the two pin distinct slots
+  // and book only inside them — which is what lanes.test.js allows. The one
+  // other pane on this pair, `schedule.seats`, books nothing.
+  'seat.tooltip':             { desktop: { user: kenji, day: 1, slot: '11:30' },                 mobile: { user: kenji, day: 1, slot: '14:45' } },
   // Checks in to the attendee's seeded 17:15 seat on Day 1 and never rates it,
   // so My Agenda has something to list in its to-rate callout. Books nothing.
   'agenda.to-rate':           { desktop: { user: kenji, day: 0, slot: '17:15', agenda: false }, mobile: { user: sofia, day: 0, slot: '17:15', agenda: false } },
