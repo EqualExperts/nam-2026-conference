@@ -49,8 +49,18 @@ test.describe('My Agenda', () => {
     const card = page.locator('article').filter({ has: page.getByRole('heading', { name: target.title, exact: true }) });
     const seat = card.getByRole('button', { name: /agenda|waitlist/i });
     await expect(seat).toHaveAttribute('aria-pressed', 'false');
-    await seat.click();
+    // On a touch device one tap takes the seat: the tooltip is never in the way.
+    if (testInfo.project.name === 'mobile') await seat.tap(); else await seat.click();
     await expect(seat).toHaveAttribute('aria-pressed', 'true');
+
+    // The tooltip follows the click — same page load, new wording — and it can
+    // never intercept the next press.
+    await page.mouse.move(0, 0);
+    await seat.hover();
+    const tip = page.getByTestId('seat-tooltip');
+    await expect(tip).toHaveText('Remove from my agenda', { timeout: 1_000 });
+    await expect(tip).toHaveCSS('pointer-events', 'none');
+    await page.mouse.move(0, 0);
 
     await page.goto('/my-agenda');
     await expect(page.getByText(target.title, { exact: false }).first()).toBeVisible();

@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary } from '../../src/lib/format.js';
+import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary, seatActionLabel } from '../../src/lib/format.js';
 
 describe('Clock times read as people say them', () => {
   test('midnight and noon are twelve, not zero', () => {
@@ -118,5 +118,30 @@ describe('The schedule rail\'s agenda line pluralises on the total and names the
 
   test('a day other than the clock\'s is named instead of assumed to be today', () => {
     assert.equal(agendaSummary(3, 2, 'on Day 1'), 'sessions · 2 on Day 1');
+  });
+});
+
+describe('The seat button says what pressing it will do', () => {
+  test('an empty seat offers the seat, a full room offers the queue', () => {
+    assert.equal(seatActionLabel({ status: null }), 'Add to my agenda');
+    assert.equal(seatActionLabel({ status: null, full: true }), 'Join the waitlist');
+  });
+
+  test('what you hold, you can give back', () => {
+    assert.equal(seatActionLabel({ status: 'confirmed' }), 'Remove from my agenda');
+    assert.equal(seatActionLabel({ status: 'waitlisted' }), 'Leave the waitlist');
+  });
+
+  test('a session that is over offers nothing', () => {
+    assert.equal(seatActionLabel({ status: null, ended: true }), 'Session ended');
+  });
+
+  test('a seat you hold can still be given back after the session ends, and when the room is full', () => {
+    assert.equal(seatActionLabel({ status: 'confirmed', ended: true, full: true }), 'Remove from my agenda');
+    assert.equal(seatActionLabel({ status: 'waitlisted', ended: true, full: true }), 'Leave the waitlist');
+  });
+
+  test('an ended session is over whether or not it sold out', () => {
+    assert.equal(seatActionLabel({ status: null, ended: true, full: true }), 'Session ended');
   });
 });
