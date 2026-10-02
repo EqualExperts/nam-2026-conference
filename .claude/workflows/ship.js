@@ -743,8 +743,9 @@ for (let round = 1; ; round++) {
         ? `These tests failed once and passed on retry: ${gate.browser.flakyTests.join(', ')}. One this branch added ` +
           `is a blocker (test-proves-nothing) — a flaky proof proves nothing. One it did not touch is not.\n\n`
         : '') +
-      `Blockers only for something that would change a merge decision; everything else is minor. Change no ` +
-      `code. Empty is a good answer.`,
+      `Blockers only for something that would change a merge decision — real and reachable by normal use is a ` +
+      `blocker even if the path crosses two elements or several steps (focus one, then act on another); only an ` +
+      `input nobody gives in normal use is contrived, and stays minor. Change no code. Empty is a good answer.`,
       { phase: 'Code Audit', label: `audit:${l.key}${retry}#${round}`, schema: FINDINGS, model: l.model || T.think },
     )
     // Would the new tests fail without the change? A command answers it —
