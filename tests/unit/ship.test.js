@@ -62,10 +62,27 @@ async function run(answers = {}, args = 7) {
   return { result, calls, prompts, models };
 }
 
-describe('sizing', () => {
-  test('setup is not told to size by the number of Done-when criteria — #100, a tooltip, went full', () => {
+describe('sizing — facts from setup, one rule from the script', () => {
+  const facts = (f) => ({ ...SETUP, sizing: { areas: ['ui', 'tests'], files: 3, changesApi: false, changesRule: false,
+    changesData: false, openQuestions: 1, labelledFull: false, why: 'one component', ...f } });
+
+  test('a careful ticket about one component is small, however many criteria it lists — #100', async () => {
+    const { result } = await run({ setup: { ...facts({}), doneWhen: Array.from({ length: 7 }, (_, i) => `criterion ${i}`) } });
+    assert.equal(result.size, 'small');
     assert.doesNotMatch(source, /more than four Done-when criteria/);
-    assert.match(source, /How many Done-when criteria there are is not size/);
+  });
+
+  test('a rule, the API, the data, the harness or the label makes it full', async () => {
+    for (const f of [{ changesRule: true }, { changesApi: true }, { changesData: true }, { areas: ['harness'] }, { labelledFull: true }]) {
+      assert.equal((await run({ setup: facts(f) })).result.size, 'full', JSON.stringify(f));
+    }
+  });
+
+  test('breadth makes it full: three areas, seven files or three open questions', async () => {
+    assert.equal((await run({ setup: facts({ areas: ['ui', 'server-routes', 'server-rules'] }) })).result.size, 'full');
+    assert.equal((await run({ setup: facts({ files: 7 }) })).result.size, 'full');
+    assert.equal((await run({ setup: facts({ openQuestions: 3 }) })).result.size, 'full');
+    assert.equal((await run({ setup: facts({ areas: ['ui', 'tests', 'docs'] }) })).result.size, 'small', 'tests and docs are not areas of change');
   });
 });
 
@@ -529,7 +546,7 @@ describe('ship', () => {
       assert.equal(result.outcome, 'shipped');
       assert.ok(!calls.includes('write-spec'));
       assert.ok(!calls.some(c => c.startsWith('spec-audit')));
-      assert.match(prompts.setup, /If you proceed and size it small, write the spec too/);
+      assert.match(prompts.setup, /If you proceed and those facts make it small, write the spec too/);
       assert.match(prompts['audit:combined#1'], /nobody else has checked that it reads the ticket/);
     });
 

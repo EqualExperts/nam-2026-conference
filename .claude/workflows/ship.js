@@ -129,7 +129,23 @@ const SETUP = {
     // characters, and `doneWhen` is verbatim ticket text -- with the tier
     // after it, the tier falls off the end of a live progress render before
     // anyone reading the issue ever sees it. See docs/context/harness.md.
-    size: { enum: ['small', 'full'], description: 'small unless the issue is labelled ship:full, or it changes a rule in server/lib, the schema or seed, an API shape or payload, or several areas of the app at once. How many Done-when criteria there are is not size: a careful ticket about one component — a tooltip with seven acceptance criteria — is small' },
+    // Facts about the change, not a verdict: the script sizes the ticket from
+    // them by one rule (sizeFrom below), so every ticket is sized the same way.
+    sizing: {
+      type: 'object',
+      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull'],
+      properties: {
+        areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, docs/harness/' },
+        files: { type: 'integer', description: 'roughly how many files the change will edit or add, tests included' },
+        changesApi: { type: 'boolean', description: 'an endpoint is added, or a response or request shape changes' },
+        changesRule: { type: 'boolean', description: 'a business rule changes — seats, waitlists, the overlap guard, check-in, ratings, the clock' },
+        changesData: { type: 'boolean', description: 'the schema, the seed or stored data changes' },
+        openQuestions: { type: 'integer', description: 'design decisions the ticket leaves open that the spec will have to settle' },
+        labelledFull: { type: 'boolean', description: 'the issue carries the ship:full label' },
+        why: { type: 'string', description: 'one line: what the change touches' },
+      },
+    },
+
     doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
     spec: {
       type: 'object',
@@ -439,22 +455,44 @@ setup = await agent(
   `later phase would run commands that do not exist in the worktree. \`gh\` works on the repository origin points ` +
   `at, as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
   `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the worktree. ` +
-  `Write no code. If you proceed and size it small, write the spec too, in the workspace you made — ` +
+  `Write no code. If you proceed and those facts make it small, write the spec too, in the workspace you made — ` +
   `${specAsk(`specs/${issue}-<your slug>.md`)} — and return it as spec; a full ticket's spec is the next step's. ` +
   `Return proceed=false with the ` +
-  `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Size it: small ` +
-  `unless it carries the ship:full label or the size description says otherwise — most tickets are small.`,
+  `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Then report the ` +
+  `sizing facts about the change the ticket needs — what it touches, not how long the ticket is. The run is ` +
+  `full if it is labelled ship:full, changes a business rule, the API, the schema, seed or stored data, or the ` +
+  `harness, touches three or more areas, about seven or more files, or leaves three or more design questions open; ` +
+  `otherwise small. Most tickets are small.`,
   { phase: 'Setup', label: 'setup', schema: SETUP, model: 'sonnet' },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
   ? `origin/${BASE} has no harness (scripts/gate.mjs, docs/harness/) — pass { issue, base } with a branch that does`
   : setup.reason }
-const SIZE = FORCED || (setup.size === 'small' ? 'small' : 'full')
+// One rule for every ticket. The agent reports what the change touches; this
+// decides. How carefully the ticket is written — how many acceptance criteria
+// it lists — is deliberately not an input: #100, a tooltip with seven, went
+// full on a judgement call and spent twenty minutes auditing its plan.
+function sizeFrom(f) {
+  const areas = new Set((f.areas || []).filter(a => a !== 'tests' && a !== 'docs'))
+  const reasons = [
+    f.labelledFull && 'labelled ship:full',
+    f.changesRule && 'changes a business rule',
+    f.changesApi && 'changes the API',
+    f.changesData && 'changes the schema, seed or stored data',
+    areas.has('harness') && 'changes the harness',
+    areas.size >= 3 && `touches ${areas.size} areas`,
+    f.files >= 7 && `~${f.files} files`,
+    f.openQuestions >= 3 && `${f.openQuestions} open design questions`,
+  ].filter(Boolean)
+  return reasons.length ? { size: 'full', why: reasons.join(', ') } : { size: 'small', why: f.why || 'a contained change' }
+}
+const sized = setup.sizing ? sizeFrom(setup.sizing) : { size: setup.size === 'small' ? 'small' : 'full', why: 'setup gave no sizing facts' }
+const SIZE = FORCED || sized.size
 T = TIERS[SIZE]
 MAX_SPEC_ROUNDS = T.specRounds
 MAX_BUILD_ROUNDS = T.buildRounds
-log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ''}`)
+log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ` — ${sized.why}`}`)
 const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
 if (missingSetup.length) {
   const partial = setup

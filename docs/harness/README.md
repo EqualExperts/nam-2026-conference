@@ -50,12 +50,15 @@ audit.
 
 ## ⚖️ Small tickets and full tickets
 
-Setup sizes every ticket before any work starts. **Most are small.** A ticket is
-**full** if it carries the `ship:full` label, or it changes a rule in
-`server/lib`, the schema or the seed, an API shape, or several areas at once.
-The number of acceptance criteria does not count: a careful ticket about one
-component is still small. Override with `/ship 42 --full` or
-`--small`.
+Setup sizes every ticket before any work starts — fairly, the same way every
+time. The agent reports **facts about the change** (which areas it touches, how
+many files, whether it changes the API, a business rule or stored data, how
+many design questions the ticket leaves open), and the script applies **one
+rule**: the ticket is **full** if it is labelled `ship:full`, changes a rule,
+the API, the data or the harness, touches three or more areas, about seven or
+more files, or leaves three or more questions open. Otherwise it is **small**,
+and most are. The reason is logged with the size. How long or careful the
+ticket is does not count. Override with `/ship 42 --full` or `--small`.
 
 | | 🟢 **Small** | 🔵 **Full** |
 | --- | --- | --- |
