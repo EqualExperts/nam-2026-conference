@@ -81,8 +81,11 @@ banners render first as full-width rows (`5rem 1fr`), then a cell row if any roo
 has a session. Columns use a CSS var `--grid: 5rem repeat(n, minmax(9rem, 1fr))`
 inside `min-w-[52rem]`. Cells show live (rose) / booked (emerald) / done (faded)
 only when `sessions[0].day === clock.day`, and seats from `seatsFor` over the payload.
-A seat button on a session that `hasEnded` and is not held is disabled and named
-"Session ended" (banner) / "<title> has ended" (cell).
+A seat button on a session that `hasEnded` and is not held is `aria-disabled`
+(not `disabled`, so it still hovers and takes focus) and named "Session ended"
+(banner) / "<title> has ended" (cell); a sold-out one offers "Join the waitlist
+(for <title>)". Both are `GridSeatButton`, which adds `useSeatTooltip` from
+`ui.jsx` — the same words, on hover and on focus.
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`
@@ -122,6 +125,7 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 
 - Mobile tests must click the `Filters` button before touching rail controls.
 - Grid banner seat buttons share one generic `aria-label`; the cell buttons name the session.
+- The `seat-tooltip` is portalled to `document.body`, so it is never inside `schedule-grid`.
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.

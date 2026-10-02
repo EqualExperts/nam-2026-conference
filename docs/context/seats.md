@@ -102,13 +102,18 @@ Once `hasEnded(session, clock)` (`src/lib/clock.js`) is true and no seat is
 held, no control offers one: `SeatPanel` renders a disabled
 `session-ended-seat` instead of `reserve-seat`, `SessionPage` disables
 `save-session` ("Session ended") and shows `session-ended`, `SeatButton`
-takes `ended` (disabled, named "Session ended", never calls `onClick`) and
-the grid buttons are disabled likewise. A seat already held keeps its status
+takes `ended` (named "Session ended", never calls `onClick`) and the grid
+buttons likewise. The card and grid buttons are `aria-disabled` rather than
+`disabled` — a natively disabled control emits no hover and takes no focus, so
+it could not say why it does nothing; the `if (!closed)` click guard is what
+makes them inert, and Playwright's `toBeDisabled()` reads `aria-disabled`.
+`SeatPanel`'s and `SessionPage`'s controls stay natively disabled. A seat already held keeps its status
 and can still be released.
 
 Testids: `seat-panel`, `seat-count`, `seats-left`, `reservation-confirmed`,
 `reservation-waitlisted`, `reserve-seat`, `session-ended-seat`, `session-ended`,
-`release-seat`, `conflict-dialog`,
+`release-seat`, `seat-tooltip` (the card and grid buttons' hover/focus label,
+portalled to `document.body`), `conflict-dialog`,
 `conflict-keep`, `conflict-swap`.
 
 ## Invariants

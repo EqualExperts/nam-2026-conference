@@ -61,6 +61,10 @@ accent name (used for cuisines). A new colour needs a row in both maps.
 `dayLabel(iso)` → `Tuesday, Sep 22`; `shortDay(iso)` → `Tue`;
 `relativeDate(iso, clock)` → `12m ago` / `3h ago` / `Sep 22`, measured against
 the conference clock, not the browser; `plural(n, one, many?)` → `"3 sessions"`;
+`seatActionLabel({ status, ended, full })` → the seat button's words
+(`Leave the waitlist` / `Remove from my agenda` / `Session ended` /
+`Join the waitlist` / `Add to my agenda`, in that order of precedence — a seat
+you hold can always be given back);
 `agendaSummary(total, bookedOnDay, dayPhrase)` → `"session · 2 today"` /
 `"sessions · 2 on Day 1"`, the schedule rail's pluralised agenda line (the
 caller builds `dayPhrase`).
@@ -75,7 +79,7 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `Chip` | `accent?, className, as='span', ...rest` |
 | `TrackPill` | `track` (uses `track.color`, `track.name`) |
 | `Button` | `variant (primary ghost subtle danger; default ghost), size (sm md lg), to` → `Link`, `href` → `a`, else `button`; `as` overrides |
-| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, ended` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended" |
+| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), ended, full` — the one agenda action; stops propagation and sits at `z-10` above card link overlays. Its name and tooltip come from `seatActionLabel`, so `full` offers the waitlist and `ended` without a `status` reads "Session ended" — `aria-disabled`, not `disabled`, so it can still be hovered and focused (the click guard makes it inert) |
 | `Rating` | `value, count, showValue` — "Not yet rated" when `count` is 0 |
 | `SectionHeader` | `eyebrow, title, description, action, className` — renders an `h2` |
 | `Spinner`, `Skeleton` | `className` |
@@ -105,6 +109,18 @@ which keeps screenshots and tests stable), colours from `accentHex(accent)`;
 variants `orbit` (default; keynote cards, session heroes), `mesh` (vendor tiles, the
 spotlight backdrop), `strata` (wide banners), `mark` (sponsor logos). SVG ids derive from the hash, so two covers with the same seed on one
 page share gradient ids (harmless — same art).
+
+**`useSeatTooltip(label)`** (in `ui.jsx`, used by `SeatButton` and
+`ScheduleGrid`'s hand-rolled seat buttons) → `{ triggerProps, tooltip }`.
+Spread `triggerProps` on the button and render `tooltip` beside it: a
+`seat-tooltip` saying what the press will do, after 300ms of hover or at once
+on `:focus-visible`, gone on blur, mouse leave, Escape and pointer down. It is
+`role="tooltip"` + `aria-hidden` — the button's `aria-label` is the same
+sentence, and describing it would say that twice — `pointer-events-none`, so a
+tap always reaches the button, and portalled to `document.body` and positioned
+`fixed` from the button's rect (right-aligned, 8px off the viewport edge, below
+the button when it sits under the sticky header) because the cards and the grid
+clip their overflow.
 
 **Hooks and small components.** `useDocumentTitle(title)` → `"<title> · ORBIT '26"`,
 falsy leaves the tab alone. `useInView({ threshold, rootMargin })` → `[ref,

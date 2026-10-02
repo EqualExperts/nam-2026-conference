@@ -128,3 +128,17 @@ the schedule grid's rightmost column.
   (`aria-disabled` in place of `disabled`, same no-op click).
 - `SeatPanel`/`SessionPage`, whose seat controls are already labelled in words
   and whose ended state stays natively `disabled`.
+
+## Changed while implementing
+
+- **The grid's buttons became one local `GridSeatButton` component** rather
+  than spreading `triggerProps` inline: the banner and cell buttons are built
+  inside `.map()` callbacks, so calling a hook there would change the hook
+  count between renders. The hook is still the shared one from `ui.jsx`.
+- **A sold-out grid button is named for the waitlist too** ("Join the waitlist"
+  / "Join the waitlist for \<title\>"). Keeping the old `aria-label` would have
+  had the button announce "Add to my agenda" while the tooltip beside it read
+  "Join the waitlist"; the ended and held wordings are unchanged, so the tests
+  and docs that find grid buttons by name still hold.
+- **Escape is handled on `document`, not on the button**, so a tooltip opened
+  by hovering — when focus is elsewhere — can be dismissed too.
