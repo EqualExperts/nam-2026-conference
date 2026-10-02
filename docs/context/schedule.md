@@ -126,7 +126,8 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 ## Gotchas
 
 - Mobile tests must click the `Filters` button before touching rail controls.
-- Grid banner seat buttons share one generic `aria-label`; the cell buttons name the session.
+- The grid's two seat buttons are its own, not `SeatButton`: the banner shares one generic
+  `aria-label`, the cell names the session. Changing the seat control means changing them too.
 - The cell's seat counts (`seatsLive`/`left`/`waiting`) are computed above the button, which
   needs `left` for its name; the "Full / N left" badge reads them. `live` there is
   "happening now", which is why the seat counts are `seatsLive`.

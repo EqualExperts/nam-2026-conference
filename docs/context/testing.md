@@ -138,6 +138,11 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 
 ## Gotchas
 
+- **Playwright's visibility is the CSS box, not the pixels.** `toBeVisible`,
+  `toHaveText` and `boundingBox()` all pass on an element an ancestor's
+  `overflow-hidden` has clipped away, or that something else covers. For
+  anything overlaid or near an edge, assert its box against what clips it — the
+  viewport, and the top of the card it escapes.
 - **Pin the clock at every boundary the change depends on**, not only mid-morning:
   before the first session of Day 1 (the seed's morning is already attended),
   during a session, after it, and a later day. A test that only pins 10:30 passes
@@ -188,8 +193,8 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   `test.skip(testInfo.project.name !== 'desktop', …)` — see the promotion test in `tests/seats.spec.js`.
 - A `Stat` tile counts up from zero only once the number is properly on screen, so a tile
   below the fold reads `0` however long you wait. Centre it first
-  (`el.scrollIntoView({ block: 'center' })`); Playwright's `scrollIntoViewIfNeeded` counts a
-  clipped tile as visible and is not enough — see `openPlan` in `tests/plan.spec.js`.
+  (`el.scrollIntoView({ block: 'center' })`); `scrollIntoViewIfNeeded` is not enough — see
+  `openPlan` in `tests/plan.spec.js`.
 - Only `momentOn`/full `THH:MM` values pin the clock; a bare date in `at` is ignored.
 - `clearAgendaFor` on a non-`clean` lane deletes seeded bookings, which the next run
   (without a reseed) no longer has — tests that expect seeded plans then fail far away.

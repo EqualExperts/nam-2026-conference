@@ -159,6 +159,18 @@ scheduled here".
 
 ## Gotchas
 
+- **Anything that has to escape its box — tooltip, menu, popover — portals to
+  `document.body` and positions `fixed` from the anchor's rect.** Nearly every
+  surface clips: the session cards, the grid and its scroller, the panels are
+  all `overflow-hidden`. An absolutely positioned overlay is invisible there,
+  and a browser test still finds it (see `docs/context/testing.md` *Gotchas*).
+- **A primitive is rarely every instance of its control.** `ScheduleGrid`
+  builds its own two seat buttons rather than using `SeatButton`, so it can
+  name each cell with its session; a change to the control is three call sites.
+  Grep what it *does* (`toggleSeat`, `seatActionLabel`), not the import.
+- **A tooltip or hint repeating the accessible name takes no
+  `aria-describedby`** — a screen reader then says the phrase twice. Name the
+  control once and leave the echo `aria-hidden`.
 - `Icon` with a misspelled name, and `useToast` outside `<Toaster>`, both fail
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
