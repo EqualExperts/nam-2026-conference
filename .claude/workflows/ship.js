@@ -136,7 +136,7 @@ const SETUP = {
       required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull'],
       properties: {
         areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, docs/harness/' },
-        files: { type: 'integer', description: 'roughly how many files the change will edit or add, tests included' },
+        files: { type: 'integer', description: 'roughly how many app files (src/, server/) the change will edit or add — not tests, docs or the spec, which grow with any change' },
         changesApi: { type: 'boolean', description: 'an endpoint is added, or a response or request shape changes' },
         changesRule: { type: 'boolean', description: 'a business rule changes — seats, waitlists, the overlap guard, check-in, ratings, the clock' },
         changesData: { type: 'boolean', description: 'the schema, the seed or stored data changes' },
@@ -462,7 +462,7 @@ setup = await agent(
   `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Then report the ` +
   `sizing facts about the change the ticket needs — what it touches, not how long the ticket is. The run is ` +
   `full if it is labelled ship:full, changes a business rule, the API, the schema, seed or stored data, or the ` +
-  `harness, touches three or more areas, about seven or more files, or leaves three or more design questions open; ` +
+  `harness, touches three or more areas, about seven or more app files (tests, docs and the spec not counted), or leaves three or more design questions open; ` +
   `otherwise small. Most tickets are small.`,
   { phase: 'Setup', label: 'setup', schema: SETUP, model: 'sonnet' },
 )
@@ -483,7 +483,9 @@ function sizeFrom(f) {
     f.changesData && 'changes the schema, seed or stored data',
     areas.has('harness') && 'changes the harness',
     areas.size >= 3 && `touches ${areas.size} areas`,
-    f.files >= 7 && `~${f.files} files`,
+    // App files only: #100, a tooltip, went full on "~11 files" that were
+    // five components plus the tests and docs any careful change adds.
+    f.files >= 7 && `~${f.files} app files`,
     f.openQuestions >= 3 && `${f.openQuestions} open design questions`,
   ].filter(Boolean)
   return reasons.length ? { size: 'full', why: reasons.join(', ') } : { size: 'small', why: f.why || 'a contained change' }

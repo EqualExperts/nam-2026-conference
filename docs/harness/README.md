@@ -56,7 +56,7 @@ many files, whether it changes the API, a business rule or stored data, how
 many design questions the ticket leaves open), and the script applies **one
 rule**: the ticket is **full** if it is labelled `ship:full`, changes a rule,
 the API, the data or the harness, touches three or more areas, about seven or
-more files, or leaves three or more questions open. Otherwise it is **small**,
+more app files (tests and docs not counted), or leaves three or more questions open. Otherwise it is **small**,
 and most are. The reason is logged with the size. How long or careful the
 ticket is does not count. Override with `/ship 42 --full` or `--small`.
 
