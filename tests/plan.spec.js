@@ -38,6 +38,72 @@ function shortlyAfter(endsAt) {
 }
 
 test.describe('My Agenda', () => {
+  test('the waitlist tile opens the sessions I am queued for, soonest first', async ({ page }, testInfo) => {
+    const plan = await openPlan(page, ATTENDEES.amara);
+    const queued = plan.days.flatMap((d) => d.sessions)
+      .filter((s) => s.reservation === 'waitlisted')
+      .sort((a, b) => a.day.localeCompare(b.day) || a.startsAt.localeCompare(b.startsAt));
+    expect(queued.length, 'Amara must hold a waitlist place').toBeGreaterThan(0);
+
+    const tile = page.getByTestId('stat-waitlist');
+    await expect(tile.getByRole('button')).toBeVisible();
+    await expect(page.getByTestId('waitlist-list')).toBeHidden();
+
+    await tile.getByRole('button').click();
+    const items = page.getByTestId('waitlist-list').locator('[data-testid^="waitlist-item-"]');
+    await expect(items).toHaveCount(queued.length);
+    for (const [i, s] of queued.entries()) {
+      const item = items.nth(i);
+      await expect(item).toHaveAttribute('data-testid', `waitlist-item-${s.id}`);
+      await expect(item).toHaveAttribute('href', `/sessions/${s.id}`);
+      await expect(item).toContainText(s.title);
+      await expect(item).toContainText(new RegExp(`${Number(s.startsAt.slice(0, 2)) % 12 || 12}:${s.startsAt.slice(3)}`));
+    }
+    if (testInfo.project.name === 'mobile') {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    }
+    await shotForPR(page, 'the On a waitlist tile opened to the sessions I am queued for');
+
+    await items.first().click();
+    await expect(page.getByTestId('reservation-waitlisted')).toBeVisible();
+  });
+
+  test('the waitlist tile is plain text for someone on no waitlist', async ({ page }) => {
+    await openPlan(page, ATTENDEES.jonas);
+    await expect(page.getByTestId('stat-waitlist')).toContainText('0');
+    await expect(page.getByTestId('stat-waitlist').getByRole('button')).toHaveCount(0);
+    await expect(page.getByTestId('waitlist-list')).toHaveCount(0);
+  });
+
+  test('leaving a waitlist updates the tile and list when I come back', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('agenda.waitlist', testInfo);
+    const full = (await bookableFor(request, lane.user, lane.day)).find((s) => s.isFull && s.startsAt === lane.slot);
+    expect(full, 'no full session this attendee can queue for').toBeTruthy();
+    const url = `${API}/users/${lane.user}/reservations/${full.id}`;
+    await request.delete(url);
+
+    try {
+      expect((await (await request.put(url)).json()).status).toBe('waitlisted');
+      await visit(page, '/my-agenda', { as: lane.user, at: await momentOn(0, '07:00') });
+      const tile = page.getByTestId('stat-waitlist');
+      await expect(tile.getByRole('button')).toBeVisible();
+      const count = Number((await tile.innerText()).match(/\d+/)[0]);
+      await tile.getByRole('button').click();
+      await expect(page.getByTestId(`waitlist-item-${full.id}`)).toBeVisible();
+
+      await page.getByTestId(`waitlist-item-${full.id}`).click();
+      await page.getByTestId('release-seat').click();
+      await expect(page.getByTestId('reserve-seat')).toBeVisible();
+
+      await page.goBack();
+      await expect(page.getByTestId('stat-hours-booked')).toBeVisible();
+      await expect(page.getByTestId(`waitlist-item-${full.id}`)).toHaveCount(0);
+      await expect(tile).toContainText(String(count - 1));
+    } finally {
+      await request.delete(`${API}/users/${lane.user}/reservations/${full.id}`);
+    }
+  });
+
   test('adding a session from the schedule puts it on the agenda', async ({ page, request }, testInfo) => {
     const lane = await laneFor('agenda.add', testInfo);
     const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);

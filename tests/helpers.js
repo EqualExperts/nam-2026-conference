@@ -123,6 +123,9 @@ export const LANES = {
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
   // read-only: it books nothing, and needs a day the seed sells sessions out on
   'schedule.seats':   { desktop: { user: kenji, day: 1, readOnly: true }, mobile: { user: marcus, day: 0, readOnly: true } },
+  // Queues for a full room, so the attendee is never Jonas. Each pane pins the
+  // full slot it queues in, distinct from the other panes on its attendee and day.
+  'agenda.waitlist':  { desktop: { user: priya, day: 0, slot: '11:30' },  mobile: { user: marcus, day: 0, slot: '16:00' } },
   'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
   // Kenji and Marcus only attend days 1–2, so day index 2 is unbooked for both —
