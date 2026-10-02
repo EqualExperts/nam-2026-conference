@@ -81,8 +81,13 @@ banners render first as full-width rows (`5rem 1fr`), then a cell row if any roo
 has a session. Columns use a CSS var `--grid: 5rem repeat(n, minmax(9rem, 1fr))`
 inside `min-w-[52rem]`. Cells show live (rose) / booked (emerald) / done (faded)
 only when `sessions[0].day === clock.day`, and seats from `seatsFor` over the payload.
-A seat button on a session that `hasEnded` and is not held is disabled and named
-"Session ended" (banner) / "<title> has ended" (cell).
+Both the banner and the cell seat button are named by `format.seatActionLabel`
+from the live seat count (`seatsFor(id)?.seatsLeft ?? s.seatsLeft`), the cell
+with the session title in it: a sold-out room reads "Join the waitlist" /
+"Join the waitlist for <title>", a queued place "Leave the waitlist…", and one
+that `hasEnded` and is not held is disabled and named "Session ended" (banner) /
+"<title> has ended" (cell). Each wraps in `<Tooltip testId="seat-tooltip">`
+showing the short phrase (`ui.md`).
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`
@@ -122,6 +127,9 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 
 - Mobile tests must click the `Filters` button before touching rail controls.
 - Grid banner seat buttons share one generic `aria-label`; the cell buttons name the session.
+- The cell's seat counts (`seatsLive`/`left`/`waiting`) are computed above the button, which
+  needs `left` for its name; the "Full / N left" badge reads them. `live` there is
+  "happening now", which is why the seat counts are `seatsLive`.
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.

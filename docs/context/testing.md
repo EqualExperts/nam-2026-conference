@@ -94,7 +94,11 @@ instead of silently testing another worktree's app.
 
 `LANES` is **not exported**; it is the table inside `helpers.js` that `laneFor` reads.
 Entry shape: `'area.case': { desktop: { user, day, slot?, clean? }, mobile: {…} }`, with
-`day` a 0-based index. Its comment lists read-only fixtures and the rule that lanes with a
+`day` a 0-based index; `readOnly: true` for a pane that books nothing at all.
+Six attendees over four days is nearly all spoken for, so a pane may also share an
+attendee and day with its *own* other project pane as long as both pin a distinct `slot`
+and book only inside it — `seat.tooltip` is Kenji on day index 1 in both projects, at
+11:30 and 14:45. Its comment lists read-only fixtures and the rule that lanes with a
 `slot` own their slot on day index 2 outright — they assert an exact seat count, so any other
 lane booking *a session in one of those slots* that day, even for a different attendee, can
 shift it mid-assertion. The slot is what is owned, not the attendee.

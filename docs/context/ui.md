@@ -63,7 +63,14 @@ accent name (used for cuisines). A new colour needs a row in both maps.
 the conference clock, not the browser; `plural(n, one, many?)` → `"3 sessions"`;
 `agendaSummary(total, bookedOnDay, dayPhrase)` → `"session · 2 today"` /
 `"sessions · 2 on Day 1"`, the schedule rail's pluralised agenda line (the
-caller builds `dayPhrase`).
+caller builds `dayPhrase`);
+`seatActionLabel({ status, ended, full, title })` → what pressing the seat
+button will do — *Add to my agenda*, *Join the waitlist*, *Remove from my
+agenda*, *Leave the waitlist*, *Session ended*, and with a `title` the long
+form the grid's cells are named with (`Add <title> to my agenda`, `Join the
+waitlist for <title>`, … `<title> has ended`). It is both the button's
+`aria-label` and its tooltip text, at every call site, so the two cannot drift;
+a held seat outranks `ended`, and `full` outranks the plain add.
 Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 
 **`src/components/ui.jsx` exports:**
@@ -75,7 +82,8 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `Chip` | `accent?, className, as='span', ...rest` |
 | `TrackPill` | `track` (uses `track.color`, `track.name`) |
 | `Button` | `variant (primary ghost subtle danger; default ghost), size (sm md lg), to` → `Link`, `href` → `a`, else `button`; `as` overrides |
-| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, ended` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended" |
+| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, ended, full` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended", `full` without one names it "Join the waitlist"; named and tooltipped from `format.seatActionLabel` (`title` still overrides the add wording), with no native `title` attribute |
+| `Tooltip` | `text, testId, className, children` — hover/focus label for an icon-only control. Opens on a **mouse** `pointerEnter` and on a focus the pointer did not cause (so a tap only toggles); closes on leave, blur, Escape (a `document` listener, so it works with focus on the body), scroll and resize. Renders `createPortal` into `document.body`, `position: fixed` from the anchor's measured rect, centred, clamped 8px inside the viewport and flipped below when there is no room above — the cards and the grid all clip, so an in-flow tooltip would be invisible. The node is `aria-hidden` and referenced by nothing: the wrapped button is already *named* with the same phrase, and an `aria-describedby` would announce it twice |
 | `Rating` | `value, count, showValue` — "Not yet rated" when `count` is 0 |
 | `SectionHeader` | `eyebrow, title, description, action, className` — renders an `h2` |
 | `Spinner`, `Skeleton` | `className` |
@@ -161,5 +169,6 @@ scheduled here".
 - A nav item: `NAV` in `Layout.jsx` (icon must exist in `Icon.jsx`).
 - A footer link: the column array in `Layout`'s footer; add the route first.
 - A new primitive used by more than one page: `ui.jsx`.
+- What the seat button is called, anywhere: `seatActionLabel` in `format.js`.
 - A new token or utility: `@theme` / `@utility` in `index.css`.
 - A new cover composition: another `variant` branch in `GeneratedCover`.
