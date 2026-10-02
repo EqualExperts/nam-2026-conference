@@ -9,9 +9,11 @@ waitlist, or Session ended. It hides on mouse leave, on blur, on Escape and on
 scroll, and it follows the store after a click, so a seat just taken reads Remove
 from my agenda without a reload. The native `title` goes (it said the same thing
 a beat later, in the browser's own chrome); the button keeps its `aria-label`,
-which is already that same phrase — so the tooltip is a visual echo of the
-accessible name (`aria-hidden`, referenced by nothing) and a screen reader hears
-the action once, from the name (see Decisions).
+which is that same phrase (the grid cell's is that phrase with the session
+title in it) — so the tooltip is a visual echo of the accessible name
+(`aria-hidden`, referenced by nothing) and a screen reader hears the action once,
+from the name (see Decisions). Both names now come from the same helper, so a
+sold-out or queued button is named for the action it will really take.
 
 Two things the first draft of this spec got wrong, and this one fixes:
 
@@ -30,10 +32,18 @@ Two things the first draft of this spec got wrong, and this one fixes:
   measured rect, so nothing upstream can clip it or re-anchor it.
 
 ## Where
-- **`src/lib/format.js`** — new pure helper `seatActionLabel({ status, ended, full })`
-  → the five phrases. It is the one place the copy lives (`SeatButton` and both
-  grid buttons read it) and it makes the five-state matrix provable without a
-  browser, which `ui.jsx` cannot be (`node --test` does not parse JSX).
+- **`src/lib/format.js`** — new pure helper
+  `seatActionLabel({ status, ended, full, title })` → the five phrases. It is the
+  one place the copy lives (`SeatButton` and both grid buttons read it) and it
+  makes the five-state matrix provable without a browser, which `ui.jsx` cannot
+  be (`node --test` does not parse JSX). With no `title` it returns the short
+  phrase the tooltip shows: *Add to my agenda*, *Join the waitlist*, *Remove from
+  my agenda*, *Leave the waitlist*, *Session ended*. With a `title` it returns
+  the long form the grid cell is *named* with, keeping today's wording where
+  today has one: `Add <title> to my agenda`, `Join the waitlist for <title>`,
+  `Remove <title> from my agenda`, `Leave the waitlist for <title>`,
+  `<title> has ended`. One helper for both forms so the cell's name and its
+  tooltip can never drift apart, and so the long forms are unit-provable too.
 - **`src/components/ui.jsx`** — new `Tooltip({ text, testId, className, children })`:
   - A wrapper `<span ref={anchor} className="relative z-10 inline-grid …">` owns
     the pointer handlers, because a **disabled** button (the ended state) fires no
@@ -72,17 +82,43 @@ Two things the first draft of this spec got wrong, and this one fixes:
   `useConference()` destructure and pass `full={(seatsFor(s.id)?.seatsLeft ?? s.seatsLeft) === 0}`,
   matching how the rest of the app prefers live counts.
 - **`src/components/ScheduleGrid.jsx`** — wrap both buttons in `Tooltip`
-  (`testId="seat-tooltip"`), text from `seatActionLabel`. The buttons keep their
-  current classes and their current `aria-label`s verbatim, including the
-  per-session ones `tests/schedule.spec.js:135` looks up; the cell's `-mr-1 -mt-1`
-  moves onto the wrapper span so the layout does not shift. Neither button gains
-  an `aria-describedby`: the banner's label already *is* the phrase the tooltip
-  shows and the cell's label is that phrase plus the session title, so in both
-  cases a description would repeat the name (see Decisions).
+  (`testId="seat-tooltip"`), text from `seatActionLabel`. Both grid buttons
+  derive `full` the way the rest of the app reads a seat count — live counts
+  first, the fetched payload as the fallback:
+  - **Banner row** (`:85-90`, keynotes and socials): alongside the existing
+    `const seat = reservationFor(s.id)`, add
+    `const full = (seatsFor(s.id)?.seatsLeft ?? s.seatsLeft) === 0`. The row
+    renders no seat count today, but `seatsFor` is already destructured at `:17`
+    and `seatsLeft` is on every session payload, so nothing new is fetched.
+  - **Room cell** (`:140-170`): the same count is already computed, but *below*
+    the button, inside the "Full / N left" IIFE at `:178-181`. Lift
+    `const seatsLive = seatsFor(s.id);`, `const left = seatsLive?.seatsLeft ?? s.seatsLeft;`
+    and `const waiting = seatsLive?.waitlistCount ?? s.waitlistCount ?? 0;` up
+    beside `const seat = …`, set `const full = left === 0`, and let the IIFE read
+    the lifted values. Note the rename: the cell body already binds `live` to
+    "happening now" (`:141`) and the IIFE shadows it with the seat counts, so the
+    lifted binding is `seatsLive` — lifting it under the old name would silently
+    break the live-now styling and the pulsing dot.
+
+  The buttons keep their current classes, and the cell's `-mr-1 -mt-1` moves onto
+  the wrapper span so the layout does not shift. Their `aria-label`s come from
+  `seatActionLabel` — the banner's from the short form, the cell's from the long
+  one (`title={s.title}`) — which leaves today's wording byte-identical in the
+  three states that exist today and adds honest names for the two that do not:
+  a sold-out room is *Join the waitlist* / `Join the waitlist for <title>`, and a
+  queued place is *Leave the waitlist* / `Leave the waitlist for <title>` rather
+  than today's "Remove …" (see Decisions). The per-session name
+  `tests/schedule.spec.js:135` looks up is unaffected: it picks a session with
+  `seatsLeft > 3`. Neither button gains an `aria-describedby`: the banner's label
+  already *is* the phrase the tooltip shows and the cell's label is that phrase
+  with the session title in it, so in both cases a description would repeat the
+  name (see Decisions).
 - **Docs** — `docs/context/ui.md` (new `Tooltip` row, `SeatButton`'s `full`,
   `format.seatActionLabel`, `title` gone), `docs/context/schedule.md` (grid seat
-  buttons carry the same tooltip), `docs/context/testing.md` (the new lane, and
-  that it shares one attendee across projects by pinning distinct slots).
+  buttons carry the same tooltip, and their names come from `seatActionLabel`,
+  so a sold-out cell reads "Join the waitlist"), `docs/context/testing.md`
+  (the new lane, and that it shares one attendee across projects by pinning
+  distinct slots).
 - **Tests** — `tests/unit/format.test.js` (label matrix);
   `tests/schedule.spec.js` (a `Seat button tooltip` describe); `tests/helpers.js`
   gains one lane:
@@ -96,11 +132,12 @@ Two things the first draft of this spec got wrong, and this one fixes:
 ## How it will be proved
 | Done when | Check | Layer |
 | --- | --- | --- |
-| The five phrases are the right ones for each state, Leave the waitlist included | `seatActionLabel` over the matrix: none/confirmed/waitlisted × full × ended | unit |
+| The five phrases are the right ones for each state, Leave the waitlist included | `seatActionLabel` over the matrix: none/confirmed/waitlisted × full × ended, each asserted twice — short form (the tooltip's text) and, with a `title`, the long form the grid cell is named with | unit |
 | Hover shows a tooltip naming the action, within ~300 ms | desktop: hover a bookable card's seat button, `expect(getByTestId('seat-tooltip')).toHaveText('Add to my agenda')` with the default 7 s expect timeout but no added delay in the code; a sold-out session on the `schedule.seats` lane reads `Join the waitlist`; a past day's disabled button reads `Session ended` | spec |
+| A sold-out session in the **grid** says what the click will really do | read-only, `schedule.seats` lane (kenji/day 1 desktop, marcus/day 0 mobile — both days the seed sells grid sessions out on), clock pinned to `07:00` so nothing has ended: pick from `GET /sessions?day=` a session with `isFull && !isKeynote && format !== 'Social'` that the lane's attendee does not already hold, open `?view=grid`, open its cell button's tooltip (hover on desktop, `focus()` on mobile) and expect `Join the waitlist` — and the button's own accessible name to be `Join the waitlist for <title>`, so name and tooltip agree about the waitlist. Books nothing, so no cleanup | spec |
 | Also on keyboard focus; hides on blur, mouse leave, Escape | `focus()` shows it, `blur()` hides it; hover shows it, `mouse.move` away hides it; **hover with focus on `body`** then `keyboard.press('Escape')` hides it | spec |
 | After clicking, the text reflects the new state, no reload | still hovered: click → `Remove from my agenda` and `aria-pressed=true`; click again → `Add to my agenda`; no navigation in between | spec |
-| Accessible name kept, announced once and not twice | on all three buttons, while the tooltip is shown: `aria-label` unchanged from today's value and equal to the tooltip's text; `aria-describedby`, `aria-labelledby` and `title` all absent, so the phrase reaches the accessibility tree by exactly one route; the tooltip node is `aria-hidden="true"`. The name-vs-description check is made by the accessibility tree rather than by attribute spelunking: with the tooltip open, `getByRole('button', { name })` resolves for each button's own name (the card's `Add to my agenda`, the cell's `Add <title> to my agenda`), while the same query plus `description: /./` has count 0 — Playwright computes the accessible description per accname, so this row goes red the moment anything (an `aria-describedby`, a stray `title`) gives the button a second voice | spec |
+| Accessible name kept, announced once and not twice | on all three buttons, while the tooltip is shown: `aria-label` is the phrase `seatActionLabel` gives for that state — the tooltip's text verbatim for the card and banner buttons, the long form with the session title for the cell — and unchanged from today's value in the states today already covers; `aria-describedby`, `aria-labelledby` and `title` all absent, so the phrase reaches the accessibility tree by exactly one route; the tooltip node is `aria-hidden="true"`. The name-vs-description check is made by the accessibility tree rather than by attribute spelunking: with the tooltip open, `getByRole('button', { name })` resolves for each button's own name (the card's `Add to my agenda`, the cell's `Add <title> to my agenda`), while the same query plus `description: /./` has count 0 — Playwright computes the accessible description per accname, so this row goes red the moment anything (an `aria-describedby`, a stray `title`) gives the button a second voice | spec |
 | A tap toggles straight away | mobile project: one `tap()` flips `aria-pressed` to `true`, and `seat-tooltip` is never attached (`expect(...).toHaveCount(0)` right after) | spec |
 | Stays inside the viewport, and nothing clips it | desktop grid, **rightmost room column**, and mobile list card (opened with `focus()`, since touch emulation gives no mouse pointer): tooltip box `x >= 0`, `x + width <= viewportSize().width`, `y >= 0`; and `el.parentElement === document.body` — the portal is what proves no `overflow-hidden`/`overflow-x-auto`/transformed ancestor can clip it, which `toBeVisible()` cannot | spec |
 | Design tokens and `animate-rise`, nothing under reduced motion | tooltip carries `animate-rise` and `glass`; with `page.emulateMedia({ reducedMotion: 'reduce' })` its computed `animation-duration` parses below 1 ms | spec |
@@ -142,6 +179,24 @@ Two things the first draft of this spec got wrong, and this one fixes:
   is the safest reading, and it matches a native `title` being replaced. OK?
 - **Also hides on scroll** (not in the ticket). A `fixed` tooltip would otherwise
   sit where the button used to be once the grid is scrolled sideways. OK?
+- **The grid's two buttons read `full` from the live counts, not from nothing.**
+  The ticket names the grid's rightmost column, and a sold-out cell there is the
+  case most likely to be wrong: without a `full` flag the tooltip would say "Add
+  to my agenda" while the click joins a waitlist. Both grid buttons therefore use
+  `(seatsFor(s.id)?.seatsLeft ?? s.seatsLeft) === 0`, which means lifting the
+  cell's existing count out of the badge IIFE to above the button (renaming it
+  `seatsLive`, since `live` is taken). The alternative — leaving the grid's
+  tooltips state-blind and only wiring `full` on the card — would ship the bug in
+  the exact view the ticket calls out. OK?
+- **A sold-out or queued grid button is renamed to match, rather than frozen at
+  today's wording.** The cell today reads "Add <title> to my agenda" when the
+  room is full and "Remove <title> from my agenda" when you are only queued; both
+  describe something other than what the click does. Since `full` now reaches
+  these buttons, their names become "Join the waitlist for <title>" and "Leave
+  the waitlist for <title>" — the same correction the card button gets, in the
+  same places. The three names the suite looks up (`Add <title> to my agenda` on
+  a session with seats, `Session ended`, `<title> has ended`) are byte-identical,
+  and no test looks up a full or waitlisted grid button by name. OK?
 - **`full` is a new prop rather than derived inside `SeatButton`.** The component
   takes no session; its three callers already hold live seat counts. Note this
   changes the `aria-label` of a full session's button from "Add to my agenda" to
