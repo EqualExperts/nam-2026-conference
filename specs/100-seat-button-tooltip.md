@@ -8,7 +8,10 @@ my agenda, Join the waitlist (the room is full), Remove from my agenda, Leave th
 waitlist, or Session ended. It hides on mouse leave, on blur, on Escape and on
 scroll, and it follows the store after a click, so a seat just taken reads Remove
 from my agenda without a reload. The native `title` goes (it said the same thing
-a beat later, in the browser's own chrome); the button keeps its `aria-label`.
+a beat later, in the browser's own chrome); the button keeps its `aria-label`,
+which is already that same phrase — so the tooltip is a visual echo of the
+accessible name (`aria-hidden`, referenced by nothing) and a screen reader hears
+the action once, from the name (see Decisions).
 
 Two things the first draft of this spec got wrong, and this one fixes:
 
@@ -42,10 +45,11 @@ Two things the first draft of this spec got wrong, and this one fixes:
     WCAG 1.4.13 wants it dismissible either way), and capture-phase `scroll` plus
     `resize` listeners close it, since a `fixed` tooltip would otherwise drift off
     its button when the grid is scrolled sideways.
-  - Renders `createPortal(<span role="tooltip" id aria-hidden="true"
-    data-testid={testId} …>, document.body)`. `aria-hidden` keeps the live node
-    from being announced in its own right; a node referenced by `aria-describedby`
-    still contributes its text, which is how the description gets through once.
+  - Renders `createPortal(<span aria-hidden="true" data-testid={testId} …>,
+    document.body)`. It carries no `id` and no `role="tooltip"`, because nothing
+    references it and an `aria-hidden` node has no role in the tree: every call
+    site's button is already *named* with the phrase the tooltip shows, so the
+    tooltip is purely visual and the name does the announcing.
   - `useLayoutEffect` measures anchor and tooltip and sets `position: fixed`
     coordinates: centred on the button, clamped to `8px` from each viewport edge,
     `6px` above it, flipped below when there is no room above (sticky grid
@@ -55,13 +59,13 @@ Two things the first draft of this spec got wrong, and this one fixes:
     pointer-events-none z-50 whitespace-nowrap rounded-lg px-2.5 py-1.5
     text-[11px] shadow-lg shadow-black/50` — the same recipe as `Toaster` and
     `UserSwitcher`. Reduced motion is already handled globally in `index.css`.
-  - `children` is a function receiving the tooltip's `id` while open and
-    `undefined` while closed, so a call site can set `aria-describedby` exactly
-    when there is something to describe (no dangling idref).
+  - `children` is plain children — the wrapper needs no id plumbing back to the
+    call site, since no button references the tooltip.
 - **`src/components/ui.jsx` — `SeatButton`**: new `full` prop; label comes from
-  `seatActionLabel`; wrapped in `Tooltip` with `testId="seat-tooltip"` and
-  `aria-describedby={tipId}` on the button; `title={label}` dropped. The `title`
-  prop (an override used nowhere today) stays as the label override it is.
+  `seatActionLabel`; wrapped in `Tooltip` with `testId="seat-tooltip"` and the
+  same label as the tooltip text; `title={label}` dropped, `aria-label={label}`
+  kept and no `aria-describedby`/`aria-labelledby` added. The `title` prop (an
+  override used nowhere today) stays as the label override it is.
 - **`src/components/SessionCard.jsx`** (~127, ~184) — `full={isFull}` (already
   computed at line 80 from `seatsFor` over the payload).
 - **`src/components/TodayPanel.jsx`** (~222) — add `seatsFor` to the
@@ -71,10 +75,10 @@ Two things the first draft of this spec got wrong, and this one fixes:
   (`testId="seat-tooltip"`), text from `seatActionLabel`. The buttons keep their
   current classes and their current `aria-label`s verbatim, including the
   per-session ones `tests/schedule.spec.js:135` looks up; the cell's `-mr-1 -mt-1`
-  moves onto the wrapper span so the layout does not shift. The banner button's
-  label is the generic phrase, so it gets `aria-describedby`; the cell button's
-  label already contains the action and the session title, so it does not (see
-  Decisions).
+  moves onto the wrapper span so the layout does not shift. Neither button gains
+  an `aria-describedby`: the banner's label already *is* the phrase the tooltip
+  shows and the cell's label is that phrase plus the session title, so in both
+  cases a description would repeat the name (see Decisions).
 - **Docs** — `docs/context/ui.md` (new `Tooltip` row, `SeatButton`'s `full`,
   `format.seatActionLabel`, `title` gone), `docs/context/schedule.md` (grid seat
   buttons carry the same tooltip), `docs/context/testing.md` (the new lane, and
@@ -96,7 +100,7 @@ Two things the first draft of this spec got wrong, and this one fixes:
 | Hover shows a tooltip naming the action, within ~300 ms | desktop: hover a bookable card's seat button, `expect(getByTestId('seat-tooltip')).toHaveText('Add to my agenda')` with the default 7 s expect timeout but no added delay in the code; a sold-out session on the `schedule.seats` lane reads `Join the waitlist`; a past day's disabled button reads `Session ended` | spec |
 | Also on keyboard focus; hides on blur, mouse leave, Escape | `focus()` shows it, `blur()` hides it; hover shows it, `mouse.move` away hides it; **hover with focus on `body`** then `keyboard.press('Escape')` hides it | spec |
 | After clicking, the text reflects the new state, no reload | still hovered: click → `Remove from my agenda` and `aria-pressed=true`; click again → `Add to my agenda`; no navigation in between | spec |
-| Accessible name kept, tooltip linked, announced once | `aria-label` unchanged before and after; `aria-describedby` equals the tooltip's `id` while shown and is absent while hidden; `title` attribute absent; tooltip node is `aria-hidden` | spec |
+| Accessible name kept, announced once and not twice | on all three buttons, while the tooltip is shown: `aria-label` unchanged from today's value and equal to the tooltip's text; `aria-describedby`, `aria-labelledby` and `title` all absent, so the phrase reaches the accessibility tree by exactly one route; the tooltip node is `aria-hidden="true"`. The name-vs-description check is made by the accessibility tree rather than by attribute spelunking: with the tooltip open, `getByRole('button', { name })` resolves for each button's own name (the card's `Add to my agenda`, the cell's `Add <title> to my agenda`), while the same query plus `description: /./` has count 0 — Playwright computes the accessible description per accname, so this row goes red the moment anything (an `aria-describedby`, a stray `title`) gives the button a second voice | spec |
 | A tap toggles straight away | mobile project: one `tap()` flips `aria-pressed` to `true`, and `seat-tooltip` is never attached (`expect(...).toHaveCount(0)` right after) | spec |
 | Stays inside the viewport, and nothing clips it | desktop grid, **rightmost room column**, and mobile list card (opened with `focus()`, since touch emulation gives no mouse pointer): tooltip box `x >= 0`, `x + width <= viewportSize().width`, `y >= 0`; and `el.parentElement === document.body` — the portal is what proves no `overflow-hidden`/`overflow-x-auto`/transformed ancestor can clip it, which `toBeVisible()` cannot | spec |
 | Design tokens and `animate-rise`, nothing under reduced motion | tooltip carries `animate-rise` and `glass`; with `page.emulateMedia({ reducedMotion: 'reduce' })` its computed `animation-duration` parses below 1 ms | spec |
@@ -114,10 +118,23 @@ Two things the first draft of this spec got wrong, and this one fixes:
   and `session.spec.js:81` assert `toBeDisabled()`. Changing the button's
   semantics is a bigger change than this ticket, so the ended tooltip is reachable
   by pointer only. OK?
-- **No `aria-describedby` on the grid *cell* button.** Its accessible name is
-  already "Add <title> to my agenda"; adding a description that repeats the action
-  is the double announcement the ticket asks us to avoid. There the tooltip is a
-  visual echo (`aria-hidden`) and the name carries the meaning. OK?
+- **No `aria-describedby` anywhere — the tooltip is a visual echo of the
+  accessible name.** The ticket asks for the tooltip to be "linked to the button
+  (`aria-describedby` or equivalent) so screen readers announce it once, not
+  twice". Those two halves pull apart here, because every one of these buttons is
+  *already named with the tooltip's own words*: `ui.jsx:136` names the card
+  button "Add to my agenda" / "Remove from my agenda" / "Leave the waitlist" /
+  "Session ended", the grid banner button carries the same generic phrase
+  (`ScheduleGrid.jsx:106`) and the grid cell button carries it plus the session
+  title. Pointing `aria-describedby` at a node whose text equals the name makes a
+  screen reader say the phrase twice — the failure the criterion exists to
+  prevent. So the "equivalent" we take is the strongest one available: the
+  tooltip's text *is* the accessible name, the live node is `aria-hidden`, and
+  nothing references it. Sighted-hover users gain the phrase; screen-reader users
+  already had it, once. The alternative — swapping `aria-label` for
+  `aria-labelledby={tipId}` while open — buys no new information, makes the name
+  blink between two sources on hover, and cannot work for the cell button, whose
+  name is deliberately longer than the tooltip. OK?
 - **The tooltip opens for mouse pointers only** (`pointerType === 'mouse'`),
   rather than opening on hover and hoping a tap does not linger. A tap therefore
   toggles and shows nothing at all. OK?
