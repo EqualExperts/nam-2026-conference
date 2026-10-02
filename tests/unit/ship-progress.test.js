@@ -510,3 +510,21 @@ describe('makeGh', () => {
     assert.match(calls[0].args[1], /repos\/o\/r\/issues\/7\/comments/);
   });
 });
+
+describe('sized from what runs, now that setup reports facts', () => {
+  test('a plan audit means full; the builder starting without one means small; before either, sizing', () => {
+    const setup = agentEvent('setup', 'Setup', 'done', '{"proceed":true,"branch":"issue-7-x","spec":{"path":"/home/runner/work/r/r/specs/7-x.md"}}');
+    assert.equal(readStream([progress([setup])]).tier, null);
+    assert.equal(readStream([progress([setup, agentEvent('spec-audit:criteria#1', 'Spec Audit', 'running')])]).tier, 'full');
+    assert.equal(readStream([progress([setup, agentEvent('implement', 'Implement', 'running')])]).tier, 'small');
+  });
+
+  test("a small ticket's spec comes from setup, linked by its repository path, not the runner's (#100)", () => {
+    const setup = agentEvent('setup', 'Setup', 'done', '{"proceed":true,"branch":"issue-7-x","spec":{"path":"/home/runner/work/r/r/specs/7-x.md"}}');
+    const s = readStream([progress([setup, agentEvent('implement', 'Implement', 'running')])]);
+    assert.equal(s.spec, '/home/runner/work/r/r/specs/7-x.md');
+    const body = render({ ...s, ended: false }, { issue: 7, runUrl: 'https://github.com/o/r/actions/runs/1', runId: '1', repo: 'o/r', now: 0, started: 0 });
+    assert.match(body, /\[specs\/7-x\.md\]\(https:\/\/github\.com\/o\/r\/blob\/issue-7-x\/specs\/7-x\.md\)/);
+    assert.doesNotMatch(body, /home\/runner/);
+  });
+});

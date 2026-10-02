@@ -122,9 +122,15 @@ export function readStream(lines, readOutputFile = defaultReadOutputFile) {
 
   return {
     streamStarted,
-    tier: setupPreview.size || null,
+    // Setup reports facts and the script sizes the ticket, so the size is read
+    // off what runs: only a full ticket audits its plan; a small one goes
+    // straight from setup to the builder. Until either shows, it is "sizing…".
+    tier: setupPreview.size
+      || (agents.some((a) => /^spec-audit/.test(a.label)) ? 'full'
+        : agents.some((a) => a.label === 'implement') ? 'small' : null),
     branch: setupPreview.branch || null,
-    spec: specPreview.path || null,
+    // A small ticket's spec is written by setup, a full one's by write-spec.
+    spec: specPreview.path || (specAgent ? null : setupPreview.path) || null,
     phases,
     rounds,
     ended,
@@ -146,6 +152,10 @@ function gateLine(g) {
 
 function specLink(path, branch, repo) {
   if (!path) return '';
+  // Agents report the spec's absolute path on the runner; the link wants the
+  // repository path (#100 showed /home/runner/work/…/specs/100-….md).
+  const at = path.lastIndexOf('specs/');
+  if (at > 0) path = path.slice(at);
   if (!branch) return path;
   const base = repo ? `https://github.com/${repo}` : '';
   return `[${path}](${base}/blob/${branch}/${path})`;
@@ -172,7 +182,10 @@ export function render(state, { issue, runUrl, runId, repo, now, started } = {})
     lines.push('| Phase | |', '| --- | --- |');
     for (const p of state.phases) {
       let cell;
-      if (p.status === 'not-started') cell = '—';
+      // A small ticket's spec is written by setup, so its Spec phase has no
+      // agent of its own — the spec existing is what makes the row done.
+      if (p.title === 'Spec' && state.spec) cell = `done — ${specLink(state.spec, state.branch, repo)}`;
+      else if (p.status === 'not-started') cell = '—';
       else if (p.status === 'done') cell = p.title === 'Spec' && state.spec ? `done — ${specLink(state.spec, state.branch, repo)}` : 'done';
       else cell = `${state.ended ? 'interrupted' : 'running'} — ${p.done} of ${p.total} agents finished`;
       lines.push(`| ${p.title} | ${cell} |`);

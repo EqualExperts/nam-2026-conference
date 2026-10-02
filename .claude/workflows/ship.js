@@ -426,7 +426,8 @@ async function learn(how) {
 // both), the spec writer on a full one.
 const specAsk = (path) =>
   `Write the spec, following §3b of ${SKILL} (${sections('3b', '4')} prints it): ${path}, ` +
-  `commit it as the branch's first commit, push, and comment the link on the issue. Its *Where* is the builder's ` +
+  `commit it as the branch's first commit and push — no comment on the issue: its progress comment links the spec, ` +
+  `and every new comment starts a workflow run that only skips. Its *Where* is the builder's ` +
   `map — name each file, the function or line to change, the test file, and the lane or helpers the test will ` +
   `use (tests/helpers.js), so the builder opens those and searches for nothing. Set editsHarness if the ` +
   `plan changes any file under .claude/. ${MAP} Every Done-when ` +
@@ -926,8 +927,8 @@ const pr = await rote(
   `\`git diff --stat\` shows this branch changed — never a test that is not in the diff.\n\n` +
   `Then, from the worktree: \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
   `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
-  `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); \`gh issue comment ${issue} --body "Ready ` +
-  `for review: <url>"\`; \`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
+  `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); ` +
+  `\`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
   (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
   { phase: 'PR', label: 'open-pr', schema: DONE, effort: 'low', model: ROTE },
 )
