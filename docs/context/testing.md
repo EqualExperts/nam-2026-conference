@@ -138,6 +138,7 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   before the first session of Day 1 (the seed's morning is already attended),
   during a session, after it, and a later day. A test that only pins 10:30 passes
   a UI that is wrong at 08:00 (#89).
+- **A test that reads an attendee as "has nothing" (zero waitlisted, no seats) is a fixture, and no lane may write for that attendee** — on any day, either project. Before adding a lane, grep `tests/helpers.js` for the attendee and for the `LANES` comment's fixtures (`plan.spec.js` reads Jonas as holding no waitlist place; a lane that queues him made it flaky on #101).
 - Adding a lane: grep `tests/helpers.js` for the `user`+`day` pair you're about to use
   before writing it down — across all entries, desktop and mobile alike, plus the
   read-only fixtures in the `LANES` comment. A pair that looks free because no *other*
