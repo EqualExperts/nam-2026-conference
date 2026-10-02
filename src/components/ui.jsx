@@ -233,16 +233,26 @@ export function NotFoundState({ title, backTo, backLabel }) {
 }
 
 /* ---------------------------------- Stat --------------------------------- */
-/** `note` is a second, quieter line under the label — a caveat on the number. */
-export function Stat({ value, label, accent: accentName = 'violet', testId, note = null }) {
+/**
+ * `note` is a second, quieter line under the label — a caveat on the number.
+ * With `onClick` the card is a toggle button (`expanded` -> aria-expanded).
+ */
+export function Stat({ value, label, accent: accentName = 'violet', testId, note = null, onClick, expanded }) {
   const a = accent(accentName);
-  return (
-    <div className="card px-4 py-3.5">
+  const body = (
+    <>
       <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)} data-testid={testId}>
         {typeof value === 'number' ? <CountUp value={value} /> : value}
       </div>
       <div className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
       {note && <div className="mt-1 text-[11px] font-medium text-amber-300">{note}</div>}
-    </div>
+    </>
+  );
+  if (!onClick) return <div className="card px-4 py-3.5">{body}</div>;
+  return (
+    <button type="button" onClick={onClick} aria-expanded={!!expanded}
+      className="card px-4 py-3.5 text-left transition-colors hover:border-white/15">
+      {body}
+    </button>
   );
 }

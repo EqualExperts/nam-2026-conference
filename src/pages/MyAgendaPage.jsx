@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
@@ -172,6 +172,30 @@ function ToRateCallout({ days }) {
   );
 }
 
+/** The sessions they are queued for, soonest first — opened from the waitlist tile. */
+function WaitlistPanel({ sessions }) {
+  return (
+    <section className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5" data-testid="waitlist-list">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-200">
+        <Icon name="clock" className="size-4" />
+        {plural(sessions.length, 'session')} on a waitlist
+      </h2>
+      <ul className="mt-3 space-y-1.5">
+        {sessions.map((s) => (
+          <li key={s.id} data-testid="waitlist-row" className="flex min-w-0 items-baseline gap-2.5 text-[13px]">
+            <span className="shrink-0 font-mono text-[11px] text-faint">
+              {dayLabel(s.day).replace(',', ' ·')} · {s.startsAt}
+            </span>
+            <Link to={`/sessions/${s.id}`} className="truncate text-muted underline-offset-2 hover:text-ink hover:underline">
+              {s.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function DayPlan({ day, isToday }) {
   const { clock, reservationFor } = useConference();
   const venues = day.venuesVisited;
@@ -249,6 +273,9 @@ export function MyAgendaPage() {
   const totalSessions = days.reduce((n, d) => n + d.sessions.length, 0);
   const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
   const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const waitlisted = days.flatMap((d) => d.sessions).filter((s) => reservationFor(s.id) === 'waitlisted')
+    .sort((a, b) => a.day.localeCompare(b.day) || a.startsAt.localeCompare(b.startsAt));
   const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
   /*
    * Summed from what each day heading shows rather than from the raw minutes:
@@ -306,10 +333,15 @@ export function MyAgendaPage() {
                 <span data-testid="stat-hours-waitlisted">+{waitlistedHours}h waitlisted</span>
               )}
             />
-            <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
+            <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'}
+              testId="stat-waitlisted"
+              onClick={totalWaitlisted > 0 ? () => setWaitlistOpen((o) => !o) : undefined}
+              expanded={waitlistOpen} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
           </div>
+
+          {waitlistOpen && waitlisted.length > 0 && <WaitlistPanel sessions={waitlisted} />}
 
           {days.length === 0 ? (
             <EmptyState

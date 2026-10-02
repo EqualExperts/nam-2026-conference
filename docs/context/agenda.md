@@ -75,7 +75,11 @@ seats booked, hours (`stat-hours-booked` = sum of per-day `hoursOn`, i.e. rounde
 per day), waitlisted, clashes, cross-town days. Any waitlisted time adds a
 `Stat note` under the hours label — `stat-hours-waitlisted`, `+Nh waitlisted`,
 rounded and summed the same way — and a matching note beside that day's hours
-line; with none, neither renders. `DayPlan` (`plan-day-<date>`)
+line; with none, neither renders. The waitlisted tile (`stat-waitlisted` is its
+number) is a toggle button (`Stat onClick`, `aria-expanded`) only above zero: it opens
+`WaitlistPanel` (`waitlist-list`, rows `waitlist-row` — day, start time, title linking
+to `/sessions/:id`), built from the live-filtered `days` and sorted by day then start,
+closed on load and gone when the last place is left. `DayPlan` (`plan-day-<date>`)
 renders `ConflictBanner` (`conflict-banner`, max 3 listed) and `SessionCard variant="row"`,
 passing confirmed rows an `attendance` prop (`{ ended: hasEnded(s, clock), checkedIn, myStars }`)
 that shows as `attendance-status`. `ToRateCallout` (`to-rate`, first inside `{data && …}`)

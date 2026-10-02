@@ -141,13 +141,15 @@ test.describe('My Agenda', () => {
       await visit(page, '/my-agenda', { as: lane.user, at });
       const tile = page.getByRole('button', { name: /on a waitlist/i });
       await expect(tile).toBeVisible();
-      const before = Number((await page.getByTestId('stat-waitlisted').textContent()).trim());
       await tile.click();
+      // counted from the list: a tile counts up from zero, so its text is not a baseline
+      const before = await page.getByTestId('waitlist-row').count();
       await page.getByTestId('waitlist-row').filter({ hasText: full.title }).getByRole('link').click();
 
       await page.getByTestId('release-seat').click();
       await expect(page.getByTestId('reserve-seat')).toBeVisible();
-      await page.getByRole('banner').getByRole('link', { name: 'My Agenda' }).first().click();
+      // back is a client-side navigation, not a reload, on the desktop bar and the phone menu alike
+      await page.goBack();
 
       await expect(page.getByTestId('stat-hours-booked')).toBeVisible();
       await expect(page.getByTestId('stat-waitlisted')).toHaveText(String(before - 1));
