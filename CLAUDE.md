@@ -21,6 +21,12 @@ Node 22 · Express · better-sqlite3 · React 18 · Vite 6 · React Router 6 ·
 Tailwind CSS v4 · Playwright. No state library, no ORM, no component library —
 if you are reaching for one, you are probably solving the wrong problem.
 
+**Railway** is the deployment target, as a container. Serverless is out: a
+long-lived Express process holding an open better-sqlite3 handle to a file on
+disk is the opposite of what a function platform gives you, which is what rules
+Vercel out. Railway also takes the deploy and its configuration through its own
+API, so an agent can ship it without anyone opening a dashboard.
+
 ## Start from the context docs
 
 This file says what was decided and why; `docs/context/` says where it lives
