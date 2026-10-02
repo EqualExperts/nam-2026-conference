@@ -52,8 +52,9 @@ audit.
 
 Setup sizes every ticket before any work starts. **Most are small.** A ticket is
 **full** if it carries the `ship:full` label, or it changes a rule in
-`server/lib`, the schema or the seed, an API shape, several areas at once, or
-has more than four Done-when criteria. Override with `/ship 42 --full` or
+`server/lib`, the schema or the seed, an API shape, or several areas at once.
+The number of acceptance criteria does not count: a careful ticket about one
+component is still small. Override with `/ship 42 --full` or
 `--small`.
 
 | | 🟢 **Small** | 🔵 **Full** |

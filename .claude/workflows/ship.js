@@ -129,7 +129,7 @@ const SETUP = {
     // characters, and `doneWhen` is verbatim ticket text -- with the tier
     // after it, the tier falls off the end of a live progress render before
     // anyone reading the issue ever sees it. See docs/context/harness.md.
-    size: { enum: ['small', 'full'], description: 'small unless the issue is labelled ship:full, or it changes a rule in server/lib, the schema or seed, an API shape, or several areas at once, or has more than four Done-when criteria' },
+    size: { enum: ['small', 'full'], description: 'small unless the issue is labelled ship:full, or it changes a rule in server/lib, the schema or seed, an API shape or payload, or several areas of the app at once. How many Done-when criteria there are is not size: a careful ticket about one component — a tooltip with seven acceptance criteria — is small' },
     doneWhen: { type: 'array', items: { type: 'string' }, description: 'each Done-when criterion, verbatim' },
     spec: {
       type: 'object',

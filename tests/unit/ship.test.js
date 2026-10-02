@@ -62,6 +62,13 @@ async function run(answers = {}, args = 7) {
   return { result, calls, prompts, models };
 }
 
+describe('sizing', () => {
+  test('setup is not told to size by the number of Done-when criteria — #100, a tooltip, went full', () => {
+    assert.doesNotMatch(source, /more than four Done-when criteria/);
+    assert.match(source, /How many Done-when criteria there are is not size/);
+  });
+});
+
 describe('several tickets at once', () => {
   const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
   const agent = async () => { throw new Error('the batch itself runs no agent'); };
