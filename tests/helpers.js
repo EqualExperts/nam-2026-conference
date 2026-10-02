@@ -103,7 +103,8 @@ export async function clearAgendaFor(request, userId, day) {
  * Read-only fixtures to leave alone: Jonas on day 1 (home page), Jonas and
  * Kenji on day 2 (the promotion fixture), Marcus on day 4 (must stay empty).
  * Jonas holds no waitlist place anywhere, and `plan.spec.js` reads him as the
- * attendee who sees no waitlisted hours — so never queue him for a full room.
+ * attendee who sees no waitlisted hours — so never queue him for a full room
+ * (`tests/unit/lanes.test.js` fails a lane whose test says "waitlist" on him).
  * Lanes marked `clean` are days the seed leaves empty for that attendee, so the
  * test may clear the whole day; everywhere else, release only what you booked.
  */

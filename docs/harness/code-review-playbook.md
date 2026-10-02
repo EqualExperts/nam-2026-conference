@@ -88,6 +88,11 @@ issue labelled `follow-up`, linking the pull request, whatever the verdict.
 
 - Style, naming, formatting, structure, or how you would have written it
 - Anything the linter, the type checker or the test suite already catches
+- **As a blocker:** a harm only to the test suite — a test that could flake,
+  race another under concurrency, or take a lane or fixture it should not.
+  Nobody using the app loses anything, the suite and `tests/unit/lanes.test.js`
+  are what catch it, and a rerun costs less than a blocking round. It is a
+  follow-up. A test that does not prove the change (§2) is still a blocker.
 - Anything that is only a problem for some inputs, unless you name one
 - A bug that is already on `main` — it is not this pull request's doing
 - Anything the code, its tests or its spec show was deliberate

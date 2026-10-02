@@ -231,7 +231,8 @@ const LENSES = [
     ask: `Read the tests the diff adds or changes. A blocker is a test that would pass before the change, ` +
       `asserts the implementation against itself, or an existing test weakened without the ticket asking ` +
       `(test-proves-nothing). Code that changes behaviour with no test that would catch it breaking is one ` +
-      `too. \`GATE_BASE=origin/<base branch> node scripts/red-check.mjs\` answers the first question by ` +
+      `too. A test that could flake or race another, or takes a lane or fixture it should not, harms only ` +
+      `the suite — a follow-up, never a blocker (§3). \`GATE_BASE=origin/<base branch> node scripts/red-check.mjs\` answers the first question by ` +
       `running the branch's tests against the base branch's app code: failedOnBase false means none of them ` +
       `would notice the change being reverted. Run it, and run a test yourself if that settles the rest.`,
   },
@@ -385,7 +386,9 @@ const judged = await parallel(blockers.map(f => () =>
     `\`gh pr diff ${pr}\` or the checkout and check it says what is claimed. Refute if it does not, if the ` +
     `behaviour is already on ${ctx.base}, if a human amendment above asked for exactly this, or if it is ` +
     `style rather than a defect. If you cannot tell, it is NOT refuted. If it is real but only reachable with ` +
-    `an input nobody gives in normal use — a hand-edited URL, a forged request — say contrived, and why.` +
+    `an input nobody gives in normal use — a hand-edited URL, a forged request — say contrived, and why. ` +
+    `If the only harm is to the test suite — a test that could flake or race another, not one that fails ` +
+    `to prove the change — say contrived too: nobody using the app loses anything.` +
     (f.also && f.also.length ? ` Several reviewers read this line differently ("also" below): refute only if EVERY reading is wrong.` : '') +
     `\n\n[${f.category}] ${f.file}:${f.line} — ${f.claim}\nevidence: ${f.evidence}` +
     (f.also || []).map(a => `\nalso, [${a.category}]: ${a.claim} — ${a.evidence}`).join(''),
