@@ -99,7 +99,10 @@ Sections self-hide by returning `null`; the wrapping `<Reveal>` div would still
 leave a gap, so the container has `[&>:empty]:hidden`. Inside `TodayPanel`:
 nothing booked today → `today-empty` (interest chips linking `/schedule?q=`);
 `waitlist-strip` and `rate-strip` render only when non-empty; `suggestions` only
-when `openSlot && suggestions.length`.
+when `openSlot && suggestions.length`. Each suggestion's `SeatButton` passes
+`full` as `(seatsFor(s.id)?.seatsLeft ?? s.seatsLeft) === 0`, the same live-over-payload
+preference as everywhere else — `TodayPanel` destructures `seatsFor` from
+`useConference()` for it.
 
 **Speaker panels.** `GET /api/users/:id` adds `speaker` and `speakingSessions`
 (`users.js:speakingSessions`, via `presenting` + plain `toSession`, so no

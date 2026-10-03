@@ -115,8 +115,24 @@ test.describe('My Agenda', () => {
     const card = page.locator('article').filter({ has: page.getByRole('heading', { name: target.title, exact: true }) });
     const seat = card.getByRole('button', { name: /agenda|waitlist/i });
     await expect(seat).toHaveAttribute('aria-pressed', 'false');
-    await seat.click();
-    await expect(seat).toHaveAttribute('aria-pressed', 'true');
+    const tooltip = page.getByTestId('seat-tooltip');
+
+    if (testInfo.project.name === 'mobile') {
+      // A tap toggles the seat straight away — no tooltip, and no second tap.
+      await seat.tap();
+      await expect(seat).toHaveAttribute('aria-pressed', 'true');
+      await expect(tooltip).toHaveCount(0);
+    } else {
+      await seat.hover();
+      await expect(tooltip).toBeVisible({ timeout: 600 });
+      await expect(tooltip).toHaveText('Add to my agenda');
+      await shotForPR(page, 'seat-tooltip-before-booking');
+      await seat.click();
+      await expect(seat).toHaveAttribute('aria-pressed', 'true');
+      // the store re-renders with the new status; the open tooltip follows it
+      // without a reload.
+      await expect(tooltip).toHaveText('Remove from my agenda');
+    }
 
     await page.goto('/my-agenda');
     await expect(page.getByText(target.title, { exact: false }).first()).toBeVisible();

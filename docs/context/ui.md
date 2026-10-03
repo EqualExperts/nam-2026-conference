@@ -63,7 +63,11 @@ accent name (used for cuisines). A new colour needs a row in both maps.
 the conference clock, not the browser; `plural(n, one, many?)` → `"3 sessions"`;
 `agendaSummary(total, bookedOnDay, dayPhrase)` → `"session · 2 today"` /
 `"sessions · 2 on Day 1"`, the schedule rail's pluralised agenda line (the
-caller builds `dayPhrase`).
+caller builds `dayPhrase`); `seatAction(status, { ended, full })` → one of
+*Add to my agenda* / *Join the waitlist* / *Remove from my agenda* / *Leave the
+waitlist* / *Session ended* — the seat button's tooltip text and `aria-label`
+alike, checking a held status before `ended` before `full` so a seat already
+held can always be given back.
 Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 
 **`src/components/ui.jsx` exports:**
@@ -75,7 +79,8 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `Chip` | `accent?, className, as='span', ...rest` |
 | `TrackPill` | `track` (uses `track.color`, `track.name`) |
 | `Button` | `variant (primary ghost subtle danger; default ghost), size (sm md lg), to` → `Link`, `href` → `a`, else `button`; `as` overrides |
-| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, ended` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended" |
+| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), ended, full` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended"; wraps itself in `Tooltip` with `seatAction(status, { ended, full })`, which also becomes its `aria-label` (no `title`) |
+| `Tooltip` | `children` (a single `<button>`), `label` — a token-styled, `animate-rise` bubble, portaled to `document.body` and `position: fixed`, clamped 8px inside the viewport and flipped below when there is no room above. Opens ~300ms after `pointerenter` (skipped for `pointerType: 'touch'`) or on the trigger's `:focus-visible`; closes on `pointerleave`, `blur` or Escape. Clones its child to add those handlers, a ref for positioning, and `aria-describedby` while open. A module-level closer keeps only one tooltip open at a time. Used directly by `ScheduleGrid`'s banner and cell seat buttons, which are plain `<button>`s, not `SeatButton` |
 | `Rating` | `value, count, showValue` — "Not yet rated" when `count` is 0 |
 | `SectionHeader` | `eyebrow, title, description, action, className` — renders an `h2` |
 | `Spinner`, `Skeleton` | `className` |
@@ -155,6 +160,10 @@ scheduled here".
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
 - `format.time` expects `HH:MM`, not an ISO timestamp.
+- `Tooltip`'s bubble is `data-testid="seat-tooltip"`, `role="tooltip"`. Calling
+  `.focus()` on an element that already has focus fires no `focus` event, so a
+  test re-opening it after Escape (which closes the tooltip without moving
+  focus) needs a real round trip — `Tab` away, then `Shift+Tab` back.
 
 ## Where to change…
 

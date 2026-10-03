@@ -37,3 +37,17 @@ export const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n =
 /** The schedule rail's "N sessions · M today"/"M on Day 1" line. `dayPhrase` is the caller's job. */
 export const agendaSummary = (total, bookedOnDay, dayPhrase) =>
   `${total === 1 ? 'session' : 'sessions'} · ${bookedOnDay} ${dayPhrase}`;
+
+/**
+ * What the seat button's next click will do, for its tooltip and `aria-label`.
+ * A seat already held (confirmed or waitlisted) can always be given back, even
+ * once the session has ended — only a seat not yet taken is foreclosed by
+ * `ended`, checked before `full` since there is nothing to join once it is over.
+ */
+export const seatAction = (status, { ended = false, full = false } = {}) => {
+  if (status === 'confirmed') return 'Remove from my agenda';
+  if (status === 'waitlisted') return 'Leave the waitlist';
+  if (ended) return 'Session ended';
+  if (full) return 'Join the waitlist';
+  return 'Add to my agenda';
+};

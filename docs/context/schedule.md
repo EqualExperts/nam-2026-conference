@@ -82,7 +82,10 @@ has a session. Columns use a CSS var `--grid: 5rem repeat(n, minmax(9rem, 1fr))`
 inside `min-w-[52rem]`. Cells show live (rose) / booked (emerald) / done (faded)
 only when `sessions[0].day === clock.day`, and seats from `seatsFor` over the payload.
 A seat button on a session that `hasEnded` and is not held is disabled and named
-"Session ended" (banner) / "<title> has ended" (cell).
+"Session ended" (banner) / "<title> has ended" (cell). Both buttons wrap in
+`Tooltip` (`ui.jsx`), with `full` (seats left, via `seatsFor` over the payload)
+computed the same way for each — the banner's `full` was the one spot this had
+to be added fresh, since only the cell block already read capacity.
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`
@@ -92,7 +95,8 @@ passed by My Agenda for confirmed seats) renders `attendance-status` in the meta
 ended), or `Missed`; `null` renders nothing. The **feature** treatment is not a variant: `feature = session.isKeynote`
 adds `sm:col-span-2`, a `GeneratedCover variant="orbit"` banner with seat count,
 bigger title and a 3-line abstract. Both read `reservationFor`, `seatsFor`, `clock`
-from `useConference()`; the seat toggle is `SeatButton` from `ui.jsx`. Both roots
+from `useConference()`; the seat toggle is `SeatButton` from `ui.jsx`, which
+passes its own `full` (`seatsLeft === 0`) through to the tooltip. Both roots
 carry `data-testid="session-card"` and `data-done`; done (dimmed, seat button
 `ended`) is `hasEnded(session, clock)`, so a past day's cards are done too.
 
@@ -122,6 +126,8 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 
 - Mobile tests must click the `Filters` button before touching rail controls.
 - Grid banner seat buttons share one generic `aria-label`; the cell buttons name the session.
+  Both still get the same `seatAction` tooltip text as `SeatButton` elsewhere — only the
+  `aria-label` differs.
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.

@@ -1,11 +1,130 @@
 import { Link } from 'react-router-dom';
+import { cloneElement, isValidElement, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { accent } from '../lib/accents.js';
+import { seatAction } from '../lib/format.js';
 import { Icon } from './Icon.jsx';
 import { GeneratedAvatar } from './GeneratedAvatar.jsx';
 import { CountUp } from './CountUp.jsx';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 export { cx };
+
+/* --------------------------------- Tooltip -------------------------------- */
+// Only one tooltip is ever open — opening another closes it, module-wide
+// rather than through the store, since this is purely a display concern.
+let closeOpenTooltip = null;
+
+function TooltipBubble({ id, label, rect }) {
+  const elRef = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  // Two-pass placement: render once to measure the bubble's own size, then
+  // place it from the trigger's rect, clamped 8px inside the viewport, and
+  // flipped below when there is no room above. Runs before paint, so there is
+  // nothing to see at the wrong spot first.
+  useLayoutEffect(() => {
+    const box = elRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const margin = 8;
+    let top = rect.top - box.height - 8;
+    if (top < margin) top = rect.bottom + 8;
+    let left = rect.left + rect.width / 2 - box.width / 2;
+    left = Math.min(Math.max(left, margin), window.innerWidth - box.width - margin);
+    setPos({ top, left });
+  }, [rect]);
+
+  return (
+    <span
+      ref={elRef}
+      id={id}
+      role="tooltip"
+      data-testid="seat-tooltip"
+      className="animate-rise fixed z-50 max-w-[14rem] rounded-lg border border-hairline bg-overlay px-2.5 py-1.5 text-xs font-medium text-ink shadow-lg shadow-black/30"
+      style={{ top: pos?.top ?? rect.top, left: pos?.left ?? rect.left, visibility: pos ? 'visible' : 'hidden' }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Names what a trigger's click will do, after a hover or a keyboard focus.
+ * Wraps its child (a plain `<button>`, never touch-activated) in a `span`
+ * that tracks pointer enter/leave — so a `disabled` button, which cannot
+ * fire its own pointer events reliably, still shows it — and adds focus,
+ * blur and Escape handling, plus `aria-describedby`, to the child itself.
+ */
+export function Tooltip({ children, label }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState(null);
+  const nodeRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const close = () => {
+    clearTimeout(timerRef.current);
+    setOpen(false);
+  };
+
+  const open_ = () => {
+    if (closeOpenTooltip && closeOpenTooltip !== close) closeOpenTooltip();
+    closeOpenTooltip = close;
+    const box = nodeRef.current?.getBoundingClientRect();
+    if (box) setRect(box);
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  useEffect(() => () => {
+    clearTimeout(timerRef.current);
+    if (closeOpenTooltip === close) closeOpenTooltip = null;
+  }, []);
+
+  if (!isValidElement(children)) return children;
+
+  const child = cloneElement(children, {
+    ref: (node) => {
+      nodeRef.current = node;
+      const ref = children.ref;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) ref.current = node;
+    },
+    onFocus: (e) => {
+      children.props.onFocus?.(e);
+      if (e.target.matches?.(':focus-visible')) open_();
+    },
+    onBlur: (e) => {
+      children.props.onBlur?.(e);
+      close();
+    },
+    'aria-describedby': open ? id : children.props['aria-describedby'],
+  });
+
+  return (
+    <span
+      className="contents"
+      onPointerEnter={(e) => {
+        if (e.pointerType === 'touch') return;
+        clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(open_, 300);
+      }}
+      onPointerLeave={() => {
+        clearTimeout(timerRef.current);
+        close();
+      }}
+    >
+      {child}
+      {open && rect && createPortal(<TooltipBubble id={id} label={label} rect={rect} />, document.body)}
+    </span>
+  );
+}
 
 /* --------------------------------- Avatar -------------------------------- */
 const AVATAR_SIZES = {
@@ -114,45 +233,44 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
 /* -------------------------------- SeatButton ------------------------------ */
 /**
  * The one action: add this session to my agenda, which takes a seat.
- * `status` is null | 'confirmed' | 'waitlisted'.
+ * `status` is null | 'confirmed' | 'waitlisted'. A tooltip on hover or focus
+ * names what the next click will do — the same text as `aria-label`.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title, ended = false }) {
+export function SeatButton({ status, onClick, size = 'md', className, ended = false, full = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
   // An ended session offers no seat; a seat already held can still be released.
   const closed = ended && !on;
-  const label = on
-    ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
-    : closed ? 'Session ended'
-    : (title ?? 'Add to my agenda');
+  const label = seatAction(status, { ended, full });
 
   return (
-    <button
-      type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
-      disabled={closed}
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      className={cx(
-        // `relative z-10` keeps the button above the card's stretched link overlay,
-        // which otherwise covers the whole card and swallows the click.
-        'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
-        dims,
-        waiting
-          ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-          : on
-            ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-            : closed
-              ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
-              : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
-        className,
-      )}
-    >
-      <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
-    </button>
+    <Tooltip label={label}>
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
+        disabled={closed}
+        aria-pressed={on}
+        aria-label={label}
+        className={cx(
+          // `relative z-10` keeps the button above the card's stretched link overlay,
+          // which otherwise covers the whole card and swallows the click.
+          'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+          dims,
+          waiting
+            ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
+            : on
+              ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+              : closed
+                ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
+                : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
+          className,
+        )}
+      >
+        <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
+      </button>
+    </Tooltip>
   );
 }
 

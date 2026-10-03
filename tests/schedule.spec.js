@@ -1,6 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { API, visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor, MID_SESSION_TIME, ATTENDEES, shotForPR } from './helpers.js';
 
+/** The user's own holds on `day`, so a tooltip test can pick a session it does not already hold. */
+async function unheldOn(request, userId, day) {
+  const [all, me] = await Promise.all([
+    (await request.get(`${API}/sessions?day=${day}`)).json(),
+    (await request.get(`${API}/users/${userId}`)).json(),
+  ]);
+  const mine = new Set(me.reservations.map((r) => r.sessionId));
+  return all.filter((s) => !s.isKeynote && !mine.has(s.id));
+}
+
 
 test.describe('Schedule', () => {
   test('lists sessions for the selected day', async ({ page }) => {
@@ -155,6 +165,135 @@ test.describe('Schedule grid', () => {
 
     await expect(cardFor(roomy.title).getByTestId('card-seats')).toHaveText(/^\d+ seats left$/);
     await expect(cardFor(full.title).getByTestId('card-seats')).toContainText('Full');
+  });
+});
+
+test.describe('Seat tooltip', () => {
+  // Read-only, same pairs as 'schedule.seats' — fine since both are readOnly.
+  test('hover names the action within about 300ms, and a full room reads Join the waitlist', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('schedule.tooltip', testInfo);
+    const unheld = await unheldOn(request, lane.user, lane.day);
+    const roomy = unheld.find((s) => s.seatsLeft > 50);
+    const full = unheld.find((s) => s.isFull);
+    expect(roomy, 'no unheld session with room to spare').toBeTruthy();
+    expect(full, 'no unheld, sold-out session on this day').toBeTruthy();
+
+    // Pinned before the day's first session, or whichever card `.first()` lands
+    // on elsewhere here could already read done depending on the hour this runs.
+    await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user, at: `${lane.day}T07:00` });
+    await waitForResults(page);
+    const cardFor = (title) => page.locator('article').filter({ hasText: title }).first();
+    const tooltip = page.getByTestId('seat-tooltip');
+
+    await cardFor(roomy.title).getByRole('button', { name: 'Add to my agenda' }).hover();
+    await expect(tooltip).toBeVisible({ timeout: 600 });
+    await expect(tooltip).toHaveText('Add to my agenda');
+    await shotForPR(page, 'seat-tooltip-add-to-my-agenda');
+
+    // move away: the tooltip follows the mouse off the button
+    await page.mouse.move(2, 2);
+    await expect(tooltip).toHaveCount(0);
+
+    await cardFor(full.title).getByRole('button', { name: 'Join the waitlist' }).hover();
+    await expect(tooltip).toBeVisible({ timeout: 600 });
+    await expect(tooltip).toHaveText('Join the waitlist');
+  });
+
+  test('opens on keyboard focus, and closes on blur and Escape', async ({ page }, testInfo) => {
+    const lane = await laneFor('schedule.tooltip', testInfo);
+    await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user, at: `${lane.day}T07:00` });
+    await waitForResults(page);
+    const seat = page.locator('article').first().getByRole('button', { name: /agenda|waitlist/i }).first();
+    const tooltip = page.getByTestId('seat-tooltip');
+
+    await seat.focus();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toHaveCount(0);
+
+    // Escape closed it without moving focus off the button, so a genuine new
+    // focus event needs a real round trip: tab off, then back with Shift+Tab.
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(seat).toBeFocused();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Tab'); // moves focus off the button — blur
+    await expect(tooltip).toHaveCount(0);
+  });
+
+  test('keeps its accessible name and links the open tooltip once, with no title attribute', async ({ page }, testInfo) => {
+    const lane = await laneFor('schedule.tooltip', testInfo);
+    await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user, at: `${lane.day}T07:00` });
+    await waitForResults(page);
+    const seat = page.locator('article').first().getByRole('button', { name: /agenda|waitlist/i }).first();
+    await expect(seat).not.toHaveAttribute('title');
+    const label = await seat.getAttribute('aria-label');
+
+    await seat.focus();
+    const tooltip = page.getByTestId('seat-tooltip');
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toHaveText(label);
+    await expect(seat).toHaveAccessibleName(label);
+    await expect(seat).toHaveAttribute('aria-describedby', await tooltip.getAttribute('id'));
+  });
+
+  test('only one tooltip is open at a time (#105)', async ({ page }, testInfo) => {
+    const lane = await laneFor('schedule.tooltip', testInfo);
+    await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user, at: `${lane.day}T07:00` });
+    await waitForResults(page);
+    const seats = page.getByRole('button', { name: /agenda|waitlist/i });
+    const tooltip = page.getByTestId('seat-tooltip');
+
+    await seats.nth(0).focus();
+    await expect(tooltip).toBeVisible();
+    await seats.nth(1).hover();
+    await expect(tooltip).toBeVisible({ timeout: 600 });
+    await expect(tooltip).toHaveCount(1);
+  });
+
+  test('shows no animation under prefers-reduced-motion', async ({ page }, testInfo) => {
+    const lane = await laneFor('schedule.tooltip', testInfo);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user, at: `${lane.day}T07:00` });
+    await waitForResults(page);
+    const seat = page.locator('article').first().getByRole('button', { name: /agenda|waitlist/i }).first();
+    const tooltip = page.getByTestId('seat-tooltip');
+
+    await seat.hover();
+    await expect(tooltip).toBeVisible({ timeout: 600 });
+    await expect(tooltip).toHaveClass(/animate-rise/);
+    const duration = await tooltip.evaluate((el) => getComputedStyle(el).animationDuration);
+    expect(duration).toBe('1e-05s');
+  });
+
+  test('stays inside the viewport, including the grid\'s rightmost column on desktop', async ({ page }, testInfo) => {
+    const lane = await laneFor('schedule.tooltip', testInfo);
+    const tooltip = page.getByTestId('seat-tooltip');
+    const viewport = page.viewportSize();
+
+    if (testInfo.project.name === 'desktop') {
+      await visit(page, `/schedule?day=${lane.day}&view=grid`, { as: lane.user, at: `${lane.day}T07:00` });
+      const grid = page.getByTestId('schedule-grid');
+      await expect(grid).toBeVisible();
+      // The last cell in each room row is the rightmost column; only one with
+      // a session (not an empty "—" slot) actually has a button to hover.
+      const rightmostFilled = grid.locator('[role="row"] > [role="cell"]:last-child')
+        .filter({ has: page.getByRole('button') });
+      await rightmostFilled.last().getByRole('button').hover();
+    } else {
+      await visit(page, `/schedule?day=${lane.day}&view=list`, { as: lane.user, at: `${lane.day}T07:00` });
+      await waitForResults(page);
+      await page.locator('article').first().getByRole('button', { name: /agenda|waitlist/i }).first().focus();
+    }
+
+    await expect(tooltip).toBeVisible({ timeout: 600 });
+    const box = await tooltip.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+
+    const overflow = await page.evaluate(() =>
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+    expect(overflow).toBe(true);
   });
 });
 
