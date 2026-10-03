@@ -235,74 +235,123 @@ test.describe('Waitlists', () => {
 });
 
 test.describe('Seat button tooltip', () => {
-  test('names the action on hover and focus, follows the state, and stays in view', async ({ page, request }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'one lane: the mobile project taps instead');
+  test.describe.configure({ mode: 'serial' }); // one lane: these share an attendee and a day
+
+  const desktopOnly = (testInfo) => test.skip(testInfo.project.name !== 'desktop', 'one lane: the mobile project taps instead');
+  const tipSetup = async (page, request, testInfo, { view = 'list', hour = '09:00' } = {}) => {
     const lane = await laneFor('tooltip.seat', testInfo);
     const days = await conferenceDays();
-    const open = (await bookableFor(request, lane.user, lane.day)).find((s) => !s.isFull && s.seatsLeft > 3);
-    const full = (await bookableFor(request, lane.user, lane.day)).find((s) => s.isFull);
-    const past = (await bookableFor(request, lane.user, days[0])).find((s) => s.endsAt <= '12:00');
-    expect(open, 'no open session').toBeTruthy();
-    expect(full, 'no full session').toBeTruthy();
-    expect(past, 'no attended-morning session').toBeTruthy();
-
-    const cardFor = (s) => page.locator('article').filter({ hasText: s.title }).first();
-    const tip = page.getByTestId('seat-tip');
-    const url = (day) => `/schedule?day=${day}&view=list`;
-
-    await visit(page, url(lane.day), { as: lane.user, at: await momentOn(days.indexOf(lane.day), '09:00') });
+    const sessions = await bookableFor(request, lane.user, lane.day);
+    await visit(page, `/schedule?day=${lane.day}&view=${view}`, { as: lane.user, at: await momentOn(days.indexOf(lane.day), hour) });
     await waitForResults(page);
+    return { lane, days, sessions, tip: page.getByTestId('seat-tip') };
+  };
+  const cardFor = (page, s) => page.locator('article').filter({ hasText: s.title }).first();
 
-    const button = cardFor(open).getByRole('button', { name: 'Add to my agenda' });
+  test('hovering names the action and links it to the button', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const { sessions, tip } = await tipSetup(page, request, testInfo);
+    const open = sessions.find((s) => !s.isFull && s.seatsLeft > 3);
+    expect(open, 'no open session').toBeTruthy();
+    const button = cardFor(page, open).getByRole('button', { name: 'Add to my agenda' });
     await expect(tip).toHaveCount(0);
     await expect(button).not.toHaveAttribute('aria-describedby');
     await expect(button).not.toHaveAttribute('title');
 
     await button.hover();
-    await expect(tip).toHaveText('Add to my agenda', { timeout: 1000 });
+    await expect(tip).toHaveText('Add to my agenda');
     await expect(tip).toHaveClass(/animate-rise/);
     await expect(tip).not.toHaveAttribute('aria-hidden', 'true');
     await expect(button).toHaveAttribute('aria-describedby', (await tip.getAttribute('id')));
     await page.mouse.move(0, 0);
     await expect(tip).toHaveCount(0);
     await expect(button).not.toHaveAttribute('aria-describedby');
+  });
 
+  test('keyboard focus shows the tooltip; Escape and blur close it', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const { sessions, tip } = await tipSetup(page, request, testInfo);
+    const open = sessions.find((s) => !s.isFull && s.seatsLeft > 3);
+    expect(open, 'no open session').toBeTruthy();
+    const button = cardFor(page, open).getByRole('button', { name: 'Add to my agenda' });
     await button.focus();
     await expect(tip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tip).toHaveCount(0);
-    await button.blur(); // Escape leaves focus on the button
+    await button.blur();
     await button.focus();
     await expect(tip).toBeVisible();
     await button.blur();
     await expect(tip).toHaveCount(0);
+  });
 
+  test('the tooltip follows the state after a click', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const { lane, sessions, tip } = await tipSetup(page, request, testInfo);
+    const open = sessions.find((s) => !s.isFull && s.seatsLeft > 3);
+    expect(open, 'no open session').toBeTruthy();
     try {
-      await button.click();
+      await cardFor(page, open).getByRole('button', { name: 'Add to my agenda' }).click();
       await expect(page.getByTestId('toaster')).toContainText('Seat booked');
-      const held = cardFor(open).getByRole('button', { name: 'Remove from my agenda' });
+      const held = cardFor(page, open).getByRole('button', { name: 'Remove from my agenda' });
+      await expect(held).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(tip).toHaveCount(0);
       await held.hover();
       await expect(tip).toHaveText('Remove from my agenda');
     } finally {
       await request.delete(`${API}/users/${lane.user}/reservations/${open.id}`);
     }
+  });
 
-    await cardFor(full).getByRole('button', { name: /Add to my agenda|Join the waitlist/ }).hover();
+  test('a full session says it will waitlist you', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const { sessions, tip } = await tipSetup(page, request, testInfo);
+    const full = sessions.find((s) => s.isFull);
+    expect(full, 'no full session').toBeTruthy();
+    await cardFor(page, full).getByRole('button', { name: 'Join the waitlist' }).hover();
     await expect(tip).toHaveText('Join the waitlist');
+  });
 
-    // the last card's button sits at the right edge: the tip must not overflow
-    const buttons = page.getByTestId('session-card').getByRole('button', { pressed: false });
-    await buttons.last().hover();
+  test('the tooltip stays inside the viewport at the last card', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const { tip } = await tipSetup(page, request, testInfo);
+    const last = page.getByTestId('session-card').getByRole('button', { pressed: false }).last();
+    await last.scrollIntoViewIfNeeded();
+    await last.hover();
     await expect(tip).toBeVisible();
     const box = await tip.boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width);
     await shotForPR(page, 'Seat button tooltip');
+  });
 
-    await visit(page, url(days[0]), { as: lane.user, at: await momentOn(0, '20:00') });
+  test('the grid view has the tooltip too, including its rightmost column', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const { tip } = await tipSetup(page, request, testInfo, { view: 'grid' });
+    const buttons = page.getByTestId('schedule-grid').getByRole('button', { name: /^Add .* to my agenda$/ });
+    await expect(buttons.first()).toBeAttached();
+    for (const b of [buttons.first(), buttons.last()]) {
+      await b.focus();
+      await expect(tip).toHaveText(/Add to my agenda|Join the waitlist/);
+      const box = await tip.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width);
+      await b.blur();
+      await expect(tip).toHaveCount(0);
+    }
+  });
+
+  test('an ended session says so', async ({ page, request }, testInfo) => {
+    desktopOnly(testInfo);
+    const lane = await laneFor('tooltip.seat', testInfo);
+    const days = await conferenceDays();
+    const past = (await bookableFor(request, lane.user, days[0])).find((s) => s.endsAt <= '12:00');
+    expect(past, 'no attended-morning session').toBeTruthy();
+    await visit(page, `/schedule?day=${days[0]}&view=list`, { as: lane.user, at: await momentOn(0, '20:00') });
     await waitForResults(page);
-    await cardFor(past).getByRole('button', { name: 'Session ended' }).hover();
-    await expect(tip).toHaveText('Session ended');
+    await cardFor(page, past).getByRole('button', { name: 'Session ended' }).hover();
+    await expect(page.getByTestId('seat-tip')).toHaveText('Session ended');
   });
 
   test('a tap still toggles the seat first time', async ({ page, request }, testInfo) => {

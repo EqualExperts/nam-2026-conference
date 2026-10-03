@@ -82,7 +82,7 @@ has a session. Columns use a CSS var `--grid: 5rem repeat(n, minmax(9rem, 1fr))`
 inside `min-w-[52rem]`. Cells show live (rose) / booked (emerald) / done (faded)
 only when `sessions[0].day === clock.day`, and seats from `seatsFor` over the payload.
 A seat button on a session that `hasEnded` and is not held is disabled and named
-"Session ended" (banner) / "<title> has ended" (cell).
+"Session ended" (banner) / "<title> has ended" (cell). Grid seat buttons are `SeatButton`s too, so they carry the tooltip.
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`

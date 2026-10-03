@@ -116,9 +116,10 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
 /**
  * The one action: add this session to my agenda, which takes a seat.
  * `status` is null | 'confirmed' | 'waitlisted'; `full` makes the label say it
- * will queue you instead.
+ * will queue you instead. `name` overrides the accessible name only (the grid
+ * names the session); the tooltip always says the action.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title, ended = false, full = false }) {
+export function SeatButton({ status, onClick, size = 'md', className, title, name, ended = false, full = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
@@ -163,7 +164,7 @@ export function SeatButton({ status, onClick, size = 'md', className, title, end
       onKeyDown={(e) => { if (e.key === 'Escape') hide(); }}
       aria-disabled={closed || undefined}
       aria-pressed={on}
-      aria-label={label}
+      aria-label={name ?? label}
       aria-describedby={open ? tipId : undefined}
       className={cx(
         // `relative z-10` keeps the button above the card's stretched link overlay,

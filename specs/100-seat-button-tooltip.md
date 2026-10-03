@@ -86,3 +86,7 @@ Escape, never intercepts a tap, and stays inside the viewport. The native
 
 - Tooltips on the follow and calendar-export buttons.
 - Any change to what the seat button does.
+
+## Amendment
+
+The schedule grid's hand-rolled seat buttons (banner and cell) are now `SeatButton`, with a new `name` prop that overrides only the accessible name so the grid keeps its `Add <title> to my agenda` labels. The tooltip test was split into focused tests, including a grid-view one.
