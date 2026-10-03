@@ -2,7 +2,7 @@
  * Facts for code review and QA, from git — never an agent's word.
  *
  *   node scripts/qa-facts.mjs origin/main [--ticket=small|full] [--depth=fast|balanced|thorough]
- *   # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no --code-lines=N --size=tiny|small|large --trivial=yes|no --risky=yes|no
+ *   # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no --code-lines=N --size=tiny|small|large --trivial=yes|no --risky=yes|no --app-change=yes|no
  *
  * `--size` is how hard both passes work: a one-line fix should not get the
  * review a thousand-line change does. It weighs the ticket (ship sized it,
@@ -90,6 +90,18 @@ export function sizeFor({ codeLines: n, docsOnly: prose, risky: danger, ticket, 
   return SIZES[Math.max(0, Math.min(2, i))];
 }
 
+/**
+ * Whether the diff changes the app an attendee uses: anything under src/,
+ * server/ or public/, the page shell, the build or the dependencies. A pull
+ * request that changes none of it — the harness, its tests, the docs — has
+ * nothing for QA to explore; the unit tests and code review's harness lenses
+ * cover it.
+ */
+export function appChange(names) {
+  return names.split('\n').filter(Boolean).some(f => /^(src|server|public)\//.test(f)
+    || ['index.html', 'package.json', 'package-lock.json'].includes(f) || /^vite\.config\./.test(f));
+}
+
 /** Docs-only: every changed file is prose — docs/, specs/ or a markdown file — and none is a harness playbook. */
 export function docsOnly(names) {
   const files = names.split('\n').filter(Boolean);
@@ -124,5 +136,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const tiny = names && trivial({ size, appLines: appLines(numstat), risky: risky(names), depth: opt('depth') });
   console.log(`--app-lines=${appLines(numstat)} --ui-only=${uiOnly(names) ? 'yes' : 'no'} ` +
     `--lines=${totalLines(numstat)} --docs-only=${docsOnly(names) ? 'yes' : 'no'} ` +
-    `--code-lines=${codeLines(numstat)} --size=${size} --trivial=${tiny ? 'yes' : 'no'} --risky=${names && risky(names) ? 'yes' : 'no'}`);
+    `--code-lines=${codeLines(numstat)} --size=${size} --trivial=${tiny ? 'yes' : 'no'} --risky=${names && risky(names) ? 'yes' : 'no'} ` +
+    `--app-change=${!names || appChange(names) ? 'yes' : 'no'}`);
 }

@@ -85,32 +85,51 @@ jobs:
           ticket=${TICKET:-$(case "$HEAD_REF" in issue-[0-9]*-*) echo small ;; esac)}
           facts=$(cd "$GITHUB_WORKSPACE" && node "$RUNNER_TEMP/qa-facts.mjs" "origin/$BASE" --ticket="$ticket" --depth="$DEPTH")
           echo "$facts"
-          case "$facts" in *--trivial=yes*) echo "trivial=true" >> "$GITHUB_OUTPUT" ;; *) echo "trivial=false" >> "$GITHUB_OUTPUT" ;; esac
+          # Two reasons not to start: too small, or no app to explore at all —
+          # a harness, test or docs change, which the unit tests and code
+          # review's harness lenses cover. `thorough` always explores.
+          case "$facts" in
+            *--trivial=yes*) skip=trivial ;;
+            *--app-change=no*) [ "$DEPTH" = thorough ] && skip= || skip=no-app ;;
+            *) skip= ;;
+          esac
+          echo "skip=${skip:+true}" >> "$GITHUB_OUTPUT"
+          echo "why=$skip" >> "$GITHUB_OUTPUT"
           echo "app_lines=$(printf '%s' "$facts" | grep -o -- '--app-lines=[0-9]*' | cut -d= -f2)" >> "$GITHUB_OUTPUT"
 
-      # Too small: say so, the same way a QA verdict is said, and stop. No
-      # Claude, no Chromium, no agents — seconds instead of minutes.
-      - name: ⏭️ Too small for QA
-        if: ${{ steps.facts.outputs.trivial == 'true' }}
+      # Too small, or no app to explore: say so, the same way a QA verdict is
+      # said, and stop. No Claude, no Chromium, no agents — seconds, not minutes.
+      - name: ⏭️ Nothing for QA to explore
+        if: ${{ steps.facts.outputs.skip == 'true' }}
         env:
           SHA: ${{ github.event.pull_request.head.sha }}
           LINES: ${{ steps.facts.outputs.app_lines }}
+          WHY: ${{ steps.facts.outputs.why }}
         run: |
+          if [ "$WHY" = no-app ]; then
+            title="no app change to explore"
+            body="Nothing under src/, server/ or public/ changed: the unit tests, the gate and code review's harness lenses cover it."
+            verdict="no app change — covered by its tests, the gate and code review"
+          else
+            title="too small to need exploring"
+            body="${LINES} line(s) of app code and nothing risky: the PR's own tests, the gate and code review cover it."
+            verdict="too small to need exploring — ${LINES} app line(s), covered by its tests, the gate and code review"
+          fi
           note="> [!NOTE]
-          > ### QA · skipped — too small to need exploring
-          > ${LINES} line(s) of app code and nothing risky: the PR's own tests, the gate and code review cover it. Set the \`REVIEW_DEPTH\` variable to \`thorough\` to run QA on every change."
+          > ### QA · skipped — ${title}
+          > ${body} Set the \`REVIEW_DEPTH\` variable to \`thorough\` to run QA on every change."
           note=$(printf '%s' "$note" | sed 's/^          //')
           marker="<!-- orbit-verdict:qa {\"pass\":\"qa\",\"commit\":\"$SHA\",\"bugs\":[],\"followUps\":[]} -->"
           jq -n --arg c "$note"$'\n\n'"$marker" --arg n "$note" \
-            --arg v "PASS skipped too small to need exploring — ${LINES} app line(s), covered by its tests, the gate and code review" \
+            --arg v "PASS skipped ${verdict}" \
             '{comment: $c, issueNote: $n, verdictLine: $v}' > "$RUNNER_TEMP/workflow-result.json"
 
       - run: npm ci
-        if: ${{ steps.facts.outputs.trivial != 'true' }}
+        if: ${{ steps.facts.outputs.skip != 'true' }}
 
       # This pass is the browser. Without it there is nothing to drive.
       - name: 🎭 Install Chromium
-        if: ${{ steps.facts.outputs.trivial != 'true' }}
+        if: ${{ steps.facts.outputs.skip != 'true' }}
         run: npx playwright install --with-deps chromium
 
       # claude-code-action drives the Agent SDK, which stops at the first
@@ -118,11 +137,11 @@ jobs:
       # "running in the background". The action ended there and the workflow
       # died unstarted, reporting success. The CLI waits; see agent-run.sh.
       - name: 📦 Install Claude Code
-        if: ${{ steps.facts.outputs.trivial != 'true' }}
+        if: ${{ steps.facts.outputs.skip != 'true' }}
         run: npm install -g @anthropic-ai/claude-code
 
       - name: 🧪 Run /qa
-        if: ${{ steps.facts.outputs.trivial != 'true' }}
+        if: ${{ steps.facts.outputs.skip != 'true' }}
         # The agent failing is not the same as the change failing. Its verdict
         # is the signal, and the step below is what acts on it.
         continue-on-error: true
@@ -171,7 +190,7 @@ jobs:
 
       # The ticket's running AI spend gains this pass's row (see agent-ship.yml).
       - name: 🧾 Record the AI spend
-        if: ${{ always() && steps.facts.outputs.trivial != 'true' }}
+        if: ${{ always() && steps.facts.outputs.skip != 'true' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -188,7 +207,7 @@ jobs:
       # log) cannot be diagnosed, and the job summary is not readable from
       # the API. Kept two weeks, uploaded whatever happened.
       - name: 🗂️ Keep the transcript
-        if: ${{ always() && steps.facts.outputs.trivial != 'true' }}
+        if: ${{ always() && steps.facts.outputs.skip != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: transcript-${{ github.run_id }}
@@ -202,7 +221,7 @@ jobs:
       # settles the one-line status afterwards. See agent-ship.yml and
       # docs/context/harness.md.
       - name: 🏁 Finish the progress comment
-        if: ${{ always() && steps.facts.outputs.trivial != 'true' }}
+        if: ${{ always() && steps.facts.outputs.skip != 'true' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

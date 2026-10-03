@@ -338,6 +338,11 @@ export async function follow({
   const opts = (t, startedAt) => ({ issue: env.SHIP_PROGRESS_ISSUE, runUrl: env.SHIP_PROGRESS_RUN, runId, repo: env.GH_REPO, now: t, started: startedAt });
 
   let commentId = env.SHIP_PROGRESS_COMMENT_ID || null;
+  // The stream's task_started carries no timestamp, and only ship passes
+  // SHIP_PROGRESS_STARTED — so code review and QA counted from "now" on
+  // every tick and read "0m" for their whole run. The follower starts with
+  // the CLI, so its own start is the run's.
+  const followedFrom = now();
   const lines = [];
   let lastSig = null;
   let lastAt = -Infinity;
@@ -350,7 +355,7 @@ export async function follow({
     let state;
     try { state = readStream(lines, readOutputFile); } catch { state = readStream([]); }
     const t = now();
-    const startedAt = started ?? (state.streamStarted ? Date.parse(state.streamStarted) : t);
+    const startedAt = started ?? (state.streamStarted ? Date.parse(state.streamStarted) : followedFrom);
 
     let body = null;
     try { body = bodyFor(env, state, opts(t, startedAt)); } catch { body = null; }
