@@ -2,7 +2,7 @@
  * Facts for code review and QA, from git — never an agent's word.
  *
  *   node scripts/qa-facts.mjs origin/main [--ticket=small|full] [--depth=fast|balanced|thorough]
- *   # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no --code-lines=N --size=tiny|small|large
+ *   # prints: --app-lines=N --ui-only=yes|no --lines=N --docs-only=yes|no --code-lines=N --size=tiny|small|large --trivial=yes|no --risky=yes|no
  *
  * `--size` is how hard both passes work: a one-line fix should not get the
  * review a thousand-line change does. It weighs the ticket (ship sized it,
@@ -124,5 +124,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const tiny = names && trivial({ size, appLines: appLines(numstat), risky: risky(names), depth: opt('depth') });
   console.log(`--app-lines=${appLines(numstat)} --ui-only=${uiOnly(names) ? 'yes' : 'no'} ` +
     `--lines=${totalLines(numstat)} --docs-only=${docsOnly(names) ? 'yes' : 'no'} ` +
-    `--code-lines=${codeLines(numstat)} --size=${size} --trivial=${tiny ? 'yes' : 'no'}`);
+    `--code-lines=${codeLines(numstat)} --size=${size} --trivial=${tiny ? 'yes' : 'no'} --risky=${names && risky(names) ? 'yes' : 'no'}`);
 }

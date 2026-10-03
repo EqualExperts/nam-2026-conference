@@ -48,26 +48,34 @@ audit.
 > `needs-human`, with everything still open written down. It never burns
 > rounds on a problem it cannot solve.
 
-## ⚖️ Small tickets and full tickets
+## ⚖️ Sized by what a ticket risks
 
-Setup sizes every ticket before any work starts — fairly, the same way every
-time. The agent reports **facts about the change** (which areas it touches, how
-many files, whether it changes the API, a business rule or stored data, how
-many design questions the ticket leaves open), and the script applies **one
-rule**: the ticket is **full** if it is labelled `ship:full`, changes a rule,
-the API, the data or the harness, touches three or more areas, about seven or
-more app files (tests and docs not counted), or leaves three or more questions open. Otherwise it is **small**,
-and most are. The reason is logged with the size. How long or careful the
-ticket is does not count. Override with `/ship 42 --full` or `--small`.
+Setup reads the ticket and the code it would change — on the strongest model,
+because every later step is sized by its call — and reports **facts**: which
+areas it touches, how many app files, whether it changes a business rule,
+stored data, the API or the harness, how many design questions it leaves open,
+and whether it adds interaction an attendee drives. The script composes the
+run from them. **Small is the base, and each risk adds the check that catches
+it:**
+
+| The ticket… | adds |
+| --- | --- |
+| changes a business rule, stored data or the harness, or is labelled `ship:full` | the **full loop**: Opus, its own plan writer and two plan auditors, criteria + rules + browser auditors, up to 4 rounds |
+| changes the API, or is broad (3+ areas, ~7+ app files) | criteria and rules auditors, 3 rounds — still Sonnet |
+| leaves 2+ design questions open | one plan audit |
+| adds interaction (focus, hover, touch, positioning) | a browser audit with four probes, even if a browser test exists |
+| none of these | **small**: Sonnet, setup writes the plan, one combined auditor, 2 rounds |
+
+**Then the evidence decides.** Once the gate is green the script measures the
+real diff: a small run that reached a risky path (`server/lib`, the schema, the
+harness) or grew past 300 app lines is escalated to the full auditors on Opus,
+and a gate red twice running moves the fixer to Opus. The plan is re-audited
+only for a finding that changes what gets built; a gap in its detail goes to
+the builder as a note. Override with `/ship 42 --full` or `--small`.
 
 | | 🟢 **Small** | 🔵 **Full** |
 | --- | --- | --- |
-| **Models** | Sonnet; Haiku for rote steps | Opus; Haiku for rote steps |
-| **Plan** | written by setup | its own writer, then criteria + fit auditors, up to 3 rounds |
-| **Audit** | one combined auditor | criteria, rules and browser auditors |
-| **Browser audit** | only when something visible changed *and* no browser test covers it — 2 probes | always — 5 probes |
-| **Audited rounds** | up to 2 | up to 4 |
-| **Typical ship cost** | **~$0.70** | **~$6.50** |
+| **Typical ship cost** | **~$0.70–1.50** | **~$6.50** |
 
 Both keep what makes the result trustworthy: the gate, the red-check, an
 independent audit and a skeptic on every blocker. Small drops redundancy, not
@@ -87,9 +95,15 @@ from an agent's word:
 
 | Size | Code review | QA |
 | --- | --- | --- |
-| **tiny** (≤30 lines, or docs only) | one reviewer, Sonnet, quick | ≤2 probes, Sonnet — skips when the PR's own tests already pin every criterion |
+| **tiny** (≤30 lines, or docs only) | one reviewer, Sonnet, quick | ≤2 probes, Sonnet |
 | **small** (≤300 lines) | one reviewer, Sonnet | ≤3 probes, Sonnet |
 | **large** | a reviewer per kind of file, Opus | 5 probes, Opus |
+
+Before QA explores, an agent **triages**: are the tests this pull request adds
+enough for what the ticket asks, are there a few specific gaps worth a probe
+each, or is the change complex enough for open exploration? *Enough* skips QA,
+but only when every Done-when criterion is pinned by a test in the diff —
+checked against the diff, not taken on trust — and never on a large change.
 
 ### Confidence means coverage
 

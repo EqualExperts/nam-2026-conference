@@ -62,9 +62,9 @@ async function run(answers = {}, args = 7) {
   return { result, calls, prompts, models };
 }
 
-describe('sizing — facts from setup, one rule from the script', () => {
+describe('sizing — composed from what the ticket risks', () => {
   const facts = (f) => ({ ...SETUP, sizing: { areas: ['ui', 'tests'], files: 3, changesApi: false, changesRule: false,
-    changesData: false, openQuestions: 1, labelledFull: false, why: 'one component', ...f } });
+    changesData: false, openQuestions: 1, labelledFull: false, uiInteraction: false, why: 'one component', ...f } });
 
   test('a careful ticket about one component is small, however many criteria it lists — #100', async () => {
     const { result } = await run({ setup: { ...facts({}), doneWhen: Array.from({ length: 7 }, (_, i) => `criterion ${i}`) } });
@@ -72,17 +72,73 @@ describe('sizing — facts from setup, one rule from the script', () => {
     assert.doesNotMatch(source, /more than four Done-when criteria/);
   });
 
-  test('a rule, the API, the data, the harness or the label makes it full', async () => {
-    for (const f of [{ changesRule: true }, { changesApi: true }, { changesData: true }, { areas: ['harness'] }, { labelledFull: true }]) {
+  test('only a rule, stored data, the harness or the label buys the full loop', async () => {
+    for (const f of [{ changesRule: true }, { changesData: true }, { areas: ['harness'] }, { labelledFull: true }]) {
       assert.equal((await run({ setup: facts(f) })).result.size, 'full', JSON.stringify(f));
     }
   });
 
-  test('breadth makes it full: three areas, seven files or three open questions', async () => {
-    assert.equal((await run({ setup: facts({ areas: ['ui', 'server-routes', 'server-rules'] }) })).result.size, 'full');
-    assert.equal((await run({ setup: facts({ files: 7 }) })).result.size, 'full');
-    assert.equal((await run({ setup: facts({ openQuestions: 3 }) })).result.size, 'full');
+  test('the API or breadth adds the criteria and rules auditors, on Sonnet — not the full loop', async () => {
+    for (const f of [{ changesApi: true }, { areas: ['ui', 'server-routes', 'server-rules'] }, { files: 7 }]) {
+      const { result, calls, models } = await run({ setup: facts(f) });
+      assert.equal(result.size, 'small', JSON.stringify(f));
+      assert.ok(calls.includes('audit:criteria#1') && calls.includes('audit:rules#1'), JSON.stringify(f));
+      assert.equal(models['audit:rules#1'], 'sonnet');
+      assert.ok(!calls.some(c => c.startsWith('spec-audit')));
+    }
     assert.equal((await run({ setup: facts({ areas: ['ui', 'tests', 'docs'] }) })).result.size, 'small', 'tests and docs are not areas of change');
+  });
+
+  test('open design questions buy one plan audit on Sonnet, not three on Opus', async () => {
+    const { calls, models } = await run({ setup: facts({ openQuestions: 2 }) });
+    assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), ['spec-audit:combined#1']);
+    assert.equal(models['spec-audit:combined#1'], 'sonnet');
+  });
+
+  test('new interaction buys a browser audit with four probes, even when a browser test exists — #105', async () => {
+    const { calls, prompts } = await run({ setup: facts({ uiInteraction: true }), implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+    assert.ok(calls.includes('audit:browser#1'));
+    assert.match(prompts['audit:browser#1'], /Budget: 4 probes/);
+  });
+
+  test('setup sizes on the session model, and must report its facts', async () => {
+    const { models } = await run({ setup: facts({}) });
+    assert.equal(models.setup, undefined);
+    assert.match(source, /required: \['proceed', 'reason', 'sizing'\]/);
+  });
+
+  test('a small run whose diff reaches a risky path is escalated on that evidence', async () => {
+    const { calls, models } = await run({ setup: facts({}), verify: { ...GREEN, facts: '--app-lines=40 --risky=yes' } });
+    assert.ok(calls.includes('audit:criteria#1') && calls.includes('audit:rules#1'));
+    assert.ok(!calls.includes('audit:combined#1'));
+    assert.equal(models['audit:rules#1'], undefined, 'the session model');
+  });
+
+  test('a small run whose diff stays small is not escalated', async () => {
+    const { calls } = await run({ setup: facts({}), verify: { ...GREEN, facts: '--app-lines=40 --risky=no' } });
+    assert.ok(calls.includes('audit:combined#1') && !calls.includes('audit:rules#1'));
+  });
+
+  test('a gate red twice running moves the fixer to the session model', async () => {
+    const red = RED([{ test: '[mobile] plan.spec.js:40 › x', error: 'e' }]);
+    const { models } = await run({ setup: facts({}), verify: (n) => (n <= 2 ? red : GREEN) });
+    assert.equal(models['fix#1'], 'sonnet');
+    assert.equal(models['fix#2'], undefined);
+  });
+});
+
+describe('the plan loop re-plans only for what changes the build', () => {
+  const spec = (category) => ({ covered: 'all', findings: [{ ...blocker(`a ${category} problem`), category }] });
+
+  test('a confirmed gap in the plan goes to the builder as a note, without another plan round — #105', async () => {
+    const { calls, prompts } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('spec-gap') : { covered: 'all', findings: [] }) });
+    assert.ok(!calls.some(c => c.startsWith('revise-spec')));
+    assert.match(prompts.implement, /a spec-gap problem/);
+  });
+
+  test('a misread criterion is still re-planned', async () => {
+    const { calls } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('criterion-unmet') : { covered: 'all', findings: [] }) });
+    assert.ok(calls.includes('revise-spec#1'));
   });
 });
 
@@ -546,7 +602,7 @@ describe('ship', () => {
       assert.equal(result.outcome, 'shipped');
       assert.ok(!calls.includes('write-spec'));
       assert.ok(!calls.some(c => c.startsWith('spec-audit')));
-      assert.match(prompts.setup, /If you proceed and those facts make it small, write the spec too/);
+      assert.match(prompts.setup, /If you proceed and the change touches no business rule, no stored data and not the harness/);
       assert.match(prompts['audit:combined#1'], /nobody else has checked that it reads the ticket/);
     });
 
