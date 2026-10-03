@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary } from '../../src/lib/format.js';
+import { time, timeRange, dayLabel, shortDay, relativeDate, plural, agendaSummary, seatAction } from '../../src/lib/format.js';
 
 describe('Clock times read as people say them', () => {
   test('midnight and noon are twelve, not zero', () => {
@@ -118,5 +118,31 @@ describe('The schedule rail\'s agenda line pluralises on the total and names the
 
   test('a day other than the clock\'s is named instead of assumed to be today', () => {
     assert.equal(agendaSummary(3, 2, 'on Day 1'), 'sessions · 2 on Day 1');
+  });
+});
+
+describe('seatAction names what the seat button will do next', () => {
+  test('no seat, room to spare: Add to my agenda', () => {
+    assert.equal(seatAction(null), 'Add to my agenda');
+    assert.equal(seatAction(null, { ended: false, full: false }), 'Add to my agenda');
+  });
+
+  test('no seat, full room: Join the waitlist', () => {
+    assert.equal(seatAction(null, { full: true }), 'Join the waitlist');
+  });
+
+  test('a confirmed seat: Remove from my agenda, even once the session has ended', () => {
+    assert.equal(seatAction('confirmed'), 'Remove from my agenda');
+    assert.equal(seatAction('confirmed', { ended: true }), 'Remove from my agenda');
+  });
+
+  test('a waitlist place: Leave the waitlist', () => {
+    assert.equal(seatAction('waitlisted'), 'Leave the waitlist');
+    assert.equal(seatAction('waitlisted', { full: true }), 'Leave the waitlist');
+  });
+
+  test('no seat, ended and not held: Session ended, even in a room that was full', () => {
+    assert.equal(seatAction(null, { ended: true }), 'Session ended');
+    assert.equal(seatAction(null, { ended: true, full: true }), 'Session ended');
   });
 });
