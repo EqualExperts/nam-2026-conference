@@ -20,12 +20,6 @@ export const meta = {
 const argText = typeof args === 'object' && args ? '' : String(args ?? '')
 const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
 const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
-// Facts the QA job computes from git before this runs — never the planner's
-// word: `--app-lines=N` (changed lines under src/ and server/) and
-// `--ui-only=yes|no` (every changed file under src/, tests/, docs/ or specs/,
-// at least one in src/). Without them — a local run — triage never skips.
-const APP_LINES = typeof args === 'object' && args ? args.appLines : Number((/--app-lines=(\d+)/.exec(argText) || [])[1] ?? NaN)
-const UI_ONLY = typeof args === 'object' && args ? args.uiOnly === true : /--ui-only=yes\b/.test(argText)
 // The team's dial and one more fact: a change that is only prose about the app
 // is not QA's to exercise, and "thorough" never lets the planner skip.
 const DEPTH = (/--depth=(fast|balanced|thorough)\b/.exec(argText) || [])[1] || (typeof args === 'object' && args && args.depth) || 'balanced'
@@ -65,9 +59,6 @@ const PROBE_FILE = 'tests/qa-probe.spec.js'
 // Five, not eight: each browser probe runs on both viewports on a 2-core
 // runner, and eight of them plus reproductions ran QA past its time limit.
 const MAX_PROBES = { tiny: 2, small: 3, large: 5 }[SIZE] || 5
-// Exploring a relabelled button is ceremony. The planner may call a change
-// covered by its tests — but only a cosmetic one this small, whatever it says.
-const TRIVIAL_LINES = 30
 
 // The marker a verdict comment ends with, read back by the next run on the
 // same pull request. It is named for this pass because code review comments
@@ -107,9 +98,6 @@ const PLAN = {
     base: { type: 'string' },
     surface: { type: 'boolean', description: 'false only when nothing that changed can be exercised at all — not by a browser, not by running anything' },
     reason: { type: 'string', description: 'if surface is false, why' },
-    enough: { type: 'boolean', description: 'true only if the change is cosmetic — copy, a label, a colour, spacing, an icon — touches no logic, data, API, state or flow, and the tests the PR adds or already has pin what changed. Then no probes.' },
-    enoughWhy: { type: 'string', description: 'if enough: what changed and which tests cover it, in one sentence' },
-    appLines: { type: 'integer', description: 'lines added + removed under src/ and server/ in the diff' },
     criteria: {
       type: 'array',
       description: "every Done-when criterion of the ticket, each mapped to what exercises it: one of your probes, or a test file this pull request changes that asserts it",
@@ -170,6 +158,7 @@ const REFUTATION = {
   properties: {
     refuted: { type: 'boolean' },
     contrived: { type: 'boolean', description: 'real, but only reachable with an input nobody gives in normal use — a hand-edited URL or localStorage value, a forged request' },
+    harmless: { type: 'boolean', description: 'real and reachable, but nobody loses anything — no seat, no data, no action they could not take, nothing false shown as true; a cosmetic glitch such as a stray label or a flicker' },
     why: { type: 'string' },
   },
 }
@@ -244,7 +233,7 @@ const SCOPE = !previous ? ''
       ? ` These probes re-run the bugs the last pass found and are already planned — do not plan them again: ` +
         `${recheck.map(p => p.id).join(', ')}. Pick at most ${fresh} new ${fresh === 1 ? 'one' : 'ones'}.`
       : '')
-const budget = recheck.length ? `at most ${fresh} new probes (${recheck.length} of ${MAX_PROBES} are already spent re-running previous bugs)` : `at most ${MAX_PROBES} probes`
+let budget = recheck.length ? `at most ${fresh} new probes (${recheck.length} of ${MAX_PROBES} are already spent re-running previous bugs)` : `at most ${MAX_PROBES} probes`
 
 // Prose about the app — docs/, specs/, markdown, never the harness playbooks —
 // has nothing a browser or a command can exercise that code review's
@@ -253,28 +242,60 @@ if (DOCS_ONLY && DEPTH !== 'thorough' && !recheck.length) {
   return publish({ verdict: 'pass', confidence: 'medium', skipped: true, covered: 'docs-only change — nothing for QA to exercise', probes: [] })
 }
 
-// A tiny change whose own tests already pin every Done-when needs no
-// exploring: one quick, cheap read of the ticket and the tests says so, and QA
-// passes in a minute instead of driving a browser for ten (#94: a two-line copy
-// change with its own browser test). Anything not pinned falls through to the
-// full plan below.
-if (SIZE === 'tiny' && DEPTH !== 'thorough' && !recheck.length) {
-  const quick = await agent(
-    `${HERE}Pull request #${pr} is a tiny change. Read its ticket's Done when (\`gh pr view ${pr}\`, then the issue) ` +
-    `and the tests the diff adds or changes (\`gh pr diff ${pr} -- tests/\`), in one command. Map every Done-when ` +
-    `criterion to the test file in this diff that asserts it (by: test, ref: the file path as the diff names it), ` +
-    `\`code\` if the criterion is about how the code is written, or \`none\` if no test in the diff asserts it. ` +
-    `Be honest: a test that only exercises nearby code does not count. Write nothing.`,
-    { phase: 'Plan', label: 'covered', schema: { type: 'object', required: ['criteria'], properties: { criteria: PLAN.properties.criteria } }, model: 'haiku', effort: 'low' },
+// Triage: how much exploring does this change need? The call a QA engineer
+// makes before touching a browser — are the tests this pull request adds
+// enough for what the ticket asks, or is the change complex enough to need
+// more? — made from the ticket, the diff and those tests, not from a line
+// count. A 30-line cap explored #104 for ten minutes: 43 lines of new UI whose
+// own tests pinned all five criteria, and three probes found nothing.
+//
+// The script keeps the one fact a judgement cannot be trusted with: "enough"
+// stands only when every criterion is pinned by a test file this diff changes,
+// checked against the diff, and never on a large change. A re-review always
+// re-runs its previous bugs, and `thorough` always explores.
+const TRIAGE = {
+  type: 'object',
+  required: ['decision', 'why', 'criteria'],
+  properties: {
+    decision: { enum: ['enough', 'focused', 'explore'], description: "enough: the PR's tests prove what the ticket asks and nothing an attendee could plausibly hit is left unproven. focused: they prove most of it — name the specific gaps. explore: complex enough to need open exploration — a new flow, shared or persisted state, a rule, timing, several features meeting" },
+    why: { type: 'string', description: 'one sentence a reviewer can check: what the change is and why that decision' },
+    gaps: { type: 'array', maxItems: MAX_PROBES, items: { type: 'string' }, description: 'focused: each thing the tests leave unproven that an attendee could hit, worth one probe — most important first' },
+    criteria: PLAN.properties.criteria,
+  },
+}
+if (DEPTH !== 'thorough' && !recheck.length) {
+  const triage = await agent(
+    `${HERE}Decide how much exploratory QA pull request #${pr} needs, as a senior QA engineer would before ` +
+    `opening a browser. In one command read its ticket's Done when (\`gh pr view ${pr}\`, then the issue), ` +
+    `\`gh pr diff ${pr} --name-only\`, and \`gh pr diff ${pr}\`. Then judge: are the tests this pull request adds ` +
+    `or changes enough for what the ticket asks, or is the change complex enough to need more? Weigh what tests ` +
+    `usually miss: state that changes across actions (undo, reload, a second tab, another attendee), anything ` +
+    `time-dependent, the viewport the tests did not use, keyboard and screen-reader access, empty and boundary ` +
+    `states, and other features the change touches that no test here exercises. Map every Done-when criterion to ` +
+    `the test file in this diff that asserts it (by: test, ref: the path as the diff names it), \`code\` if it is ` +
+    `about how the code is written, or \`none\` — a test that only exercises nearby code does not count. A gap ` +
+    `is something THIS change could plausibly break that an attendee would hit — not a checklist item it does ` +
+    `not touch; name none rather than pad the list. Most small changes with real tests are enough or focused ` +
+    `on one or two gaps; say explore only when you can name why. Write nothing.`,
+    { phase: 'Plan', label: 'triage', schema: TRIAGE, model: 'sonnet', effort: 'low' },
   )
-  const pinned = criteriaCovered(quick && quick.criteria, new Set())
-  if (pinned.all) {
-    log(`QA: every criterion is pinned by the PR's own tests — nothing to explore`)
+  const pinned = criteriaCovered(triage && triage.criteria, new Set())
+  const tally = `criteria pinned by tests in the diff ${pinned.n}/${pinned.of}${pinned.codeOnly ? `, +${pinned.codeOnly} about the code itself, for code review` : ''}`
+  if (triage && triage.decision === 'enough' && pinned.all && SIZE !== 'large') {
+    log(`QA triage: enough — ${triage.why}`)
     return publish({ verdict: 'pass', confidence: 'high', skipped: true,
-      covered: `no exploration needed — a tiny change, and its own tests pin every Done-when criterion ` +
-        `(${pinned.n}/${pinned.of}${pinned.codeOnly ? `, +${pinned.codeOnly} about the code itself, for code review` : ''})`, probes: [] })
+      covered: `no exploration needed — ${triage.why} (${tally})`, probes: [] })
   }
-  log(`QA: the PR's tests pin ${pinned.n}/${pinned.of} criteria — exploring the rest`)
+  // Called enough without the tests to show for it: probe what is unpinned.
+  const unpinned = (triage && Array.isArray(triage.criteria) ? triage.criteria : [])
+    .filter(c => c && c.by !== 'code' && !criteriaCovered([c], new Set()).all).map(c => c.criterion)
+  const gaps = (triage && triage.decision === 'focused' && Array.isArray(triage.gaps) ? triage.gaps
+    : triage && triage.decision === 'enough' ? unpinned : []).filter(g => typeof g === 'string' && g.trim()).slice(0, MAX_PROBES)
+  if (gaps.length) {
+    budget = `one probe for each of these ${gaps.length}, which a triage of the ticket and the tests found the tests ` +
+      `leave unproven — and nothing else:\n${gaps.map(g => `- ${g}`).join('\n')}\n`
+  }
+  log(`QA triage: ${triage ? triage.decision : 'did not finish'}${gaps.length ? ` — ${gaps.length} gap(s) to probe` : ''} (${tally})${triage ? ` — ${triage.why}` : ''}`)
 }
 
 plan = await agent(
@@ -289,48 +310,12 @@ plan = await agent(
   `changed GitHub Actions \`if:\` or expression evaluated in a few lines of node against a realistic payload ` +
   `(an issue comment, a bot's pull request, a draft); every command a changed doc tells an agent to run, run ` +
   `as written. Commands must not touch GitHub or change tracked files. Return surface=false only when there ` +
-  `is genuinely nothing to exercise. Before any of that, decide whether exploring is worth it at all: a ` +
-  `cosmetic change — copy, a label, a colour, spacing — that the tests already pin needs no probes; say ` +
-  `enough=true, why, and appLines, and return no probes. Anything with logic, data, an API, state or a flow ` +
-  `in it is never enough. Finally map every Done-when criterion (criteria) to the probe or the test file in ` +
+  `is genuinely nothing to exercise. Finally map every Done-when criterion (criteria) to the probe or the test file in ` +
   `this diff that exercises it — honestly: \`none\` where nothing does, \`code\` where the criterion is about how the code is written rather than anything a caller or attendee can observe. A criterion a test in the diff already ` +
   `pins needs no probe; spend probes on what nothing covers and on §1's edges. Write nothing.${SCOPE}`,
   { phase: 'Plan', label: 'plan', schema: PLAN, model: MODEL },
 )
 if (!plan) return publish({ verdict: 'none', why: 'the planner did not finish' })
-// Triage: the planner judged the tests enough, and the change is small
-// enough to take its word. Past the line cap it is explored regardless.
-const mayTriage = DEPTH !== 'thorough' && (SIZE === 'tiny' || (Number.isInteger(APP_LINES) && APP_LINES > 0 && APP_LINES <= TRIVIAL_LINES && UI_ONLY))
-// A skip re-runs nothing, so it is never taken over previous bugs: that
-// would publish a clean marker and close them unexamined.
-if (plan.enough === true && mayTriage && !recheck.length) {
-  log(`QA triage: skipped — ${plan.enoughWhy || 'cosmetic, covered by tests'}`)
-  const pinned = criteriaCovered(plan.criteria, new Set())
-  return publish({ verdict: 'pass', confidence: pinned.all ? 'high' : 'medium', skipped: true,
-    covered: `no exploration needed — ${plan.enoughWhy || 'a cosmetic change the tests already pin'} (${SIZE} change, ${APP_LINES} app lines; ` +
-      `criteria pinned by tests in the diff ${pinned.n}/${pinned.of})`, probes: [] })
-}
-// Over the cap, or no count: the planner said "enough" and so planned no
-// probes. Ask again for a real plan — logging "exploring anyway" and then
-// falling through to "nothing to exercise" explored nothing.
-if (plan.enough === true && mayTriage) {
-  log(`QA triage: the planner called it enough — running only the ${recheck.length} previous bug probe(s)`)
-  plan.probes = []
-} else if (plan.enough === true) {
-  log(`QA triage: the planner called it enough, but the change is not a small UI-only one (${Number.isInteger(APP_LINES) ? APP_LINES : 'unknown'} app lines, ui-only ${UI_ONLY}) — exploring anyway`)
-  const again = await agent(
-    `${HERE}Plan exploratory QA for pull request #${pr}. It cannot be skipped: only a UI-only change of at most ` +
-    `${TRIVIAL_LINES} lines may be called covered by its tests, and this is not one. ` +
-    `Do not return enough=true. Otherwise plan exactly as before: read the ticket's Done when, \`gh pr diff ${pr}\` ` +
-    `and the tests it adds, then pick ${budget} in the order §1 of ${PLAYBOOK} gives — ` +
-    `browser probes, or command probes for what a browser cannot reach. Write nothing.${SCOPE}`,
-    { phase: 'Plan', label: 'plan-again', schema: PLAN, model: MODEL },
-  )
-  if (!again) return publish({ verdict: 'none', why: 'the planner did not finish' })
-  plan.surface = again.surface
-  plan.reason = again.reason
-  plan.probes = again.probes
-}
 // The recheck probes go in first, each id once (the recheck copy wins), and
 // the whole list obeys the budget — assigned back to plan.probes so that
 // everything downstream counts each id exactly once. Above the early return:
@@ -420,13 +405,18 @@ for (const p of failing) {
       `adds against the base's version of the code they cover, if the failure is the environment (ports, data ` +
       `left by another test, timing), or if it is behaviour the ticket or a human on the PR asked for. If you ` +
       `cannot tell, it is NOT refuted. If it is real but only reachable with an input nobody gives in normal ` +
-      `use — a hand-edited URL or localStorage value, a forged request — say contrived, and why.`,
+      `use — a hand-edited URL or localStorage value, a forged request — say contrived, and why. If it is real ` +
+      `and reachable but nobody loses anything — no seat, no data, no action they could not take, nothing false ` +
+      `shown as true; a stray label, a flicker — say harmless, and why: code review holds the same bar.`,
       { phase: 'Reproduce', label: `skeptic:${p.id}`, schema: REFUTATION, effort: 'medium', model: MODEL },
     )
     // A skeptic that died refuted nothing.
     if (v && v.refuted === true) { kind = 'question'; doubt = String(v.why || '').trim() || 'the skeptic refuted it without giving a reason' }
     // Real, but not through normal use: tracked as an issue, not blocking.
     else if (v && v.contrived === true) { kind = 'follow-up'; doubt = String(v.why || '').trim() || 'only reachable with a contrived input' }
+    // Real and reachable, but nothing is lost: #105 blocked a tooltip on a
+    // second label left showing — a follow-up, as code review would file it.
+    else if (v && v.harmless === true) { kind = 'follow-up'; doubt = String(v.why || '').trim() || 'real, but nobody loses anything' }
   }
   findings.push({ probe: p, project, kind, happened: repro ? repro.happened : r.happened, image: repro && repro.image, doubt })
 }
