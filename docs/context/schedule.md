@@ -84,8 +84,7 @@ only when `sessions[0].day === clock.day`, and seats from `seatsFor` over the pa
 A seat button on a session that `hasEnded` and is not held is disabled and named
 "Session ended" (banner) / "<title> has ended" (cell). Both buttons wrap in
 `Tooltip` (`ui.jsx`), with `full` (seats left, via `seatsFor` over the payload)
-computed the same way for each — the banner's `full` was the one spot this had
-to be added fresh, since only the cell block already read capacity.
+computed separately in each block (see Gotchas).
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
 (a `<div>`, used by My Agenda and the session page's competing list). `showDay`
@@ -128,6 +127,10 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 - Grid banner seat buttons share one generic `aria-label`; the cell buttons name the session.
   Both still get the same `seatAction` tooltip text as `SeatButton` elsewhere — only the
   `aria-label` differs.
+- The banner and cell blocks each derive their own per-session values (`closed`, `full`,
+  live `seatsFor`) independently, even though they sit a few lines apart — a value a new
+  feature needs in one (e.g. a prop passed into `Tooltip` or `SeatButton`) has to be
+  computed in the other too; neither block's derivations carry over.
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.
