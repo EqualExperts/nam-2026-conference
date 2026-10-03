@@ -271,6 +271,7 @@ test.describe('Seat button tooltip', () => {
     await expect(tip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tip).toHaveCount(0);
+    await button.blur(); // Escape leaves focus on the button
     await button.focus();
     await expect(tip).toBeVisible();
     await button.blur();
