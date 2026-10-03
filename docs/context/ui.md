@@ -42,7 +42,7 @@ used by the header, toasts, menus), `hide-scrollbar`. Dark only
 
 **Motion utilities** (all in `index.css`, all neutralised by the
 `prefers-reduced-motion` block at the bottom, which also forces `.reveal`
-visible): `animate-rise` (dialogs, menus, toasts), `stagger` (list entrance; children
+visible): `animate-rise` (dialogs, menus, toasts, the seat-button tooltip), `stagger` (list entrance; children
 delay by `--i` × 40ms — set `style={{ '--i': i }}`, capped by callers at ~12),
 `animate-pulse-dot` (live indicators), `animate-ken-burns`, `animate-slide-in`,
 `animate-fade-zoom` and `animate-fill` (the speaker spotlight and its autoplay progress;
@@ -75,7 +75,7 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `Chip` | `accent?, className, as='span', ...rest` |
 | `TrackPill` | `track` (uses `track.color`, `track.name`) |
 | `Button` | `variant (primary ghost subtle danger; default ghost), size (sm md lg), to` → `Link`, `href` → `a`, else `button`; `as` overrides |
-| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, ended` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` disables it as "Session ended" |
+| `SeatButton` | `status (null confirmed waitlisted), onClick, size (sm md), title, name (accessible name only; the grid passes the session-titled one), ended, full` — the one agenda action; stops propagation and sits at `z-10` above card link overlays; `ended` without a `status` is `aria-disabled` (not `disabled`, so it still hovers) and reads "Session ended"; `full` without a `status` reads "Join the waitlist". Hover or focus (250 ms) shows a `role="tooltip"` (`data-testid="seat-tip"`) naming the label, linked by `aria-describedby` only while open; it is `fixed` and clamped to the viewport because cards clip overflow; closes on blur, mouse-leave, Escape; no native `title` |
 | `Rating` | `value, count, showValue` — "Not yet rated" when `count` is 0 |
 | `SectionHeader` | `eyebrow, title, description, action, className` — renders an `h2` |
 | `Spinner`, `Skeleton` | `className` |
@@ -155,6 +155,9 @@ scheduled here".
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
 - `format.time` expects `HH:MM`, not an ISO timestamp.
+- **Behaviour added to a primitive reaches only its callers.** Before saying a ticket's "everywhere" is
+  covered, `grep -n "<button" src/` for hand-rolled copies of it (the grid once kept raw seat buttons)
+  and assert the behaviour in each view the ticket names, not just the one the test opens first.
 
 ## Where to change…
 

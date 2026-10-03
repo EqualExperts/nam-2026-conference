@@ -1,3 +1,4 @@
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
 import { Icon } from './Icon.jsx';
@@ -114,9 +115,11 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
 /* -------------------------------- SeatButton ------------------------------ */
 /**
  * The one action: add this session to my agenda, which takes a seat.
- * `status` is null | 'confirmed' | 'waitlisted'.
+ * `status` is null | 'confirmed' | 'waitlisted'; `full` makes the label say it
+ * will queue you instead. `name` overrides the accessible name only (the grid
+ * names the session); the tooltip always says the action.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title, ended = false }) {
+export function SeatButton({ status, onClick, size = 'md', className, title, name, ended = false, full = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
@@ -125,16 +128,44 @@ export function SeatButton({ status, onClick, size = 'md', className, title, end
   const label = on
     ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
     : closed ? 'Session ended'
+    : full ? 'Join the waitlist'
     : (title ?? 'Add to my agenda');
 
+  const [open, setOpen] = useState(false);
+  const timer = useRef(null);
+  const btn = useRef(null);
+  const tip = useRef(null);
+  const tipId = useId();
+  const show = () => { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(true), 250); };
+  const hide = () => { clearTimeout(timer.current); setOpen(false); };
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  // Fixed, because the cards clip overflow; placed above the button (below if
+  // there is no room) and clamped so it never leaves the viewport.
+  useLayoutEffect(() => {
+    if (!open || !btn.current || !tip.current) return;
+    const b = btn.current.getBoundingClientRect();
+    const t = tip.current.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.max(margin, Math.min(b.left + b.width / 2 - t.width / 2, window.innerWidth - t.width - margin));
+    const top = b.top - t.height - 6 >= margin ? b.top - t.height - 6 : b.bottom + 6;
+    tip.current.style.left = `${left}px`;
+    tip.current.style.top = `${top}px`;
+  }, [open, label]);
+
   return (
+    <span className="relative inline-flex shrink-0" onMouseEnter={show} onMouseLeave={hide}>
     <button
+      ref={btn}
       type="button"
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
-      disabled={closed}
+      onFocus={show}
+      onBlur={hide}
+      onKeyDown={(e) => { if (e.key === 'Escape') hide(); }}
+      aria-disabled={closed || undefined}
       aria-pressed={on}
-      aria-label={label}
-      title={label}
+      aria-label={name ?? label}
+      aria-describedby={open ? tipId : undefined}
       className={cx(
         // `relative z-10` keeps the button above the card's stretched link overlay,
         // which otherwise covers the whole card and swallows the click.
@@ -153,6 +184,19 @@ export function SeatButton({ status, onClick, size = 'md', className, title, end
     >
       <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
     </button>
+    {open && (
+      <span
+        ref={tip}
+        id={tipId}
+        role="tooltip"
+        data-testid="seat-tip"
+        style={{ left: 0, top: 0 }}
+        className="glass border-hairline pointer-events-none fixed z-50 animate-rise whitespace-nowrap rounded-lg border px-2 py-1 text-[11px] font-medium text-ink"
+      >
+        {label}
+      </span>
+    )}
+    </span>
   );
 }
 
