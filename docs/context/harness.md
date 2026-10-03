@@ -59,13 +59,22 @@ step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
 `code-review.js` and `qa.js` take a PR number, or `{ pr, workdir }` on a
-laptop — a worktree of the PR branch to run in. **Sized to the ticket.** Setup sizes every ticket `small` or `full`
-(`TIERS` at the top of `ship.js`); the `ship:full` label, `--full` or
-`--small` override it. Small: one combined spec auditor and one round, one
-combined code auditor plus the browser pass only if the implementer reports
-`ui`, two build rounds, Sonnet throughout. Full: two spec auditors and three
-rounds, three code auditors, four build rounds, the session's model (Opus in
-CI). Both keep the skeptic and the machine gate, and both run Verify, hand-back
+laptop — a worktree of the PR branch to run in. **Sized to the ticket.** Setup (on the session's model) reports
+`sizing` facts — required — and `profileFor` composes the loop from them over
+the two presets in `TIERS`: a business rule, stored data, the harness or the
+`ship:full` label → full (two spec auditors, ≤ 3 rounds, three code auditors,
+four build rounds, the session's model); otherwise small (setup writes the
+spec, one combined code auditor plus the browser pass only if the implementer
+reports `ui` without a browser test, two build rounds, Sonnet), plus: the API
+or breadth (≥ 3 areas, ~7 app files) → `criteria` + `rules` auditors and three
+rounds; ≥ 2 open questions → one `spec-audit:combined`; `uiInteraction` →
+the browser pass always, four probes. `--full` / `--small` pick a preset.
+After a green gate, `verify#n` also relays `qa-facts.mjs`: a small run whose
+diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
+on the session model); a gate red twice running moves the fixer to the session
+model. In the plan loop only `criterion-unmet`, `claude-md`, `logic` and
+`scope` cost a `revise-spec` round; other confirmed spec findings are carried
+to the builder as notes. Both keep the skeptic and the machine gate, and both run Verify, hand-back
 and lane release on Haiku — they only run a command and copy its output.
 
 **`ship.js`** takes `args` as an issue number (`/ship 42`) or
@@ -175,13 +184,15 @@ survived:
   `recheck:<category>` per previous blocker — an unresolved one is confirmed
   without a skeptic and ranks first, a resolved one leaves the verdict. All
   previous blockers resolved and a clean delta is a **pass**.
-- **`qa.js`** — *Plan* first triages: a cosmetic change the tests pin
-  passes at medium confidence with no probes, headed *skipped — existing
-  tests are enough* — but only when the planner says `enough` **and** the job's
-  own git facts agree: `--app-lines` (src/ + server/) ≤ `TRIVIAL_LINES` (30)
-  and `--ui-only=yes` (every file under src/, tests/, docs/ or specs/). A
-  harness, workflow, script or server change never skips; nor does a local run,
-  which passes no facts.
+- **`qa.js`** — *Plan* first triages (`triage`, Sonnet, low effort): from
+  the ticket, the diff and the tests it adds, is that **enough**, are there
+  specific **gaps** to probe (*focused*), or does the change need open
+  exploration (*explore*)? `enough` passes at high confidence with no probes,
+  headed *skipped — existing tests are enough* — but only when every Done-when
+  criterion maps to a test file the diff changes (`criteriaCovered`, checked
+  against the diff) and the change is not `large`; otherwise the unpinned
+  criteria become the gaps. *Focused* plans one probe per gap and nothing else.
+  No triage on a re-review with bugs to recheck or at `thorough`.
   Otherwise ≤ 5 probes, each `browser` or `command`: a script,
   a workflow under stubs or an `if:` against a payload is probed by running
   it; `surface: false` only when nothing can be exercised → a low-confidence

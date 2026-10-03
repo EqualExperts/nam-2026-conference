@@ -22,12 +22,11 @@ QA pass becomes a fishing trip.
 
 ## 1. Decide what is worth probing
 
-**First: is exploring worth it at all?** A cosmetic change — copy, a label, a
-colour, spacing, an icon — that the tests already pin needs no probes. Say
-so, say which tests cover it, and stop. The workflow takes your word only for
-a UI-only change of at most 30 lines — facts the job computes from git, not
-from you — and never for anything with logic, data, an API, state or a flow; it then publishes a medium-confidence pass that
-reads *skipped — existing tests are enough*.
+**First, the workflow triages.** Before you plan, an agent decides from the
+ticket, the diff and the tests it adds whether those tests are *enough*, leave
+specific *gaps*, or the change needs open *exploration*. Enough skips QA, but
+only when every criterion is pinned by a test in the diff and the change is
+not large. If you are handed gaps, plan one probe for each and nothing else.
 
 Read the ticket's **Done when:**, the diff, and the tests it added. The tests
 say where *not* to spend time — what they assert is already proven. The
@@ -151,7 +150,8 @@ three lines: **what you did, what you expected, what happened.**
 | blocker | `> [!CAUTION]` | *none* |
 
 Label every finding **a bug in this change**, **pre-existing**, **a
-follow-up** (real, but contrived), or **a question** you cannot tell is
+follow-up** (real, but contrived — or harmless: reachable, yet nobody loses
+anything, like a stray label), or **a question** you cannot tell is
 intended. The workflow ends the comment with the `orbit-verdict:qa` marker the
 next pass reads back. Show it rather than describe it:
 

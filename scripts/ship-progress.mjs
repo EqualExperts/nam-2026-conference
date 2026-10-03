@@ -57,6 +57,14 @@ const defaultReadOutputFile = (f) => JSON.parse(readFileSync(f, 'utf8'));
  * is cumulative — every phase and every agent tried so far — so only the
  * last such event matters; this never needs to replay the whole stream.
  */
+// Setup runs on the session model too, so it says nothing; the first agent
+// past setup does — every one of them runs on the run's own model.
+function tierFrom(agents) {
+  const past = agents.find((a) => /^(write-spec|spec-audit|implement)/.test(a.label || '') && a.model);
+  if (!past) return null;
+  return /sonnet|haiku/i.test(past.model) ? 'small' : 'full';
+}
+
 export function readStream(lines, readOutputFile = defaultReadOutputFile) {
   const events = (lines || [])
     .map((l) => { try { return JSON.parse(l); } catch { return null; } })
@@ -130,12 +138,11 @@ export function readStream(lines, readOutputFile = defaultReadOutputFile) {
 
   return {
     streamStarted,
-    // Setup reports facts and the script sizes the ticket, so the size is read
-    // off what runs: only a full ticket audits its plan; a small one goes
-    // straight from setup to the builder. Until either shows, it is "sizing…".
-    tier: setupPreview.size
-      || (agents.some((a) => /^spec-audit/.test(a.label)) ? 'full'
-        : agents.some((a) => a.label === 'implement') ? 'small' : null),
+    // The script composes the run from setup's facts, so the size is read off
+    // what runs: the full loop builds on the session model (Opus), a small one
+    // on Sonnet — a small run may still audit its plan. Until the builder or a
+    // plan auditor starts, it is "sizing…".
+    tier: setupPreview.size || tierFrom(agents),
     branch: setupPreview.branch || null,
     // A small ticket's spec is written by setup, a full one's by write-spec.
     spec: specPreview.path || (specAgent ? null : setupPreview.path) || null,

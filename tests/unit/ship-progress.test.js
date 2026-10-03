@@ -525,11 +525,14 @@ describe('makeGh', () => {
 });
 
 describe('sized from what runs, now that setup reports facts', () => {
-  test('a plan audit means full; the builder starting without one means small; before either, sizing', () => {
-    const setup = agentEvent('setup', 'Setup', 'done', '{"proceed":true,"branch":"issue-7-x","spec":{"path":"/home/runner/work/r/r/specs/7-x.md"}}');
+  test('the first agent past setup says the size by its model; before it, sizing', () => {
+    const setup = { ...agentEvent('setup', 'Setup', 'done', '{"proceed":true,"branch":"issue-7-x"}'), model: 'claude-opus-5' };
+    const on = (label, phase, model) => ({ ...agentEvent(label, phase, 'running'), model });
     assert.equal(readStream([progress([setup])]).tier, null);
-    assert.equal(readStream([progress([setup, agentEvent('spec-audit:criteria#1', 'Spec Audit', 'running')])]).tier, 'full');
-    assert.equal(readStream([progress([setup, agentEvent('implement', 'Implement', 'running')])]).tier, 'small');
+    assert.equal(readStream([progress([setup, on('spec-audit:criteria#1', 'Spec Audit', 'claude-opus-5')])]).tier, 'full');
+    assert.equal(readStream([progress([setup, on('implement', 'Implement', 'claude-sonnet-5-5')])]).tier, 'small');
+    // a small run may audit its plan, on Sonnet — still small
+    assert.equal(readStream([progress([setup, on('spec-audit:combined#1', 'Spec Audit', 'claude-sonnet-5-5')])]).tier, 'small');
   });
 
   test("a small ticket's spec comes from setup, linked by its repository path, not the runner's (#100)", () => {

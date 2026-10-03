@@ -21,8 +21,11 @@ export const meta = {
 let MAX_SPEC_ROUNDS = 3
 let MAX_BUILD_ROUNDS = 4
 
-// How much loop a ticket gets. Setup sizes it; `ship:full` on the issue, or
-// `--full` / `--small` after the number, overrides. A three-line copy fix
+// How much loop a ticket gets. Setup reports what the ticket risks and the
+// script composes the loop from it (profileFor, below): small is the base, a
+// risk adds the check that catches it, and only a rule, stored data or the
+// harness buys the full Opus loop. `ship:full` on the issue, or `--full` /
+// `--small` after the number, picks a preset outright. A three-line copy fix
 // does not need two spec auditors, three code auditors and Opus throughout —
 // that shape took a medium ticket 57 minutes. Small keeps what makes the
 // loop trustworthy — an independent audit, a skeptic, the machine gate — and
@@ -35,12 +38,14 @@ const TIERS = {
     specLenses: ['combined'], codeLenses: ['combined', 'browser'],
     think: 'sonnet',   // spec, audits, skeptic, context, learn, PR
     build: 'sonnet',   // implement, fix
+    probes: 2,
   },
   full: {
     specRounds: 3, buildRounds: 4,
     specLenses: ['criteria', 'fit'], codeLenses: ['criteria', 'rules', 'browser'],
     think: undefined,  // the session's model — Opus in CI
     build: undefined,
+    probes: 5,
   },
 }
 // Phases that run a command and copy its output back need no judgement.
@@ -115,7 +120,7 @@ const MAP =
 // ── Schemas ──────────────────────────────────────────────────────────────────
 const SETUP = {
   type: 'object',
-  required: ['proceed', 'reason'],
+  required: ['proceed', 'reason', 'sizing'],
   properties: {
     proceed: { type: 'boolean' },
     reason: { type: 'string', description: 'why not, if proceed is false; else one line on the ticket' },
@@ -130,7 +135,7 @@ const SETUP = {
     // after it, the tier falls off the end of a live progress render before
     // anyone reading the issue ever sees it. See docs/context/harness.md.
     // Facts about the change, not a verdict: the script sizes the ticket from
-    // them by one rule (sizeFrom below), so every ticket is sized the same way.
+    // them by one rule (profileFor below), so every ticket is sized the same way.
     sizing: {
       type: 'object',
       required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull'],
@@ -142,6 +147,7 @@ const SETUP = {
         changesData: { type: 'boolean', description: 'the schema, the seed or stored data changes' },
         openQuestions: { type: 'integer', description: 'design decisions the ticket leaves open that the spec will have to settle' },
         labelledFull: { type: 'boolean', description: 'the issue carries the ship:full label' },
+        uiInteraction: { type: 'boolean', description: 'new interactive behaviour an attendee drives — focus, hover, keyboard, touch, positioning, animation, state that changes across clicks — not just new data on a page' },
         why: { type: 'string', description: 'one line: what the change touches' },
       },
     },
@@ -219,6 +225,7 @@ const GATE = {
   properties: {
     json: { type: 'string', description: 'the last line gate.mjs printed, verbatim' },
     red: { type: 'string', description: 'verify only: the last line red-check.mjs printed, verbatim, if it was run' },
+    facts: { type: 'string', description: 'verify only: the line qa-facts.mjs printed, verbatim' },
   },
 }
 
@@ -456,46 +463,71 @@ setup = await agent(
   `later phase would run commands that do not exist in the worktree. \`gh\` works on the repository origin points ` +
   `at, as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
   `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the worktree. ` +
-  `Write no code. If you proceed and those facts make it small, write the spec too, in the workspace you made — ` +
-  `${specAsk(`specs/${issue}-<your slug>.md`)} — and return it as spec; a full ticket's spec is the next step's. ` +
+  `Write no code. If you proceed and the change touches no business rule, no stored data and not the harness, ` +
+  `and is not labelled ship:full, write the spec too, in the workspace you made — ` +
+  `${specAsk(`specs/${issue}-<your slug>.md`)} — and return it as spec; otherwise the spec is the next step's. ` +
   `Return proceed=false with the ` +
   `reason if it is not shippable, and in that case also do §9 (comment and label needs-human). Then report the ` +
-  `sizing facts about the change the ticket needs — what it touches, not how long the ticket is. The run is ` +
-  `full if it is labelled ship:full, changes a business rule, the API, the schema, seed or stored data, or the ` +
-  `harness, touches three or more areas, about seven or more app files (tests, docs and the spec not counted), or leaves three or more design questions open; ` +
-  `otherwise small. Most tickets are small.`,
-  { phase: 'Setup', label: 'setup', schema: SETUP, model: 'sonnet' },
+  `sizing facts about the change the ticket needs — what it touches and what it risks, not how long the ticket ` +
+  `is. Open the files the change would land in before you answer: a fact you guessed sizes the whole run wrong. ` +
+  `The script composes the run from them — a rule, stored data or the harness gets the full loop; the API, ` +
+  `breadth (three or more areas, about seven or more app files — tests, docs and the spec not counted) gets more ` +
+  `auditors; open design questions get a plan audit; new interaction gets a browser audit — and anything else ` +
+  `is small. Most tickets are small.`,
+  // The one judgement every later phase is sized by, so it gets the session's
+  // model: Sonnet called #100's tooltip small in prose and gave no facts, and
+  // the run fell through to the full loop — 33 agents and $26.
+  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium' },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
   ? `origin/${BASE} has no harness (scripts/gate.mjs, docs/harness/) — pass { issue, base } with a branch that does`
   : setup.reason }
-// One rule for every ticket. The agent reports what the change touches; this
-// decides. How carefully the ticket is written — how many acceptance criteria
-// it lists — is deliberately not an input: #100, a tooltip with seven, went
-// full on a judgement call and spent twenty minutes auditing its plan.
-function sizeFrom(f) {
+// The loop is composed from what the ticket risks, not picked from two sizes.
+// Small is the base; each risk adds the check that catches it; only a business
+// rule, stored data or the harness — where a missed defect costs an attendee's
+// seat or every later ticket — buys the full Opus loop. Two sizes made a
+// tooltip either a $1.40 run or a $26 one (#105: three Opus plan rounds for an
+// interaction a browser catches). How long the ticket is does not count.
+function profileFor(f) {
   const areas = new Set((f.areas || []).filter(a => a !== 'tests' && a !== 'docs'))
-  const reasons = [
+  const heavy = [
     f.labelledFull && 'labelled ship:full',
     f.changesRule && 'changes a business rule',
-    f.changesApi && 'changes the API',
     f.changesData && 'changes the schema, seed or stored data',
     areas.has('harness') && 'changes the harness',
-    areas.size >= 3 && `touches ${areas.size} areas`,
-    // App files only: #100, a tooltip, went full on "~11 files" that were
-    // five components plus the tests and docs any careful change adds.
-    f.files >= 7 && `~${f.files} app files`,
-    f.openQuestions >= 3 && `${f.openQuestions} open design questions`,
   ].filter(Boolean)
-  return reasons.length ? { size: 'full', why: reasons.join(', ') } : { size: 'small', why: f.why || 'a contained change' }
+  if (heavy.length) return { ...TIERS.full, size: 'full', why: heavy.join(', ') }
+  const p = { ...TIERS.small, size: 'small' }
+  const added = []
+  const broad = [
+    f.changesApi && 'changes the API',
+    areas.size >= 3 && `touches ${areas.size} areas`,
+    f.files >= 7 && `~${f.files} app files`,
+  ].filter(Boolean)
+  if (broad.length) {
+    p.codeLenses = ['criteria', 'rules', 'browser']; p.buildRounds = 3
+    added.push(`${broad.join(', ')} → criteria and rules auditors`)
+  }
+  if (f.openQuestions >= 2) {
+    p.specRounds = 1
+    added.push(`${f.openQuestions} open design questions → one plan audit`)
+  }
+  if (f.uiInteraction) {
+    p.browserAlways = true; p.probes = 4
+    added.push('new interaction → a browser audit, four probes')
+  }
+  return { ...p, why: [f.why || 'a contained change', ...added].join('; ') }
 }
-const sized = setup.sizing ? sizeFrom(setup.sizing) : { size: setup.size === 'small' ? 'small' : 'full', why: 'setup gave no sizing facts' }
-const SIZE = FORCED || sized.size
-T = TIERS[SIZE]
+const PRESET = FORCED && { ...TIERS[FORCED], size: FORCED, why: 'forced' }
+if (!FORCED && !setup.sizing) log(`#${issue}: setup reported no sizing facts — the full loop by default`)
+T = PRESET || (setup.sizing ? profileFor(setup.sizing)
+  : setup.size === 'small' ? { ...TIERS.small, size: 'small', why: 'setup said small' }
+  : { ...TIERS.full, size: 'full', why: 'setup gave no sizing facts' })
+const SIZE = T.size
 MAX_SPEC_ROUNDS = T.specRounds
 MAX_BUILD_ROUNDS = T.buildRounds
-log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ` — ${sized.why}`}`)
+log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ` — ${T.why}`}`)
 const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
 if (missingSetup.length) {
   const partial = setup
@@ -555,6 +587,7 @@ let carried = []
 // the loop makes, and the first live run's spec said "no findings" about a
 // round that had confirmed and fixed one.
 const specRounds = []
+const REPLAN = new Set(['criterion-unmet', 'claude-md', 'logic', 'scope'])
 for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   phase('Spec Audit')
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
@@ -575,10 +608,16 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   const found = specAudit.reports.flatMap(r => r.findings)
 
   const blockers = found.filter(f => f.severity === 'blocker')
-  specOpen = blockers.length ? await confirm(blockers, 'the spec') : []
-  history.push(...specOpen)
-  specRounds.push({ round, raised: found.length, confirmed: specOpen.length, what: specOpen.map(f => f.claim) })
-  log(`spec round ${round}: ${found.length} raised, ${specOpen.length} confirmed`)
+  const confirmed = blockers.length ? await confirm(blockers, 'the spec') : []
+  history.push(...confirmed)
+  specRounds.push({ round, raised: found.length, confirmed: confirmed.length, what: confirmed.map(f => f.claim) })
+  log(`spec round ${round}: ${found.length} raised, ${confirmed.length} confirmed`)
+  // Only a finding that changes what gets built is worth re-planning for: a
+  // misread criterion, a contradicted decision, wrong logic, a ticket in
+  // question. A gap in the plan's detail goes to the builder as a note — #105
+  // spent three Opus rounds, ~40 minutes, revising a tooltip's spec for gaps.
+  carried.push(...confirmed.filter(f => !REPLAN.has(f.category)))
+  specOpen = confirmed.filter(f => REPLAN.has(f.category))
   if (!specOpen.length) break
   // A person is needed only when the ticket itself is in question (scope).
   // Anything technical still open after the last round is revised once more,
@@ -588,7 +627,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
     return handBack('Spec Audit', `the ticket itself is in question after ${round} spec rounds`,
       specOpen.filter(f => f.category === 'scope'), specOpen.filter(f => f.category !== 'scope'))
   }
-  if (round === MAX_SPEC_ROUNDS) carried = specOpen
+  if (round === MAX_SPEC_ROUNDS) carried.push(...specOpen)
 
   const revised = await agent(
     `${ticket}\n\n${inTree()}\n\nIndependent auditors confirmed these problems with ${spec.path}:\n\n` +
@@ -671,7 +710,7 @@ const CODE_LENSES_ALL = [
       `--git-common-dir)")/.claude/worktrees/main-${issue}" origin/${BASE}\` — you are already standing in a ` +
       `worktree, so that resolves to the repo root rather than nesting one worktree inside another. Symlink ` +
       `node_modules into it, and ` +
-      `remove it after. Budget: ${SIZE === 'full' ? 'five probes' : 'two probes — a small change; spend them where the tests it added do not reach'}. ` +
+      `remove it after. Budget: ${T.probes} probes — spend them where the tests it added do not reach. ` +
       `If the change depends on the time, one probe pins the clock before it applies — Day 1 08:00, when the ` +
       `seed's morning has not happened yet. ` +
       `A reproduced bug in this change is a blocker; pre-existing is ` +
@@ -690,9 +729,10 @@ const TRACES_CRITERIA = new Set(['criteria', 'combined'])
 // On a small ticket a browser test the branch added already runs in the gate on
 // both viewports, and QA explores the browser once the PR opens; a second
 // exploration inside ship cost #64 1.6M context tokens to probe two edges.
-const CODE_LENSES = CODE_LENSES_ALL.filter(l =>
-  T.codeLenses.includes(l.key) &&
-  (l.key !== 'browser' || SIZE === 'full' || (built.ui !== false && built.browserTest !== true)))
+const lensesFor = (t) => CODE_LENSES_ALL.filter(l =>
+  t.codeLenses.includes(l.key) &&
+  (l.key !== 'browser' || t.size === 'full' || t.browserAlways || (built.ui !== false && built.browserTest !== true)))
+let CODE_LENSES = lensesFor(T)
 
 const rounds = []
 const streak = new Map() // finding key → consecutive rounds confirmed
@@ -706,6 +746,7 @@ let minors = []
 // extra rounds of slack; the same failure twice is caught as stuck anyway.
 let audited = 0
 let lastRed = null // the last red-check, for the PR's one-line summary
+let redStreak = 0
 for (let round = 1; ; round++) {
   phase('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
@@ -714,11 +755,34 @@ for (let round = 1; ; round++) {
     `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
-    `once and return its last line, verbatim, as red. Change nothing and interpret nothing.`,
+    `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
+    `return the line it prints, verbatim, as facts. Change nothing and interpret nothing.`,
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
+
+  // Setup predicted the risk before any code existed; the diff now says what
+  // it is. A small run whose diff reaches a risky path (server/lib, the
+  // schema, the seed, the harness) or grew past 300 app lines gets the
+  // auditors and the model a full run would have had — escalated on evidence,
+  // never on a guess, and said so. A gate red twice running moves the fixer
+  // up a model instead of spending another Sonnet round on it.
+  const measured = String(ran.facts || '')
+  const appLines = Number((/--app-lines=(\d+)/.exec(measured) || [])[1] || 0)
+  const reasons = [/--risky=yes\b/.test(measured) && 'the diff touches a risky path', appLines > 300 && `the diff is ${appLines} app lines`].filter(Boolean)
+  if (SIZE === 'small' && !T.escalated && !FORCED && reasons.length) {
+    T = { ...T, escalated: true, think: TIERS.full.think, buildRounds: Math.max(T.buildRounds, 3),
+      codeLenses: [...new Set([...T.codeLenses.filter(k => k !== 'combined'), 'criteria', 'rules', 'browser'])] }
+    MAX_BUILD_ROUNDS = T.buildRounds
+    CODE_LENSES = lensesFor(T)
+    log(`#${issue} escalated: ${reasons.join(', ')} — criteria and rules auditors on the session model`)
+  }
+  redStreak = gate.ok ? 0 : redStreak + 1
+  if (redStreak >= 2 && T.build === 'sonnet') {
+    T = { ...T, build: TIERS.full.build }
+    log(`#${issue}: the gate was red twice running — the fixer moves to the session model`)
+  }
 
   if (gate.ok) {
     audited++
@@ -923,7 +987,7 @@ const pr = await rote(
   (gate.browser.flakyTests && gate.browser.flakyTests.length ? `\nFlaky, passed on retry: ${gate.browser.flakyTests.join(', ')}.\n` : '') +
   (lessons.length ? `\nLessons written to the docs: ${lessons.map(l => l.proposal.split(setup.workdir + '/').join('')).join('; ')}\n` : '') +
   `</details>\n\n` +
-  `<sub>🤖 Built by ship · ${SIZE} ticket · ${SIZE === 'full' ? 'Opus' : 'Sonnet'} · its cost is posted below · ` +
+  `<sub>🤖 Built by ship · ${SIZE} ticket${T.escalated ? ', escalated on its diff' : ''} · ${SIZE === 'full' ? 'Opus' : T.escalated ? 'Sonnet, audited on Opus' : 'Sonnet'} · its cost is posted below · ` +
   `to ask for a change, comment \`@claude …\` — put all your comments in one review</sub>\n\n` +
   `Keep everything above the folded sections under 250 words. In *Done when*, cite only tests in files that ` +
   `\`git diff --stat\` shows this branch changed — never a test that is not in the diff.\n\n` +

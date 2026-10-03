@@ -471,21 +471,6 @@ describe('qa', () => {
     assert.equal((await run({ plan })).result.confidence, 'medium');
   });
 
-  test('a tiny PR whose own tests pin every criterion passes without the planner — #94', async () => {
-    const quick = { criteria: [{ criterion: 'heading names the search', by: 'test', ref: 'tests/home.spec.js' }] };
-    const { result, calls } = await run({ covered: quick }, '42 --no-publish --size=tiny');
-    assert.equal(result.verdict, 'pass');
-    assert.equal(result.confidence, 'high');
-    assert.ok(!calls.includes('plan'), 'no planner, no probes');
-    assert.match(result.comment, /its own tests pin every Done-when criterion/);
-  });
-
-  test('a tiny PR with a criterion its tests do not pin is still explored', async () => {
-    const quick = { criteria: [{ criterion: 'heading names the search', by: 'none' }] };
-    const { calls } = await run({ covered: quick }, '42 --no-publish --size=tiny');
-    assert.ok(calls.includes('plan'));
-  });
-
   test('a criterion about the code itself is left to code review, not counted against QA — #87', async () => {
     const plan = { ...PLAN, criteria: [{ criterion: 'no db.prepare in the handler', by: 'code' }, { criterion: 'works', by: 'probe', ref: 'a' }] };
     const { result, verdictLine } = await run({ plan });
@@ -574,44 +559,58 @@ describe('qa', () => {
     });
   });
 
-  describe('triage — is exploring worth it?', () => {
-    const cosmetic = { ...PLAN, probes: [], enough: true, enoughWhy: 'relabels the Add button; seats.spec.js asserts the new label' };
-    const SMALL_UI = '42 --app-lines=4 --ui-only=yes';
+  describe('triage — are the tests enough, or does it need exploring?', () => {
+    const pinned = { criterion: 'heading names the search', by: 'test', ref: 'tests/home.spec.js' };
+    const enough = { decision: 'enough', why: 'relabels the heading; home.spec.js asserts it', criteria: [pinned] };
 
-    test('a small cosmetic change the tests pin is passed without probes, and says so', async () => {
-      const { result, calls, prompts } = await run({ plan: cosmetic }, SMALL_UI);
+    test('tests that pin every criterion are enough: no planner, no probes — #94, #104', async () => {
+      const { result, calls, prompts } = await run({ triage: enough }, '42 --no-publish --size=small');
       assert.equal(result.verdict, 'pass');
-      assert.equal(result.confidence, 'medium', 'nobody drove it, so not high');
-      assert.ok(!calls.includes('probe') && !calls.includes('probe-commands'));
-      assert.match(prompts.publish, /QA · skipped — existing tests are enough/);
-      assert.match(prompts.publish, /relabels the Add button/);
+      assert.equal(result.confidence, 'high');
+      assert.ok(!calls.includes('plan') && !calls.includes('probe'));
+      assert.match(result.comment, /QA · skipped — existing tests are enough/);
+      assert.match(result.verdictLine, /^PASS high no exploration needed — relabels the heading/);
+      assert.match(prompts.triage, /are the tests this pull request adds\s+or changes enough/);
     });
 
-    test('too many changed lines is re-planned and explored — "enough" plans no probes', async () => {
-      const { calls, result } = await run({ plan: cosmetic, 'plan-again': PLAN }, '42 --app-lines=120 --ui-only=yes');
-      assert.ok(calls.includes('plan-again'));
-      assert.ok(calls.includes('probe'));
-      assert.notEqual(result.confidence, 'low');
+    test('"enough" without the tests to show for it probes the unpinned criteria', async () => {
+      const claimed = { ...enough, criteria: [pinned, { criterion: 'empty search says so', by: 'test', ref: 'tests/not-in-this-diff.spec.js' }] };
+      const { calls, prompts } = await run({ triage: claimed }, '42 --size=small');
+      assert.ok(calls.includes('plan') && calls.includes('probe'));
+      assert.match(prompts.plan, /one probe for each of these 1[\s\S]*- empty search says so/);
+      assert.doesNotMatch(prompts.plan, /- heading names the search/);
     });
 
-    test('no facts from the job (a local run), no skip — re-planned and explored', async () => {
-      const { calls } = await run({ plan: cosmetic, 'plan-again': PLAN });
-      assert.ok(calls.includes('plan-again') && calls.includes('probe'));
+    test('a large change is never skipped, whatever the triage says', async () => {
+      const { calls } = await run({ triage: enough }, '42 --size=large');
+      assert.ok(calls.includes('plan') && calls.includes('probe'));
     });
 
-    test('a harness, workflow or server change is never skipped, however few lines — the planner\'s word is not enough', async () => {
-      const { calls } = await run({ plan: cosmetic, 'plan-again': PLAN }, '42 --app-lines=0 --ui-only=no');
-      assert.ok(calls.includes('plan-again') && calls.includes('probe'));
+    test('focused: one probe per gap the triage named, and nothing else', async () => {
+      const focused = { decision: 'focused', why: 'the list is tested on desktop only', criteria: [pinned], gaps: ['the list on a phone', 'undo after leaving a waitlist'] };
+      const { prompts } = await run({ triage: focused }, '42 --size=small');
+      assert.match(prompts.plan, /one probe for each of these 2[\s\S]*- the list on a phone\n- undo after leaving a waitlist/);
     });
 
-    test('a re-planner that dies publishes no verdict rather than a pass', async () => {
-      const { result } = await run({ plan: cosmetic, 'plan-again': null }, '42 --app-lines=120 --ui-only=yes');
-      assert.equal(result.verdict, 'none');
+    test('explore: the full budget, as before', async () => {
+      const { prompts } = await run({ triage: { decision: 'explore', why: 'a new flow across two pages', criteria: [] } }, '42 --size=small');
+      assert.match(prompts.plan, /Pick at most 3 probes/);
     });
 
-    test('with --no-publish the job still gets a verdict line for the check', async () => {
-      const { result } = await run({ plan: cosmetic }, '42 --no-publish --app-lines=4 --ui-only=yes');
-      assert.match(result.verdictLine, /^PASS medium no exploration needed/);
+    test('a triage that dies explores in full rather than passing', async () => {
+      const { calls, result } = await run({ triage: null }, '42 --size=small');
+      assert.ok(calls.includes('plan') && calls.includes('probe'));
+      assert.equal(result.verdict, 'pass');
+    });
+
+    test('thorough never triages', async () => {
+      const { calls } = await run({ triage: enough }, '42 --size=small --depth=thorough');
+      assert.ok(!calls.includes('triage') && calls.includes('plan'));
+    });
+
+    test('a re-review with bugs to recheck never triages — a skip would close them unexamined', async () => {
+      const { calls } = await run({ triage: enough, scope: { ...SCOPE, previous: was([bug('b')]) } }, '42 --size=small');
+      assert.ok(!calls.includes('triage'));
     });
   });
 
@@ -738,6 +737,16 @@ describe('qa', () => {
       assert.match(result.comment, /hand-edited localStorage/);
       assert.match(result.followUps[0].body, /#42/, 'the follow-up issue does not link the pull request');
       assert.deepEqual(marker(result.comment, 'qa').followUps, ['b']);
+    });
+
+    test('a real glitch nobody loses anything to is a follow-up, not a blocker — #105', async () => {
+      const { result } = await run({
+        probe: withFail('b'),
+        skeptic: { refuted: false, harmless: true, why: 'a second tooltip stays up; every button still works' },
+      });
+      assert.equal(result.verdict, 'pass');
+      assert.equal(result.followUps.length, 1);
+      assert.match(result.comment, /a second tooltip stays up/);
     });
 
     test('a follow-up the last review already filed is not filed again', async () => {
