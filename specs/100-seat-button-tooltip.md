@@ -25,7 +25,10 @@ Escape, never intercepts a tap, and stays inside the viewport. The native
   and the full card at line 141) are `overflow-hidden`, so an absolutely
   positioned tooltip would be clipped. Classes: `glass`, `border-hairline`,
   `rounded-lg`, `text-[11px]`, `animate-rise`, `pointer-events-none`, `z-50`,
-  plus `data-testid="seat-tip"`, `role="tooltip"` and `aria-hidden="true"`.
+  plus `data-testid="seat-tip"`, `role="tooltip"` and an `id` from `useId()`. While
+  the tooltip is open the button carries `aria-describedby` pointing at that id
+  (and no `aria-describedby` when closed, so nothing dangles); the tooltip is
+  not `aria-hidden`.
   Replace `disabled` with `aria-disabled` for the ended state (a native
   `disabled` button fires no `mouseenter` in Chromium, so "Session ended" could
   never appear); the `if (!closed) onClick()` guard already makes the click a
@@ -57,15 +60,20 @@ Escape, never intercepts a tap, and stays inside the viewport. The native
 | Hover names the action, and the name follows the state | desktop test: hover a bookable card's seat button → `seat-tip` reads "Add to my agenda"; click, await the toast, hover again → "Remove from my agenda" | browser (desktop) |
 | A full session reads "Join the waitlist", a finished one "Session ended" | same test: hover the seat button of a card whose session `isFull`, then (clock pinned after it ended) one on Day 1's attended morning — no click, so nothing is booked | browser (desktop) |
 | Keyboard focus opens it; blur and Escape close it | same test: `button.focus()` → `seat-tip` visible; `Escape` → hidden; focus again then `blur()` → hidden | browser (desktop) |
-| It is announced once, and animates with the app's motion | same test: button keeps `aria-label="Add to my agenda"`, the tip carries `aria-hidden="true"` and the `animate-rise` class | browser (desktop) |
+| It is announced once, and animates with the app's motion | same test: button keeps `aria-label="Add to my agenda"`, while the tip is open the button's `aria-describedby` equals the tip's `id`, the tip is not `aria-hidden`, and it has the `animate-rise` class; after close the attribute is gone | browser (desktop) |
 | It stays inside the viewport | same test: hover the seat button of the last card in the list, assert the tip's bounding box has `x >= 0` and `x + width <= viewport.width` | browser (desktop) |
 | A tap still toggles the seat first time, and the tip never blocks it | mobile test: one `tap()` on the seat button → "Seat reserved" toast and `aria-pressed="true"`; the tip, if present, carries `pointer-events-none` | browser (mobile) |
 
 ## Decisions
 
-- The tooltip is `aria-hidden` and the button keeps its `aria-label` as the only
-  accessible name, rather than wiring `aria-describedby` to text that repeats
-  that name — OK?
+- The tooltip is linked with `aria-describedby` (set only while it is open), as
+  the ticket requires, and is not `aria-hidden`. The button keeps its
+  `aria-label` as its name. Because the description repeats the name, the
+  tooltip text exists in the DOM only while open and the native `title` is
+  removed, so the text is exposed once as name and once as a description at
+  most, never via a third `title` channel; screen readers commonly drop a
+  description identical to the name. Accepted as meeting "announce once" —
+  OK?
 - An ended seat button becomes `aria-disabled` instead of `disabled`, so it can
   still answer a hover with "Session ended" — OK?
 - Reduced motion is left to the global `prefers-reduced-motion` block in
