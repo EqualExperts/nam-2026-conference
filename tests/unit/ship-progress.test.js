@@ -249,6 +249,21 @@ describe('prLine', () => {
 });
 
 describe('follow()', () => {
+  test('a review or QA line counts its minutes from when the follower started — #111 read "0m" for its whole run', async () => {
+    const bodies = [];
+    let t = NOW;
+    await follow({
+      env: { SHIP_PROGRESS_PR: '111', SHIP_PROGRESS_KIND: 'review', SHIP_PROGRESS_COMMENT_ID: '9', SHIP_PROGRESS_RUN: 'https://github.com/x/y/actions/runs/1', GH_REPO: 'x/y' },
+      gh: { patch: async (id, body) => bodies.push(body), create: async () => '9', findByMarker: async () => '9' },
+      readChunk: (() => { let i = 0; return async () => (++i < 3 ? [] : [notification('completed', '/out.json')]); })(),
+      readOutputFile: () => ({ result: { verdictLine: 'PASS high' } }),
+      sleep: async () => { t += 5 * 60000; },
+      now: () => t,
+      interval: 1,
+    });
+    assert.ok(bodies.some(b => /Reviewing… · 5m/.test(b)), bodies.join(' | '));
+  });
+
   const chunkedEnv = (extra = {}) => ({ SHIP_PROGRESS_ISSUE: '53', SHIP_PROGRESS_RUN: 'https://github.com/x/y/actions/runs/999', GH_REPO: 'x/y', ...extra });
   const chunks = (calls) => {
     let i = 0;
@@ -488,9 +503,9 @@ describe('the workflows actually call it, with an environment', () => {
       const s = steps(yaml);
       const fin = s.find((x) => x.includes('ship-progress.mjs finish'));
       assert.ok(fin, `${name} has no step calling ship-progress.mjs finish`);
-      // always() — only QA's "too small to need it" skip, which starts no run
-      // and so has no progress comment to settle, may narrow it.
-      assert.match(fin, /if:\s*\$\{\{\s*always\(\)(\s*&&\s*steps\.facts\.outputs\.trivial != 'true')?\s*\}\}/);
+      // always() — only QA's skip (too small, or no app change), which starts
+      // no run and so has no progress comment to settle, may narrow it.
+      assert.match(fin, /if:\s*\$\{\{\s*always\(\)(\s*&&\s*steps\.facts\.outputs\.skip != 'true')?\s*\}\}/);
       assert.match(fin, /continue-on-error:\s*true/);
       for (const n of envNames) assert.match(fin, new RegExp(n), `${name}'s finish step should name ${n}`);
     });

@@ -99,9 +99,15 @@ from an agent's word:
 | **small** (≤300 lines) | one reviewer, Sonnet | ≤3 probes, Sonnet |
 | **large** | a reviewer per kind of file, Opus | 5 probes, Opus |
 
-Before QA explores, an agent **triages**: are the tests this pull request adds
-enough for what the ticket asks, are there a few specific gaps worth a probe
-each, or is the change complex enough for open exploration? *Enough* skips QA,
+**QA explores the app, so a pull request that changes none of it — the
+harness, tests, docs — skips QA in seconds**, before Claude or a browser starts.
+Code review owns those changes: a harness change gets its GitHub Actions and
+orchestration reviewers at every size, even when the rest is one quick read.
+
+When the app did change, an agent **triages** before QA explores: are the
+tests this pull request adds enough for what the ticket asks, are there a few
+specific gaps worth a probe each, or is the change complex enough for open
+exploration? *Enough* skips QA,
 but only when every Done-when criterion is pinned by a test in the diff —
 checked against the diff, not taken on trust — and never on a large change.
 

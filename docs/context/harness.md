@@ -155,7 +155,12 @@ lenses by kind, the session model) from the team's dial — `--depth`, from the
 with `scripts/qa-facts.mjs`: `--lines`, `--docs-only`, `--shipped` (branch
 `issue-<n>-*`). `thorough` → full; docs-only → light; the harness (`actions`,
 `orchestration`) or `server/lib/` → full at every depth; `fast` → light;
-`balanced` → light if ship built it or it is ≤ 150 lines, else full. QA skips a
+`balanced` → light if ship built it or it is ≤ 150 lines, else full. A light
+review of a harness change still adds the `actions` / `orchestration` lens
+beside `combined`. The QA *job* starts no agent at all when `qa-facts.mjs` says
+`--trivial=yes` or `--app-change=no` (nothing under `src/`, `server/`,
+`public/`, the page shell, the build or the dependencies) — harness, tests and
+docs are code review's; `thorough` explores anyway. `qa.js` itself skips a
 docs-only change (unless `thorough` or bugs need rechecking) and `thorough`
 turns its triage off. No facts — a local run — means full, as before.
 
@@ -170,8 +175,8 @@ survived:
   that amend the ticket) → lenses in parallel, chosen by `kindsOf(files)`:
   app code gets `criteria, rules, logic, tests`; `.github/workflows/` adds
   `actions`; CLAUDE.md, `docs/`, skills and specs add `docs` (docs-truth);
-  `.claude/workflows/` and the harness scripts add `orchestration, logic,
-  tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
+  `.claude/workflows/`, `.claude/agents/`, `.claude/settings.json` and every
+  `scripts/` file add `orchestration, logic, tests`. Each is retried once if it dies → a `skeptic` per blocker, who alone
   sees the amendments → *Publish*. Confidence is the weakest lens's; a lens
   that never finished makes it `low`. At most three findings, criteria first.
   *Context* also returns the PR's `head` and, on a re-review, `previous` —

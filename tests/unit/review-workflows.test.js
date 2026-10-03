@@ -857,6 +857,21 @@ describe('review depth follows risk', () => {
     assert.ok((await lensesAndModel(['src/components/A.jsx'], '42 --size=large')).lenses.length >= 3);
   });
 
+  test('a small harness change still gets its harness lenses beside the combined reader', async () => {
+    const { lenses } = await lensesAndModel(['scripts/qa-facts.mjs', 'tests/unit/qa-facts.test.js'], '42 --size=small');
+    assert.deepEqual(lenses.sort(), ['review:combined', 'review:orchestration']);
+    const actions = await lensesAndModel(['.github/workflows/agent-qa.yml'], '42 --size=small');
+    assert.deepEqual(actions.lenses.sort(), ['review:actions', 'review:combined']);
+  });
+
+  test('every harness script and agent definition is reviewed as the harness, not as app code', async () => {
+    for (const f of ['scripts/ship-progress.mjs', 'scripts/agent-run.sh', '.claude/agents/ship-rote.md', '.claude/settings.json']) {
+      const { lenses } = await lensesAndModel([f], '42 --size=large');
+      assert.ok(lenses.includes('review:orchestration'), f);
+      assert.ok(!lenses.includes('review:rules'), `${f} judged by the app's rules`);
+    }
+  });
+
   test('with no facts from the job it reviews in full, as before', async () => {
     const { lenses } = await lensesAndModel(['src/components/A.jsx'], '42');
     assert.ok(lenses.length >= 3);

@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appLines, uiOnly, totalLines, docsOnly, codeLines, risky, sizeFor, trivial, BINARY_LINES } from '../../scripts/qa-facts.mjs';
+import { appLines, uiOnly, totalLines, docsOnly, codeLines, risky, sizeFor, trivial, appChange, BINARY_LINES } from '../../scripts/qa-facts.mjs';
 
 /** The facts QA's triage is not allowed to take from the planner. */
 
@@ -82,4 +82,15 @@ describe('too small for QA to start', () => {
     assert.equal(trivial({ size: 'small', appLines: 2, risky: false, depth: 'balanced' }), false);
     assert.equal(trivial({ size: 'tiny', appLines: 2, risky: false, depth: 'thorough' }), false);
   });
+});
+
+test('an app change is anything an attendee runs: src, server, public, the page shell, the build, the dependencies', () => {
+  for (const f of ['src/a.jsx', 'server/lib/seats.js', 'public/avatars/1.jpg', 'index.html', 'package.json', 'vite.config.js']) {
+    assert.equal(appChange(`docs/x.md\n${f}`), true, f);
+  }
+});
+
+test('a harness, test or docs change is not an app change — QA has nothing to explore', () => {
+  assert.equal(appChange('.claude/workflows/ship.js\nscripts/qa-facts.mjs\ntests/unit/ship.test.js\ndocs/harness/README.md\n.github/workflows/agent-qa.yml'), false);
+  assert.equal(appChange(''), false);
 });

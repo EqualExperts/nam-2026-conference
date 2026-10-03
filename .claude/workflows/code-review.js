@@ -195,8 +195,11 @@ function kindsOf(files) {
   const kinds = new Set()
   for (const f of files) {
     if (f.startsWith('.github/workflows/')) kinds.add('actions')
-    else if (f.startsWith('.claude/workflows/') || /^scripts\/(gate|context|lane|pr-media)\.mjs$/.test(f)) kinds.add('orchestration')
-    else if (f === 'CLAUDE.md' || f === 'README.md' || f.startsWith('docs/') || f.startsWith('.claude/skills/') || f.startsWith('specs/')) kinds.add('context')
+    // The whole harness, not four named scripts: qa-facts, ship-progress,
+    // ai-cost, agent-run.sh and the agent definitions were read as app code,
+    // judged by the app's rules, and never asked whether a dead agent passes.
+    else if (/^(\.claude\/(workflows|agents)\/|scripts\/)/.test(f) || f === '.claude/settings.json') kinds.add('orchestration')
+    else if (f === 'CLAUDE.md' || f === 'README.md' || f.startsWith('docs/') || /^\.claude\/(skills|rules)\//.test(f) || f.startsWith('specs/')) kinds.add('context')
     else if (f.startsWith('tests/') || f === 'playwright.config.js') kinds.add('tests')
     else if (f !== 'package-lock.json') kinds.add('app')
   }
@@ -266,7 +269,9 @@ const LENSES = [
       `agent dies and parallel() turns a failed thunk into null: does every new path fail closed, or can a ` +
       `dead agent read as a pass? Is every loop bounded and every escalation reachable? Do agents that run at ` +
       `once share a worktree, a port or a file? Does a prompt contradict the playbook section it cites? Is a ` +
-      `schema field read that is not required? Do tests/unit's stub tests exercise the new branches?`,
+      `schema field read that is not required — and what does the script do when it is missing? Does the change ` +
+    `move work to a costlier model or add agents or rounds, and is that intended? Do tests/unit's stub tests ` +
+    `exercise the new branches?`,
   },
 ]
 
@@ -296,7 +301,14 @@ const COMBINED = {
 const kinds = kindsOf(ctx.files)
 const TIER = tierFor({ depth: DEPTH, ...FACTS }, kinds, ctx.files)
 const MODEL = TIER === 'light' ? 'sonnet' : undefined
-const ACTIVE = TIER === 'light' ? [COMBINED] : LENSES.filter(l => l.when(kinds))
+// A light review is one combined reader, but its questions are the app's. A
+// small harness change still gets the harness lenses, on Sonnet beside it:
+// QA no longer explores a pull request with no app change, so this is the
+// only independent reader the harness gets.
+const HARNESS = ['actions', 'orchestration']
+const ACTIVE = TIER === 'light'
+  ? [COMBINED, ...LENSES.filter(l => HARNESS.includes(l.key) && l.when(kinds))]
+  : LENSES.filter(l => l.when(kinds))
 log(`depth ${DEPTH} · size ${FACTS.size || 'unknown'} · tier ${TIER} · kinds: ${[...kinds].join(', ') || 'none'} → lenses: ${ACTIVE.map(l => l.key).join(', ')}`)
 
 phase('Review')
