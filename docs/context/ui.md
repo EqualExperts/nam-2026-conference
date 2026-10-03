@@ -155,6 +155,9 @@ scheduled here".
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
 - `format.time` expects `HH:MM`, not an ISO timestamp.
+- **Behaviour added to a primitive reaches only its callers.** Before saying a ticket's "everywhere" is
+  covered, `grep -n "<button" src/` for hand-rolled copies of it (the grid once kept raw seat buttons)
+  and assert the behaviour in each view the ticket names, not just the one the test opens first.
 
 ## Where to change…
 

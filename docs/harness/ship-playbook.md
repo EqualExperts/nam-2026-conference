@@ -81,6 +81,10 @@ helpers the test will use, so the builder searches for nothing), *How it will be
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
+Every requirement the ticket states is built as written or listed under *Decisions* as a
+departure for a person to accept; a spec never drops one on its own authority (an
+`aria-describedby` the ticket asked for does not become `aria-hidden` because it is simpler).
+
 A question the ticket asks outright — *decide whether…*, *say which in the
 spec* — is answered by name in one of those two, whichever way it goes. It is
 the one gap an auditor is certain to find, because the ticket wrote it down;
