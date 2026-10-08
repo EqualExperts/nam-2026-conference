@@ -42,7 +42,7 @@ describe('deploy workflow', () => {
 
   test('a failed Railway deployment fails the run', () => {
     const d = deploy();
-    assert.match(d, /railway up --ci/);
+    assert.match(d, /@railway\/cli up --ci/);
     assert.doesNotMatch(d, /continue-on-error/);
     assert.doesNotMatch(d, /\|\|\s*true/);
   });
