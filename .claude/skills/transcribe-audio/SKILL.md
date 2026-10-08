@@ -1,19 +1,19 @@
 ---
 name: transcribe-audio
 description: >-
-  Transcribe audio to text entirely on the local machine using a
-  Whisper-family model — no hosted transcription service, no account. File
-  mode turns a complete audio file (voice note, recording) into a transcript
-  in one shot; streaming mode turns a live PCM audio feed into finalized
-  transcript segments as they become stable. Use when given an audio file or
-  voice note to transcribe or process, or when another skill needs text from
-  audio — process-requirements delegates audio input here, and
-  listen-to-meeting builds on the streaming mode.
+  Transcribe audio to text entirely on the local machine using a Whisper-family
+  model — no hosted transcription service, no account. File mode turns a
+  complete audio file (voice note, recording) into a transcript in one shot;
+  streaming mode turns a live PCM audio feed into finalized transcript segments
+  as they become stable. Use when given an audio file or voice note to
+  transcribe or process, or when another skill needs text from audio — winnow
+  delegates audio input here, and listen-to-meeting builds on the streaming
+  mode.
 ---
 
 # Transcribe audio
 
-Convert audio to text locally. This skill is a generic building block: it has no opinion about what the transcript is *for*. Other winnow skills delegate to it (process-requirements for audio input, listen-to-meeting for live capture), and it works just as well standalone.
+Convert audio to text locally. This skill is a generic building block: it has no opinion about what the transcript is *for*. Other skills in the package delegate to it (winnow for audio input, listen-to-meeting for live capture), and it works just as well standalone.
 
 Everything runs on this machine. The only network access ever made is the one-time download of the model weights into the local Hugging Face cache; after that, transcription works offline. Never substitute a hosted transcription API, even if one is available in your environment.
 
@@ -21,7 +21,7 @@ Everything runs on this machine. The only network access ever made is the one-ti
 
 The work is done by `scripts/transcribe.py` (in this skill's directory), a self-contained script whose dependencies — [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and numpy — are declared inline (PEP 723). Run it with `uv run`; uv resolves and caches the environment automatically, leaving no footprint in the host project.
 
-**Prerequisite: uv.** If `uv` is not on the PATH — or anything else below reports missing — invoke the **setup-audio** skill, which owns installation and setup guidance for winnow's whole audio stack; don't improvise a pip/venv workaround.
+**Prerequisite: uv.** If `uv` is not on the PATH — or anything else below reports missing — invoke the **winnow-setup-audio** skill, which owns installation and setup guidance for winnow's whole audio stack; don't improvise a pip/venv workaround.
 
 Check readiness (verifies imports and reports whether the model is cached):
 
@@ -29,7 +29,7 @@ Check readiness (verifies imports and reports whether the model is cached):
 uv run <this-skill-dir>/scripts/transcribe.py check
 ```
 
-If the model is not yet cached, the first transcription will download it (a few hundred MB). When that delay matters — or the machine will be offline later — prefetch it: `uv run .../transcribe.py prefetch` (setup-audio offers this as part of first-time preparation).
+If the model is not yet cached, the first transcription will download it (a few hundred MB). When that delay matters — or the machine will be offline later — prefetch it: `uv run .../transcribe.py prefetch` (winnow-setup-audio offers this as part of first-time preparation).
 
 ## File mode
 
