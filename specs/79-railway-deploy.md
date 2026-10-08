@@ -9,7 +9,7 @@ Run as one process (`npm start`), the server now serves the built `dist/` next t
 - `.nvmrc` — `22` (matches `node-version: 22` in the workflows).
 - `tests/api/harness.js` — `startApi({ distDir } = {})` sets or deletes `ORBIT_DIST_DIR` before the dynamic import; returns `origin` too. Test in `tests/api/static.test.js` (a draft exists untracked in the earlier worktree) using `startApi` with a fixture `dist/` in a temp dir.
 - `docs/context/architecture.md` — one note on production serving; `docs/context/testing.md` — `startApi` option.
-- Railway (not in the repo, done by a person): start command `npm start`, healthcheck `/api/conference`, `ORBIT_PUBLIC_URL`.
+- Railway (not in the repo, done by a person): start command `npm start`, healthcheck `/api/health`, `ORBIT_PUBLIC_URL`.
 
 ## How it will be proved
 | Done when | Check | Layer |
@@ -17,7 +17,7 @@ Run as one process (`npm start`), the server now serves the built `dist/` next t
 | Opening the deployed URL renders the home page | `GET /` returns the fixture `index.html` | API (`static.test.js`) |
 | Deep link `/speakers/12` renders | `GET /speakers/12` returns the shell, 200 | API |
 | `/avatars/` portraits load | `GET /avatars/fixture.jpg` returns the file bytes | API |
-| `/api/conference` is JSON; unknown `/api/...` is a JSON 404 | `GET /api/nope` is 404 `application/json`, not the shell; a missing `/avatars/x.png` is 404 | API |
+| `/api/health` is JSON; unknown `/api/...` is a JSON 404 | `GET /api/nope` is 404 `application/json`, not the shell; a missing `/avatars/x.png` is 404 | API |
 | `npm run dev`, `npm test`, `npm run verify` unchanged | existing suites pass; no `dist/` means no static mount | existing suites |
 | Reserving a seat, `.ics` host, SUCCESS deployment and runtime log | checked on the live URL after the Railway settings change | manual, outside CI |
 
