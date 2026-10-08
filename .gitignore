@@ -26,3 +26,7 @@ apm_modules/
 
 # Agent worktrees (Claude Code isolation) — local only
 .claude/worktrees/
+
+# Python bytecode from the winnow skills' scripts
+__pycache__/
+*.pyc
