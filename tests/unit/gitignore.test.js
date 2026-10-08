@@ -15,8 +15,8 @@ test('bytecode from the audio skills is ignored, and the rule is named', () => {
     const r = check(p);
     assert.equal(r.status, 0, `${p} should be ignored`);
     assert.match(r.stdout, /\.gitignore:\d+:/);
+    assert.match(r.stdout, /__pycache__\/|\*\.pyc/);
   }
-  assert.match(check('.claude/skills/transcribe-audio/scripts/__pycache__').stdout, /__pycache__\//);
 });
 
 test('bytecode is ignored at any depth, under any skill name', () => {
