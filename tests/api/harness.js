@@ -21,8 +21,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
  * Boot the app on an ephemeral port against this file's own database.
  * `ORBIT_DB` must be set before anything imports `server/db.js`, which is why
  * the import is dynamic and why nothing up top reaches into `server/`.
+ * `distDir` points `ORBIT_DIST_DIR` at a fixture build; without it no `dist/`
+ * is mounted, as under `npm run dev`.
  */
-export async function startApi() {
+export async function startApi({ distDir } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'orbit-api-'));
   const path = join(dir, 'orbit.db');
   // Seeding is deterministic and takes about a quarter of a second, and
@@ -32,6 +34,8 @@ export async function startApi() {
     stdio: 'ignore',
   });
   process.env.ORBIT_DB = path;
+  if (distDir) process.env.ORBIT_DIST_DIR = distDir;
+  else delete process.env.ORBIT_DIST_DIR;
 
   const { app } = await import('../../server/index.js');
   const server = app.listen(0, '127.0.0.1');

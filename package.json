@@ -6,6 +6,7 @@
   "description": "ORBIT '26 \u2014 the conference companion app",
   "scripts": {
     "dev": "npm run db:seed && concurrently -n api,web -c magenta,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "start": "npm run db:seed && node server/index.js",
     "dev:api": "node --watch server/index.js",
     "dev:web": "vite",
     "db:seed": "node server/seed.js",
