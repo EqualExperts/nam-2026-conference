@@ -32,6 +32,7 @@ tests:
   - tests/unit/ship.test.js
   - tests/unit/review-workflows.test.js
   - tests/unit/deploy-workflow.test.js
+  - tests/unit/tracker-context.test.js
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
   - tests/unit/red-check.test.js
