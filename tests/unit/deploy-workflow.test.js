@@ -47,12 +47,33 @@ describe('deploy workflow', () => {
     assert.doesNotMatch(d, /\|\|\s*true/);
   });
 
+  // `up --ci` exits when the build ends, so a deployment that builds and then
+  // fails its healthcheck would be a green run without this step.
+  test('the run waits for the deployment to be live, not just built', () => {
+    const d = deploy();
+    const wait = d.slice(d.indexOf('Wait for the deployment to go live'));
+    assert.ok(wait.includes('deployment list'), 'reads the deployment status');
+    assert.match(wait, /SUCCESS\).*exit 0/);
+    assert.match(wait, /FAILED\|CRASHED\|REMOVED\|SKIPPED\).*exit 1/);
+    assert.match(wait, /did not go live[^\n]*\n\s*exit 1/, 'gives up red, not green');
+    assert.ok(d.indexOf('before.json') < d.indexOf('up --ci'), 'records existing deployments before uploading');
+  });
+
+  test('uses the same action versions as verify.yml', () => {
+    const versions = (t) => Object.fromEntries([...t.matchAll(/uses: (actions\/[\w-]+)@(\S+)/g)].map(m => [m[1], m[2]]));
+    const verify = versions(read('.github/workflows/verify.yml'));
+    for (const [action, v] of Object.entries(versions(deploy()))) {
+      assert.equal(v, verify[action], `${action} matches verify.yml`);
+    }
+  });
+
   test('without RAILWAY_TOKEN it skips with a notice and does not fail', () => {
     const d = deploy();
+    const check = d.slice(d.indexOf('Check for a Railway token'), d.indexOf('actions/setup-node'));
     assert.match(d, /::notice::RAILWAY_TOKEN is not set, skipping the deploy/);
     assert.match(d, /has_token/);
     assert.match(d, /if: steps\.check\.outputs\.has_token == 'true'/);
-    assert.doesNotMatch(d, /exit 1/);
+    assert.doesNotMatch(check, /exit 1/);
   });
 
   test('the secret is documented', () => {

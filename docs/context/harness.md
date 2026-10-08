@@ -455,4 +455,7 @@ anything that judges needs CLAUDE.md's rules.
 **Deploy.** `deploy.yml` is a `workflow_run` on `✅ verify` (main, push events,
 conclusion `success`): it checks out the verified `head_sha` and runs
 `railway up --ci` with the `RAILWAY_TOKEN` secret, skipping with a notice when
-it is unset. The secret and variable are in `docs/harness/github.md`.
+it is unset. `--ci` returns when the *build* ends, so a second step polls
+`railway deployment list` for the deployment the upload created (found by
+diffing ids recorded before it) until `SUCCESS`, and fails on a bad status or
+after 15 minutes. The secret and variable are in `docs/harness/github.md`.

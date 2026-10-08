@@ -58,10 +58,13 @@ defensible choice: it is a human checkpoint before any agent work runs.
 `.github/workflows/deploy.yml` deploys `main` to Railway. It runs when the
 `verify` workflow finishes for a push to `main`, and only when that run
 succeeded: a red `verify` never deploys. It checks out the exact commit
-`verify` ran on and runs `railway up --ci`, which streams the build and exits
-non-zero if the Railway deployment fails, so a failed deployment is a red run.
-Deploys queue in order rather than cancelling each other. When the deploy is
-done, `https://orbit26.up.railway.app/api/health` serves the new commit.
+`verify` ran on and runs `railway up --ci`. That streams only the build, so the
+workflow then waits (up to 15 minutes) for the deployment it created to reach
+`SUCCESS`, which for this service means its healthcheck passed, and fails on
+`FAILED`, `CRASHED`, `REMOVED` or `SKIPPED`. A deployment that builds but does
+not boot is therefore a red run. Deploys queue in order rather than cancelling
+each other. When the run is green, `https://orbit26.up.railway.app/api/health`
+serves the new commit.
 
 | Name | Kind | Who creates it | What it is |
 | --- | --- | --- | --- |
