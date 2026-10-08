@@ -95,6 +95,10 @@ exists. To learn what the seed holds, read `docs/context/seed.md` or ask the API
 absence, or a side effect the change happens to keep) proves nothing, and it
 reads as proof right through the audit.
 
+A proof that searches the repo for an absence (a grep for a removed name) runs
+over `specs/` too, and the spec you are writing is in it: it names what it
+removes. Exclude `specs/` in the command, and say so in the row.
+
 ```bash
 git add specs/<n>-<short-slug>.md
 git commit -m "docs(spec): <the ticket's title, lower case>"
