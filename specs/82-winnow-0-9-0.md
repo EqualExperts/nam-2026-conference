@@ -19,7 +19,7 @@ skills that now exist.
 | --- | --- | --- |
 | apm.yml pins v0.9.0; lockfile records 0.9.0 / v0.9.0 | `grep` apm.yml for `#v0.9.0`, apm.lock.yaml for `version: 0.9.0` and `resolved_ref: v0.9.0` (both say 0.8.0 on main) | shell check |
 | `.claude/skills/` equals the lockfile's deployed set; removed skills gone from disk and git | compare `ls .claude/skills` and `git ls-files .claude/skills` against `deployed_files`; `test ! -e` both removed dirs | shell check |
-| No `process-requirements` / `setup-audio` outside the lockfile | `grep -rn "process-requirements\|setup-audio" . --exclude-dir=node_modules --exclude-dir=.git --exclude=apm.lock.yaml` is empty (README and skill files match on main) | shell check |
+| No `process-requirements` / `setup-audio` outside the lockfile | `grep -rnE "process-requirements|(^|[^-])setup-audio" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=specs --exclude=apm.lock.yaml` is empty (README and skill files match on main). `specs/` is exempt because specs are kept and this one names the removed skills; the pattern skips `winnow-setup-audio`, the 0.9.0 successor, which contains the old name as a suffix | shell check |
 | README names the current skills | every skill named in README's winnow table exists in `.claude/skills/`, and every deployed skill appears | shell check |
 | Nothing regressed | `npm test` | unit + API |
 

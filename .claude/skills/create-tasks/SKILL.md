@@ -5,40 +5,33 @@ description: >-
   proposal: goal-first, deduplicated, conflict-checked, one goal per ticket,
   independent where possible. Discovers the tracker and its tooling from the
   project's documentation and refuses to guess when they are missing or
-  ambiguous. Use after process-requirements has produced approved candidate
-  tasks, or when asked to raise tickets, issues or tasks from agreed
-  requirements.
+  ambiguous. Use after winnow has produced approved candidate tasks, or when
+  asked to raise tickets, issues or tasks from agreed requirements.
 ---
 
 # Create tasks
 
-You are part of a three-skill pipeline: **process-requirements** distils input into a proposal; then this skill turns the proposal's tasks into tickets in the project's task tracker, while **update-context** handles the proposal's knowledge. The two application skills are peers — they run independently, in any order. This skill never edits the AI context documentation.
+You are part of a three-skill pipeline: **winnow** distils input into a proposal; then this skill turns the proposal's tasks into tickets in the project's task tracker, while **update-context** handles the proposal's knowledge. The two application skills are peers — they run independently, in any order. This skill never edits the AI context documentation.
 
 ## Step 1 — Load the work
 
-Operate from a proposal file written by process-requirements. Proposals live outside the repo: in the coding agent's scratchpad/staging area when the harness provides one, otherwise in `/tmp/winnow/<repo-folder-name>-<hash>/proposals/`, where `<hash>` is the first 8 hex characters of the SHA-256 of the repo root's absolute path (`printf '%s' "<abs repo root>" | shasum -a 256 | cut -c1-8`). If the user points you at one, use it; otherwise use the most recent proposal with uncreated tasks, confirming your pick with the user.
+Operate from a proposal file written by winnow. Proposals live outside the repo: in the coding agent's scratchpad/staging area when the harness provides one, otherwise in `/tmp/winnow/<repo-folder-name>-<hash>/proposals/`, where `<hash>` is the first 8 hex characters of the SHA-256 of the repo root's absolute path (`printf '%s' "<abs repo root>" | shasum -a 256 | cut -c1-8`). If the user points you at one, use it; otherwise use the most recent proposal with uncreated tasks, confirming your pick with the user.
 
 If the user instead describes tasks directly in conversation, just work from the conversation — the user's request is the approval. Don't create a proposal file only to delete it.
 
 Everything in the proposal has already been agreed with the user — act on all of it. There are no statuses to check: if something wasn't approved, it isn't in the file.
 
-## Step 2 — Discover the tracker
+## Step 2 — Get the tracker and a way in
 
-Read the project's AI context to learn **which task tracker this project uses** and any project-specific instructions for writing tickets (templates, labels, components, naming, workflow states, cheatsheets for the tracker's tooling). Project instructions always override the defaults in this skill.
+Read the project's AI context for any project-specific instructions on writing tickets: templates, labels, components, naming, workflow states, cheatsheets for the tracker's tooling. Project instructions always override the defaults in this skill.
 
-Rules of discovery:
+The same read should tell you **which tracker this project uses and how to reach it**. That answer is recorded in the context precisely so it is settled once and read thereafter: take it and get on with the work. You do not need a separate connectivity probe either — searching the tracker for existing similar tickets, in Step 3, is a read-only interaction that comes before anything is created, so a broken credential surfaces there, in time to stop.
 
-- If the documentation clearly names one tracker, use it.
-- If **more than one tracker** is available or mentioned (e.g. the project has both GitHub Issues and JIRA in reach) **and the documentation isn't explicit about which one should be used**, **ask the user which one — never assume**.
-- If no tracker is documented at all, ask the user, and suggest recording the answer in the AI context (via update-context) so the question never comes up again.
+Invoke **winnow-setup-tracker** only when the context cannot answer: it names no tracker, or names more than one without saying which is this project's, or the tooling turns out to be unusable when you first reach for it. What you need back is the tracker and a verified way to talk to it — CLI, MCP server or API credentials, already probed non-destructively. It asks the user where the documentation can't answer, and records the outcome so the next run reads it instead of asking again.
 
-## Step 3 — Verify the tooling
+If anything is missing — the CLI isn't installed, the MCP server isn't configured, a credential is absent, permissions are insufficient — **stop**, and relay exactly what is needed. Do not create a partial batch of tickets and fail halfway through discovering this.
 
-Before creating anything, confirm you can actually talk to the tracker. Work out the interaction method from the project docs and your available tools — a CLI (`gh`, `jira`, ...), an MCP server, or an API with credentials — and probe it **non-destructively**: check auth status, or list/read a single existing item.
-
-If anything is missing — the CLI isn't installed, the MCP server isn't configured, an API key or authentication is absent, permissions are insufficient — **stop and tell the user exactly what is needed** (tool, configuration, credential, and where it goes). Do not create a partial batch of tickets and fail halfway through discovering this.
-
-## Step 4 — Prepare the tickets
+## Step 3 — Prepare the tickets
 
 Apply these defaults to every candidate task; the project's own task-creation instructions win wherever they differ.
 
@@ -80,7 +73,7 @@ Unless the project defines its own template:
 
 Create tickets in dependency order (prerequisites first) so relations can be linked as you go.
 
-## Step 5 — Wrap up
+## Step 4 — Wrap up
 
 - Remove the tasks you have created from the proposal (along with any item the user withdrew during the run). If nothing remains in the file, delete it: it is intermediate working state, not a record. If its context updates are still to be applied, leave it for update-context.
 - Report the created tickets with their links, any skips with reasons, and any dependency relations you set.

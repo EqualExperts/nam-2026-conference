@@ -1,13 +1,13 @@
 lockfile_version: '1'
-apm_version: 0.30.0
+apm_version: 0.33.0
 dependencies:
 - repo_url: quiram/winnow
-  name: 43a04113a93ae0c0905b449e20ba5a7f0e4547178dd19f98abc4667c1e6a68ef
+  name: winnow
   host: github.com
-  resolved_commit: cb4d8dadd14b2ff97820f6971b5b57f15c7fd4e4
-  resolved_ref: v0.8.0
-  version: 0.8.0
-  package_type: skill_bundle
+  resolved_commit: 91ec34ebdfb387b2e537ebe70956f4744b2f5590
+  resolved_ref: v0.9.0
+  version: 0.9.0
+  package_type: marketplace_plugin
   deployed_files:
   - .claude/skills/create-tasks
   - .claude/skills/create-tasks/SKILL.md
@@ -17,28 +17,37 @@ dependencies:
   - .claude/skills/listen-to-meeting/scripts/macos/SystemAudioCapture.swift
   - .claude/skills/listen-to-meeting/scripts/session.py
   - .claude/skills/listen-to-meeting/scripts/wait.py
-  - .claude/skills/process-requirements
-  - .claude/skills/process-requirements/SKILL.md
-  - .claude/skills/setup-audio
-  - .claude/skills/setup-audio/SKILL.md
+  - .claude/skills/setup-winnow
+  - .claude/skills/setup-winnow/SKILL.md
   - .claude/skills/transcribe-audio
   - .claude/skills/transcribe-audio/SKILL.md
   - .claude/skills/transcribe-audio/scripts/transcribe.py
   - .claude/skills/update-context
   - .claude/skills/update-context/SKILL.md
+  - .claude/skills/winnow
+  - .claude/skills/winnow-setup-audio
+  - .claude/skills/winnow-setup-audio/SKILL.md
+  - .claude/skills/winnow-setup-context
+  - .claude/skills/winnow-setup-context/SKILL.md
+  - .claude/skills/winnow-setup-tracker
+  - .claude/skills/winnow-setup-tracker/SKILL.md
+  - .claude/skills/winnow/SKILL.md
   deployed_file_hashes:
-    .claude/skills/create-tasks/SKILL.md: sha256:d525a04ab6ce2b3bdafd528e91aec5dc203b2e1206c87027845a3e76ec52bdb2
-    .claude/skills/listen-to-meeting/SKILL.md: sha256:85ebc99a4fe0f78e331725e2ab81fc86859c490898fc71cfc797317c9b627ae3
+    .claude/skills/create-tasks/SKILL.md: sha256:e0a55b1f7f37fb8ea47d4f530b30196ded243f1df7fd6bd579b7901025e3f17b
+    .claude/skills/listen-to-meeting/SKILL.md: sha256:74805ae5df70958e453af615083290dee14f4048da748683e54a4839a8e38147
     .claude/skills/listen-to-meeting/scripts/listen.py: sha256:2748badf4ce731946d01d0433d3bad0641016ae17426640480cc12ea56558447
     .claude/skills/listen-to-meeting/scripts/macos/SystemAudioCapture.swift: sha256:2bb4bdc08cc32ea7d46fd17bfd8ce5b72fc5d89f64e8e2abb57ff9bcf3b8b1c3
     .claude/skills/listen-to-meeting/scripts/session.py: sha256:1199a5709e99a49de14a0386f4cd77cbb9c6aa5f6b7159b1ddbf45d41b2ccff2
     .claude/skills/listen-to-meeting/scripts/wait.py: sha256:b768f33cb38f5a14691ec709f9c3a14384c6cd07fe67d82916a94a06a4b0ac18
-    .claude/skills/process-requirements/SKILL.md: sha256:52c00b26879404a4291faf10ccfd3cc5ff0469048a486f8b59bc289af8e84f19
-    .claude/skills/setup-audio/SKILL.md: sha256:74413a6c8fd6ee449cb438186ea02c1cab8eb0c86c93152e37307155c105785f
-    .claude/skills/transcribe-audio/SKILL.md: sha256:d621729ed2834c21e1f48a8808d44ddfee47c2472e106f87407c982b4d7cc94a
+    .claude/skills/setup-winnow/SKILL.md: sha256:bc4db522934f32338729b77a3e4682221979e43c1a9524bf33de64bffccdc5df
+    .claude/skills/transcribe-audio/SKILL.md: sha256:ccdab5aa4f9d454c0e8041224cfda9dc6fb3ababc448bba4f103e710fa15221f
     .claude/skills/transcribe-audio/scripts/transcribe.py: sha256:458bec177d2f6ec6853ff84c6dd32c608bf63984c55fa5683a997acf792ff014
-    .claude/skills/update-context/SKILL.md: sha256:e9e7d4006533c38c20b627581cf87d4a204db527620f65c0e9a8cfd603a0ce6c
-  content_hash: sha256:344968646023b73f5a0c5b319f307e6a9305753d4eee3a57e4ace6757590a9de
+    .claude/skills/update-context/SKILL.md: sha256:84d33cb32a0176442fd4806eb6f80eb0a46dfd92740678a2804d9bc7f0ddd73f
+    .claude/skills/winnow-setup-audio/SKILL.md: sha256:1ef03286f9ef5c08d4dd03a464baeabe9379b099beb0863595101feb3f0d8715
+    .claude/skills/winnow-setup-context/SKILL.md: sha256:30b80109e4a83a2dd061b1a382625a1a9995580316f38e5a85ecdb66b5baf481
+    .claude/skills/winnow-setup-tracker/SKILL.md: sha256:aa1fbf2e63c8e88c2923b36ade0d76d8252025cc9d84e91ac81f702545d62496
+    .claude/skills/winnow/SKILL.md: sha256:3f6d3f11d71a19f9027565d8441b60478cfcd257b4dd94d2f441a92c2ba364f3
+  content_hash: sha256:72e38a5144487fa266fa1723502dbe6c82109166c9c2ac5286c3f87065c7c324
   declared_license: MIT
 deployments:
 - kind: project-relative
@@ -58,7 +67,7 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:d525a04ab6ce2b3bdafd528e91aec5dc203b2e1206c87027845a3e76ec52bdb2
+  content_hash: sha256:e0a55b1f7f37fb8ea47d4f530b30196ded243f1df7fd6bd579b7901025e3f17b
 - kind: project-relative
   target: claude
   value: .claude/skills/listen-to-meeting
@@ -76,7 +85,7 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:85ebc99a4fe0f78e331725e2ab81fc86859c490898fc71cfc797317c9b627ae3
+  content_hash: sha256:74805ae5df70958e453af615083290dee14f4048da748683e54a4839a8e38147
 - kind: project-relative
   target: claude
   value: .claude/skills/listen-to-meeting/scripts/listen.py
@@ -115,7 +124,7 @@ deployments:
   content_hash: sha256:b768f33cb38f5a14691ec709f9c3a14384c6cd07fe67d82916a94a06a4b0ac18
 - kind: project-relative
   target: claude
-  value: .claude/skills/process-requirements
+  value: .claude/skills/setup-winnow
   runtime: null
   scope: project
   owners:
@@ -124,31 +133,13 @@ deployments:
   content_hash: null
 - kind: project-relative
   target: claude
-  value: .claude/skills/process-requirements/SKILL.md
+  value: .claude/skills/setup-winnow/SKILL.md
   runtime: null
   scope: project
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:52c00b26879404a4291faf10ccfd3cc5ff0469048a486f8b59bc289af8e84f19
-- kind: project-relative
-  target: claude
-  value: .claude/skills/setup-audio
-  runtime: null
-  scope: project
-  owners:
-  - quiram/winnow
-  active_owner: quiram/winnow
-  content_hash: null
-- kind: project-relative
-  target: claude
-  value: .claude/skills/setup-audio/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - quiram/winnow
-  active_owner: quiram/winnow
-  content_hash: sha256:74413a6c8fd6ee449cb438186ea02c1cab8eb0c86c93152e37307155c105785f
+  content_hash: sha256:bc4db522934f32338729b77a3e4682221979e43c1a9524bf33de64bffccdc5df
 - kind: project-relative
   target: claude
   value: .claude/skills/transcribe-audio
@@ -166,7 +157,7 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:d621729ed2834c21e1f48a8808d44ddfee47c2472e106f87407c982b4d7cc94a
+  content_hash: sha256:ccdab5aa4f9d454c0e8041224cfda9dc6fb3ababc448bba4f103e710fa15221f
 - kind: project-relative
   target: claude
   value: .claude/skills/transcribe-audio/scripts/transcribe.py
@@ -193,4 +184,76 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:e9e7d4006533c38c20b627581cf87d4a204db527620f65c0e9a8cfd603a0ce6c
+  content_hash: sha256:84d33cb32a0176442fd4806eb6f80eb0a46dfd92740678a2804d9bc7f0ddd73f
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow-setup-audio
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow-setup-audio/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: sha256:1ef03286f9ef5c08d4dd03a464baeabe9379b099beb0863595101feb3f0d8715
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow-setup-context
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow-setup-context/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: sha256:30b80109e4a83a2dd061b1a382625a1a9995580316f38e5a85ecdb66b5baf481
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow-setup-tracker
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow-setup-tracker/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: sha256:aa1fbf2e63c8e88c2923b36ade0d76d8252025cc9d84e91ac81f702545d62496
+- kind: project-relative
+  target: claude
+  value: .claude/skills/winnow/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - quiram/winnow
+  active_owner: quiram/winnow
+  content_hash: sha256:3f6d3f11d71a19f9027565d8441b60478cfcd257b4dd94d2f441a92c2ba364f3
