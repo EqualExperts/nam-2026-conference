@@ -150,6 +150,16 @@ app on the web port — another worktree's — and your specs pass against the
 ## Where work is tracked
 
 **Tickets are GitHub Issues** — of the fork you are working in, never the upstream's.
+In this checkout that is `EqualExperts/nam-2026-conference`, the repository `origin`
+points at; `upstream` is the repo the fork came from and is never where work goes.
+
+Reach it with the authenticated `gh` CLI (`gh issue list`, `gh issue view 42`). A
+GitHub MCP server or the REST API with a token reach the same issues; none is
+preferred, so use whichever is available. To confirm access, probe read-only —
+list or read an existing issue — and never create a test ticket to find out.
+
+Labels and workflow conventions live in `docs/harness/github.md` and
+`docs/context/harness.md`; they are not repeated here.
 
 ## Data model
 
