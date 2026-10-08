@@ -9,7 +9,7 @@ author: Abraham Marin Perez
 
 dependencies:
   apm:
-    - quiram/winnow#v0.9.0
+    - quiram/winnow#v0.10.0
   mcp: []
 includes: auto
 scripts: {}
