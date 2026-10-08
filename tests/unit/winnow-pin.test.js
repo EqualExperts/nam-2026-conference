@@ -47,8 +47,8 @@ test('no reference to the old 0.9.0 pin outside specs/ and the lockfile', () => 
 
 test('every skill the README names is deployed', () => {
   const readme = read('README.md');
-  const table = readme.slice(readme.indexOf('From meeting to ticket'), readme.indexOf('set-up-your-fork'));
-  const names = [...table.matchAll(/`([a-z][a-z-]+)`/g)].map((m) => m[1]);
+  const table = readme.slice(readme.indexOf('From meeting to ticket'), readme.indexOf('<a id="set-up-your-fork">'));
+  const names = [...table.matchAll(/^\| [^|]*\| `([a-z][a-z-]+)` \|/gm)].map((m) => m[1]);
   assert.ok(names.length > 0);
   for (const n of names) assert.ok(existsSync(join(root, '.claude/skills', n)), `README names ${n}, which is not in .claude/skills`);
 });
