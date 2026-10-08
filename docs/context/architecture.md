@@ -47,6 +47,12 @@ reads `err.payload` on a 409 to get the clash. Server side, `index.js` ends with
 for any unmatched `/api/*` (`"No route for GET /api/…"`) and an error handler that answers
 `err.status ?? 500` with `{ error: err.message }` — so a malformed JSON body from
 `express.json()` is a 400, not a 500. `GET /api/health` returns `{ ok, sessions }`.
+**Production serving.** `npm start` (seed, then `node server/index.js`) is one process: when
+`DIST_DIR` exists (`ORBIT_DIST_DIR` or `<repo>/dist`, from `npm run build`) `index.js` mounts
+`express.static` after the `/api` 404, then a `GET *` fallback sending `index.html` for
+extension-less paths (client routes like `/speakers/12`); a missed path with an extension is a
+plain 404. No `dist/` (`npm run dev`) mounts nothing. Railway sets `PORT`; `ORBIT_PUBLIC_URL`
+sets the `.ics` host.
 `index.js` only calls `listen` when run directly; tests import `app` (see testing).
 
 **Database** (`server/db.js`). `DB_PATH` is `ORBIT_DB` or `data/orbit.db`; WAL and
