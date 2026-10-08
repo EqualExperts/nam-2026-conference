@@ -15,6 +15,7 @@ files:
   - .github/workflows/agent-qa.yml
   - .github/workflows/agent-respond.yml
   - .github/workflows/learn-escape.yml
+  - .github/workflows/deploy.yml
   - .github/workflows/setup.yml
   - scripts/pr-media.mjs
   - scripts/context.mjs
@@ -30,6 +31,7 @@ files:
 tests:
   - tests/unit/ship.test.js
   - tests/unit/review-workflows.test.js
+  - tests/unit/deploy-workflow.test.js
   - tests/unit/context.test.js
   - tests/unit/gate.test.js
   - tests/unit/red-check.test.js
@@ -449,3 +451,8 @@ never fails the job that did the work.
 `omitClaudeMd: true`, so they start ~26% lighter (13.6k against 18.4k tokens,
 measured). Only steps that run given commands and relay output belong there —
 anything that judges needs CLAUDE.md's rules.
+
+**Deploy.** `deploy.yml` is a `workflow_run` on `✅ verify` (main, push events,
+conclusion `success`): it checks out the verified `head_sha` and runs
+`railway up --ci` with the `RAILWAY_TOKEN` secret, skipping with a notice when
+it is unset. The secret and variable are in `docs/harness/github.md`.

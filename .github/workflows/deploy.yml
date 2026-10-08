@@ -1,0 +1,62 @@
+## Deploys main to Railway once `verify` has passed on it. A separate workflow
+## rather than a job in verify.yml, because verify also runs on pull requests
+## and a deploy gate there would put a skipped job on every one.
+name: 🚀 deploy
+
+on:
+  workflow_run:
+    workflows: ["✅ verify"]
+    types: [completed]
+    branches: [main]
+
+# Deploys land in the order the commits did; a newer one waits, never cancels.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # A red verify never deploys, and `event == 'push'` keeps a fork's pull
+    # request from a branch called main out.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Secrets cannot be used in `if:`, so read it here and gate on the output.
+      - name: Check for a Railway token
+        id: check
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -n "$RAILWAY_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::RAILWAY_TOKEN is not set, skipping the deploy"
+          fi
+
+      - if: steps.check.outputs.has_token == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # `--ci` streams the build and exits non-zero if the deployment fails,
+      # which is what makes a failed deployment a red run. Railway builds the
+      # app itself, so there is no npm ci or build here.
+      - name: Deploy to Railway
+        if: steps.check.outputs.has_token == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+        run: |
+          if [ -n "$RAILWAY_SERVICE" ]; then
+            npx --yes @railway/cli up --ci --service "$RAILWAY_SERVICE"
+          else
+            npx --yes @railway/cli up --ci
+          fi
