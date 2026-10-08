@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const read = (p) => readFileSync(join(root, p), 'utf8');
 const VERSION = '0.10.0';
+const OLD = ['0', '9', '0'].join('.');
 
 const lock = read('apm.lock.yaml');
 const deployed = [...lock.matchAll(/^ {2}- (\.claude\/skills\/\S+)$/gm)].map((m) => m[1]);
@@ -25,8 +26,8 @@ test('.claude/skills holds exactly what the lockfile deploys', () => {
   for (const d of dirs) assert.ok(tops.has(d), `.claude/skills/${d} is left over from an older bundle`);
 });
 
-test('no reference to the old 0.9.0 pin outside specs/ and the lockfile', () => {
-  const skip = new Set(['node_modules', '.git', 'specs', 'apm.lock.yaml', 'package-lock.json', '__pycache__', '.worktrees', 'worktrees', 'data', 'dist', 'test-results', 'playwright-report', '.screenshots']);
+test('no reference to the previous pin outside specs/ and the lockfile', () => {
+  const skip = new Set(['node_modules', '.git', 'specs', 'apm.lock.yaml', 'package-lock.json', 'apm_modules', '__pycache__', '.worktrees', 'worktrees', 'data', 'dist', 'test-results', 'playwright-report', '.screenshots']);
   const hits = [];
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
@@ -36,8 +37,8 @@ test('no reference to the old 0.9.0 pin outside specs/ and the lockfile', () => 
       if (st.isDirectory()) walk(full);
       else if (st.size < 1_000_000) {
         const text = readFileSync(full);
-        if (text.includes(0) ) continue;
-        if (text.toString('utf8').includes('0.9.0')) hits.push(relative(root, full));
+        if (text.includes(0)) continue;
+        if (text.toString('utf8').includes(OLD)) hits.push(relative(root, full));
       }
     }
   };

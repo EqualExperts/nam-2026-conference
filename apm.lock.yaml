@@ -4,10 +4,10 @@ dependencies:
 - repo_url: quiram/winnow
   name: winnow
   host: github.com
-  resolved_commit: 91ec34ebdfb387b2e537ebe70956f4744b2f5590
-  resolved_ref: v0.9.0
-  version: 0.9.0
-  package_type: marketplace_plugin
+  resolved_commit: 897b92a4b1584d716148326e5aacf87768b37b30
+  resolved_ref: v0.10.0
+  version: 0.10.0
+  package_type: skill_bundle
   deployed_files:
   - .claude/skills/create-tasks
   - .claude/skills/create-tasks/SKILL.md
@@ -33,7 +33,7 @@ dependencies:
   - .claude/skills/winnow-setup-tracker/SKILL.md
   - .claude/skills/winnow/SKILL.md
   deployed_file_hashes:
-    .claude/skills/create-tasks/SKILL.md: sha256:e0a55b1f7f37fb8ea47d4f530b30196ded243f1df7fd6bd579b7901025e3f17b
+    .claude/skills/create-tasks/SKILL.md: sha256:25cf7a98bf2e362516afbc3c3838462cb808ed41bcf21a516a22e740e836463b
     .claude/skills/listen-to-meeting/SKILL.md: sha256:74805ae5df70958e453af615083290dee14f4048da748683e54a4839a8e38147
     .claude/skills/listen-to-meeting/scripts/listen.py: sha256:2748badf4ce731946d01d0433d3bad0641016ae17426640480cc12ea56558447
     .claude/skills/listen-to-meeting/scripts/macos/SystemAudioCapture.swift: sha256:2bb4bdc08cc32ea7d46fd17bfd8ce5b72fc5d89f64e8e2abb57ff9bcf3b8b1c3
@@ -46,8 +46,8 @@ dependencies:
     .claude/skills/winnow-setup-audio/SKILL.md: sha256:1ef03286f9ef5c08d4dd03a464baeabe9379b099beb0863595101feb3f0d8715
     .claude/skills/winnow-setup-context/SKILL.md: sha256:30b80109e4a83a2dd061b1a382625a1a9995580316f38e5a85ecdb66b5baf481
     .claude/skills/winnow-setup-tracker/SKILL.md: sha256:aa1fbf2e63c8e88c2923b36ade0d76d8252025cc9d84e91ac81f702545d62496
-    .claude/skills/winnow/SKILL.md: sha256:3f6d3f11d71a19f9027565d8441b60478cfcd257b4dd94d2f441a92c2ba364f3
-  content_hash: sha256:72e38a5144487fa266fa1723502dbe6c82109166c9c2ac5286c3f87065c7c324
+    .claude/skills/winnow/SKILL.md: sha256:a3837cadf3784c4bcc1446786e9c70f552f06a4284002060c85b919698e690e4
+  content_hash: sha256:a787423647b8d8de7a43d401dc8af10c6aeb8336e1d233e07c60a3593a08b1bd
   declared_license: MIT
 deployments:
 - kind: project-relative
@@ -67,7 +67,7 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:e0a55b1f7f37fb8ea47d4f530b30196ded243f1df7fd6bd579b7901025e3f17b
+  content_hash: sha256:25cf7a98bf2e362516afbc3c3838462cb808ed41bcf21a516a22e740e836463b
 - kind: project-relative
   target: claude
   value: .claude/skills/listen-to-meeting
@@ -256,4 +256,4 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:3f6d3f11d71a19f9027565d8441b60478cfcd257b4dd94d2f441a92c2ba364f3
+  content_hash: sha256:a3837cadf3784c4bcc1446786e9c70f552f06a4284002060c85b919698e690e4
