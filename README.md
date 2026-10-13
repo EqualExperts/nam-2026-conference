@@ -10,7 +10,20 @@
 
 ## In one minute
 
-- ✍️ **You write a ticket** — a GitHub issue saying what should be true when it is done.
+There are two halves, and the same context docs tie them together:
+
+- 🎙️ **The product harness** turns a conversation into tickets. It is
+  interactive on purpose: it asks you what you meant, because what to build is
+  your call.
+- 🚢 **The engineering harness** turns a ticket into a reviewed pull request. It
+  runs on its own and only comes back to you when it is stuck, or when the pull
+  request is ready.
+
+What the product side agrees is written into the docs the engineering agents
+read, so the ticket that arrives already carries its context.
+
+- ✍️ **You write a ticket** — a GitHub issue saying what should be true when it
+  is done. Or let the product harness draft it from a meeting.
 - 🤖 **An agent ships it** — writes a plan, a failing test and the code, then runs
   every test on desktop and mobile.
 - 🔍 **Other agents check the work** — they never saw how it was written, and
@@ -20,6 +33,9 @@
 
 Run as many tickets at once as you like. Every ticket shows what it cost.
 
+> **At the workshop?** Start with the [quickstart ↓](#quickstart): set up
+> once, then one walkthrough for each harness.
+>
 > **Forked this repo?** It needs an API key and one setup click first —
 > [five minutes, once ↓](#set-up-your-fork)
 
@@ -126,6 +142,12 @@ turn a meeting or a voice note into issues that are ready to ship:
 | 🎫 **Raise** | `create-tasks` | GitHub issues — goal first, one goal each, no duplicates, each with a **Done when** list |
 | 📚 **Remember** | `update-context` | What was agreed written back into the docs the agents read, so the next ticket knows it |
 
+There are three ways in, and each one feeds the next. Hand `create-tasks` a
+ticket you have already thought through, hand `winnow` a transcript, or let
+`listen-to-meeting` capture the meeting and pass its transcript to `winnow` at
+the end. Start wherever your input is; the [quickstart](#quickstart) goes
+through all three, simplest first.
+
 Then label the issues `ready-for-ai`, or `/ship` them, and the harness takes it
 from there. First time? Run `setup-winnow` once — it checks your context docs, task
 tracker and working area, and sets up the microphone, system audio and the
@@ -170,6 +192,74 @@ forty of them.
 
 Then open an issue with a **Done when:** list, label it `ready-for-ai`, and
 watch the Actions tab.
+
+<a id="quickstart"></a>
+
+## 🚀 Quickstart — on your laptop
+
+### Once: get set up
+
+1. **Install the tools:** [Claude Code](https://docs.claude.com/en/docs/claude-code/overview)
+   (signed in), Node 22 (`nvm use` reads `.nvmrc`), and the
+   [GitHub CLI](https://cli.github.com) signed in with `gh auth login`.
+2. **Fork the repo and turn on Issues.** Your tickets go to your fork. Follow
+   steps 1 and 3 of [Set up your fork](#set-up-your-fork): running
+   *Set up the harness* creates the labels the agents use. You only need the
+   API key (step 2) to run the agents on GitHub Actions; from your terminal,
+   Claude Code uses your own sign-in.
+3. **Clone your fork and install:**
+   ```bash
+   npm install
+   npx playwright install chromium   # the browser the tests run in
+   npm run dev                       # optional: the app on http://localhost:5173
+   ```
+4. **Start Claude Code** in the repo folder (`claude`) and run
+   `/setup-winnow`. It checks the context docs and that it can reach your
+   issues. It also asks whether you want audio. Say **no** unless you plan to
+   capture a live meeting or a recording: audio needs `uv` and a model download
+   of about 500 MB.
+
+### The product harness: from a conversation to tickets
+
+You stay in the conversation. The skills ask questions, and nothing is written
+until you agree. There are three levels; each one adds a step in front of the
+one before.
+
+1. **Write a ticket directly:** `/create-tasks Add a page that lists every
+   sponsor`. It checks for similar issues, asks about anything unclear, and
+   opens a GitHub issue that states the goal and has a **Done when** list.
+2. **Process a transcript:** `/winnow`, then paste the transcript or give a
+   file path. It sorts what was said into decisions, work and noise, and asks
+   about gaps and contradictions. When you say go, it records the decisions in
+   the docs (`update-context`) and raises the issues (`create-tasks`). Use the
+   full transcript, not an AI summary: a summary drops who said what, and
+   which decision replaced which.
+3. **Listen live** (needs the audio setup): `/listen-to-meeting`. It transcribes
+   on your machine and flags contradictions and gaps during the meeting. Say
+   "meeting's over" to stop it; it then offers to run `winnow` on the
+   transcript.
+
+**You should end up with:** new issues on your fork, and possibly edits to
+`docs/` for you to review and commit.
+
+### The engineering harness: from a ticket to a pull request
+
+The engineering harness runs on its own. You give it a ticket, then come back
+to a pull request.
+
+1. **Pick an issue** that has a **Done when** list. One the product harness
+   just created works.
+2. **Ship it:** `/ship 42`. It plans, writes a failing test, writes the code,
+   runs every test on desktop and mobile, and audits until the work is clean. A
+   small ticket takes about 10–20 minutes. You can watch the progress on the
+   issue.
+3. **Review the pull request** like any other. It has the plan, the test
+   evidence, every audit round and the cost. Merge it, or comment `@claude …` to
+   ask for a change.
+
+`/ship 42 43 44` runs several tickets in parallel, each in its own worktree on
+its own ports. If a ticket will not come together, you get a **draft** pull
+request labelled `needs-human` that lists what is still open.
 
 ## 🎪 The app it builds
 
