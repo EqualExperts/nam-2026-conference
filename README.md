@@ -149,7 +149,9 @@ the end. Start wherever your input is; the [quickstart](#quickstart) goes
 through all three, simplest first.
 
 Then label the issues `ready-for-ai`, or `/ship` them, and the harness takes it
-from there. First time? Run `setup-winnow` once — it checks your context docs, task
+from there. No idea or meeting of your own? Run `/winnow docs/demo/winnow-transcript.txt`
+on the [demo transcript](docs/demo/winnow-transcript.txt), a voice note about this
+app. First time? Run `setup-winnow` once — it checks your context docs, task
 tracker and working area, and sets up the microphone, system audio and the
 Whisper model (`winnow-setup-audio`) in one guided pass.
 
@@ -230,7 +232,8 @@ one before.
    opens a GitHub issue that states the goal and has a **Done when** list.
 2. **Process a transcript:** `/winnow`, then paste the transcript or give a
    file path. It sorts what was said into decisions, work and noise, and asks
-   about gaps and contradictions. When you say go, it records the decisions in
+   about gaps and contradictions. Nothing to hand it? Try
+   `/winnow docs/demo/winnow-transcript.txt`. When you say go, it records the decisions in
    the docs (`update-context`) and raises the issues (`create-tasks`). Use the
    full transcript, not an AI summary: a summary drops who said what, and
    which decision replaced which.
