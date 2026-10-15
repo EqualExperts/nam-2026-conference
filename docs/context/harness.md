@@ -39,6 +39,7 @@ tests:
   - tests/unit/red-check.test.js
   - tests/unit/qa-facts.test.js
   - tests/unit/agent-summary.test.js
+  - tests/unit/demo-transcript.test.js
   - tests/unit/ship-progress.test.js
   - tests/unit/ai-cost.test.js
 related: [testing]
