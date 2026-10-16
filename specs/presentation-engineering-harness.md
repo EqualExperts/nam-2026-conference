@@ -48,7 +48,7 @@ a presenter can resume.
 ## How it will be proved
 | Done when | Check | Layer |
 | --- | --- | --- |
-| Beat maths: clamps at both ends, `?beat=` parsed and bounded, keys map to moves | `nextBeat`, `parseBeat`, `keyDelta` | unit |
+| Beat maths: clamps at both ends, `?beat=` parsed and bounded, keys map to moves | `beatAfter`, `parseBeat`, `keyAction`, `locateBeat` | unit |
 | `/presentation` renders full screen with no app chrome and no console errors | heading visible, no `banner`/`contentinfo`, no page errors | Playwright spec |
 | → advances, ← goes back, the counter and URL follow | press keys, read `presentation-counter` and `?beat=` | Playwright spec |
 | `?beat=n` opens on that beat; out of range opens the first | visit `?beat=6` → counter `6 /`; `?beat=9999` → `1 /` | Playwright spec |

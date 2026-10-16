@@ -37,7 +37,15 @@ const LAYER = {
   future:  { opacity: 0, scale: 0.7, filter: 'blur(14px)', pointerEvents: 'none' },
 };
 
-function Layer({ chapter, state, step }) {
+// A chapter with `enter: 'cut'` is reached by a plain crossfade instead, so a
+// scene that already drew the next chapter's opening frame lands on it exactly.
+const CUT = {
+  past:    { opacity: 0, scale: 1, filter: 'blur(0px)', pointerEvents: 'none' },
+  current: LAYER.current,
+  future:  { opacity: 0, scale: 1, filter: 'blur(0px)', pointerEvents: 'none' },
+};
+
+function Layer({ chapter, state, step, cut }) {
   // Re-mount the scene each time it becomes current, so its entrance plays.
   const entries = useEntries(state === 'current');
   const Scene = chapter.Scene;
@@ -45,8 +53,10 @@ function Layer({ chapter, state, step }) {
     <motion.div
       initial={state === 'current' ? 'future' : state}
       animate={state}
-      variants={LAYER}
-      transition={{ type: 'spring', stiffness: 70, damping: 18, mass: 1, opacity: { duration: 0.7 }, filter: { duration: 0.7 } }}
+      variants={cut ? CUT : LAYER}
+      transition={cut
+        ? { duration: 0.5, opacity: { duration: 0.5 } }
+        : { type: 'spring', stiffness: 70, damping: 18, mass: 1, opacity: { duration: 0.7 }, filter: { duration: 0.7 } }}
       aria-hidden={state === 'current' ? undefined : true}
       className="absolute inset-0"
     >
@@ -156,7 +166,9 @@ export function PresentationPage() {
             if (Math.abs(i - chapter) > 1) return null;
             const state = i < chapter ? 'past' : i > chapter ? 'future' : 'current';
             const s = state === 'current' ? step : state === 'past' ? c.beats.length - 1 : 0;
-            return <Layer key={c.id} chapter={c} state={state} step={s} />;
+            // the boundary this layer crosses is the one into the later of the two chapters
+            const cut = CHAPTERS[Math.max(i, chapter)].enter === 'cut';
+            return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} />;
           })}
           <Caption beat={current.beats[step]} accent={current.accent} index={beat} />
         </motion.div>

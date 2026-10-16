@@ -1,11 +1,13 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Code, Label, Model, Kicker, Tick, PrIcon, later } from './kit.jsx';
+import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Token, Flip, PrIcon, later } from './kit.jsx';
 
 /* ------------------------------------------------------------------ *
  * Inside ship — ten stations along a rail, and the ticket moving down it.
+ * The station geometry is exported: the map chapter unpacks the stations
+ * into these exact positions, so the cut into this chapter lands on them.
  * ------------------------------------------------------------------ */
 
-const STATIONS = [
+export const STATIONS = [
   { id: 'setup', label: 'Setup', icon: '🧭' },
   { id: 'spec', label: 'Spec', icon: '📄' },
   { id: 'spec-audit', label: 'Spec audit', icon: '🔎' },
@@ -18,25 +20,44 @@ const STATIONS = [
   { id: 'pr', label: 'Pull request', icon: '🚀' },
 ];
 
-const SX = (i) => 80 + i * 146;
-const STATION_W = 128;
+export const SX = (i) => 80 + i * 146;
+export const STATION_W = 128;
+export const STATION_Y = 70;
+export const RAIL_Y = 170;
 const center = (i) => SX(i) + STATION_W / 2;
+const TOKEN_W = 82;
+/** Where the ticket waits before it enters the first station. */
+export const TOKEN_PARK = { left: 80 - TOKEN_W / 2, top: RAIL_Y - 14 };
 
+/** The rail under the stations, and the ticket riding it. */
 function Rail({ active }) {
-  const x = active < 0 ? 40 : center(active);
+  const x = active < 0 ? 80 : center(active);
   return (
     <>
-      <div style={at(80, 166, 1440, 2)} className="rounded-full bg-hairline" />
-      <div style={{ ...at(80, 166, Math.max(0, x - 80), 2) }} className="rounded-full bg-gradient-to-r from-violet-500 to-cyan-300 transition-[width] duration-1000 ease-out" />
-      <motion.div
-        className="pz-glow absolute size-4 rounded-full bg-violet-300"
-        style={{ top: 159 }}
-        initial={{ left: 32, opacity: 0 }}
-        animate={{ left: x - 8, opacity: active < 0 ? 0 : 1 }}
-        transition={{ type: 'spring', stiffness: 90, damping: 13 }}
-        aria-hidden="true"
+      <div style={at(80, RAIL_Y, 1440, 2)} className="rounded-full bg-hairline" />
+      <div style={{ ...at(80, RAIL_Y, Math.max(0, x - 80), 2) }} className="rounded-full bg-gradient-to-r from-violet-500 to-cyan-300 transition-[width] duration-1000 ease-out" />
+      <Token
+        className="absolute"
+        initial={{ left: TOKEN_PARK.left, top: TOKEN_PARK.top, scale: 0.9 }}
+        animate={{ left: x - TOKEN_W / 2, top: RAIL_Y - 14, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 80, damping: 14 }}
       />
     </>
+  );
+}
+
+/** One station's face — shared with the map chapter, which flies these into place. */
+export function Station({ s, state = 'idle' }) {
+  return (
+    <div
+      className={`flex size-full flex-col items-center justify-center rounded-xl border text-center transition-all duration-500
+        ${state === 'active' ? 'pz-glow -translate-y-1 border-violet-400/70 bg-raised' : 'border-hairline bg-surface'}
+        ${state === 'next' ? 'opacity-45' : ''}`}
+    >
+      <span className="text-[24px] leading-none">{s.icon}</span>
+      <span className={`mt-1.5 text-[15px] font-semibold ${state === 'active' ? 'text-ink' : 'text-muted'}`}>{s.label}</span>
+      {state === 'done' && <span className="pz-pop absolute -right-2 -top-2"><Tick className="size-6 text-[12px]" /></span>}
+    </div>
   );
 }
 
@@ -44,16 +65,10 @@ function Stations({ active }) {
   return STATIONS.map((s, i) => {
     const state = active < 0 ? 'idle' : i < active ? 'done' : i === active ? 'active' : 'next';
     return (
-      <div
-        key={s.id}
-        style={{ ...at(SX(i), 70, STATION_W, 84), animationDelay: `${i * 70}ms` }}
-        className={`pz-appear flex flex-col items-center justify-center rounded-xl border text-center transition-all duration-500
-          ${state === 'active' ? 'pz-glow -translate-y-1 border-violet-400/70 bg-raised' : 'border-hairline bg-surface'}
-          ${state === 'next' ? 'opacity-45' : ''}`}
-      >
-        <span className="text-[24px] leading-none">{s.icon}</span>
-        <span className={`mt-1.5 text-[15px] font-semibold ${state === 'active' ? 'text-ink' : 'text-muted'}`}>{s.label}</span>
-        {state === 'done' && <span className="pz-pop absolute -right-2 -top-2"><Tick className="size-6 text-[12px]" /></span>}
+      <div key={s.id} style={at(SX(i), STATION_Y, STATION_W, 84)} className="relative">
+        <Station s={s} state={state} />
+        {/* the stamp: a ring leaves the station the moment the ticket arrives */}
+        {state === 'active' && <span key={active} className="pz-ping pointer-events-none absolute inset-0 rounded-xl border-2 border-violet-300" aria-hidden="true" />}
       </div>
     );
   });
@@ -202,7 +217,10 @@ function ImplementDetail() {
   );
 }
 
-function Cells({ n, delay, label, sub }) {
+/* One wave of green runs left to right across all three panels: a cell lights
+ * by its column across the whole stage, not by which panel it is in. */
+const WAVE_MS = 48;
+function Cells({ n, panel, label, sub }) {
   return (
     <div className={`${box} p-5`}>
       <div className="flex items-baseline justify-between">
@@ -211,7 +229,7 @@ function Cells({ n, delay, label, sub }) {
       </div>
       <div className="mt-4 grid grid-cols-12 gap-1.5">
         {Array.from({ length: n }, (_, i) => (
-          <span key={i} className="pz-pop h-5 rounded bg-emerald-400/70" style={later(delay + i * 22)} />
+          <span key={i} className="pz-pop h-5 rounded bg-emerald-400/70 shadow-[0_0_10px_rgba(52,211,153,0.35)]" style={later(200 + (panel * 12 + (i % 12)) * WAVE_MS + Math.floor(i / 12) * 30)} />
         ))}
       </div>
     </div>
@@ -220,11 +238,13 @@ function Cells({ n, delay, label, sub }) {
 
 function GateDetail() {
   return (
-    <div className="grid h-full grid-cols-3 gap-6">
-      <Cells n={36} delay={100} label="npm test" sub="unit + API · under a second" />
-      <Cells n={60} delay={700} label="Playwright · desktop" sub="1440 × 900" />
-      <Cells n={60} delay={1100} label="Playwright · mobile" sub="Pixel 7" />
-      <div className="pz-appear col-span-3 flex items-center gap-5 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-6 py-4" style={later(2600)}>
+    <div className="relative grid h-full grid-cols-3 gap-6">
+      <Cells n={36} panel={0} label="npm test" sub="unit + API · under a second" />
+      <Cells n={60} panel={1} label="Playwright · desktop" sub="1440 × 900" />
+      <Cells n={60} panel={2} label="Playwright · mobile" sub="Pixel 7" />
+      {/* the light that runs ahead of the wave */}
+      <div className="pz-sweep pointer-events-none absolute inset-y-0 left-0 w-[240px] bg-gradient-to-r from-transparent via-emerald-300/15 to-transparent" style={later(150)} aria-hidden="true" />
+      <div className="pz-appear col-span-3 flex items-center gap-5 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-6 py-4" style={later(2300)}>
         <Code className="text-[16px]">scripts/gate.mjs</Code>
         <span className="font-mono text-[18px] text-emerald-300">{'{ "ok": true }'}</span>
         <span className="ml-auto text-[17px] text-muted">Red if any test fails — <b className="text-ink">or if a test the branch added skipped everywhere</b> and so never ran.</span>
@@ -233,21 +253,53 @@ function GateDetail() {
   );
 }
 
-function RedCheckDetail() {
+/* The same test, run twice: with the change, then with the old code put back.
+ * The code card turns over to origin/main and the green result flips red. */
+function Run({ file, tone, children }) {
   return (
-    <div className="grid h-full grid-cols-2 gap-6">
+    <div className={`flex h-full flex-col justify-center rounded-xl border px-5 py-4 ${tone}`}>
+      <div className="font-mono text-[14px] text-faint">src/pages/</div>
+      <div className="font-mono text-[18px] text-ink">{file}</div>
+      <div className="mt-1 font-mono text-[14px]">{children}</div>
+    </div>
+  );
+}
+
+function Result({ ok, label }) {
+  return (
+    <div className={`flex h-full items-center gap-3 rounded-xl px-5 text-[22px] ${ok ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'}`}>
+      <Tick ok={ok} /> {label}
+    </div>
+  );
+}
+
+function RedCheckDetail() {
+  const FLIP = 1300;
+  return (
+    <div className="grid h-full grid-cols-[1fr_1fr] gap-6">
       <div className={`${box} flex flex-col p-6`}>
-        <Kicker>With the change</Kicker>
-        <div className="mt-3 font-mono text-[16px] text-muted">SchedulePage.jsx <span className="text-emerald-300">(new)</span></div>
-        <div className="pz-appear mt-6 flex items-center gap-3 text-[22px] text-emerald-300" style={later(300)}><Tick /> new test passes</div>
+        <Kicker>1 · With the change</Kicker>
+        <div className="mt-3 h-[96px]"><Run file="SchedulePage.jsx" tone="border-emerald-400/40 bg-emerald-500/[0.06]"><span className="text-emerald-300">+ grid grid-cols-2 gap-2 lg:block</span></Run></div>
+        <div className="pz-appear mt-4 h-[64px]" style={later(300)}><Result ok label="first session stays in view — passes" /></div>
+        <div className="pz-appear mt-3 text-[18px] text-muted" style={later(700)}>Green — as the gate just said. Green alone proves little.</div>
       </div>
       <div className={`${box} flex flex-col p-6`}>
-        <Kicker>The old code put back</Kicker>
-        <div className="pz-appear mt-3 font-mono text-[16px] text-muted" style={later(900)}>SchedulePage.jsx <span className="text-amber-300">(origin/main)</span></div>
-        <div className="pz-appear mt-6 flex items-center gap-3 text-[22px] text-rose-300" style={later(1500)}><Tick ok={false} /> new test fails</div>
-        <div className="pz-appear mt-3 text-[18px] text-emerald-300" style={later(1900)}>… which is the point: the test can tell.</div>
+        <Kicker>2 · The old code put back</Kicker>
+        <Flip
+          className="mt-3 h-[96px]"
+          delay={FLIP}
+          front={<Run file="SchedulePage.jsx" tone="border-emerald-400/40 bg-emerald-500/[0.06]"><span className="text-emerald-300">+ grid grid-cols-2 gap-2 lg:block</span></Run>}
+          back={<Run file="SchedulePage.jsx" tone="border-amber-400/50 bg-amber-500/[0.08]"><span className="text-amber-300">origin/main — the fix reverted, the test kept</span></Run>}
+        />
+        <Flip
+          className="mt-4 h-[64px]"
+          delay={FLIP + 350}
+          front={<Result ok label="first session stays in view — passes" />}
+          back={<Result ok={false} label="first session stays in view — fails" />}
+        />
+        <div className="pz-appear mt-3 text-[18px] text-emerald-300" style={later(FLIP + 1200)}>… which is the point: the test can tell the two apart.</div>
       </div>
-      <div className="pz-appear col-span-2 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(2400)}>
+      <div className="pz-appear col-span-2 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(FLIP + 1700)}>
         <Code>scripts/red-check.mjs</Code> runs inside the gate step. <b className="text-ink">A test that still passes without the fix proves nothing</b> — and the run says so instead of shipping it.
       </div>
     </div>
@@ -280,18 +332,25 @@ function AuditDetail() {
           </div>
         ))}
       </div>
-      {FINDINGS.map((f, i) => (
-        <div key={f.text} className="grid grid-cols-[1.4fr_auto_1fr] items-center gap-5">
-          <div className="pz-appear rounded-xl border border-amber-400/30 bg-amber-500/5 px-5 py-3 text-[17px] text-ink" style={later(700 + i * 300)}>
-            <span className="mr-2 font-mono text-[13px] text-amber-300">{f.lens}</span>
-            <span className={f.ok ? '' : 'transition-all'}>{f.text}</span>
+      {FINDINGS.map((f, i) => {
+        const verdictAt = 2200 + i * 350;
+        return (
+          <div key={f.text} className="grid grid-cols-[1.4fr_auto_1fr] items-center gap-5">
+            <div className="pz-appear relative rounded-xl border border-amber-400/30 bg-amber-500/5 px-5 py-3 text-[17px] text-ink" style={later(700 + i * 300)}>
+              <span className="mr-2 font-mono text-[13px] text-amber-300">{f.lens}</span>
+              {/* the skeptic's pen: refuted findings are struck through as the verdict lands */}
+              <span className={f.ok ? '' : 'pz-strike text-rose-300'} style={f.ok ? undefined : later(verdictAt)}><span className="text-ink">{f.text}</span></span>
+              {f.ok && (
+                <span className="pz-stamp absolute right-5 -top-3.5 rounded-md border-2 border-rose-400 bg-ground/80 px-2 py-0.5 font-mono text-[12px] font-bold uppercase tracking-[0.2em] text-rose-300" style={later(verdictAt + 100)}>blocker</span>
+              )}
+            </div>
+            <div className="pz-appear rounded-full border border-hairline bg-overlay px-4 py-1.5 text-[15px] text-muted" style={later(1700 + i * 350)}>🧐 skeptic</div>
+            <div className={`pz-appear rounded-xl px-4 py-3 text-[17px] ${f.ok ? 'border border-rose-400/50 bg-rose-500/10 text-rose-200' : 'text-faint'}`} style={later(verdictAt)}>
+              {f.verdict}
+            </div>
           </div>
-          <div className="pz-appear rounded-full border border-hairline bg-overlay px-4 py-1.5 text-[15px] text-muted" style={later(1700 + i * 350)}>🧐 skeptic</div>
-          <div className={`pz-appear rounded-xl px-4 py-3 text-[17px] ${f.ok ? 'border border-rose-400/50 bg-rose-500/10 text-rose-200' : 'text-faint line-through decoration-faint/60'}`} style={later(2200 + i * 350)}>
-            {f.verdict}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -402,6 +461,8 @@ function PrDetail() {
 
 const DETAILS = [SetupDetail, SpecDetail, SpecAuditDetail, ImplementDetail, GateDetail, RedCheckDetail, AuditDetail, LoopDetail, LearnDetail, PrDetail];
 
+const LOOP_BACK = `M${center(7)} 160 C ${center(7)} 204, ${center(3)} 204, ${center(3)} 160`;
+
 function ShipScene({ step }) {
   const active = step - 1;
   return (
@@ -409,8 +470,8 @@ function ShipScene({ step }) {
       <Stations active={active} />
       <Rail active={active} />
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <path d={`M${center(7)} 158 C ${center(7)} 196, ${center(3)} 196, ${center(3)} 158`} pathLength="1" data-on={active >= 7} className="pz-draw" fill="none" stroke="#b45309" strokeWidth="2.5" />
-        {active === 7 && <path d={`M${center(7)} 158 C ${center(7)} 196, ${center(3)} 196, ${center(3)} 158`} pathLength="1" className="pz-flow" fill="none" stroke="#fbbf24" strokeWidth="2.5" />}
+        <path d={LOOP_BACK} pathLength="1" data-on={active >= 7} className="pz-draw" fill="none" stroke="#b45309" strokeWidth="2.5" />
+        {active === 7 && <path d={LOOP_BACK} pathLength="1" className="pz-flow" fill="none" stroke="#fbbf24" strokeWidth="2.5" />}
       </svg>
 
       <Show on={active < 0} delay={800} style={at(80, 220, 1440, 380)} className="grid grid-cols-3 gap-6">
@@ -560,7 +621,37 @@ function ModelsScene({ step }) {
             {step === 1 && i === 0 && <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#6ee7b7" strokeWidth="3" />}
           </g>
         ))}
+        {/* what setup reads flows into the facts panel */}
+        {step === 0 && ['M1010 240 C 760 240, 760 340, 500 340', 'M1010 340 L500 340', 'M1010 440 C 760 440, 760 340, 500 340'].map((d, i) => (
+          <g key={d}>
+            <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#4c3d7a" strokeWidth="2.5" style={later(500 + i * 200)} />
+            <g className="pz-appear" style={later(1400 + i * 200)}>
+              <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="2.5" />
+            </g>
+          </g>
+        ))}
       </svg>
+
+      {/* beat 1: the inputs — the ticket and the code it would change — read by Opus */}
+      <Replay on={step === 0} from="right" style={at(1010, 70, 510, 540)} className="flex flex-col justify-center gap-4">
+        <Kicker className="pz-appear">What setup reads</Kicker>
+        {[
+          [<Token key="t" className="relative" />, 'the ticket', 'why, and the Done when list', 0],
+          [<Code key="c" className="text-[14px]">src/pages/SchedulePage.jsx</Code>, 'the code it would change', 'one file, one area — and the tests beside it', 1],
+          [<Code key="d" className="text-[14px]">docs/context/schedule.md</Code>, 'the context for that area', 'where it lives, how it is proved', 2],
+        ].map(([head, title, sub, i]) => (
+          <div key={title} className={`${box} pz-appear flex items-center justify-between gap-5 px-5 py-4`} style={later(200 + i * 220)}>
+            <div>
+              <div className="text-[18px] font-semibold text-ink">{title}</div>
+              <div className="text-[15px] text-muted">{sub}</div>
+            </div>
+            <div className="shrink-0">{head}</div>
+          </div>
+        ))}
+        <div className="pz-appear mt-2 text-[17px] text-muted" style={later(1600)}>
+          Facts in, a run out: the <b className="text-ink">script</b> composes the steps from the facts — the agent never picks its own budget.
+        </div>
+      </Replay>
 
       <Replay on={step === 1} from="right" style={at(570, 70, 950, 540)} className="flex flex-col gap-5">
         <Lane
@@ -645,6 +736,7 @@ const MODEL_BEATS = [
 ];
 
 export const SHIP = [
-  { id: 'ship', name: 'Inside ship', accent: 'text-violet-300', tone: 'violet', beats: SHIP_BEATS, Scene: ShipScene },
+  // `enter: 'cut'` — the map chapter has already unpacked the stations into place, so this one lands on them
+  { id: 'ship', name: 'Inside ship', accent: 'text-violet-300', tone: 'violet', enter: 'cut', beats: SHIP_BEATS, Scene: ShipScene },
   { id: 'models', name: 'The right model', accent: 'text-fuchsia-300', tone: 'fuchsia', beats: MODEL_BEATS, Scene: ModelsScene },
 ];

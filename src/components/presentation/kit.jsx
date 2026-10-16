@@ -212,6 +212,40 @@ export function MergeIcon({ className = 'size-4' }) {
   );
 }
 
+/**
+ * The ticket itself — the one character that travels the whole talk. A Motion
+ * element, so a scene can slide it along a rail or fly it in.
+ */
+export function Token({ n = 140, className = '', ...rest }) {
+  return (
+    <motion.div
+      className={`pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-500/30 px-3 font-mono text-[15px] font-semibold text-violet-50 shadow-[0_0_28px_-2px_rgba(167,139,250,0.9),inset_0_0_12px_rgba(196,181,253,0.25)] backdrop-blur ${className}`}
+      aria-hidden="true"
+      {...rest}
+    >
+      <IssueIcon className="size-3.5 text-emerald-300" />#{n}
+    </motion.div>
+  );
+}
+
+/** A card that turns over once, after `delay` ms — the back face is what stays. */
+export function Flip({ delay = 0, front, back, className = '' }) {
+  return (
+    <div className={`relative ${className}`} style={{ perspective: 900 }}>
+      <motion.div
+        className="relative size-full"
+        style={{ transformStyle: 'preserve-3d' }}
+        initial={{ rotateX: 0 }}
+        animate={{ rotateX: 180 }}
+        transition={{ delay: delay / 1000, duration: 0.75, ease: [0.65, 0, 0.35, 1] }}
+      >
+        <div className="size-full" style={{ backfaceVisibility: 'hidden' }}>{front}</div>
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateX(180deg)' }}>{back}</div>
+      </motion.div>
+    </div>
+  );
+}
+
 /** A tick or a cross that pops in. */
 export function Tick({ ok = true, className = '', style }) {
   return (

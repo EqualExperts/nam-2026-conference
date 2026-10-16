@@ -151,11 +151,15 @@ footer) does not list it; `tests/presentation.spec.js` covers it instead.
 counter; `src/lib/presentation.js` parses, clamps and maps keys — →/Space/Enter/
 PageDown on, ←/PageUp/Backspace back, Home/End, F full screen) and draws a fixed
 1600×900 stage scaled to the window. `components/presentation/chapters.js` lists
-the chapters in order; each is `{ id, name, accent, tone, beats, Scene }` — one
+the chapters in order; each is `{ id, name, accent, tone, beats, Scene, enter? }` — one
 caption per beat (`null` for none) and a `Scene({ step })` laid out in stage
 pixels. The chapters either side of the current one stay mounted so they can fly
 in and out; a scene re-mounts each time it becomes current, so its entrance
-replays. `kit.jsx` has the primitives (`Show`, `Replay`, `Terminal`, `Verdict`…);
+replays. `enter: 'cut'` swaps the fly-through for a crossfade, for a chapter whose
+predecessor already drew its opening frame — the map's last beat unpacks ship's
+stations exactly where `ship.jsx` draws them, so moving between the two must not
+move them. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
+that travels the talk, `Flip`, `Terminal`, `Verdict`…);
 `Backdrop.jsx` the starfield and aurora.
 
 It is the only place that uses **Motion** (`motion/react`) — springs, the

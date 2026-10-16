@@ -1,18 +1,19 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Code, Label, Terminal, IssueCard, IssueIcon, PrIcon, MergeIcon, Kicker, later } from './kit.jsx';
+import { at, Show, Replay, Code, Label, Terminal, IssueCard, IssueIcon, PrIcon, MergeIcon, Kicker, Token, later } from './kit.jsx';
+import { STATIONS, Station, SX, STATION_W, STATION_Y, RAIL_Y, TOKEN_PARK } from './ship.jsx';
 
 /* ------------------------------------------------------------------ *
  * Title — where we are, and where this talk starts.
  * ------------------------------------------------------------------ */
 
-function Orbits() {
+export function Orbits({ style = at(940, 20, 640, 640), className = '' }) {
   const rings = [
     { r: 120, dur: '26s', words: ['spec', 'gate'] },
     { r: 200, dur: '38s', words: ['audit', 'skeptic', 'red-check'] },
     { r: 280, dur: '54s', words: ['review', 'QA', 'learn', 'merge'] },
   ];
   return (
-    <svg viewBox="0 0 640 640" style={at(940, 20, 640, 640)} aria-hidden="true">
+    <svg viewBox="0 0 640 640" style={style} className={className} aria-hidden="true">
       <defs>
         <radialGradient id="pz-core" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#c4b5fd" stopOpacity="0.9" />
@@ -55,7 +56,7 @@ function TitleScene({ step }) {
         <Kicker className="pz-appear">ORBIT &rsquo;26 · AI across the software delivery lifecycle</Kicker>
         <h1 className="pz-appear mt-6 font-display text-[112px] leading-[0.92] text-ink" style={later(120)}>
           The engineering<br />
-          <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">harness</span>
+          <span className="pz-shine bg-clip-text text-transparent">harness</span>
         </h1>
         <p className="pz-appear mt-7 max-w-[760px] text-[27px] leading-snug text-muted" style={later(260)}>
           From a GitHub issue to a reviewed pull request — and every agent in between.
@@ -148,20 +149,48 @@ function IssueScene({ step }) {
  * Two ways in.
  * ------------------------------------------------------------------ */
 
+const DOORS = ['M800 58 C 800 96, 420 72, 420 112', 'M800 58 C 800 96, 1180 72, 1180 112'];
+
 function TwoWaysScene({ step }) {
   const focus = (side) => (step === 1 && side === 'right') || (step === 2 && side === 'left') ? 'opacity-35 scale-[0.98]' : '';
   return (
     <>
-      <div style={at(80, 70, 680, 450)} className={`card p-7 transition-all duration-700 ${focus('left')}`}>
+      {/* the same ticket, above both doors */}
+      <Token className="absolute" initial={{ left: 759, top: 22, opacity: 0, scale: 0.6 }} animate={{ left: 759, top: 22, opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 16, delay: 0.2 }} />
+      <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
+        {DOORS.map((d, i) => (
+          <g key={d} className={`transition-opacity duration-700 ${(step === 1 && i === 1) || (step === 2 && i === 0) ? 'opacity-20' : ''}`}>
+            <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#6d28d9" strokeWidth="2.5" style={later(500 + i * 150)} />
+            <g className="pz-appear" style={later(1300)}>
+              <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="2.5" />
+            </g>
+          </g>
+        ))}
+      </svg>
+
+      <div style={at(80, 112, 680, 408)} className={`card relative p-7 transition-all duration-700 ${focus('left')}`}>
         <Kicker>🌐 In GitHub — no terminal</Kicker>
         <div className="mt-2 font-display text-[34px] text-ink">Label it</div>
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-hairline bg-raised px-4 py-3">
           <IssueIcon className="size-5 text-emerald-400" />
           <span className="text-[18px] text-ink">#140 Keep sessions in view on mobile</span>
           <span className="ml-auto flex gap-2">
-            {step >= 1 && <span className="pz-pop"><Label name="ready-for-ai" /></span>}
+            {step >= 1 ? <span className="pz-pop"><Label name="ready-for-ai" /></span> : <span className="rounded-md border border-hairline px-2 py-0.5 text-[13px] text-faint">Labels ▾</span>}
           </span>
         </div>
+        {/* the label picker, open, with the pointer on the one that starts everything */}
+        {step === 0 && (
+          <div className="pz-appear absolute right-7 top-[178px] z-10 w-[300px] overflow-hidden rounded-xl border border-hairline bg-raised text-[15px] shadow-2xl shadow-black/50" style={later(900)}>
+            <div className="border-b border-hairline px-4 py-2 text-[13px] text-faint">Apply labels to this issue</div>
+            {['ready-for-ai', 'ship:full', 'needs-human'].map((l, i) => (
+              <div key={l} className={`flex items-center gap-3 px-4 py-2.5 ${i === 0 ? 'bg-overlay' : ''}`}>
+                <span className="w-3 font-mono text-violet-300">{i === 0 ? '›' : ''}</span>
+                <Label name={l} className="text-[12px]" />
+                {i === 0 && <span className="ml-auto text-[13px] text-muted">starts a run</span>}
+              </div>
+            ))}
+          </div>
+        )}
         <Replay on={step >= 1} delay={450} className="mt-5 overflow-hidden rounded-xl border border-hairline bg-[#0d0f15]">
           <div className="flex items-center gap-2 border-b border-hairline px-4 py-2 font-mono text-[13px] text-faint">
             <span className="size-2 rounded-full bg-amber-400 animate-pulse-dot" /> Actions · agent-ship.yml
@@ -176,16 +205,17 @@ function TwoWaysScene({ step }) {
         </Replay>
       </div>
 
-      <div style={at(840, 70, 680, 450)} className={`card p-7 transition-all duration-700 ${focus('right')}`}>
+      <div style={at(840, 112, 680, 408)} className={`card p-7 transition-all duration-700 ${focus('right')}`}>
         <Kicker>💻 In Claude Code — your terminal</Kicker>
         <div className="mt-2 font-display text-[34px] text-ink">Ship it</div>
         <Terminal
           className="mt-5"
           title="~/nam-2026-conference — claude"
           step={step >= 2 ? 2 : 0}
-          bodyClass="min-h-[200px] text-[16px]"
+          bodyClass="min-h-[228px] text-[16px]"
           lines={[
             { t: 'Ready. What should we build?', tone: 'dim' },
+            { t: '/ship <issue>  — one ticket, or ten', tone: 'dim', delay: 600 },
             { t: '/ship 140', tone: 'cmd', from: 2 },
             { t: 'setup · reading #140 and the code it touches', from: 2, delay: 900 },
             { t: 'worktree  .claude/worktrees/wt-140', from: 2, delay: 1300 },
@@ -233,15 +263,42 @@ const EDGES = [
   'M1280 425 C 1320 425, 1320 310, 1360 310',
 ];
 
+/**
+ * The zoom's landing: the ten steps fly out of the Ship node into the exact
+ * places the next chapter draws its stations, the rail and the parked ticket
+ * fade in under them, and the chapter that follows cuts straight onto them.
+ */
+function Unpack() {
+  return (
+    <>
+      {STATIONS.map((s, i) => (
+        <motion.div
+          key={s.id}
+          className="absolute"
+          style={{ width: STATION_W, height: 84 }}
+          initial={{ left: 800 - STATION_W / 2, top: 330 - 42, opacity: 0, scale: 0.25 }}
+          animate={{ left: SX(i), top: STATION_Y, opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 110, damping: 17, delay: 0.55 + i * 0.07, opacity: { duration: 0.3, delay: 0.55 + i * 0.07 } }}
+        >
+          <Station s={s} />
+        </motion.div>
+      ))}
+      <motion.div style={at(80, RAIL_Y, 1440, 2)} className="rounded-full bg-hairline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 1.2 }} />
+      <Token className="absolute" initial={{ ...TOKEN_PARK, opacity: 0, scale: 0.5 }} animate={{ ...TOKEN_PARK, opacity: 1, scale: 0.9 }} transition={{ type: 'spring', stiffness: 140, damping: 14, delay: 1.45 }} />
+    </>
+  );
+}
+
 function MapScene({ step }) {
   const zoom = step >= 2;
   return (
-    // the camera: ship's centre (510, 310) lands at stage (800, 330), 2.3× closer
+    <>
+    {/* the camera: ship's centre (510, 310) lands at stage (800, 330), 2.3× closer — then recedes behind the stations */}
     <motion.div
       className="absolute inset-0"
       style={{ originX: 0, originY: 0 }}
-      animate={zoom ? { x: 800 - 510 * 2.3, y: 330 - 310 * 2.3, scale: 2.3 } : { x: 0, y: 0, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 45, damping: 16, mass: 1.1 }}
+      animate={zoom ? { x: 800 - 510 * 2.3, y: 330 - 310 * 2.3, scale: 2.3, opacity: 0.16 } : { x: 0, y: 0, scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 45, damping: 16, mass: 1.1, opacity: { duration: 0.9, delay: zoom ? 0.8 : 0 } }}
     >
       <svg viewBox="0 0 1600 900" className="absolute inset-0" aria-hidden="true">
         {EDGES.map((d, i) => (
@@ -268,19 +325,20 @@ function MapScene({ step }) {
         >
           {n.icon}
           <div className={`mt-1.5 font-display ${n.id === 'ship' ? 'text-[34px]' : 'text-[22px]'} text-ink`}>{n.label}</div>
-          {!(zoom && n.id === 'ship') && <div className="text-[14px] text-faint">{n.sub}</div>}
-          {n.id === 'ship' && zoom && (
-            <div className="pz-appear mt-2 flex flex-wrap justify-center gap-1 px-4" style={later(900)}>
-              {['setup', 'spec', 'audit', 'build', 'gate', 'red-check', 'audit', 'fix', 'learn', 'PR'].map((s, j) => (
-                <span key={j} className="rounded-full border border-hairline bg-overlay px-1.5 font-mono text-[7px] text-muted">{s}</span>
-              ))}
-            </div>
-          )}
+          <div className="text-[14px] text-faint">{n.sub}</div>
           <Show on={step === 1} from="pop" delay={i * 90} className="absolute -top-3 right-3 rounded-full border border-sky-400/50 bg-sky-500/20 px-2 font-mono text-[12px] text-sky-200">
             fresh agent
           </Show>
         </div>
       ))}
+
+      {/* the ticket, on its way in: out of the issue and up to ship's door */}
+      <Token
+        className="absolute"
+        initial={{ left: 170 - 41, top: 296, opacity: 0, scale: 0.6 }}
+        animate={{ left: 300 - 41, top: 296, opacity: zoom ? 0 : 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 60, damping: 14, delay: 1.4, opacity: { duration: 0.4, delay: zoom ? 0 : 1.4 } }}
+      />
 
       <Show on={step >= 1 && !zoom} from="up" delay={300} style={at(410, 480, 200, 90)}
         className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10">
@@ -293,6 +351,8 @@ function MapScene({ step }) {
         <span className="text-[20px] text-muted"><b className="text-ink">Scripts, not prompts.</b> The loops, round limits and who judges what are code in <Code>.claude/workflows/</Code></span>
       </Show>
     </motion.div>
+    {zoom && <Unpack />}
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { animate, motion } from 'motion/react';
 import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, Meter, Terminal, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
+import { Orbits } from './intro.jsx';
 
 const box = 'rounded-2xl border border-hairline bg-surface';
 
@@ -40,20 +41,26 @@ function NeedsHumanScene({ step }) {
             STOP
           </motion.div>
         </div>
-        <div className="flex flex-col justify-center gap-4">
+        <div className="flex flex-col justify-center gap-3">
           {[1, 2, 3].map((round, i) => (
             <div key={round} className="pz-appear flex items-center gap-5 rounded-xl border border-amber-400/40 bg-amber-500/10 px-5 py-4" style={later(300 + i * 650)}>
               <span className="font-mono text-[15px] text-faint">Round {round}</span>
               <span className="text-[19px] text-ink">The grid still hides the first card on a 360 px phone</span>
-              {i > 0 && <span className="ml-auto rounded-full bg-rose-500/20 px-3 py-0.5 font-mono text-[13px] text-rose-200">same finding</span>}
+              {i > 0 && <span className="pz-pop ml-auto shrink-0 rounded-full bg-rose-500/20 px-3 py-0.5 font-mono text-[13px] text-rose-200" style={later(300 + i * 650 + 500)}>same finding</span>}
             </div>
           ))}
-          <div className="pz-appear text-[19px] text-muted" style={later(2400)}>The fixer has tried twice. A fourth round would only spend money.</div>
+          {/* the round that is not run */}
+          <div className="pz-appear flex items-center gap-5 rounded-xl border border-dashed border-hairline px-5 py-4" style={later(2500)}>
+            <span className="font-mono text-[15px] text-faint">Round 4</span>
+            <span className="text-[19px] text-faint line-through decoration-rose-400/70">The grid still hides the first card on a 360 px phone</span>
+            <span className="ml-auto shrink-0 font-mono text-[13px] text-rose-300">not run</span>
+          </div>
+          <div className="pz-appear text-[19px] text-muted" style={later(2800)}>The fixer has tried twice. A fourth round would only spend money.</div>
         </div>
       </Show>
 
       {/* what it leaves behind */}
-      <Show on={step >= 1} from="up" style={at(80, 70, 840, 540)} className={`${box} overflow-hidden`}>
+      <Show on={step >= 1} from="up" style={at(80, 70, 840)} className={`${box} overflow-hidden pb-6`}>
         <div className="flex items-center gap-3 border-b border-hairline px-6 py-4">
           <IssueIcon className="size-6 text-emerald-400" />
           <span className="font-display text-[24px] text-ink">#140 Keep sessions in view on mobile</span>
@@ -63,7 +70,7 @@ function NeedsHumanScene({ step }) {
           <span className={`transition-opacity duration-500 ${step >= 2 ? 'opacity-30 line-through' : ''}`}><Label name="needs-human" /></span>
           {step >= 2 && <span className="pz-pop" style={later(1500)}><Label name="ready-for-ai" /></span>}
         </div>
-        <div className="m-6 rounded-xl border border-hairline bg-raised p-5">
+        <div className="m-6 mb-4 rounded-xl border border-hairline bg-raised p-5">
           <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-violet-500/30 text-[14px]">🤖</span> ship · stopped at Code audit</div>
           <div className="mt-3 text-[18px] text-ink">I could not get the first card into view on a 360 px phone without hiding the day tabs. <b>Still open:</b></div>
           <ul className="mt-2 space-y-1 text-[17px] text-muted">
@@ -311,6 +318,27 @@ const REVIEW_BEATS = [
  * Merge, deploy, and what it cost.
  * ------------------------------------------------------------------ */
 
+/* Sparks thrown from the merge button — a fixed pattern, so every run looks the same. */
+const SPARKS = Array.from({ length: 34 }, (_, i) => {
+  const a = (i / 34) * Math.PI * 2 + (i % 3) * 0.13;
+  const r = 260 + ((i * 37) % 180);
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, s: 8 + ((i * 5) % 12), c: ['bg-violet-300', 'bg-fuchsia-300', 'bg-cyan-300', 'bg-emerald-300'][i % 4] };
+});
+
+function Burst() {
+  return SPARKS.map((p, i) => (
+    <motion.span
+      key={i}
+      className={`pointer-events-none absolute rounded-full ${p.c} shadow-[0_0_12px_2px_currentColor]`}
+      style={{ left: '50%', top: '78%', width: p.s, height: p.s, marginLeft: -p.s / 2, marginTop: -p.s / 2 }}
+      initial={{ x: 0, y: 0, opacity: 1, scale: 0.2 }}
+      animate={{ x: p.x, y: p.y, opacity: 0, scale: [0.2, 1.2, 0.6] }}
+      transition={{ duration: 1.1 + (i % 4) * 0.14, ease: [0.16, 1, 0.3, 1], opacity: { duration: 1.1 + (i % 4) * 0.14, ease: 'easeIn' } }}
+      aria-hidden="true"
+    />
+  ));
+}
+
 function MergeScene({ step }) {
   const [merged, setMerged] = useState(false);
   useEffect(() => {
@@ -321,6 +349,7 @@ function MergeScene({ step }) {
   return (
     <>
       <Show on={step === 0} from="scale" style={at(330, 90, 940, 500)} className={`${box} flex flex-col items-center justify-center p-10 text-center`}>
+        {merged && <Burst />}
         <motion.div
           className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[20px] font-semibold text-white ${merged ? 'bg-violet-600' : 'bg-emerald-600'}`}
           animate={{ scale: merged ? [1, 1.25, 1] : 1 }}
@@ -336,35 +365,41 @@ function MergeScene({ step }) {
         <motion.button
           type="button"
           tabIndex={-1}
-          className={`mt-8 rounded-xl px-8 py-4 font-display text-[24px] text-white ${merged ? 'bg-violet-700/50' : 'bg-emerald-600'}`}
-          animate={merged ? { scale: [1, 0.92, 1] } : {}}
-          transition={{ duration: 0.3 }}
+          className={`relative mt-8 rounded-xl px-8 py-4 font-display text-[24px] text-white ${merged ? 'bg-violet-700/50' : 'bg-emerald-600'}`}
+          animate={merged ? { scale: [1, 0.92, 1.06, 1] } : {}}
+          transition={{ duration: 0.5 }}
         >
           {merged ? '✓ Pull request merged' : 'Merge pull request'}
+          {!merged && <span className="pz-ping absolute inset-0 rounded-xl border-2 border-emerald-300" style={{ animationDelay: '700ms' }} aria-hidden="true" />}
         </motion.button>
-        {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(139,92,246,0.7)' }} animate={{ boxShadow: '0 0 0 60px rgba(139,92,246,0)' }} transition={{ duration: 1 }} />}
+        {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(139,92,246,0.7)', backgroundColor: 'rgba(196,181,253,0.16)' }} animate={{ boxShadow: '0 0 0 90px rgba(139,92,246,0)', backgroundColor: 'rgba(196,181,253,0)' }} transition={{ duration: 1.1 }} />}
       </Show>
 
-      <Replay on={step === 1} style={at(80, 150, 1440, 400)} className="flex items-center justify-between">
-        {[
-          ['🟣', 'Merged', 'to main, by a person'],
-          ['🚦', 'verify', 'the whole suite on main'],
-          ['🚂', 'Deploy', 'only if verify is green'],
-          ['💚', 'Healthy', '/api/health serves the new commit'],
-        ].map(([icon, t, d], i) => (
-          <div key={t} className="contents">
-            {i > 0 && (
-              <svg viewBox="0 0 120 20" className="w-[120px] shrink-0" aria-hidden="true">
-                <path d="M0 10 H120" pathLength="1" className="pz-draw-in" stroke="#6d28d9" strokeWidth="3" fill="none" style={later(i * 500)} />
-              </svg>
-            )}
-            <div className={`${box} pz-appear flex w-[250px] flex-col items-center p-7 text-center`} style={later(i * 500)}>
-              <span className="text-[44px]">{icon}</span>
-              <div className="mt-3 font-display text-[28px] text-ink">{t}</div>
-              <div className="mt-1 text-[16px] text-muted">{d}</div>
-            </div>
-          </div>
-        ))}
+      {/* the commit travels main → verify → deploy → health, lighting each as it passes */}
+      <Replay on={step === 1} style={at(80, 90, 1440, 500)}>
+        <div className="relative h-full">
+          <div className="absolute left-[120px] top-[150px] h-[3px] w-[1200px] rounded-full bg-hairline" />
+          <motion.div className="absolute left-[120px] top-[150px] h-[3px] rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-emerald-300" initial={{ width: 0 }} animate={{ width: 1200 }} transition={{ duration: RIDE, ease: 'linear', delay: 0.3 }} />
+          <motion.div className="absolute top-[138px] size-7 rounded-full bg-violet-50 shadow-[0_0_34px_8px_rgba(196,181,253,0.75)]" initial={{ left: 106, opacity: 0 }} animate={{ left: 1306, opacity: [0, 1, 1, 1] }} transition={{ duration: RIDE, ease: 'linear', delay: 0.3, opacity: { duration: RIDE, delay: 0.3, times: [0, 0.05, 0.9, 1] } }} />
+          {PIPE.map(([icon, t, d, ring], i) => {
+            const passAt = 300 + (i / 3) * RIDE * 1000;
+            return (
+              <div key={t} className="absolute top-[86px] w-[300px] -translate-x-1/2 text-center" style={{ left: 120 + i * 400 }}>
+                <div className="relative mx-auto grid size-[132px] place-items-center rounded-full border border-hairline bg-surface text-[48px] shadow-2xl shadow-black/40">
+                  {icon}
+                  <span className={`pz-appear absolute inset-0 rounded-full border-2 ${ring}`} style={later(passAt)} aria-hidden="true" />
+                  <span className={`pz-ping absolute inset-0 rounded-full border-2 ${ring}`} style={later(passAt)} aria-hidden="true" />
+                </div>
+                <div className="pz-appear mt-5 font-display text-[30px] text-ink" style={later(passAt)}>{t}</div>
+                <div className="pz-appear mt-1 text-[16px] text-muted" style={later(passAt + 150)}>{d}</div>
+              </div>
+            );
+          })}
+          {/* the heartbeat: the new commit answering its health check */}
+          <svg viewBox="0 0 1440 60" className="absolute left-0 top-[400px] h-[60px] w-[1440px]" aria-hidden="true">
+            <path d="M0 30 H1120 l12 0 l10 -22 l14 44 l10 -22 h274" pathLength="1" className="pz-draw-in" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinejoin="round" style={{ ...later(300 + RIDE * 1000 - 600), animationDuration: '1.4s' }} />
+          </svg>
+        </div>
       </Replay>
 
       <Replay on={step === 2} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1fr_1fr_1fr] gap-6">
@@ -408,6 +443,14 @@ function MergeScene({ step }) {
     </>
   );
 }
+
+const RIDE = 3.3;
+const PIPE = [
+  ['🟣', 'Merged', 'to main, by a person', 'border-violet-400/70 shadow-[0_0_40px_-6px_rgba(167,139,250,0.8)]'],
+  ['🚦', 'verify', 'the whole suite, on main', 'border-fuchsia-400/70 shadow-[0_0_40px_-6px_rgba(232,121,249,0.8)]'],
+  ['🚂', 'Deploy', 'only if verify is green', 'border-sky-400/70 shadow-[0_0_40px_-6px_rgba(56,189,248,0.8)]'],
+  ['💚', 'Healthy', '/api/health serves the new commit', 'border-emerald-400/70 shadow-[0_0_40px_-6px_rgba(52,211,153,0.8)]'],
+];
 
 const MERGE_BEATS = [
   {
@@ -479,6 +522,12 @@ function ScaleScene({ step }) {
             </div>
           );
         })}
+        {/* the tally, once the last lane is home */}
+        <div className="pz-appear flex items-center gap-6 px-6 py-3 text-[16px] text-muted" style={later(7000)}>
+          <span className="flex items-center gap-2"><span className="inline-flex items-center gap-1.5 font-semibold text-emerald-300"><PrIcon /> 9</span> pull requests, ready for review</span>
+          <span className="flex items-center gap-2"><Label name="needs-human" className="text-[12px]" /> 1 question, back to you</span>
+          <span className="ml-auto font-mono text-[14px] text-faint">nobody watched any of them</span>
+        </div>
       </Replay>
 
       <Replay on={step === 2} style={at(80, 70, 1440, 540)} className="grid grid-cols-[1fr_1fr] gap-8">
@@ -567,11 +616,15 @@ function CloseScene({ step }) {
         ))}
       </Show>
 
+      {/* the bookend: the title's orbits, back behind the last words */}
+      <Show on={step === 1} from="none" delay={400} style={at(0, 0, 1600, 900)} className="pointer-events-none">
+        <Orbits style={at(380, 10, 840, 840)} className="opacity-30" />
+      </Show>
       <Show on={step === 1} from="scale" style={at(80, 70, 1440, 760)} className="flex flex-col items-center justify-center text-center">
         <div className="font-display text-[88px] leading-[0.98] text-ink">
           Write the ticket.<br />
           Review the pull request.<br />
-          <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">The harness does the rest.</span>
+          <span className="pz-shine bg-clip-text text-transparent">The harness does the rest.</span>
         </div>
         <div className="mt-10 font-mono text-[20px] text-muted">github.com/EqualExperts/nam-2026-conference</div>
         <div className="mt-3 text-[17px] text-faint">The ship loop is Andy Vays’s design · built by Jonas Claesson and Abraham Marín Pérez at Equal Experts</div>

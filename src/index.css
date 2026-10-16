@@ -233,6 +233,60 @@ body::before {
 @keyframes pz-appear { from { opacity: 0; transform: translateY(8px); } }
 @utility pz-appear { animation: pz-appear 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* A ring that leaves a station as the ticket is stamped there. Ends gone. */
+@keyframes pz-ping {
+  from { opacity: 0.9; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.35); }
+}
+@utility pz-ping { animation: pz-ping 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* The skeptic striking a finding out: a line drawn through it, then it dims. */
+@keyframes pz-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pz-dim { to { opacity: 0.4; } }
+@utility pz-strike {
+  position: relative;
+  animation: pz-dim 0.5s both;
+  &::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 52%;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transform-origin: left;
+    animation: pz-strike 0.45s cubic-bezier(0.65, 0, 0.35, 1) both;
+    animation-delay: inherit;
+  }
+}
+
+/* A rubber stamp slammed down — a verdict landing. */
+@keyframes pz-stamp {
+  0%   { opacity: 0; transform: scale(2.2) rotate(-14deg); }
+  60%  { opacity: 1; transform: scale(0.94) rotate(-7deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+@utility pz-stamp { animation: pz-stamp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A sheet of light sweeping across a panel once; ends off its right edge. */
+@keyframes pz-sweep {
+  from { transform: translateX(-40%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  to   { transform: translateX(1500px); opacity: 0; }
+}
+@utility pz-sweep { animation: pz-sweep 2.2s cubic-bezier(0.65, 0, 0.35, 1) both; }
+
+/* Light moving across gradient text: the gradient is symmetric, so a 200%
+ * tile scrolls without a seam. Pair with bg-clip-text text-transparent. */
+@keyframes pz-shine { to { background-position: 200% center; } }
+@utility pz-shine {
+  background-image: linear-gradient(90deg, #c4b5fd, #f0abfc, #67e8f9, #f0abfc, #c4b5fd);
+  background-size: 200% auto;
+  animation: pz-shine 7s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
