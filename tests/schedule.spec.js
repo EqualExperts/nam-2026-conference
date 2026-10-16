@@ -22,6 +22,30 @@ test.describe('Schedule', () => {
     await expect(rail).not.toContainText('today');
   });
 
+  test('on a phone the open filter rail leaves the first session in view', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'phone layout only');
+    const days = await conferenceDays();
+    await visit(page, '/schedule?view=list', { at: await momentOn(0, MID_SESSION_TIME) });
+    await waitForResults(page);
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    await expect(page.getByRole('complementary', { name: 'Schedule filters' })).toBeVisible();
+
+    // the point: the sessions are still on screen with every filter open
+    await expect(page.locator('article').first()).toBeInViewport();
+    await shotForPR(page, 'the open filter rail on a phone, first session still in view');
+
+    // and every filter is still reachable
+    await expect(page.getByTestId('search-input')).toBeVisible();
+    for (const d of days) await expect(page.getByTestId(`tab-${d}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Agents' })).toBeVisible();
+    for (const name of ['Venue', 'Level', 'Format', 'Topic']) {
+      await expect(page.getByRole('combobox', { name })).toBeVisible();
+    }
+    const topic = page.getByRole('combobox', { name: 'Topic' });
+    await topic.selectOption({ index: 1 });
+    await expect(page).toHaveURL(/tag=/);
+  });
+
   test('switching day changes the results', async ({ page }) => {
     await visit(page, '/schedule?view=list');
     await waitForResults(page);
