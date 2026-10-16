@@ -105,16 +105,25 @@ test.describe('Schedule track filter', () => {
     return [tracks[0].slug, tracks[1].slug];
   }
 
+  // On a phone the filter rail is folded away until Filters is pressed.
+  async function openRail(page) {
+    const all = page.getByTestId('track-all');
+    if (!(await all.isVisible())) await page.getByRole('button', { name: /^Filters/ }).click();
+    await expect(all).toBeVisible();
+  }
+
   test('holds several tracks at once, in the URL, across a reload, and All clears them', async ({ page, request }) => {
     const [a, b] = await twoTracks(request);
     await visit(page, '/schedule?view=list');
     await waitForResults(page);
+    await openRail(page);
     await page.getByTestId(`track-${a}`).click();
     await page.getByTestId(`track-${b}`).click();
     await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'true');
     await expect(page).toHaveURL(new RegExp(`track=${a}(,|%2C)${b}`));
     await page.reload();
+    await openRail(page);
     await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'true');
     await shotForPR(page, 'two track pills selected');
@@ -128,6 +137,7 @@ test.describe('Schedule track filter', () => {
   test('clicking a selected pill drops just that track', async ({ page, request }) => {
     const [a, b] = await twoTracks(request);
     await visit(page, `/schedule?track=${a},${b}&view=list`);
+    await openRail(page);
     await page.getByTestId(`track-${a}`).click();
     await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'true');
