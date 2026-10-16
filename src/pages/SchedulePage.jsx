@@ -107,7 +107,7 @@ export function SchedulePage() {
     : `on ${days.find((d) => d.date === filters.day)?.label ?? filters.day}`;
 
   const rail = (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       <SearchInput
         value={filters.q}
         onChange={(v) => set('q', v)}
@@ -115,7 +115,7 @@ export function SchedulePage() {
         data-testid="search-input"
       />
 
-      <div className="rounded-xl border border-hairline bg-raised p-3">
+      <div className="hidden rounded-xl border border-hairline bg-raised p-3 lg:block">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">My agenda</span>
           <Link to="/my-agenda" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
@@ -130,7 +130,7 @@ export function SchedulePage() {
 
       <div>
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Day</h3>
-        <div className="grid gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5 lg:grid-cols-1">
           {days.map((d) => {
             const active = d.date === filters.day;
             return (
@@ -141,7 +141,7 @@ export function SchedulePage() {
                 data-testid={`tab-${d.date}`}
                 aria-pressed={active}
                 className={cx(
-                  'flex items-baseline justify-between rounded-lg border px-3 py-2 text-left transition-colors',
+                  'flex flex-col items-start gap-0.5 rounded-lg border px-2 py-1.5 text-left lg:flex-row lg:items-baseline lg:justify-between lg:gap-0 lg:px-3 lg:py-2 transition-colors',
                   active ? 'border-violet-400/50 bg-violet-500/15 text-ink'
                     : 'border-hairline bg-raised text-muted hover:bg-overlay hover:text-ink',
                 )}
@@ -182,7 +182,7 @@ export function SchedulePage() {
         </div>
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
         <Select label="Venue" value={filters.venue} onChange={(v) => set('venue', v)}
           options={[{ value: ALL, label: 'Both venues' }, ...venues.map((v) => ({ value: String(v.id), label: v.shortName }))]} />
         <Select label="Level" value={filters.level} onChange={(v) => set('level', v)}
@@ -247,7 +247,7 @@ export function SchedulePage() {
       <div className="grid gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
         <aside className={cx('lg:sticky lg:top-24 lg:block lg:self-start', railOpen ? 'block' : 'hidden')}
           aria-label="Schedule filters">
-          <div className="card p-4">{rail}</div>
+          <div className="card p-3 lg:p-4">{rail}</div>
         </aside>
 
         <div className="min-w-0 space-y-5">
