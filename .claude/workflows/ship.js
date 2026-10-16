@@ -680,7 +680,9 @@ const CODE_LENSES_ALL = [
       `right; a misreading is criterion-unmet, a ticket that contradicts itself is scope — then \`git diff origin/${BASE}...HEAD\`. For each Done-when criterion, find what ` +
       `satisfies it and the test that proves it — one with nothing satisfying it is a blocker, and so is a test ` +
       `that would pass before the change or an existing test weakened when the ticket did not ask for it ` +
-      `(test-weakened). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
+      `(test-weakened), or a criterion written for a device class ('mobile', 'a phone') proven only at the one ` +
+      `width the suite pins — unmet if the fix's own margin looks tight enough that a narrower phone could fail ` +
+      `it (#142). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
       `line) or a rule in .claude/rules/ for an area the diff touches, or a logic error with an input and the wrong output it produces. Last, \`node scripts/context.mjs ` +
       `for <changed files>\`: a docs/context/ doc that now describes the code wrongly is docs-stale (a minor ` +
       `unless an agent following it would build the wrong thing). ` +
