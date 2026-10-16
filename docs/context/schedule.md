@@ -67,7 +67,7 @@ the Grid tab is `disabled` with a `title` naming the blocker, and
 
 The list groups sessions by `startsAt` into `slot-<HH:MM>` sections of
 `SessionCard`s in a `grid-flow-row-dense` auto-fit grid. The filter rail
-(`aside`, hidden below `lg` until the Filters button toggles `railOpen`) holds
+(`aside`, hidden below `lg` until the Filters button toggles `railOpen`; opened, it is compact: day buttons in one row, selects in two columns, no agenda card) holds
 `search-input`, `starred-count` (= `reservations.size`, the agenda count), day
 buttons `tab-<date>`, track pills, and `Select`s for venue/level/format/topic.
 `result-count` shows `Loading…` then `N sessions`.
