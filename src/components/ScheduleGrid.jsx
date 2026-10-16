@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
 import { useConference } from '../lib/store.jsx';
 import { hasEnded, toMinutes } from '../lib/clock.js';
-import { Avatar, cx } from './ui.jsx';
+import { Avatar, SeatButton, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
 /**
@@ -101,17 +101,10 @@ export function ScheduleGrid({ sessions }) {
                         </span>
                         <span className="truncate text-sm font-semibold group-hover:text-violet-200">{s.title}</span>
                         <span className="ml-auto shrink-0 text-[11px] text-faint">{s.room.name}</span>
-                        <button
-                          type="button"
-                          aria-label={seat ? 'Remove from my agenda' : closed ? 'Session ended' : 'Add to my agenda'}
-                          aria-pressed={Boolean(seat)}
-                          disabled={closed}
-                          onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
-                          className={cx('relative z-10 shrink-0 rounded p-1',
-                            seat ? 'text-emerald-300' : closed ? 'cursor-not-allowed text-faint/50' : 'text-faint hover:text-emerald-300')}
-                        >
-                          <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-4" />
-                        </button>
+                        <SeatButton size="sm" status={seat} ended={closed} full={s.isFull}
+                          name={seat ? 'Remove from my agenda' : closed ? 'Session ended' : 'Add to my agenda'}
+                          className="size-7! border-transparent bg-transparent"
+                          onClick={() => toggleSeat(s.id, s)} />
                       </Link>
                     </div>
                   );
@@ -160,20 +153,12 @@ export function ScheduleGrid({ sessions }) {
                               <h4 className="line-clamp-3 text-[12px] font-semibold leading-snug group-hover:text-violet-200">
                                 {s.title}
                               </h4>
-                              <button
-                                type="button"
-                                aria-label={seat ? `Remove ${s.title} from my agenda`
+                              <SeatButton size="sm" status={seat} ended={closed} full={s.isFull}
+                                name={seat ? `Remove ${s.title} from my agenda`
                                   : closed ? `${s.title} has ended` : `Add ${s.title} to my agenda`}
-                                aria-pressed={Boolean(seat)}
-                                disabled={closed}
-                                onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
-                                className={cx('relative z-10 -mr-1 -mt-1 shrink-0 rounded p-1 transition-colors',
-                                  seat ? 'text-emerald-300'
-                                    : closed ? 'cursor-not-allowed text-faint/50 opacity-0 group-hover:opacity-100'
-                                    : 'text-faint opacity-0 hover:text-emerald-300 group-hover:opacity-100 focus:opacity-100')}
-                              >
-                                <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-3.5" />
-                              </button>
+                                className={cx('size-6! -mr-1 -mt-1 border-transparent bg-transparent',
+                                  !seat && 'opacity-0 group-hover:opacity-100 focus:opacity-100')}
+                                onClick={() => toggleSeat(s.id, s)} />
                             </div>
                             {(() => {
                               const live = seatsFor(s.id);
