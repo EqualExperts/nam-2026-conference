@@ -8,9 +8,9 @@
 
 ![How agents work in this repo: a GitHub Issue goes to Ship, where an agent loop specs, builds, tests, audits and fixes until clean; then a pull request, independent code review and QA, and a person merges. A ticket that will not converge goes to needs-human with a draft PR.](../images/harness-flow.png)
 
-The [main README](../../README.md) shows what the harness does. This page is
-how: what runs, how hard each part works, what it costs, and what to do when it
-goes wrong. The playbooks next to this file say how each step is *done*;
+The [presentation](https://orbit26.up.railway.app/presentation) shows what the
+harness does. This page is how: what runs, how hard each part works, what it
+costs, and what to do when it goes wrong. The playbooks next to this file say how each step is *done*;
 [`docs/context/harness.md`](../context/harness.md) is the map for changing the
 machinery itself.
 
@@ -128,6 +128,24 @@ merge: **machines gate, agents advise.**
 changed since. A blocker must name a realistic path to harm — who reaches it
 and what they lose; anything less becomes a `follow-up` issue and the check
 stays green.
+
+## 👀 See it for real
+
+Everything the harness does leaves a trail on GitHub. Two real tickets, label to
+merged pull request on GitHub Actions, nobody touching a terminal:
+
+| | 🟢 A small ticket | 🔵 A bigger ticket |
+| --- | --- | --- |
+| **Pull request** | [PR #96 — name the search when nothing matches](https://github.com/EqualExperts/nam-2026-conference/pull/96) | [PR #97 — fix Undo after removing an ended seat](https://github.com/EqualExperts/nam-2026-conference/pull/97) |
+| 🚢 **Ship** | 12 min — Sonnet, one audit round | 22 min — Opus, plan audit and three audit lenses |
+| 🔍 **Code review** | High confidence, about a minute | High confidence, about a minute |
+| 🧪 **QA** | Skipped in 16 seconds — two lines, covered by the PR's own tests | High confidence — 3 browser probes, every criterion exercised |
+| 🧾 **AI spend** | **$0.91** | **$7.99** |
+
+Each pull request has it all — what the agents wrote, checked and found, the
+screenshots, the verdicts, the cost — and links back to its issue. Every issue
+also keeps a running **🧾 AI spend** comment, updated after each agent run and
+split by Opus, Sonnet and Haiku, so a ticket always says what it cost.
 
 ## 🧾 What it costs
 

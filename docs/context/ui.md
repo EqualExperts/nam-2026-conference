@@ -180,7 +180,7 @@ with reduced motion each beat still shows everything it should.
   not leave content hidden when it is.
 - Motion (`motion/react`) stays inside `/presentation`. The app's own motion is CSS.
 - The presentation states only what the harness really does; its numbers (round
-  limits, typical costs, PR #96 and #97) are the README's — change them together.
+  limits, typical costs, PR #96 and #97) are `docs/harness/README.md`'s — change them together.
 
 ## Gotchas
 

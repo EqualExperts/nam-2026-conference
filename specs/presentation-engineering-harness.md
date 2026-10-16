@@ -59,7 +59,7 @@ a presenter can resume.
 - Desktop-first: it is shown on a projector. On a phone it still renders and
   navigates (tap to advance) without horizontal scroll, but is not laid out for it.
 - Content stays true to what the harness does today — the numbers (round limits,
-  typical costs, PR #96 at $0.91 and #97 at $7.99) are the README's, and model
+  typical costs, PR #96 at $0.91 and #97 at $7.99) are `docs/harness/README.md`'s, and model
   names are the family (Opus, Sonnet, Haiku) rather than a version that will date.
 - Motion (`motion/react`) for the springs, the chapter fly-through and the
   camera zoom. The first draft was CSS only; it was asked to look far more
@@ -67,4 +67,13 @@ a presenter can resume.
   Motion is not a component kit or a state library, and it stays inside
   `/presentation` — the app's own motion remains CSS. Reveal.js was rejected:
   it is built around slides, and this is meant not to be a slide deck.
+- **26 beats, not 43.** The first cut ran long for a thirty-minute slot in which
+  some steps are demonstrated live, so it was cut: one beat per chapter where
+  the scene can carry it, and ship's ten stations shown in eight stops (spec
+  audit and learn folded into neighbouring captions). Every station stays on
+  the rail. The removed scenes are in `b5e8107` if one is wanted back.
+- **The README points at the talk instead of explaining the harness.** The how
+  stays in `docs/harness/README.md`, which now also holds the two real tickets
+  (#96, #97) the talk quotes; the laptop walkthrough moved to
+  `docs/harness/quickstart.md`.
 - No issue for this change; the spec is named by slug rather than number.
