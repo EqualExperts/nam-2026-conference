@@ -153,40 +153,6 @@ function SpecDetail() {
   );
 }
 
-function Auditor({ name, delay, finding, ok }) {
-  return (
-    <div className="pz-appear flex flex-col gap-3" style={later(delay)}>
-      <div className={`${box} p-4`}>
-        <div className="flex items-center gap-2 text-[18px] font-semibold text-ink">🔎 {name}</div>
-        <div className="mt-1 text-[14px] text-faint">fresh context · has only the ticket and the spec</div>
-      </div>
-      <div className={`pz-appear rounded-xl border px-4 py-3 text-[16px] ${ok ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200' : 'border-amber-400/40 bg-amber-500/10 text-amber-200'}`} style={later(delay + 700)}>
-        {finding}
-      </div>
-    </div>
-  );
-}
-
-function SpecAuditDetail() {
-  return (
-    <div className="grid h-full grid-cols-[1fr_1fr_1fr] gap-6">
-      <Auditor name="Plan auditor A" delay={150} finding={<>“Every filter reachable” has no check of its own.<div className="pz-appear mt-1 text-emerald-300" style={later(2200)}>→ revised: one assertion per filter</div></>} />
-      <div className={`${box} flex flex-col items-center justify-center p-6 text-center`}>
-        <div className="text-[44px]">📄</div>
-        <div className="mt-2 font-mono text-[15px] text-ink">specs/140-…md</div>
-        <div className="pz-appear mt-5 text-[17px] text-muted" style={later(1700)}>
-          A finding that changes <b className="text-ink">what gets built</b> sends the plan back. A gap in its detail goes to the builder as a note.
-        </div>
-      </div>
-      <Auditor name="Plan auditor B" delay={450} ok finding="Reads the ticket the same way. Nothing to add." />
-      <div className="pz-appear col-span-3 flex items-center gap-4 rounded-xl border border-hairline bg-raised px-5 py-3 text-[17px] text-muted" style={later(2600)}>
-        <Label name="ship:full" />
-        <span><b className="text-ink">Full tickets:</b> their own plan writer and two plan auditors, up to three rounds. <b className="text-ink">Small:</b> skipped — the code auditor checks the reading later. Two agents fewer.</span>
-      </div>
-    </div>
-  );
-}
-
 function ImplementDetail() {
   return (
     <div className="grid h-full grid-cols-[1fr_auto_1fr] items-stretch gap-5">
@@ -392,30 +358,6 @@ function LoopDetail() {
   );
 }
 
-function LearnDetail() {
-  return (
-    <div className="grid h-full grid-cols-[1fr_auto_1.2fr] items-center gap-6">
-      <div className={`${box} p-6`}>
-        <Kicker>The audit caught</Kicker>
-        <div className="mt-3 text-[21px] text-ink">The browser auditor found the search field off-screen at 360 px — the spec only checked the Pixel 7.</div>
-      </div>
-      <div className="text-[34px] text-violet-300">→</div>
-      <div className="overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15]">
-        <div className="border-b border-hairline bg-surface px-4 py-2 font-mono text-[13px] text-ink">docs/context/schedule.md</div>
-        <div className="space-y-2 px-6 py-4 font-mono text-[15px]">
-          <div className="text-violet-300">## Gotchas</div>
-          <div className="text-faint">- The grid needs five stable rooms a day…</div>
-          <div className="text-faint">- A content filter falls back to the list…</div>
-          <div className="pz-appear rounded bg-emerald-500/10 text-emerald-300" style={later(900)}>+ A phone-width check needs the narrowest phone too — the Pixel 7 is 412 px wide.</div>
-        </div>
-      </div>
-      <div className="pz-appear col-span-3 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(1600)}>
-        On the branch, <b className="text-ink">before the pull request opens</b>, so a reviewer sees it — and the next ticket that touches the schedule reads it before it writes a line.
-      </div>
-    </div>
-  );
-}
-
 const PR_SECTIONS = [
   ['What changes', 'the rail is compact below lg'],
   ['🧪 Try it', 'open /schedule at phone width, tap Filters'],
@@ -459,12 +401,16 @@ function PrDetail() {
   );
 }
 
-const DETAILS = [SetupDetail, SpecDetail, SpecAuditDetail, ImplementDetail, GateDetail, RedCheckDetail, AuditDetail, LoopDetail, LearnDetail, PrDetail];
+// By station. Spec audit and Learn have no stop of their own: the ticket ticks
+// them off on its way past, and their story rides in the neighbouring captions.
+const DETAILS = [SetupDetail, SpecDetail, null, ImplementDetail, GateDetail, RedCheckDetail, AuditDetail, LoopDetail, null, PrDetail];
+/** Which station each beat stops at — eight stops over ten stations. */
+const STOPS = [-1, 0, 1, 3, 4, 5, 6, 7, 9];
 
 const LOOP_BACK = `M${center(7)} 160 C ${center(7)} 204, ${center(3)} 204, ${center(3)} 160`;
 
 function ShipScene({ step }) {
-  const active = step - 1;
+  const active = STOPS[step] ?? -1;
   return (
     <>
       <Stations active={active} />
@@ -488,7 +434,7 @@ function ShipScene({ step }) {
         ))}
       </Show>
 
-      {DETAILS.map((Detail, i) => (
+      {DETAILS.map((Detail, i) => Detail && (
         <Replay key={i} on={active === i} from="up" style={at(80, 210, 1440, 400)}>
           <Detail />
         </Replay>
@@ -509,49 +455,39 @@ const SHIP_BEATS = [
     body: 'Setup checks the ticket can be built at all, claims it so no second run picks it up, and makes an isolated worktree on its own ports. Then it reads the code the ticket would change and reports the facts every later step is sized by.',
   },
   {
-    kicker: '4.2 · Spec',
-    title: 'A plan before any code',
-    body: 'specs/<n>-<slug>.md, pushed as the first commit. Each Done when line is mapped to the check that will prove it. The spec stays after merge — together they record why the code is the way it is.',
+    kicker: '4.2 · Spec, then a spec audit',
+    title: 'A plan before any code, judged while a mistake is still cheap',
+    body: 'specs/<n>-<slug>.md is the first commit and maps each Done when line to its check. On full tickets, auditors that never saw it written judge it against the ticket — a misreading caught here costs a revision, not a rebuild.',
   },
   {
-    kicker: '4.3 · Spec audit',
-    title: 'Fresh eyes on the plan, while a mistake is still cheap',
-    body: 'Agents that never saw the spec being written judge it against the ticket. A misreading caught here costs one revision; caught in review, it costs a rebuild.',
-  },
-  {
-    kicker: '4.4 · Implement',
+    kicker: '4.3 · Implement',
     title: 'The failing test first — then the change',
     body: 'The check is committed while it still fails, so the history proves it failed. Every state the change adds gets its own assertion, including the moment just before a time-dependent rule applies.',
   },
   {
-    kicker: '4.5 · The gate',
+    kicker: '4.4 · The gate',
     title: 'A gate agents cannot argue with',
     body: 'Every unit, API and browser test, on desktop and on mobile. It is a script with an exit code — an agent cannot talk its way past it.',
   },
   {
-    kicker: '4.6 · Red-check',
+    kicker: '4.5 · Red-check',
     title: 'Prove the test can fail',
     body: 'The old code goes back and the new tests run again. If they still pass, they never tested the change — and that is a red gate, not a green one.',
   },
   {
-    kicker: '4.7 · Code audit',
+    kicker: '4.6 · Code audit',
     title: 'Independent auditors, and a skeptic for every blocker',
     body: 'Each auditor has one lens: the ticket’s criteria, the repo’s rules, or a real browser. Every blocker they raise must survive a skeptic that tries to refute it before it costs a fix.',
   },
   {
-    kicker: '4.8 · Fix and loop',
+    kicker: '4.7 · Fix and loop',
     title: 'Fix, gate, audit — until a round comes back clean',
     body: 'Round limits are code. When the same finding survives two fixes, more rounds will not help: ship stops and hands the ticket to a person, with everything still open written down.',
   },
   {
-    kicker: '4.9 · Learn',
-    title: 'What the audits caught becomes context',
-    body: 'If an auditor caught something the builder should have known, the lesson goes into the docs the next agent reads. The harness gets better at this repo with every ticket.',
-  },
-  {
-    kicker: '4.10 · Pull request',
+    kicker: '4.8 · Learn, then the pull request',
     title: 'A pull request you can actually review',
-    body: 'The spec, the proof, a table of every audit round, the decisions it made for you to confirm, and what the run cost. It opens ready for review — never before the gate is green.',
+    body: 'What the audits caught becomes context the next agent reads. Then the pull request opens — spec, proof, every audit round, the decisions for you to confirm, and the cost. Never before the gate is green.',
   },
 ];
 
@@ -589,14 +525,6 @@ function Lane({ title, tone, steps, foot, glow }) {
 }
 
 const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' };
-
-const RISKS = [
-  ['changes a business rule, stored data or the harness — or is labelled ship:full', 'the full loop: Opus, plan writer + two plan auditors, criteria + rules + browser auditors, up to 4 rounds'],
-  ['changes the API, or is broad (3+ areas, ~7+ app files)', 'criteria and rules auditors, 3 rounds — still Sonnet'],
-  ['leaves 2+ design questions open', 'one plan audit'],
-  ['adds interaction — focus, hover, touch, positioning', 'a browser audit with four probes'],
-  ['none of these', 'small: Sonnet, setup writes the plan, one combined auditor, 2 rounds'],
-];
 
 function ModelsScene({ step }) {
   return (
@@ -672,42 +600,6 @@ function ModelsScene({ step }) {
         </div>
       </Replay>
 
-      <Replay on={step === 2} from="right" style={at(570, 70, 950, 540)} className={`${box} overflow-hidden`}>
-        <div className="grid grid-cols-[1fr_1fr] border-b border-hairline bg-raised px-6 py-3 font-mono text-[14px] uppercase tracking-wider text-faint">
-          <span>The ticket…</span><span>adds</span>
-        </div>
-        {RISKS.map(([when, adds], i) => (
-          <div key={when} className="pz-appear grid grid-cols-[1fr_1fr] gap-6 border-b border-hairline/60 px-6 py-3.5 text-[17px]" style={later(200 + i * 220)}>
-            <span className="text-ink">{when}</span><span className="text-muted">{adds}</span>
-          </div>
-        ))}
-        <div className="pz-appear px-6 py-3.5 text-[17px] text-emerald-300" style={later(1500)}>Small drops redundancy, not rigour: the gate, the red-check, an audit and a skeptic stay.</div>
-      </Replay>
-
-      <Replay on={step === 3} from="right" style={at(570, 70, 950, 540)} className="flex flex-col gap-4">
-        <div className={`${box} p-6`}>
-          <Kicker>After a green gate, the script measures the real diff</Kicker>
-          <div className="mt-3 flex items-center gap-4 text-[19px] text-ink">
-            <span>reached <Code>server/lib</Code>, the schema or the harness — or grew past 300 app lines</span>
-          </div>
-          <div className="mt-4 flex items-center gap-3 text-[17px] text-muted">
-            auditors
-            <span className="opacity-50"><Model m="sonnet" /></span>
-            <span className="text-violet-300">→</span>
-            <span className="pz-pop" style={later(1200)}><Model m="opus">Opus — the full auditors</Model></span>
-          </div>
-        </div>
-        <div className={`${box} pz-appear p-6`} style={later(1800)}>
-          <Kicker>A gate red twice running</Kicker>
-          <div className="mt-3 flex items-center gap-3 text-[19px] text-ink">the fixer moves to <Model m="opus" /></div>
-        </div>
-        <div className={`${box} pz-appear p-6`} style={later(2400)}>
-          <Kicker>And you can always say so</Kicker>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-[18px]">
-            <Code>/ship 42 --full</Code><Code>/ship 42 --small</Code><Label name="ship:full" />
-          </div>
-        </div>
-      </Replay>
     </>
   );
 }
@@ -716,22 +608,12 @@ const MODEL_BEATS = [
   {
     kicker: '5 · The right model for the job',
     title: 'Spend the frontier model where the decision is',
-    body: 'Setup runs on Opus because every later step is sized by its call. It reads the ticket and the code, and reports facts — which areas, how many files, whether it touches a business rule, stored data, the API or the harness.',
+    body: 'Setup runs on Opus because every later step is sized by its call. It reads the ticket and the code and reports facts — areas, files, whether it touches a business rule, stored data, the API or the harness. The script composes the run from those.',
   },
   {
-    kicker: '5 · Small or full',
-    title: 'Mechanical work goes to Sonnet and Haiku',
-    body: 'Most tickets are small: Sonnet builds and audits, Haiku runs the gate and opens the PR. The hard ones stay on Opus at nearly every step. A one-line fix should not cost what a new feature does.',
-  },
-  {
-    kicker: '5 · Risk buys checks',
-    title: 'Small is the base, and each risk adds the check that catches it',
-    body: 'Not a dial from cheap to thorough — a list of what can go wrong and the check that would catch it. A ticket pays only for the risks it actually has.',
-  },
-  {
-    kicker: '5 · Then the evidence decides',
-    title: 'A small run that turns out risky is escalated',
-    body: 'Setup’s guess is checked against the real diff. Reach a risky path or grow too big and the full auditors come in on Opus; a gate that stays red moves the fixer up. You can always force it either way.',
+    kicker: '5 · Small or full — and the evidence can escalate it',
+    title: 'Sonnet and Haiku for mechanical work, Opus for the hard tickets',
+    body: 'Each risk adds the check that catches it, so a one-line fix does not pay what a feature does. Setup’s guess is then checked against the real diff — grow risky and the full auditors come in on Opus. Or force it: /ship 42 --full.',
   },
 ];
 

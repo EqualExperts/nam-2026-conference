@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { animate, motion } from 'motion/react';
-import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, Meter, Terminal, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
+import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
 import { Orbits } from './intro.jsx';
 
 const box = 'rounded-2xl border border-hairline bg-surface';
@@ -18,6 +18,9 @@ function Count({ to, prefix = '', decimals = 0, delay = 0 }) {
 /* ------------------------------------------------------------------ *
  * When it will not converge — needs-human.
  * ------------------------------------------------------------------ */
+
+/* The reply and the relabel land a few seconds into the hand-back beat. */
+const RELABEL_AT = 2600;
 
 function NeedsHumanScene({ step }) {
   return (
@@ -67,8 +70,8 @@ function NeedsHumanScene({ step }) {
         </div>
         <div className="flex items-center gap-2 px-6 pt-4">
           <span className="text-[15px] text-faint">labels</span>
-          <span className={`transition-opacity duration-500 ${step >= 2 ? 'opacity-30 line-through' : ''}`}><Label name="needs-human" /></span>
-          {step >= 2 && <span className="pz-pop" style={later(1500)}><Label name="ready-for-ai" /></span>}
+          <span className="pz-strike text-amber-300" style={later(RELABEL_AT)}><Label name="needs-human" /></span>
+          <span className="pz-pop" style={later(RELABEL_AT)}><Label name="ready-for-ai" /></span>
         </div>
         <div className="m-6 mb-4 rounded-xl border border-hairline bg-raised p-5">
           <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-violet-500/30 text-[14px]">🤖</span> ship · stopped at Code audit</div>
@@ -78,7 +81,7 @@ function NeedsHumanScene({ step }) {
             <li>• draft PR #142 has everything else, green</li>
           </ul>
         </div>
-        <Show on={step >= 2} from="left" delay={300} className="mx-6 rounded-xl border border-sky-400/40 bg-sky-500/10 p-5">
+        <Show on={step >= 1} from="left" delay={RELABEL_AT - 900} className="mx-6 rounded-xl border border-sky-400/40 bg-sky-500/10 p-5">
           <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-sky-500/30 text-[14px]">🙋</span> you</div>
           <div className="mt-2 text-[18px] text-ink">Collapse them behind Filters — the day is in the heading anyway.</div>
         </Show>
@@ -93,16 +96,10 @@ function NeedsHumanScene({ step }) {
       </Show>
 
       <Show on={step >= 1} from="right" delay={700} style={at(960, 350, 560, 260)} className="flex flex-col justify-center gap-3">
-        {step >= 2 ? (
-          <div className="pz-appear rounded-2xl border border-violet-400/50 bg-raised p-6" style={later(1800)}>
+        <div className="pz-appear rounded-2xl border border-violet-400/50 bg-raised p-6" style={later(RELABEL_AT + 400)}>
             <div className="font-display text-[26px] text-ink">🔁 Back into ship</div>
             <div className="mt-2 text-[18px] text-muted">Relabel <Label name="ready-for-ai" className="mx-1 text-[12px]" /> and a fresh run picks up the answer, the branch and the spec.</div>
           </div>
-        ) : (
-          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6 text-[19px] text-amber-100">
-            It never burns rounds on a problem it cannot solve. It writes down what it knows and asks.
-          </div>
-        )}
       </Show>
     </>
   );
@@ -115,14 +112,9 @@ const NEEDS_HUMAN_BEATS = [
     body: 'Some tickets cannot be finished by an agent — the ticket contradicts itself, or the fix needs a decision only a person can make. Ship notices it is going round in circles and stops.',
   },
   {
-    kicker: '6 · needs-human',
-    title: 'It hands back everything it knows',
-    body: 'A draft pull request with the work so far, a comment on the issue saying exactly what is still open, and the needs-human label so it shows up on the board.',
-  },
-  {
-    kicker: '6 · You step in',
-    title: 'Answer in a comment, relabel, and it carries on',
-    body: 'You make the call it could not. Relabel ready-for-ai and a fresh run starts from the answer — or, on the pull request, @claude makes the change you asked for, runs the gate and replies.',
+    kicker: '6 · needs-human, then you',
+    title: 'It hands back everything it knows; you answer and relabel',
+    body: 'A draft pull request with the work so far, a comment saying exactly what is still open, and the needs-human label for the board. You make the call it could not; relabel ready-for-ai and a fresh run starts from your answer.',
   },
 ];
 
@@ -170,34 +162,8 @@ function ReviewScene({ step }) {
           lines={['size: small → ≤3 probes · Sonnet', 'triage: are the PR’s own tests enough?', 'drives the app · desktop + mobile']} />
       </Replay>
 
-      {/* code review in detail */}
-      <Replay on={step === 1} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1fr_1fr] gap-8">
-        <div className="flex flex-col gap-3">
-          {[
-            ['🎫', 'The ticket first', 'forms its own view of what should be true before it reads a line of the diff'],
-            ['🔬', 'Then the diff', 'only what a reviewer should flag: defects with a real path to harm'],
-            ['🧐', 'A skeptic per blocker', 'who reaches it, and what do they lose? Anything less becomes a follow-up issue'],
-            ['🔁', 'Reviews converge', 'a re-review checks the old blockers and only what changed since'],
-          ].map(([icon, t, d], i) => (
-            <div key={t} className={`${box} pz-appear flex items-start gap-4 px-5 py-3.5`} style={later(i * 260)}>
-              <span className="text-[26px]">{icon}</span>
-              <div><div className="text-[19px] font-semibold text-ink">{t}</div><div className="text-[16px] text-muted">{d}</div></div>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col justify-center gap-4">
-          <Kicker>What lands on the pull request</Kicker>
-          <div className="pz-appear" style={later(1300)}>
-            <Verdict pass level="high" title="Code review">Every criterion traced to what satisfies it. 40 lines, one file.</Verdict>
-          </div>
-          <div className="pz-appear text-[17px] text-muted" style={later(1800)}>
-            Confidence is <b className="text-ink">how much of the change it could judge</b> — not how sure it feels. It never approves, never requests changes, never merges.
-          </div>
-        </div>
-      </Replay>
-
       {/* QA in detail */}
-      <Replay on={step === 2} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1.25fr_1fr] gap-8">
+      <Replay on={step === 1} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1.25fr_1fr] gap-8">
         <div className="relative">
           <div className={`${box} absolute left-0 top-0 h-[330px] w-[560px] overflow-hidden`}>
             <div className="flex gap-1.5 border-b border-hairline px-4 py-2"><span className="size-2.5 rounded-full bg-overlay" /><span className="size-2.5 rounded-full bg-overlay" /><span className="size-2.5 rounded-full bg-overlay" /><span className="ml-3 font-mono text-[12px] text-faint">desktop · 1440 × 900 · /schedule</span></div>
@@ -243,7 +209,7 @@ function ReviewScene({ step }) {
       </Replay>
 
       {/* confidence decides who reads it */}
-      <Replay on={step === 3} style={at(80, 80, 1440, 520)} className="grid grid-cols-2 gap-8">
+      <Replay on={step === 2} style={at(80, 80, 1440, 520)} className="grid grid-cols-2 gap-8">
         <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-emerald-400/40 bg-emerald-500/[0.06] p-7" style={later(100)}>
           <Kicker className="text-emerald-300">Both high</Kicker>
           <Verdict pass level="high" title="Code review">Every criterion traced.</Verdict>
@@ -264,24 +230,6 @@ function ReviewScene({ step }) {
         </div>
       </Replay>
 
-      {/* machines gate, agents advise */}
-      <Replay on={step === 4} style={at(80, 80, 1440, 520)} className="grid grid-cols-3 gap-6">
-        {[
-          ['🚦', 'Machines gate', 'verify runs the whole suite on the pull request. A red gate is a fact, not an opinion.', 'border-emerald-400/40'],
-          ['🧠', 'Agents advise', 'Review and QA post a verdict and a confidence. A FAIL turns the check red — and still stops nobody merging.', 'border-sky-400/40'],
-          ['🙋', 'People decide', 'Nothing is a required check and nothing merges itself. @claude on the pull request asks for a change.', 'border-violet-400/40'],
-        ].map(([icon, t, d, border], i) => (
-          <div key={t} className={`pz-appear flex flex-col rounded-3xl border ${border} bg-surface p-8`} style={later(i * 300)}>
-            <span className="text-[48px]">{icon}</span>
-            <div className="mt-4 font-display text-[34px] text-ink">{t}</div>
-            <div className="mt-3 text-[19px] text-muted">{d}</div>
-          </div>
-        ))}
-        <div className="pz-appear col-span-3 flex items-center gap-4 rounded-xl border border-hairline bg-raised px-6 py-4 text-[18px] text-muted" style={later(1200)}>
-          <Label name="harness-escape" />
-          When review or QA catches a blocker ship’s own loop missed, an agent proposes the lesson for the docs. That count is how the harness gets tuned.
-        </div>
-      </Replay>
     </>
   );
 }
@@ -290,27 +238,17 @@ const REVIEW_BEATS = [
   {
     kicker: '7 · After the pull request opens',
     title: 'Two more agents, on their own runners, in parallel',
-    body: 'Code review and QA start when the pull request opens — not on every push, so a fourteen-commit branch does not pay fourteen times. They size themselves from facts about the diff, the same way ship did.',
-  },
-  {
-    kicker: '7 · Code review',
-    title: 'It reads the ticket before it reads the code',
-    body: 'A reviewer that never saw how the change was written forms its own view first, then checks the diff against it. A blocker has to name a realistic path to harm and survive a skeptic.',
+    body: 'Code review and QA start when the pull request opens, sized from facts about the diff. The reviewer reads the ticket before the code and forms its own view; every blocker must name a real path to harm and survive a skeptic.',
   },
   {
     kicker: '7 · QA',
     title: 'It tries to break the change in a real browser',
-    body: 'Probes on desktop and mobile, one per gap the pull request’s own tests leave. If the tests already pin every Done when line, QA can skip itself — checked against the diff, never taken on trust.',
+    body: 'Probes on desktop and mobile, one per gap the pull request’s own tests leave. Every failure is reproduced on the branch and on main, so a bug that was already there is called pre-existing, not pinned on this change.',
   },
   {
     kicker: '7 · Confidence means coverage',
     title: 'The confidence tells you how to review it',
-    body: 'High on both means the agents could judge all of it and found nothing — merge it. A low confidence publishes as unproven, not green: that is the pull request a person should actually read.',
-  },
-  {
-    kicker: '7 · Who decides',
-    title: 'Machines gate, agents advise, people merge',
-    body: 'The test suite is the only hard gate. Agents publish what they found and how much they could see. The decision stays with you.',
+    body: 'High on both means the agents could judge all of it and found nothing — merge it. Low publishes as unproven, not green: that is the one a person should actually read. Machines gate, agents advise, people merge.',
   },
 ];
 
@@ -375,34 +313,7 @@ function MergeScene({ step }) {
         {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(139,92,246,0.7)', backgroundColor: 'rgba(196,181,253,0.16)' }} animate={{ boxShadow: '0 0 0 90px rgba(139,92,246,0)', backgroundColor: 'rgba(196,181,253,0)' }} transition={{ duration: 1.1 }} />}
       </Show>
 
-      {/* the commit travels main → verify → deploy → health, lighting each as it passes */}
-      <Replay on={step === 1} style={at(80, 90, 1440, 500)}>
-        <div className="relative h-full">
-          <div className="absolute left-[120px] top-[150px] h-[3px] w-[1200px] rounded-full bg-hairline" />
-          <motion.div className="absolute left-[120px] top-[150px] h-[3px] rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-emerald-300" initial={{ width: 0 }} animate={{ width: 1200 }} transition={{ duration: RIDE, ease: 'linear', delay: 0.3 }} />
-          <motion.div className="absolute top-[138px] size-7 rounded-full bg-violet-50 shadow-[0_0_34px_8px_rgba(196,181,253,0.75)]" initial={{ left: 106, opacity: 0 }} animate={{ left: 1306, opacity: [0, 1, 1, 1] }} transition={{ duration: RIDE, ease: 'linear', delay: 0.3, opacity: { duration: RIDE, delay: 0.3, times: [0, 0.05, 0.9, 1] } }} />
-          {PIPE.map(([icon, t, d, ring], i) => {
-            const passAt = 300 + (i / 3) * RIDE * 1000;
-            return (
-              <div key={t} className="absolute top-[86px] w-[300px] -translate-x-1/2 text-center" style={{ left: 120 + i * 400 }}>
-                <div className="relative mx-auto grid size-[132px] place-items-center rounded-full border border-hairline bg-surface text-[48px] shadow-2xl shadow-black/40">
-                  {icon}
-                  <span className={`pz-appear absolute inset-0 rounded-full border-2 ${ring}`} style={later(passAt)} aria-hidden="true" />
-                  <span className={`pz-ping absolute inset-0 rounded-full border-2 ${ring}`} style={later(passAt)} aria-hidden="true" />
-                </div>
-                <div className="pz-appear mt-5 font-display text-[30px] text-ink" style={later(passAt)}>{t}</div>
-                <div className="pz-appear mt-1 text-[16px] text-muted" style={later(passAt + 150)}>{d}</div>
-              </div>
-            );
-          })}
-          {/* the heartbeat: the new commit answering its health check */}
-          <svg viewBox="0 0 1440 60" className="absolute left-0 top-[400px] h-[60px] w-[1440px]" aria-hidden="true">
-            <path d="M0 30 H1120 l12 0 l10 -22 l14 44 l10 -22 h274" pathLength="1" className="pz-draw-in" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinejoin="round" style={{ ...later(300 + RIDE * 1000 - 600), animationDuration: '1.4s' }} />
-          </svg>
-        </div>
-      </Replay>
-
-      <Replay on={step === 2} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1fr_1fr_1fr] gap-6">
+      <Replay on={step === 1} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1fr_1fr_1fr] gap-6">
         <div className={`${box} col-span-1 p-6`}>
           <Kicker>On every issue</Kicker>
           <div className="mt-2 font-display text-[28px] text-ink">🧾 AI spend</div>
@@ -444,24 +355,11 @@ function MergeScene({ step }) {
   );
 }
 
-const RIDE = 3.3;
-const PIPE = [
-  ['🟣', 'Merged', 'to main, by a person', 'border-violet-400/70 shadow-[0_0_40px_-6px_rgba(167,139,250,0.8)]'],
-  ['🚦', 'verify', 'the whole suite, on main', 'border-fuchsia-400/70 shadow-[0_0_40px_-6px_rgba(232,121,249,0.8)]'],
-  ['🚂', 'Deploy', 'only if verify is green', 'border-sky-400/70 shadow-[0_0_40px_-6px_rgba(56,189,248,0.8)]'],
-  ['💚', 'Healthy', '/api/health serves the new commit', 'border-emerald-400/70 shadow-[0_0_40px_-6px_rgba(52,211,153,0.8)]'],
-];
-
 const MERGE_BEATS = [
   {
     kicker: '8 · A person merges',
     title: 'The last step is always yours',
-    body: 'Two high-confidence passes and a green gate: you read the description, check the decisions it made for you, and press the button. Or comment @claude and ask for a change first.',
-  },
-  {
-    kicker: '8 · Into production',
-    title: 'Main is verified, then deployed',
-    body: 'The suite runs again on main. Only a green run deploys, and the deploy only counts once the new commit answers its health check. A build that does not boot is a red run.',
+    body: 'Two high-confidence passes and a green gate: read the description, check the decisions it made for you, press the button. Main is verified again, deployed only if green, and counted only once the new commit answers its health check.',
   },
   {
     kicker: '8 · What it cost',
@@ -480,19 +378,7 @@ const STAGES = ['setup', 'spec', 'build', 'gate', 'audit', 'PR'];
 function ScaleScene({ step }) {
   return (
     <>
-      <Show on={step === 0} from="scale" style={at(230, 150, 1140, 360)}>
-        <Terminal
-          title="~/nam-2026-conference — claude"
-          bodyClass="text-[26px] min-h-[260px] leading-loose"
-          lines={[
-            { t: 'One ticket at a time is the slow way.', tone: 'dim' },
-            { t: '/ship 64 65 66 67 68 69 70 71 72 73', tone: 'cmd', delay: 300 },
-            { t: 'ten tickets · ten worktrees · ten lanes', tone: 'ok', delay: 2200 },
-          ]}
-        />
-      </Show>
-
-      <Replay on={step === 1} style={at(80, 70, 1440, 540)} className={`${box} overflow-hidden`}>
+      <Replay on={step === 0} style={at(80, 70, 1440, 540)} className={`${box} overflow-hidden`}>
         <div className="grid grid-cols-[110px_250px_1fr_150px] border-b border-hairline bg-raised px-6 py-2.5 font-mono text-[13px] uppercase tracking-wider text-faint">
           <span>ticket</span><span>worktree · lane</span><span>{STAGES.join(' → ')}</span><span className="text-right">result</span>
         </div>
@@ -530,61 +416,15 @@ function ScaleScene({ step }) {
         </div>
       </Replay>
 
-      <Replay on={step === 2} style={at(80, 70, 1440, 540)} className="grid grid-cols-[1fr_1fr] gap-8">
-        <div className={`${box} p-7`}>
-          <Kicker>Or on GitHub — label ten issues</Kicker>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            {TICKETS.map((n, i) => (
-              <div key={n} className="pz-appear flex items-center gap-2 rounded-xl border border-hairline bg-raised px-3 py-2.5" style={later(i * 80)}>
-                <IssueIcon className="size-4 text-emerald-400" />
-                <span className="font-mono text-[15px] text-ink">#{n}</span>
-                <span className="pz-pop ml-auto" style={later(600 + i * 80)}><Label name="ready-for-ai" className="text-[11px]" /></span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col gap-5">
-          <div className={`${box} p-7`}>
-            <Kicker>Ten runners</Kicker>
-            <div className="mt-4 grid grid-cols-5 gap-3">
-              {TICKETS.map((n, i) => (
-                <motion.div
-                  key={n}
-                  className="grid aspect-square place-items-center rounded-xl border border-violet-400/40 bg-violet-500/10"
-                  initial={{ opacity: 0, rotate: -90, scale: 0.4 }}
-                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                  transition={{ delay: 1.2 + i * 0.08, type: 'spring', stiffness: 200, damping: 14 }}
-                >
-                  <span className="pz-spin-fast inline-block size-7 rounded-full border-[3px] border-violet-300/30 border-t-violet-300" />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-          <div className="pz-appear rounded-2xl border border-violet-400/40 bg-raised p-7" style={later(2200)}>
-            <div className="font-display text-[30px] leading-tight text-ink">Your job is the ends of the pipe</div>
-            <div className="mt-2 text-[19px] text-muted">Write tickets a test can check. Review what comes back. Everything in between runs without you.</div>
-          </div>
-        </div>
-      </Replay>
     </>
   );
 }
 
 const SCALE_BEATS = [
   {
-    kicker: '9 · Don’t babysit one ticket',
-    title: 'Hand it ten',
-    body: 'Nothing about ship needs you watching. So the way to work is not to sit with one ticket — it is to start the next nine.',
-  },
-  {
-    kicker: '9 · In parallel',
-    title: 'Ten worktrees, ten lanes, nobody in anybody’s way',
-    body: 'Each ticket builds in its own copy of the repo, boots the app on its own ports and runs the whole suite. Most come back as pull requests; the one that cannot converge comes back as a question.',
-  },
-  {
-    kicker: '9 · Or on GitHub',
-    title: 'Label ten issues, get ten runners',
-    body: 'The same on Actions: every ready-for-ai label starts its own machine. Each run posts its progress on its issue, so the board is the dashboard.',
+    kicker: '9 · Don’t babysit one ticket — hand it ten',
+    title: '/ship 64 65 66 67 68 69 70 71 72 73',
+    body: 'Nothing about ship needs you watching, so start the next nine. Each ticket gets its own worktree and ports — or label ten issues and get ten runners. Most come back as pull requests; the one that cannot converge comes back as a question.',
   },
 ];
 

@@ -45,14 +45,11 @@ export function Orbits({ style = at(940, 20, 640, 640), className = '' }) {
   );
 }
 
-function TitleScene({ step }) {
+function TitleScene() {
   return (
     <>
       <Orbits />
-      <div
-        className="transition-transform duration-700 ease-out"
-        style={{ ...at(110, 150, 900, 420), transform: step >= 1 ? 'translateY(-60px) scale(0.86)' : 'none', transformOrigin: 'left top' }}
-      >
+      <div style={at(110, 150, 900, 420)}>
         <Kicker className="pz-appear">ORBIT &rsquo;26 · AI across the software delivery lifecycle</Kicker>
         <h1 className="pz-appear mt-6 font-display text-[112px] leading-[0.92] text-ink" style={later(120)}>
           The engineering<br />
@@ -61,23 +58,12 @@ function TitleScene({ step }) {
         <p className="pz-appear mt-7 max-w-[760px] text-[27px] leading-snug text-muted" style={later(260)}>
           From a GitHub issue to a reviewed pull request — and every agent in between.
         </p>
+        <div className="pz-appear mt-10 flex items-center gap-4 text-[19px] text-faint" style={later(900)}>
+          <span>🎙️ Product harness: a conversation → a ticket</span>
+          <span className="text-violet-300">→</span>
+          <span className="text-muted">🚢 <b className="text-ink">Engineering harness</b>: the ticket → a reviewed pull request</span>
+        </div>
       </div>
-
-      <Show on={step >= 1} style={at(110, 440, 1300, 150)} className="flex items-center gap-6">
-        <div className="flex-1 rounded-2xl border border-hairline bg-surface/70 px-7 py-5 opacity-60">
-          <Kicker>Already done</Kicker>
-          <div className="mt-2 font-display text-[30px] text-muted">🎙️ Product harness</div>
-          <div className="text-[18px] text-faint">a conversation → tickets with a <b>Done when</b></div>
-        </div>
-        <svg viewBox="0 0 80 40" className="w-20 shrink-0" aria-hidden="true">
-          <path d="M2 20 H70 M58 8 L72 20 L58 32" fill="none" stroke="#a78bfa" strokeWidth="3" strokeLinecap="round" />
-        </svg>
-        <div className="pz-glow flex-1 rounded-2xl border border-violet-400/50 bg-raised px-7 py-5">
-          <Kicker className="text-violet-300">This talk</Kicker>
-          <div className="mt-2 font-display text-[30px] text-ink">🚢 Engineering harness</div>
-          <div className="text-[18px] text-muted">a ticket → a reviewed pull request, on its own</div>
-        </div>
-      </Show>
     </>
   );
 }
@@ -100,7 +86,11 @@ const CONTEXT = [
   { name: 'specs/', what: 'every past plan', x: 1240, y: 330, side: 'right' },
 ];
 
-function IssueScene({ step }) {
+/* One beat: the card lands, the Done when lines draw in, then the context it
+ * carries flies in around it. */
+const DOCS_AT = 2200;
+
+function IssueScene() {
   return (
     <>
       <svg viewBox="0 0 1600 900" className="absolute inset-0" aria-hidden="true">
@@ -110,8 +100,10 @@ function IssueScene({ step }) {
           const d = `M${fromX} ${c.y + 34} C ${(fromX + toX) / 2} ${c.y + 34}, ${(fromX + toX) / 2} 330, ${toX} 330`;
           return (
             <g key={c.name}>
-              <path d={d} pathLength="1" data-on={step >= 2} className="pz-draw" fill="none" stroke="#4c3d7a" strokeWidth="2" style={{ transitionDelay: `${300 + i * 120}ms` }} />
-              {step >= 2 && <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#a78bfa" strokeWidth="2" opacity="0.8" />}
+              <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#4c3d7a" strokeWidth="2" style={later(DOCS_AT + 300 + i * 120)} />
+              <g className="pz-appear" style={later(DOCS_AT + 1200 + i * 120)}>
+                <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#a78bfa" strokeWidth="2" opacity="0.8" />
+              </g>
             </g>
           );
         })}
@@ -124,7 +116,7 @@ function IssueScene({ step }) {
             <div className="mt-4 font-display text-[22px] text-ink">Done when</div>
             <ul className="mt-2 space-y-2.5">
               {DONE_WHEN.map((d, i) => (
-                <Show key={d} as="li" on={step >= 1} from="left" delay={i * 260} className="flex gap-3">
+                <Show key={d} as="li" from="left" delay={900 + i * 300} className="flex gap-3">
                   <span className="mt-1 size-[18px] shrink-0 rounded border-2 border-violet-400/70" />
                   <span className="text-ink/90">{d}</span>
                 </Show>
@@ -135,7 +127,7 @@ function IssueScene({ step }) {
       </div>
 
       {CONTEXT.map((c, i) => (
-        <Show key={c.name} on={step >= 2} from={c.side} delay={i * 120} style={at(c.x, c.y, 290, 68)}
+        <Show key={c.name} from={c.side} delay={DOCS_AT + i * 120} style={at(c.x, c.y, 290, 68)}
           className="rounded-xl border border-hairline bg-raised px-4 py-2.5">
           <div className="font-mono text-[15px] text-ink">{c.name}</div>
           <div className="text-[14px] text-faint">{c.what}</div>
@@ -151,15 +143,18 @@ function IssueScene({ step }) {
 
 const DOORS = ['M800 58 C 800 96, 420 72, 420 112', 'M800 58 C 800 96, 1180 72, 1180 112'];
 
-function TwoWaysScene({ step }) {
-  const focus = (side) => (step === 1 && side === 'right') || (step === 2 && side === 'left') ? 'opacity-35 scale-[0.98]' : '';
+/* One beat, both doors at once: the label lands on the left and the Actions
+ * runner picks it up; /ship types on the right; both roads join at ship.js. */
+const JOIN_AT = 3200;
+
+function TwoWaysScene() {
   return (
     <>
       {/* the same ticket, above both doors */}
       <Token className="absolute" initial={{ left: 759, top: 22, opacity: 0, scale: 0.6 }} animate={{ left: 759, top: 22, opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 16, delay: 0.2 }} />
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
         {DOORS.map((d, i) => (
-          <g key={d} className={`transition-opacity duration-700 ${(step === 1 && i === 1) || (step === 2 && i === 0) ? 'opacity-20' : ''}`}>
+          <g key={d}>
             <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#6d28d9" strokeWidth="2.5" style={later(500 + i * 150)} />
             <g className="pz-appear" style={later(1300)}>
               <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="2.5" />
@@ -168,30 +163,17 @@ function TwoWaysScene({ step }) {
         ))}
       </svg>
 
-      <div style={at(80, 112, 680, 408)} className={`card relative p-7 transition-all duration-700 ${focus('left')}`}>
+      <div style={at(80, 112, 680, 408)} className="card relative p-7">
         <Kicker>🌐 In GitHub — no terminal</Kicker>
         <div className="mt-2 font-display text-[34px] text-ink">Label it</div>
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-hairline bg-raised px-4 py-3">
           <IssueIcon className="size-5 text-emerald-400" />
           <span className="text-[18px] text-ink">#140 Keep sessions in view on mobile</span>
           <span className="ml-auto flex gap-2">
-            {step >= 1 ? <span className="pz-pop"><Label name="ready-for-ai" /></span> : <span className="rounded-md border border-hairline px-2 py-0.5 text-[13px] text-faint">Labels ▾</span>}
+            <span className="pz-pop" style={later(700)}><Label name="ready-for-ai" /></span>
           </span>
         </div>
-        {/* the label picker, open, with the pointer on the one that starts everything */}
-        {step === 0 && (
-          <div className="pz-appear absolute right-7 top-[178px] z-10 w-[300px] overflow-hidden rounded-xl border border-hairline bg-raised text-[15px] shadow-2xl shadow-black/50" style={later(900)}>
-            <div className="border-b border-hairline px-4 py-2 text-[13px] text-faint">Apply labels to this issue</div>
-            {['ready-for-ai', 'ship:full', 'needs-human'].map((l, i) => (
-              <div key={l} className={`flex items-center gap-3 px-4 py-2.5 ${i === 0 ? 'bg-overlay' : ''}`}>
-                <span className="w-3 font-mono text-violet-300">{i === 0 ? '›' : ''}</span>
-                <Label name={l} className="text-[12px]" />
-                {i === 0 && <span className="ml-auto text-[13px] text-muted">starts a run</span>}
-              </div>
-            ))}
-          </div>
-        )}
-        <Replay on={step >= 1} delay={450} className="mt-5 overflow-hidden rounded-xl border border-hairline bg-[#0d0f15]">
+        <Replay delay={1100} className="mt-5 overflow-hidden rounded-xl border border-hairline bg-[#0d0f15]">
           <div className="flex items-center gap-2 border-b border-hairline px-4 py-2 font-mono text-[13px] text-faint">
             <span className="size-2 rounded-full bg-amber-400 animate-pulse-dot" /> Actions · agent-ship.yml
           </div>
@@ -205,22 +187,20 @@ function TwoWaysScene({ step }) {
         </Replay>
       </div>
 
-      <div style={at(840, 112, 680, 408)} className={`card p-7 transition-all duration-700 ${focus('right')}`}>
+      <div style={at(840, 112, 680, 408)} className="card p-7">
         <Kicker>💻 In Claude Code — your terminal</Kicker>
         <div className="mt-2 font-display text-[34px] text-ink">Ship it</div>
         <Terminal
           className="mt-5"
           title="~/nam-2026-conference — claude"
-          step={step >= 2 ? 2 : 0}
           bodyClass="min-h-[228px] text-[16px]"
           lines={[
             { t: 'Ready. What should we build?', tone: 'dim' },
-            { t: '/ship <issue>  — one ticket, or ten', tone: 'dim', delay: 600 },
-            { t: '/ship 140', tone: 'cmd', from: 2 },
-            { t: 'setup · reading #140 and the code it touches', from: 2, delay: 900 },
-            { t: 'worktree  .claude/worktrees/wt-140', from: 2, delay: 1300 },
-            { t: 'lane 3 → api :4306 · web :4307', from: 2, delay: 1700 },
-            { t: '#140 → ai-working', tone: 'ok', from: 2, delay: 2100 },
+            { t: '/ship 140', tone: 'cmd', delay: 700 },
+            { t: 'setup · reading #140 and the code it touches', delay: 1600 },
+            { t: 'worktree  .claude/worktrees/wt-140', delay: 2000 },
+            { t: 'lane 3 → api :4306 · web :4307', delay: 2400 },
+            { t: '#140 → ai-working', tone: 'ok', delay: 2800 },
           ]}
         />
       </div>
@@ -228,12 +208,14 @@ function TwoWaysScene({ step }) {
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
         {['M420 520 C 420 560, 560 576, 640 576', 'M1180 520 C 1180 560, 1040 576, 960 576'].map((d) => (
           <g key={d}>
-            <path d={d} pathLength="1" data-on={step >= 3} className="pz-draw" fill="none" stroke="#6d28d9" strokeWidth="3" />
-            {step >= 3 && <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="3" />}
+            <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#6d28d9" strokeWidth="3" style={later(JOIN_AT)} />
+            <g className="pz-appear" style={later(JOIN_AT + 1000)}>
+              <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="3" />
+            </g>
           </g>
         ))}
       </svg>
-      <Show on={step >= 3} from="pop" delay={700} style={at(640, 548, 320, 58)}
+      <Show from="pop" delay={JOIN_AT + 600} style={at(640, 548, 320, 58)}
         className="pz-glow grid place-items-center rounded-full border border-violet-400/60 bg-raised font-display text-[22px] text-ink">
         <span>🚢 ship.js <span className="text-muted">— one script</span></span>
       </Show>
@@ -289,8 +271,12 @@ function Unpack() {
   );
 }
 
+/* Two beats: the whole flow (with its fresh-agent badges and the needs-human
+ * way back arriving after a pause), then the zoom into ship. */
+const AGENTS_AT = 2200;
+
 function MapScene({ step }) {
-  const zoom = step >= 2;
+  const zoom = step >= 1;
   return (
     <>
     {/* the camera: ship's centre (510, 310) lands at stage (800, 330), 2.3× closer — then recedes behind the stations */}
@@ -310,8 +296,8 @@ function MapScene({ step }) {
           </g>
         ))}
         <g className={`transition-opacity duration-700 ${zoom ? 'opacity-10' : ''}`}>
-          <path d="M510 410 L510 480" pathLength="1" data-on={step >= 1} className="pz-draw" fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray="6 8" />
-          <path d="M410 525 C 250 525, 170 470, 170 372" pathLength="1" data-on={step >= 1} className="pz-draw" fill="none" stroke="#f59e0b" strokeWidth="3" style={{ transitionDelay: '400ms' }} />
+          <path d="M510 410 L510 480" pathLength="1" className="pz-draw-in" fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray="6 8" style={later(AGENTS_AT + 900)} />
+          <path d="M410 525 C 250 525, 170 470, 170 372" pathLength="1" className="pz-draw-in" fill="none" stroke="#f59e0b" strokeWidth="3" style={later(AGENTS_AT + 1300)} />
         </g>
       </svg>
 
@@ -326,7 +312,7 @@ function MapScene({ step }) {
           {n.icon}
           <div className={`mt-1.5 font-display ${n.id === 'ship' ? 'text-[34px]' : 'text-[22px]'} text-ink`}>{n.label}</div>
           <div className="text-[14px] text-faint">{n.sub}</div>
-          <Show on={step === 1} from="pop" delay={i * 90} className="absolute -top-3 right-3 rounded-full border border-sky-400/50 bg-sky-500/20 px-2 font-mono text-[12px] text-sky-200">
+          <Show on={!zoom} from="pop" delay={AGENTS_AT + i * 90} className="absolute -top-3 right-3 rounded-full border border-sky-400/50 bg-sky-500/20 px-2 font-mono text-[12px] text-sky-200">
             fresh agent
           </Show>
         </div>
@@ -340,13 +326,13 @@ function MapScene({ step }) {
         transition={{ type: 'spring', stiffness: 60, damping: 14, delay: 1.4, opacity: { duration: 0.4, delay: zoom ? 0 : 1.4 } }}
       />
 
-      <Show on={step >= 1 && !zoom} from="up" delay={300} style={at(410, 480, 200, 90)}
+      <Show on={!zoom} from="up" delay={AGENTS_AT + 1100} style={at(410, 480, 200, 90)}
         className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10">
         <Label name="needs-human" />
         <div className="mt-1 text-[14px] text-amber-200/80">draft PR · back to you</div>
       </Show>
 
-      <Show on={step === 1} delay={600} style={at(720, 520, 820, 80)} className="flex items-center gap-4 rounded-2xl border border-hairline bg-surface/80 px-6">
+      <Show on={!zoom} delay={AGENTS_AT + 1500} style={at(720, 520, 820, 80)} className="flex items-center gap-4 rounded-2xl border border-hairline bg-surface/80 px-6">
         <span className="text-[30px]">📜</span>
         <span className="text-[20px] text-muted"><b className="text-ink">Scripts, not prompts.</b> The loops, round limits and who judges what are code in <Code>.claude/workflows/</Code></span>
       </Show>
@@ -359,33 +345,16 @@ function MapScene({ step }) {
 export const INTRO = [
   {
     id: 'title', name: 'The engineering harness', accent: 'text-violet-300', tone: 'violet',
-    beats: [
-      null,
-      {
-        kicker: 'Where we start',
-        title: 'The product harness already did the talking',
-        body: 'A meeting or a voice note became a GitHub issue with a Done when list. That is the hand-off. From here on, the engineering harness runs on its own and only comes back when it is stuck — or when the pull request is ready.',
-      },
-    ],
+    beats: [null],
     Scene: TitleScene,
   },
   {
     id: 'issue', name: 'The ticket', accent: 'text-emerald-300', tone: 'emerald',
     beats: [
       {
-        kicker: '1 · The ticket arrives',
-        title: 'Everything starts with a GitHub issue',
-        body: 'Why it matters and what should change, in plain words. This one came straight from the product harness: the schedule opens on its filters instead of its sessions.',
-      },
-      {
-        kicker: '1 · Done when',
-        title: 'Every line is something a test can check',
-        body: 'The Done when list is the contract. The spec maps each line to a check, the auditors judge against it, and QA has to exercise every one before it may claim high confidence.',
-      },
-      {
-        kicker: '1 · Context comes with it',
-        title: 'The ticket arrives already carrying its context',
-        body: 'What the product side agreed is written into the docs the agents read. They read those instead of the source — by the piece, because whatever an agent reads it re-reads on every turn after.',
+        kicker: '1 · The ticket',
+        title: 'A GitHub issue, with a Done when a test can check',
+        body: 'The product harness turned a conversation into this: why, what should change, and the Done when list every later agent is judged against. It arrives carrying its context — the docs the agents read instead of the source.',
       },
     ],
     Scene: IssueScene,
@@ -395,23 +364,8 @@ export const INTRO = [
     beats: [
       {
         kicker: '2 · Starting it',
-        title: 'Two ways to start the same run',
-        body: 'Hand the ticket to a runner in GitHub, or to Claude Code on your laptop. Same script, same steps, same pull request at the end.',
-      },
-      {
-        kicker: '2 · On GitHub',
-        title: 'Label it ready-for-ai and walk away',
-        body: 'The label starts agent-ship.yml on a fresh Actions runner. It claims the issue (ai-working) and posts its progress there, so anyone following the board sees where it is. @claude on the issue does the same.',
-      },
-      {
-        kicker: '2 · In your terminal',
-        title: '/ship 140 in Claude Code',
-        body: 'Locally, every ticket gets its own git worktree and its own lane — a pair of ports — so it can boot the app and run the whole suite without touching your checkout or anything else running.',
-      },
-      {
-        kicker: '2 · One script',
-        title: 'Both roads lead into ship',
-        body: 'The workflow is a script, not a prompt: .claude/workflows/ship.js. Where it runs changes who pays — the API key on Actions, your subscription locally — not what it does.',
+        title: 'Label it on GitHub, or /ship it in Claude Code — same script',
+        body: 'ready-for-ai starts a fresh Actions runner that claims the issue and posts progress there; /ship 140 gives it its own worktree and ports locally. Either way it is ship.js — where it runs only changes who pays.',
       },
     ],
     Scene: TwoWaysScene,
@@ -422,12 +376,7 @@ export const INTRO = [
       {
         kicker: '3 · The whole flow',
         title: 'Issue → ship → pull request → review and QA → you',
-        body: 'Ship turns the ticket into a pull request. Two more agents, on their own runners, review it and try to break it. Then a person merges. Nothing merges itself.',
-      },
-      {
-        kicker: '3 · Independence',
-        title: 'Every step is a fresh agent',
-        body: 'None of them sees the reasoning of the one before. That is what makes an audit an audit. And when a ticket will not come together, ship stops and hands it back as needs-human instead of burning rounds.',
+        body: 'Ship turns the ticket into a pull request; two more agents review it and try to break it; a person merges. Every step is a fresh agent — and a ticket that will not come together comes back as needs-human.',
       },
       {
         kicker: '3 · Zooming in',
