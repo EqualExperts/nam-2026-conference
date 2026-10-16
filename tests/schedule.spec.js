@@ -99,6 +99,62 @@ test.describe('Schedule', () => {
   });
 });
 
+test.describe('Schedule track filter', () => {
+  async function twoTracks(request) {
+    const { tracks } = await (await request.get(`${API}/bootstrap`)).json();
+    return [tracks[0].slug, tracks[1].slug];
+  }
+
+  // On a phone the filter rail is folded away until Filters is pressed.
+  async function openRail(page) {
+    const all = page.getByTestId('track-all');
+    if (!(await all.isVisible())) await page.getByRole('button', { name: /^Filters/ }).click();
+    await expect(all).toBeVisible();
+  }
+
+  test('holds several tracks at once, in the URL, across a reload, and All clears them', async ({ page, request }) => {
+    const [a, b] = await twoTracks(request);
+    await visit(page, '/schedule?view=list');
+    await waitForResults(page);
+    await openRail(page);
+    await page.getByTestId(`track-${a}`).click();
+    await page.getByTestId(`track-${b}`).click();
+    await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page).toHaveURL(new RegExp(`track=${a}(,|%2C)${b}`));
+    await page.reload();
+    await openRail(page);
+    await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'true');
+    await shotForPR(page, 'two track pills selected');
+    await page.getByTestId('track-all').click();
+    await expect(page).not.toHaveURL(/track=/);
+    await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('track-all')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('clicking a selected pill drops just that track', async ({ page, request }) => {
+    const [a, b] = await twoTracks(request);
+    await visit(page, `/schedule?track=${a},${b}&view=list`);
+    await openRail(page);
+    await page.getByTestId(`track-${a}`).click();
+    await expect(page.getByTestId(`track-${a}`)).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId(`track-${b}`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page).toHaveURL(new RegExp(`track=${b}(&|$)`));
+  });
+
+  test('the Grid tab is disabled by a multi-track selection and names it', async ({ page, request }) => {
+    const [a, b] = await twoTracks(request);
+    const days = await conferenceDays();
+    await visit(page, `/schedule?track=${a},${b}&day=${days[0]}`);
+    await expect(page.getByTestId('view-grid')).toBeDisabled();
+    await expect(page.getByTestId('view-grid')).toHaveAttribute('title', /a track filter/);
+    await waitForResults(page);
+    await expect(page.getByTestId('result-count')).not.toHaveText(/^0 sessions/);
+  });
+});
+
 test.describe('Schedule grid', () => {
   test('the grid lays sessions out by time and room', async ({ page }) => {
     await visit(page, '/schedule?view=grid');

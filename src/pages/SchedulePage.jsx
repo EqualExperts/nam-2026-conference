@@ -26,7 +26,7 @@ export function SchedulePage() {
 
   const filters = {
     day: params.get('day') ?? (days.some((d) => d.date === clock.day) ? clock.day : days[0]?.date),
-    track: params.get('track') ?? ALL,
+    track: (params.get('track') ?? '').split(',').filter(Boolean),
     venue: params.get('venue') ?? ALL,
     level: params.get('level') ?? ALL,
     format: params.get('format') ?? ALL,
@@ -45,21 +45,29 @@ export function SchedulePage() {
     setParams(next, { replace: true });
   };
 
+  const toggleTrack = (slug) => {
+    const list = filters.track.includes(slug) ? filters.track.filter((x) => x !== slug) : [...filters.track, slug];
+    const next = new URLSearchParams(params);
+    if (list.length) next.set('track', list.join(','));
+    else next.delete('track');
+    setParams(next, { replace: true });
+  };
+
   const { data, loading, error, reload } = useFetch(
     () => api.getSessions({
       day: filters.day,
-      trackSlug: filters.track,
+      trackSlug: filters.track.join(','),
       venueId: filters.venue,
       level: filters.level,
       format: filters.format,
       tagSlug: filters.tag,
       q: filters.q,
     }),
-    [filters.day, filters.track, filters.venue, filters.level, filters.format, filters.tag, filters.q],
+    [filters.day, filters.track.join(','), filters.venue, filters.level, filters.format, filters.tag, filters.q],
   );
 
   const sessions = data ?? [];
-  const activeKeys = ['track', 'venue', 'level', 'format', 'tag', 'q'].filter((k) => filters[k] && filters[k] !== ALL);
+  const activeKeys = ['track', 'venue', 'level', 'format', 'tag', 'q'].filter((k) => (k === 'track' ? filters.track.length > 0 : filters[k] && filters[k] !== ALL));
   // Keep a view the user chose, never the list a filter forced.
   const clearAll = () => {
     const next = new URLSearchParams({ day: filters.day });
@@ -80,7 +88,7 @@ export function SchedulePage() {
     ['level', 'a level filter'],
     ['format', 'a format filter'],
   ];
-  const blocker = BLOCKERS.find(([key]) => filters[key] && filters[key] !== ALL);
+  const blocker = BLOCKERS.find(([key]) => (key === 'track' ? filters.track.length > 0 : filters[key] && filters[key] !== ALL));
   const clearBlocker = () => {
     const next = new URLSearchParams(params);
     BLOCKERS.forEach(([key]) => next.delete(key));
@@ -162,16 +170,17 @@ export function SchedulePage() {
       <div>
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Track</h3>
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => set('track', ALL)}
+          <button type="button" onClick={() => set('track', ALL)} data-testid="track-all" aria-pressed={filters.track.length === 0}
             className={cx('rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-              filters.track === ALL ? 'border-white/25 bg-overlay text-ink' : 'border-hairline text-muted hover:text-ink')}>
+              filters.track.length === 0 ? 'border-white/25 bg-overlay text-ink' : 'border-hairline text-muted hover:text-ink')}>
             All
           </button>
           {tracks.map((t) => {
             const a = accent(t.color);
-            const active = filters.track === t.slug;
+            const active = filters.track.includes(t.slug);
             return (
-              <button key={t.id} type="button" onClick={() => set('track', active ? ALL : t.slug)}
+              <button key={t.id} type="button" onClick={() => toggleTrack(t.slug)}
+                aria-pressed={active} data-testid={`track-${t.slug}`}
                 className={cx('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
                   active ? a.chip : 'border-hairline text-muted hover:text-ink')}>
                 <span className={cx('size-1.5 rounded-full', a.dot)} />

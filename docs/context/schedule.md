@@ -29,7 +29,7 @@ and a bound `?` to `args`:
 | param | clause |
 | --- | --- |
 | `day` | `s.day = ?` |
-| `trackSlug` | `t.slug = ?` |
+| `trackSlug` | `t.slug IN (?,…)` — one slug or a comma-separated list (union) |
 | `venueId` / `roomId` | `v.id = ?` / `r.id = ?` |
 | `level` / `format` | `s.level = ?` / `s.format = ?` |
 | `q` | `LIKE %q%` on title, abstract, subtitle, or any speaker name (`EXISTS`) |
@@ -52,7 +52,7 @@ lists are plain `toSession` — no speakers/tags. **`/:id.ics`** is registered
 
 **`SchedulePage`** reads everything from `useSearchParams`:
 `day` (default `clock.day` if it is a conference day, else `days[0].date`),
-`track`, `venue` (venue id), `level`, `format`, `tag` (topic slug), `q`, `view`.
+`track` (comma-separated slugs, parsed to an array; `toggleTrack(slug)` edits it; pills carry `track-<slug>` / `track-all` test ids and `aria-pressed`), `venue` (venue id), `level`, `format`, `tag` (topic slug), `q`, `view`.
 Page keys map to API keys in the `useFetch` call (`track→trackSlug`,
 `venue→venueId`, `tag→tagSlug`). `set(key, value)` deletes the key for `'all'`/empty
 and writes with `{ replace: true }`; `clearAll` keeps `day` and an explicit `view`.
@@ -60,7 +60,7 @@ The empty state's heading is `No sessions match`, followed by the search text in
 
 **Grid vs list.** `requestedView = ?view ?? (useMediaQuery('(min-width: 1024px)') ? 'grid' : 'list')`.
 `BLOCKERS` is `[key, human phrase]` for `q`, `track`, `tag`, `level`, `format`;
-`blocker` is the first active one. With a blocker, `view` is forced to `'list'`,
+`blocker` is the first active one (`track` is active when its list is non-empty). With a blocker, `view` is forced to `'list'`,
 the Grid tab is `disabled` with a `title` naming the blocker, and
 `grid-blocked-notice` offers `clearBlocker` (deletes all blocker keys, sets
 `view=grid`). `venue` is deliberately not a blocker.

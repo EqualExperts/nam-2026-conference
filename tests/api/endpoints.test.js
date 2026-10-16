@@ -35,6 +35,7 @@ before(async () => {
     venue: boot.venues[0].id,
     room: boot.rooms[0].id,
     track: boot.tracks[0].slug,
+    track2: boot.tracks[1].slug,
     topic: boot.tags.find((t) => t.kind === 'topic').slug,
     level: boot.levels[0].name,
     format: boot.formats[0].name,
@@ -72,6 +73,7 @@ function filtered() {
   return [
     `/sessions?day=${days[1]}`,
     `/sessions?trackSlug=${ids.track}`,
+    `/sessions?trackSlug=${ids.track},${ids.track2}`,
     `/sessions?tagSlug=${ids.topic}`,
     `/sessions?venueId=${ids.venue}`,
     `/sessions?roomId=${ids.room}`,
@@ -121,6 +123,16 @@ describe('Every endpoint answers', () => {
       assert.ok(Array.isArray(res.body), `GET ${path} did not return a list`);
       assert.ok(res.body.length <= all, `GET ${path} returned more than the unfiltered list`);
     }
+  });
+
+  test('several tracks in one trackSlug return the union and nothing else', async () => {
+    const a = await api.json(`/sessions?trackSlug=${ids.track}`);
+    const b = await api.json(`/sessions?trackSlug=${ids.track2}`);
+    const both = await api.json(`/sessions?trackSlug=${ids.track},${ids.track2}`);
+    assert.ok(a.length > 0 && b.length > 0, 'each track has sessions');
+    assert.equal(both.length, a.length + b.length);
+    assert.ok(both.every((s) => s.track.slug === ids.track || s.track.slug === ids.track2));
+    assert.ok(both.some((s) => s.track.slug === ids.track) && both.some((s) => s.track.slug === ids.track2));
   });
 
   test('the health check reports ok and the session count', async () => {
