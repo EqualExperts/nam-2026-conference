@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const read = (p) => readFileSync(join(root, p), 'utf8');
-const VERSION = '0.10.0';
-const OLD = ['0', '9', '0'].join('.');
+const VERSION = '0.10.1';
+const OLD = ['0', '10', '0'].join('.');
 
 const lock = read('apm.lock.yaml');
 const deployed = [...lock.matchAll(/^ {2}- (\.claude\/skills\/\S+)$/gm)].map((m) => m[1]);
