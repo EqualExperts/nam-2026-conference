@@ -27,8 +27,9 @@ list — and follows the ticket through:
 
 It is not a slide deck. One scene holds a single map of the flow; each press of
 → / Space / click moves a *beat* — the camera pans and zooms, pieces animate in,
-and a caption explains the step. ← goes back, Home/End jump, `?beat=n` deep-links
-a beat so a presenter can resume.
+and a caption explains the step. ← goes back, Home/End jump, F goes full
+screen, and `?beat=n` (1-based, the number on the counter) deep-links a beat so
+a presenter can resume.
 
 ## Where
 - `src/pages/PresentationPage.jsx` — the page: beat state, keys, progress bar, the
@@ -37,9 +38,10 @@ a beat so a presenter can resume.
 - `src/components/presentation/` — the scenes (the issue, the two starts, the flow
   map, ship's steps, sizing, review/QA, scale).
 - `src/lib/presentation.js` — pure beat navigation (clamp, parse `?beat=`, key →
-  delta), unit-tested.
-- `src/index.css` — a few keyframes the scenes share, all switched off by the
-  existing reduced-motion block.
+  action, flat index → chapter), unit-tested.
+- `src/index.css` — the `pz-*` keyframes used inside a beat, all switched off by
+  the existing reduced-motion block.
+- `package.json` — adds `motion` (Motion for React).
 - `tests/unit/presentation.test.js`, `tests/presentation.spec.js`.
 - `docs/context/ui.md` and `architecture.md` — the route and where it lives.
 
@@ -49,7 +51,8 @@ a beat so a presenter can resume.
 | Beat maths: clamps at both ends, `?beat=` parsed and bounded, keys map to moves | `nextBeat`, `parseBeat`, `keyDelta` | unit |
 | `/presentation` renders full screen with no app chrome and no console errors | heading visible, no `banner`/`contentinfo`, no page errors | Playwright spec |
 | → advances, ← goes back, the counter and URL follow | press keys, read `presentation-counter` and `?beat=` | Playwright spec |
-| `?beat=n` opens on that beat | visit with `?beat=5`, counter reads 6 | Playwright spec |
+| `?beat=n` opens on that beat; out of range opens the first | visit `?beat=6` → counter `6 /`; `?beat=9999` → `1 /` | Playwright spec |
+| End/Home, the buttons and the chapter bar all navigate | press and click, read the counter and `aria-current` | Playwright spec |
 | Reduced motion still shows every caption | emulate `reducedMotion: 'reduce'`, caption visible | Playwright spec |
 
 ## Decisions
@@ -58,6 +61,10 @@ a beat so a presenter can resume.
 - Content stays true to what the harness does today — the numbers (round limits,
   typical costs, PR #96 at $0.91 and #97 at $7.99) are the README's, and model
   names are the family (Opus, Sonnet, Haiku) rather than a version that will date.
-- No animation library: CSS transitions driven by the beat index, as the house
-  rules ask.
+- Motion (`motion/react`) for the springs, the chapter fly-through and the
+  camera zoom. The first draft was CSS only; it was asked to look far more
+  impressive, and springs and shared transitions are what CSS cannot do well.
+  Motion is not a component kit or a state library, and it stays inside
+  `/presentation` — the app's own motion remains CSS. Reveal.js was rejected:
+  it is built around slides, and this is meant not to be a slide deck.
 - No issue for this change; the spec is named by slug rather than number.

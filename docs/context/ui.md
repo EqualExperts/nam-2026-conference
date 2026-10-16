@@ -21,9 +21,14 @@ files:
   - src/components/UserSwitcher.jsx
   - src/components/RouteChange.jsx
   - src/pages/NotFoundPage.jsx
+  - src/pages/PresentationPage.jsx
+  - src/components/presentation/
+  - src/lib/presentation.js
 tests:
   - tests/unit/format.test.js
+  - tests/unit/presentation.test.js
   - tests/smoke.spec.js
+  - tests/presentation.spec.js
 related: [architecture, speakers, venues, schedule, testing]
 ---
 
@@ -138,6 +143,27 @@ sticky `glass` header, `<main id="main">`, and the footer.
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
 scheduled here".
 
+**`/presentation`** — a talk about the engineering harness, part of the app so
+anyone with the URL can give or watch it. The one route **outside `<Layout>`**:
+full screen, no header or footer, so the smoke suite (which expects a banner and
+footer) does not list it; `tests/presentation.spec.js` covers it instead.
+`PresentationPage` holds one flat beat index in `?beat=` (1-based, matching the
+counter; `src/lib/presentation.js` parses, clamps and maps keys — →/Space/Enter/
+PageDown on, ←/PageUp/Backspace back, Home/End, F full screen) and draws a fixed
+1600×900 stage scaled to the window. `components/presentation/chapters.js` lists
+the chapters in order; each is `{ id, name, accent, tone, beats, Scene }` — one
+caption per beat (`null` for none) and a `Scene({ step })` laid out in stage
+pixels. The chapters either side of the current one stay mounted so they can fly
+in and out; a scene re-mounts each time it becomes current, so its entrance
+replays. `kit.jsx` has the primitives (`Show`, `Replay`, `Terminal`, `Verdict`…);
+`Backdrop.jsx` the starfield and aurora.
+
+It is the only place that uses **Motion** (`motion/react`) — springs, the
+chapter fly-through, the camera zoom. Inside a beat, sequences are the `pz-*`
+keyframes in `index.css`. The page wraps itself in `<MotionConfig
+reducedMotion="user">`, and every `pz-*` keyframe ends on its final frame, so
+with reduced motion each beat still shows everything it should.
+
 ## Invariants
 
 - The smoke test `every link in the footer resolves` visits each footer href
@@ -148,6 +174,9 @@ scheduled here".
 - Accent classes must be literal strings in `accents.js`; see CLAUDE.md.
 - New motion needs an entry that the reduced-motion block neutralises, and must
   not leave content hidden when it is.
+- Motion (`motion/react`) stays inside `/presentation`. The app's own motion is CSS.
+- The presentation states only what the harness really does; its numbers (round
+  limits, typical costs, PR #96 and #97) are the README's — change them together.
 
 ## Gotchas
 
@@ -163,3 +192,5 @@ scheduled here".
 - A new primitive used by more than one page: `ui.jsx`.
 - A new token or utility: `@theme` / `@utility` in `index.css`.
 - A new cover composition: another `variant` branch in `GeneratedCover`.
+- A presentation beat: a caption in the chapter's `beats` and the `step` it shows in
+  its `Scene`; a new chapter: an entry in `components/presentation/chapters.js`.
