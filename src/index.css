@@ -164,7 +164,7 @@ body::before {
 @utility animate-marquee { animation: marquee 48s linear infinite; }
 
 /* ---------------------------------------------------------------- *
- * /presentation
+ * /engineering-presentation
  * Springs and layers are Motion's (motion/react); these are the
  * keyframes inside one beat. Every one ends on its final frame, so
  * with motion off each beat still shows everything it should.
