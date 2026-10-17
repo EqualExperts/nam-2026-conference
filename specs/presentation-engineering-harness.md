@@ -1,7 +1,7 @@
-# A presentation of the engineering harness at /presentation
+# A presentation of the engineering harness at /engineering-presentation
 
 ## What this changes
-A full-screen, keyboard-driven presentation at `/presentation` that walks
+A full-screen, keyboard-driven presentation at `/engineering-presentation` that walks
 through the engineering harness end to end — about thirty minutes of talk. It is
 part of the app on purpose: anyone who opens the deployed site can see it, so it
 is not an asset that lives on one presenter's laptop.
@@ -49,7 +49,7 @@ a presenter can resume.
 | Done when | Check | Layer |
 | --- | --- | --- |
 | Beat maths: clamps at both ends, `?beat=` parsed and bounded, keys map to moves | `beatAfter`, `parseBeat`, `keyAction`, `locateBeat` | unit |
-| `/presentation` renders full screen with no app chrome and no console errors | heading visible, no `banner`/`contentinfo`, no page errors | Playwright spec |
+| `/engineering-presentation` renders full screen with no app chrome and no console errors | heading visible, no `banner`/`contentinfo`, no page errors | Playwright spec |
 | → advances, ← goes back, the counter and URL follow | press keys, read `presentation-counter` and `?beat=` | Playwright spec |
 | `?beat=n` opens on that beat; out of range opens the first | visit `?beat=6` → counter `6 /`; `?beat=9999` → `1 /` | Playwright spec |
 | End/Home, the buttons and the chapter bar all navigate | press and click, read the counter and `aria-current` | Playwright spec |
@@ -65,7 +65,7 @@ a presenter can resume.
   camera zoom. The first draft was CSS only; it was asked to look far more
   impressive, and springs and shared transitions are what CSS cannot do well.
   Motion is not a component kit or a state library, and it stays inside
-  `/presentation` — the app's own motion remains CSS. Reveal.js was rejected:
+  `/engineering-presentation` — the app's own motion remains CSS. Reveal.js was rejected:
   it is built around slides, and this is meant not to be a slide deck.
 - **26 beats, not 43.** The first cut ran long for a thirty-minute slot in which
   some steps are demonstrated live, so it was cut: one beat per chapter where

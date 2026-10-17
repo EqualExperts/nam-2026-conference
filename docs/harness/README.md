@@ -8,7 +8,7 @@
 
 ![How agents work in this repo: a GitHub Issue goes to Ship, where an agent loop specs, builds, tests, audits and fixes until clean; then a pull request, independent code review and QA, and a person merges. A ticket that will not converge goes to needs-human with a draft PR.](../images/harness-flow.png)
 
-The [presentation](https://orbit26.up.railway.app/presentation) shows what the
+The [presentation](https://orbit26.up.railway.app/engineering-presentation) shows what the
 harness does. This page is how: what runs, how hard each part works, what it
 costs, and what to do when it goes wrong. The playbooks next to this file say how each step is *done*;
 [`docs/context/harness.md`](../context/harness.md) is the map for changing the

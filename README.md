@@ -8,11 +8,11 @@
 
 ## 🎬 Watch the talk
 
-**[orbit26.up.railway.app/presentation](https://orbit26.up.railway.app/presentation)**
+**[orbit26.up.railway.app/engineering-presentation](https://orbit26.up.railway.app/engineering-presentation)**
 — the engineering harness from a ticket to a merged pull request, in 26 beats.
 → or Space to advance, ← to go back, **F** for full screen, `?beat=12` to resume.
 
-Locally: `npm install && npm run dev`, then <http://localhost:5173/presentation>.
+Locally: `npm install && npm run dev`, then <http://localhost:5173/engineering-presentation>.
 
 - **[How it works, step by step](docs/harness/README.md)** — every agent, every check, and why it is there.
 - **[Workshop quickstart](docs/harness/quickstart.md)** — set up once, then one walkthrough per harness.

@@ -1,5 +1,5 @@
 /**
- * Beat navigation for /presentation. A beat is one press of the clicker: the
+ * Beat navigation for /engineering-presentation. A beat is one press of the clicker: the
  * page holds a flat list of them, and these keep the index honest.
  */
 

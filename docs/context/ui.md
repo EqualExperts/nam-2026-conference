@@ -143,7 +143,7 @@ sticky `glass` header, `<main id="main">`, and the footer.
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
 scheduled here".
 
-**`/presentation`** — a talk about the engineering harness, part of the app so
+**`/engineering-presentation`** — a talk about the engineering harness, part of the app so
 anyone with the URL can give or watch it. The one route **outside `<Layout>`**:
 full screen, no header or footer, so the smoke suite (which expects a banner and
 footer) does not list it; `tests/presentation.spec.js` covers it instead.
@@ -178,7 +178,7 @@ with reduced motion each beat still shows everything it should.
 - Accent classes must be literal strings in `accents.js`; see CLAUDE.md.
 - New motion needs an entry that the reduced-motion block neutralises, and must
   not leave content hidden when it is.
-- Motion (`motion/react`) stays inside `/presentation`. The app's own motion is CSS.
+- Motion (`motion/react`) stays inside `/engineering-presentation`. The app's own motion is CSS.
 - The presentation states only what the harness really does; its numbers (round
   limits, typical costs, PR #96 and #97) are `docs/harness/README.md`'s — change them together.
 

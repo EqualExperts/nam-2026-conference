@@ -32,7 +32,7 @@ export function App() {
   return (
     <Routes>
       {/* full screen, so outside the app chrome */}
-      <Route path="presentation" element={<PresentationPage />} />
+      <Route path="engineering-presentation" element={<PresentationPage />} />
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="schedule" element={<SchedulePage />} />

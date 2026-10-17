@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { failOnPageErrors } from './helpers.js';
 
 /**
- * /presentation — the engineering harness talk. It books nothing and reads no
+ * /engineering-presentation — the engineering harness talk. It books nothing and reads no
  * attendee state, so no data lane and no pinned clock are needed.
  */
 
@@ -17,7 +17,7 @@ async function readCounter(page) {
 test.describe('The harness presentation', () => {
   test('opens full screen on its title, with no app chrome', async ({ page }) => {
     const errors = failOnPageErrors(page);
-    await page.goto('/presentation');
+    await page.goto('/engineering-presentation');
 
     await expect(page.getByRole('heading', { level: 1, name: /The engineering harness/i })).toBeVisible();
     await expect(page.getByRole('banner')).toHaveCount(0);
@@ -32,7 +32,7 @@ test.describe('The harness presentation', () => {
   });
 
   test('arrow keys step forward and back, and the URL follows', async ({ page }) => {
-    await page.goto('/presentation');
+    await page.goto('/engineering-presentation');
     await expect(counter(page)).toHaveText(/^1 \//);
 
     await page.keyboard.press('ArrowRight');
@@ -53,7 +53,7 @@ test.describe('The harness presentation', () => {
   });
 
   test('?beat= opens on that beat, and End and Home jump to the ends', async ({ page }) => {
-    await page.goto('/presentation?beat=6');
+    await page.goto('/engineering-presentation?beat=6');
     await expect(counter(page)).toHaveText(/^6 \//);
     await expect(page.getByTestId('presentation-caption')).toBeVisible();
 
@@ -68,12 +68,12 @@ test.describe('The harness presentation', () => {
   });
 
   test('a beat out of range opens the first one', async ({ page }) => {
-    await page.goto('/presentation?beat=9999');
+    await page.goto('/engineering-presentation?beat=9999');
     await expect(counter(page)).toHaveText(/^1 \//);
   });
 
   test('the next and previous buttons work without a keyboard', async ({ page }) => {
-    await page.goto('/presentation');
+    await page.goto('/engineering-presentation');
     await page.getByTestId('presentation-next').click();
     await expect(counter(page)).toHaveText(/^2 \//);
     await page.getByTestId('presentation-prev').click();
@@ -81,7 +81,7 @@ test.describe('The harness presentation', () => {
   });
 
   test('each chapter in the progress bar jumps to its first beat', async ({ page }) => {
-    await page.goto('/presentation');
+    await page.goto('/engineering-presentation');
     const first = await page.getByTestId('presentation-chapter').innerText();
     const chapters = page.getByRole('navigation', { name: 'Chapters' }).getByRole('button');
     await chapters.nth(1).click();
@@ -90,9 +90,26 @@ test.describe('The harness presentation', () => {
     await expect(counter(page)).not.toHaveText(/^1 \//);
   });
 
+  test('Space still advances after clicking a chapter or the full-screen button', async ({ page }) => {
+    await page.goto('/engineering-presentation');
+    const chapters = page.getByRole('navigation', { name: 'Chapters' }).getByRole('button');
+    await chapters.nth(2).click();
+    const { at } = await readCounter(page);
+
+    // a clicked chrome button must not keep focus and swallow the clicker's Space
+    await page.keyboard.press(' ');
+    await expect(counter(page)).toHaveText(new RegExp(`^${at + 1} /`));
+    await page.keyboard.press('Enter');
+    await expect(counter(page)).toHaveText(new RegExp(`^${at + 2} /`));
+
+    await page.getByRole('button', { name: /full screen/i }).click();
+    await page.keyboard.press(' ');
+    await expect(counter(page)).toHaveText(new RegExp(`^${at + 3} /`));
+  });
+
   test('with reduced motion every caption still shows', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/presentation?beat=2');
+    await page.goto('/engineering-presentation?beat=2');
     const caption = page.getByTestId('presentation-caption');
     await expect(caption).toBeVisible();
     await expect(caption.getByRole('heading', { level: 2 })).toHaveText(/\S/);

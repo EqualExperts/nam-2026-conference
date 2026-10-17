@@ -8,7 +8,7 @@ import { beatAfter, clampBeat, keyAction, locateBeat, parseBeat } from '../lib/p
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 /**
- * /presentation — the engineering harness, end to end, as one scene the
+ * /engineering-presentation — the engineering harness, end to end, as one scene the
  * presenter steps through. Full screen, outside <Layout>: no header, no footer.
  * Each chapter is a layer on a fixed 1600×900 stage; a beat is one press.
  */
@@ -135,7 +135,8 @@ export function PresentationPage() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // a focused button already turns Enter and Space into its own click
+      // a button reached with Tab keeps Enter and Space as its own click; a
+      // clicked one never takes focus (keepFocusOnStage), so they still advance
       if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('button, a')) return;
       if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
       const action = keyAction(e.key);
@@ -175,7 +176,7 @@ export function PresentationPage() {
       </div>
 
       {/* Chrome — outside the stage so it stays crisp at any scale. */}
-      <div className="absolute inset-x-0 top-0 flex items-center gap-4 px-5 py-3 text-[13px]">
+      <div className="absolute inset-x-0 top-0 flex items-center gap-4 px-5 py-3 text-[13px]" onMouseDown={keepFocusOnStage}>
         <Link to="/" className="font-display text-[15px] text-muted hover:text-ink" aria-label="Back to ORBIT '26">ORBIT &rsquo;26</Link>
         <span className="text-faint">/</span>
         <span className="text-muted" data-testid="presentation-chapter">{current.name}</span>
@@ -185,7 +186,7 @@ export function PresentationPage() {
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-3">
+      <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-3" onMouseDown={keepFocusOnStage}>
         <nav aria-label="Chapters" className="flex flex-1 gap-1.5">
           {CHAPTERS.map((c, i) => {
             const done = i < chapter ? 1 : i > chapter ? 0 : (step + 1) / c.beats.length;
@@ -215,6 +216,15 @@ export function PresentationPage() {
     </div>
     </MotionConfig>
   );
+}
+
+/**
+ * A mouse click on the chrome must not leave a button focused: Space and Enter
+ * would then re-fire it — toggling full screen, or jumping back to a chapter's
+ * start — instead of moving the talk on. Keyboard focus via Tab still works.
+ */
+function keepFocusOnStage(e) {
+  if (e.target.closest('button')) e.preventDefault();
 }
 
 function toggleFullscreen() {
