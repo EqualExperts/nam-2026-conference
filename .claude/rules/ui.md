@@ -87,7 +87,9 @@ Easy to forget, and immediately read as unfinished:
 - **Footer links must resolve** — a smoke test walks every one.
 - **Motion is CSS, and optional.** `prefers-reduced-motion` switches it all off
   and forces `.reveal` visible, so nothing hides behind an animation that never
-  runs; anything new must survive that. (how: `docs/context/ui.md`)
+  runs; anything new must survive that. The one exception is the presentation,
+  which uses Motion (`motion/react`) under `<MotionConfig reducedMotion="user">`;
+  keep that library there. (how: `docs/context/ui.md`)
 
 ## The schedule has two views
 

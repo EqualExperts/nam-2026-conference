@@ -85,7 +85,7 @@ batched `IN (…)` queries — use it for lists; bare `toSession` has no speaker
 
 **Client shell.** `src/main.jsx`: `StrictMode → BrowserRouter → Toaster → ConferenceProvider
 → App`. `src/App.jsx` shows `ErrorState` if bootstrap failed, `Spinner` until `ready`, then
-the routes, all inside `<Layout>`: `/` Home, `/schedule`, `/sessions/:id`, `/speakers`,
+the routes. `/engineering-presentation` sits outside it, full screen; the rest are inside `<Layout>`: `/` Home, `/schedule`, `/sessions/:id`, `/speakers`,
 `/speakers/:id`, `/my-agenda`, `/my-plan` (→ `/my-agenda`), `/venues`, `/food`, `/expo`,
 `/code-of-conduct`, `/accessibility`, `*` NotFound.
 
