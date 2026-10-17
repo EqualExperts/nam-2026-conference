@@ -159,8 +159,8 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - There is no way to undo a check-in — pick a session the lane's attendee has not attended.
 - `test.describe.configure({ mode: 'serial' })` plus a conditional `test.skip()` abandons
   the rest of the group; do not combine them.
-- `tests/smoke.spec.js` already asserts every route renders with no console errors and no
-  horizontal overflow on both projects, so responsive regressions fail on their own.
+- `tests/smoke.spec.js` already asserts every route inside `<Layout>` renders with no console
+  errors and no horizontal overflow on both projects, so responsive regressions fail on their own.
 - The seed gives every attendee a plan, waitlist places included, so a test that asserts an
   absolute count assumes a zero that is not there. Read the baseline in the test — the
   payload the page fetched, or the number before the click — and assert the change. An API
@@ -207,5 +207,7 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   a seat-count lane's slot on day index 2; it still needs a `slot` distinct from any other
   entry for the *same* attendee and day, because `lanes.test.js` checks that pairing, not
   what the test writes (`attendance.checkin-toast`/`attendance.rating-toast` do this).
-- New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex.
+- New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex — unless it renders
+  outside `<Layout>`, as `/engineering-presentation` does: smoke expects a header and footer, so a
+  full-screen route gets its own spec (`tests/presentation.spec.js`).
 - New endpoint: `tests/api/endpoints.test.js` (see architecture).
