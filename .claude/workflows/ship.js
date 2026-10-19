@@ -235,6 +235,8 @@ const GATE = {
     json: { type: 'string', description: 'the last line gate.mjs printed, verbatim' },
     red: { type: 'string', description: 'verify only: the last line red-check.mjs printed, verbatim, if it was run' },
     facts: { type: 'string', description: 'verify only: the line qa-facts.mjs printed, verbatim' },
+    sync: { enum: ['current', 'merged', 'conflict'], description: 'verify only: what merging origin/<base> did' },
+    conflicts: { type: 'array', items: { type: 'string' }, description: 'verify only: the files the merge conflicted in' },
   },
 }
 
@@ -465,7 +467,7 @@ setup = await agent(
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
-  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
+  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
   `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
@@ -762,8 +764,15 @@ for (let round = 1; ; round++) {
   phase('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
   // baseline before it runs anything, and red-check needs no judgement.
+  // The gate tests the branch with today's base, not the one the run began
+  // on: two runs started together each opened a PR, and once the first
+  // merged the second was already conflicting. A merge, not a rebase — the
+  // spec commit is pushed, and a rebase would mean a force-push.
   const ran = await rote(
-    `${inTree()}\n\nRun \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
+    `${inTree()}\n\nFirst \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
+    `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
+    `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
+    `Then run \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
@@ -869,6 +878,17 @@ for (let round = 1; ; round++) {
       minors = await confirm(dedupe(minors).slice(0, 3), 'the change')
       break
     }
+  } else if (ran.sync === 'conflict') {
+    // The base moved under the branch. Like a red gate, it goes straight to
+    // the fixer and spends no audit budget; the same conflict twice is stuck.
+    open = (ran.conflicts && ran.conflicts.length ? ran.conflicts : [`origin/${BASE}`]).map(file => ({
+      severity: 'blocker', category: 'conflict', file, claim: `conflicts with origin/${BASE}`,
+      evidence: `git merge origin/${BASE} conflicted in ${file}: ${BASE} has moved since this branch began`,
+      fix: `git merge origin/${BASE}; resolve ${file} keeping both this branch's change and what landed on ${BASE}; ` +
+        `npm test; commit the merge`,
+    }))
+    rounds.push({ round, gate: `not run — conflicts with ${BASE}`, raised: open.length, confirmed: open.length, covered: '' })
+    log(`build round ${round}: ${open.length} conflict(s) with origin/${BASE}`)
   } else {
     const failures = [
       ...(gate.unit.failed ? [{ test: 'npm test', error: gate.unit.output || `${gate.unit.failed} failed` }] : []),
@@ -1002,7 +1022,11 @@ const pr = await rote(
   `to ask for a change, comment \`@claude …\` — put all your comments in one review</sub>\n\n` +
   `Keep everything above the folded sections under 250 words. In *Done when*, cite only tests in files that ` +
   `\`git diff --stat\` shows this branch changed — never a test that is not in the diff.\n\n` +
-  `Then, from the worktree: \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
+  // The learn step ran after the last gate, and the base can move meanwhile.
+  `Then, from the worktree: \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it conflicts, ` +
+  `\`git merge --abort\` and return ok=false with the summary "conflicts with origin/${BASE} in <the files from ` +
+  `git diff --name-only --diff-filter=U>", opening nothing. If it merged anything, end the Checks line in the body file ` +
+  `with " · merged today's ${BASE} after the gate; CI re-runs the suite on it". Then \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
   `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); ` +
   `\`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +

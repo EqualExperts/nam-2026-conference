@@ -58,6 +58,7 @@ handed back, and a ticket that ships should not still say it is stuck.
 In a runner (`$GITHUB_ACTIONS` set) the machine is yours — just branch:
 
 ```bash
+git fetch origin
 git checkout -b issue-<n>-<short-slug> origin/main
 ```
 
@@ -65,6 +66,7 @@ On a laptop, other agents may hold other tickets, so take a worktree and a
 lane, or you will eventually test another branch's code and pass:
 
 ```bash
+git fetch origin   # a laptop's origin/main can be days old
 wt="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/wt-<n>"
 git worktree add -b issue-<n>-<short-slug> "$wt" origin/main   # or, continuing: git worktree add "$wt" issue-<n>-…
 cd "$wt" && npm install
@@ -76,6 +78,13 @@ Always that path — `.claude/worktrees/wt-<n>` inside the main checkout, which
 start in. A relative `../` landed runs in three different places, and a
 worktree nobody can find is one nobody cleans up. If it already exists from an
 earlier attempt, reuse it.
+
+The branch keeps up with its base from here on: every gate first runs
+`git fetch origin main && git merge --no-edit origin/main`, and the pull request
+merges it once more before it is pushed. Other tickets land while this one is
+being built, so a branch left on its starting point opens a PR that already
+conflicts. It merges rather than rebases because the spec commit is already
+pushed, and a rebase would force-push it.
 
 ## 3b. Write the spec first
 
