@@ -23,8 +23,8 @@ say so in its first Decision, rather than quietly proving a different reading.
   Chromium phone, and why.
 - `docs/harness/ship-playbook.md` §3b: the already-holds rule, next to the
   red-today rule it complements.
-- Tests: `tests/unit/ship.test.js` (sizing, spec prompt) and
-  `tests/unit/lane.test.js`, which already reads `playwright.config.js`.
+- Tests: `tests/unit/ship.test.js` (sizing, spec prompt), with
+  the viewport check alongside them.
 
 ## How it will be proved
 | Done when | Check | Layer |

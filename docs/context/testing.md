@@ -69,7 +69,9 @@ checking in inside the window (`startsAt − 15` … `endsAt`) and rating after
 `close()` in `after`; files run in separate processes, so nothing is shared.
 
 **Browser** (`tests/*.spec.js`). `playwright.config.js`: `testMatch: '**/*.spec.js'`,
-`fullyParallel` (tests within one file run in parallel too), projects `desktop` (1440×900) and `mobile` (Pixel 7), `baseURL` from
+`fullyParallel` (tests within one file run in parallel too), projects `desktop` (1440×900) and `mobile` (a Chromium Pixel 7 at an iPhone 15's
+393×659 viewport — the Pixel's own 839px is ~180px taller than a current iPhone,
+so "fits on a phone" passed there and failed on attendees' phones), `baseURL` from
 `WEB_PORT`, `outputDir` from `PW_OUTPUT_DIR`, traces kept on failure. On CI: 1 retry,
 `forbidOnly`, reporters `github`, `list`, `html`, and `json` → `test-results/results.json`.
 `webServer` runs `npm run dev` and waits on the web URL (90 s);
