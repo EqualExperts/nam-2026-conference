@@ -22,8 +22,8 @@ opening a PR that is already conflicting.
   - the `open-pr` prompt: after the post-gate check, fetch and merge
     `origin/${BASE}`. A clean merge is pushed and the Checks line says the base
     was merged after the gate. A conflict aborts and returns ok=false, naming
-    the files. The post-gate check uses `--first-parent`, so the base's own
-    commits brought in by that merge are not read as code changed after the gate.
+    the files. The merge runs after the check for code changed since the gate,
+    so the base's own commits are never mistaken for the branch's.
 - `docs/harness/ship-playbook.md` §3: `git fetch origin` before branching, and a
   line on why the branch merges the base rather than rebasing onto it.
 - `docs/context/harness.md` Gotchas: the run keeps up with its base, and why it
@@ -36,7 +36,7 @@ opening a PR that is already conflicting.
 | setup fetches before branching | the `setup` prompt contains `git fetch origin` before `origin/main`; playbook §3's commands fetch before `git checkout -b` / `git worktree add` | unit, `ship.test.js` |
 | each Verify round merges the base before the gate | the `verify#1` prompt contains `git merge --no-edit origin/main` before `gate.mjs` | unit, `ship.test.js` |
 | a conflict reaches the fixer and the gate re-runs | `verify#1` returns `sync: 'conflict', conflicts: ['src/a.jsx']`: no auditor runs in round 1, `fix#1` gets a finding naming `src/a.jsx` and `origin/main`, and `verify#2` runs | unit, `ship.test.js` |
-| the PR step merges the base, and a conflict there hands back | the `open-pr` prompt contains `git merge --no-edit origin/main` and `--first-parent`; an `open-pr` that returns ok=false with a conflict summary ends in `needs-human`, with that summary as the reason | unit, `ship.test.js` |
+| the PR step merges the base, and a conflict there hands back | the `open-pr` prompt contains `git merge --no-edit origin/main` before `git push`; an `open-pr` that returns ok=false with a conflict summary ends in `needs-human`, with that summary as the reason | unit, `ship.test.js` |
 
 ## Decisions
 - Merge, or rebase? Merge. By the first gate the branch already carries a pushed

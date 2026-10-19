@@ -246,6 +246,36 @@ describe('ship', () => {
     assert.ok(calls.includes('fix#1'));
   });
 
+  test('the run starts from a fetched base and merges today\'s base before every gate — #150', async () => {
+    // Two runs started together both opened PRs from the same main; once the
+    // first merged, the second was already conflicting.
+    const { prompts } = await run();
+    assert.match(prompts.setup, /git fetch origin`? first, then from origin\/main/);
+    assert.match(prompts['verify#1'], /git fetch origin main && git merge --no-edit origin\/main[\s\S]*gate\.mjs/);
+    assert.match(prompts['open-pr'], /git merge --no-edit origin\/main[\s\S]*git push -u origin HEAD/);
+    const playbook = readFileSync(new URL('../../docs/harness/ship-playbook.md', import.meta.url), 'utf8');
+    assert.match(playbook, /git fetch origin\ngit checkout -b issue-<n>/);
+    assert.match(playbook, /git fetch origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
+  });
+
+  test('a conflict with the base goes to the fixer without an audit, and the gate re-runs — #150', async () => {
+    const { result, calls, prompts } = await run({
+      verify: (n) => (n === 1 ? { json: '', sync: 'conflict', conflicts: ['src/a.jsx'] } : { ...GREEN, sync: 'merged' }),
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.ok(!calls.some(c => c.startsWith('audit') && c.endsWith('#1')));
+    assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx — conflicts with origin\/main/);
+    assert.ok(calls.includes('verify#2'));
+    assert.equal(result.rounds[0].gate, 'not run — conflicts with main');
+  });
+
+  test('a conflict when the PR is about to open hands back as a draft, naming the files — #150', async () => {
+    const { result } = await run({ 'open-pr': { ok: false, summary: 'conflicts with origin/main in src/a.jsx' } });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'PR');
+    assert.match(result.reason, /conflicts with origin\/main in src\/a\.jsx/);
+  });
+
   test('the same finding surviving repeated fixes hands back early, as a draft', async () => {
     const { result, calls } = await run({
       'audit:rules': { covered: 'all', findings: [blocker('total ignores waitlist places')] },

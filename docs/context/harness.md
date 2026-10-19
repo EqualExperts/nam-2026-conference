@@ -385,6 +385,14 @@ cannot start another round.
   task output file, and the *Publish the verdict* step posts it with `gh`. An
   agent asked to post once returned `posted: false` in CI and the check read
   "did not finish". The job summary also lists every agent and its state.
+- **A ship run keeps up with its base.** Setup fetches before it branches,
+  every `verify#n` merges `origin/<base>` before the gate (returning `sync`), and
+  the PR step merges it once more before pushing. Two runs started together
+  used to open PRs from the same `main`, and the second conflicted as soon as
+  the first merged. A conflict before a gate becomes a `conflict` finding for the
+  fixer, a red round that spends no audit budget. A conflict at the PR step
+  hands back as a draft. It merges rather than rebases, because the spec commit
+  is already pushed.
 - **Every `gh` call in a workflow pins `GH_REPO: ${{ github.repository }}`.**
   On a fork `gh` resolves the base repo to the upstream, so an unpinned
   `gh issue create` aims the ticket at the parent — where `GITHUB_TOKEN` is
