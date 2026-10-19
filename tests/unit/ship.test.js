@@ -204,6 +204,21 @@ describe('ship', () => {
     assert.ok(!calls.includes('learn'));
   });
 
+  test('setup pins gh to origin, and stops if it still points elsewhere — #149', async () => {
+    // `gh` without a terminal prefers an `upstream` remote, which `gh repo
+    // clone` of a fork adds: unpinned, a laptop run worked on the upstream.
+    const { calls, prompts } = await run();
+    assert.equal(calls[0], 'setup');
+    assert.match(prompts.setup, /gh repo set-default "\$\(git remote get-url origin\)"/);
+    assert.match(prompts.setup, /gh repo set-default --view[^.]*origin[^.]*; if it does not, return proceed=false/);
+  });
+
+  test('the quickstart and the playbook pin gh before anything reads an issue — #149', () => {
+    const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
+    assert.match(read('docs/harness/quickstart.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
+    assert.match(read('docs/harness/ship-playbook.md'), /gh repo set-default "\$\(git remote get-url origin\)"\ngh issue view/);
+  });
+
   test('an unshippable ticket stops at setup and opens nothing', async () => {
     const { result, calls } = await run({ setup: { proceed: false, reason: 'no Done when' } });
     assert.deepEqual(result, { outcome: 'declined', issue: 7, reason: 'no Done when' });

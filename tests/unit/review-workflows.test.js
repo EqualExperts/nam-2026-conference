@@ -65,6 +65,14 @@ describe('code-review', () => {
     assert.equal(calls.filter(c => c.startsWith('review')).length, 4);
   });
 
+  test('the first agent pins gh to origin before it reads the pull request — #149', async () => {
+    // A fork's clone has an `upstream` remote, which `gh` prefers: unpinned,
+    // `gh pr view 42` reads somebody else's #42.
+    const { calls, prompts } = await run();
+    assert.equal(calls[0], 'context');
+    assert.match(prompts.context, /gh repo set-default "\$\(git remote get-url origin\)"[\s\S]*gh pr view 42/);
+  });
+
   test('a confirmed blocker fails, with the finding in the comment and the verdict line', async () => {
     const { result, verdictLine, prompts } = await run({ 'review:logic': { ...clean(), findings: [blocker('the done count includes waitlist places')] } });
     assert.equal(result.verdict, 'fail');
@@ -396,6 +404,12 @@ describe('qa', () => {
     assert.equal(result.confidence, 'high');
     assert.match(verdictLine, /^PASS high 4\/4 probes ran as planned/);
     assert.ok(!calls.some(c => c.startsWith('repro')));
+  });
+
+  test('the first agent pins gh to origin before it reads the pull request — #149', async () => {
+    const { calls, prompts } = await run();
+    assert.equal(calls[0], 'scope');
+    assert.match(prompts.scope, /gh repo set-default "\$\(git remote get-url origin\)"[\s\S]*gh pr view 42/);
   });
 
   test('a failure that reproduces on the branch and not the base fails the check', async () => {

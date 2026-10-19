@@ -40,6 +40,13 @@ const HERE = WORKDIR
     `than the pull request's base. Prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim qa-${pr})" &&\`.\n\n`
   : ''
 
+// Run without a terminal, `gh` prefers an `upstream` remote over `origin`, so
+// on a fork's clone `gh pr view 42` read somebody else's #42. CI pins GH_REPO;
+// on a laptop the first agent pins the checkout, and the rest follow it.
+const PIN = `Unless $GITHUB_ACTIONS is set, before any \`gh\` command run ` +
+  `\`gh repo set-default "$(git remote get-url origin)"\`: without it a clone with an \`upstream\` remote sends ` +
+  `every \`gh\` call to the upstream repository instead of this one.`
+
 // Where a probe gets a copy of the base to compare against: inside the repo,
 // with the other agent worktrees. Every QA agent starts in a worktree of its
 // own, so the path is computed from the repo root — relative, it would nest
@@ -190,7 +197,7 @@ let plan = null
 // about to return. So a cheap agent reads the head, the files and the last
 // verdict first, as code review's context does.
 const scope = await agent(
-  `${HERE}Read what a QA re-review of pull request #${pr} needs, and judge nothing. \`gh pr view ${pr} --json ` +
+  `${HERE}${PIN}\n\nRead what a QA re-review of pull request #${pr} needs, and judge nothing. \`gh pr view ${pr} --json ` +
   `headRefOid,files,comments\`: return \`head\` (headRefOid) and \`files\` (every path). If a comment contains ` +
   `\`<!-- ${MARK} {…} -->\`, take the NEWEST such comment, parse the JSON between the tag and \`-->\`, and ` +
   `return it as \`previous\`, unchanged, with \`inHistory\` set by whether \`git merge-base --is-ancestor ` +

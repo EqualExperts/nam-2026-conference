@@ -45,6 +45,13 @@ const HERE = WORKDIR
     `than the pull request's base. Prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim code-review-${pr})" &&\`.\n\n`
   : ''
 
+// Run without a terminal, `gh` prefers an `upstream` remote over `origin`, so
+// on a fork's clone `gh pr view 42` read somebody else's #42. CI pins GH_REPO;
+// on a laptop the first agent pins the checkout, and the rest follow it.
+const PIN = `Unless $GITHUB_ACTIONS is set, before any \`gh\` command run ` +
+  `\`gh repo set-default "$(git remote get-url origin)"\`: without it a clone with an \`upstream\` remote sends ` +
+  `every \`gh\` call to the upstream repository instead of this one.`
+
 const PLAYBOOK = 'docs/harness/code-review-playbook.md'
 const MAX_FINDINGS = 3
 
@@ -139,7 +146,7 @@ const POSTED = {
 // ── Context ─────────────────────────────────────────────────────────────────
 phase('Context')
 const ctx = await agent(
-  `${HERE}Gather what a review of pull request #${pr} needs, and nothing more. \`gh pr view ${pr} --json ` +
+  `${HERE}${PIN}\n\nGather what a review of pull request #${pr} needs, and nothing more. \`gh pr view ${pr} --json ` +
   `title,body,baseRefName,files,additions,deletions,closingIssuesReferences\`; find the issue it closes or ` +
   `refs, and \`gh issue view\` it for its Done-when criteria, verbatim. Then read the human comments on both ` +
   `(\`gh api repos/{owner}/{repo}/issues/<n>/comments\`), skipping bots, and return only those that amend the ` +

@@ -25,7 +25,13 @@ question, and never run a command twice to grep it the second time.
 
 ## 1. Read the ticket
 
+On a laptop, pin `gh` to `origin` first. Without a terminal, `gh` prefers a
+remote named `upstream`, and `gh repo clone` of a fork adds one, so an unpinned
+run reads the upstream's #<n> and opens its PR there. In CI `GH_REPO` already
+pins it.
+
 ```bash
+[ -n "$GITHUB_ACTIONS" ] || gh repo set-default "$(git remote get-url origin)"
 gh issue view <n> --json number,title,body,labels,state
 gh pr list --state open --json number,headRefName,isDraft \
   --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
