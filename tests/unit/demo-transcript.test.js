@@ -10,15 +10,18 @@ test('the demo transcript exists with a header naming its source and how to use 
   assert.ok(existsSync(PATH), `${PATH} is missing`);
   const text = readFileSync(PATH, 'utf8');
   const header = text.split(/^-{3,}$/m)[0];
-  assert.match(header, /voice note/i);
-  assert.match(header, /whisper/i);
+  assert.match(header, /transcript/i);
+  assert.doesNotMatch(header, /voice note|whisper/i);
   assert.ok(header.includes(`/winnow ${PATH}`));
 });
 
-test('the transcript body is kept verbatim, opening chatter included', () => {
+test('the transcript body is the short search-filtering one, ending at 0:40', () => {
   const text = readFileSync(PATH, 'utf8');
-  assert.ok(text.includes('Play it again because like is rubbish'));
-  assert.ok(text.trimEnd().endsWith('Behavior depending on the order of your actions'));
+  assert.ok(text.includes('0:02: So let\'s take a look at the website.'));
+  assert.ok(text.includes('philtre'));
+  assert.ok(text.trimEnd().endsWith('see the talks on those tracks that I have selected.'));
+  assert.ok(!text.includes('0:47'));
+  assert.ok(!text.includes('Play it again because like is rubbish'));
 });
 
 test('the header points at no file other than the transcript itself', () => {
