@@ -110,6 +110,13 @@ exists. To learn what the seed holds, read `docs/context/seed.md` or ask the API
 absence, or a side effect the change happens to keep) proves nothing, and it
 reads as proof right through the audit.
 
+The opposite case is a criterion that **already holds on main as written**, typically
+a ticket written against an older page. Do not quietly prove a different reading of
+it. Make it the first *Decision*: what holds today, and the reading this build
+proves instead. #140's "first session visible without scrolling past the filters"
+already held with the filter rail closed; the build proved it with the rail open,
+and nobody was asked.
+
 A proof that searches the repo for an absence (a grep for a removed name) runs
 over `specs/` too, and the spec you are writing is in it: it names what it
 removes. Exclude `specs/` in the command, and say so in the row.

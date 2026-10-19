@@ -101,6 +101,27 @@ describe('sizing — composed from what the ticket risks', () => {
     assert.match(prompts['audit:browser#1'], /Budget: 4 probes/);
   });
 
+  test('a criterion about fitting on a screen buys a browser audit, even when the diff is only classes — #140', async () => {
+    const { calls, prompts } = await run({ setup: facts({ layoutFit: true }), implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+    assert.ok(calls.includes('audit:browser#1'));
+    assert.match(prompts['audit:browser#1'], /Budget: 4 probes/);
+  });
+
+  test('the mobile project is a modern iPhone\'s height, not the Pixel 7\'s 839px — #140', async () => {
+    // "In view on a phone" passed at 839px and failed by 151px on an iPhone 15.
+    const { default: config } = await import('../../playwright.config.js');
+    const mobile = config.projects.find(p => p.name === 'mobile');
+    assert.deepEqual(mobile.use.viewport, { width: 393, height: 659 });
+    assert.equal(mobile.use.isMobile, true);
+  });
+
+  test('a criterion that already holds on main is named in the spec\'s first Decision — #140', async () => {
+    const small = await run({ setup: facts({}) });
+    assert.match(small.prompts.setup, /already holds on main as written, the first Decision says so/);
+    const full = await run({ setup: facts({ changesRule: true }) });
+    assert.match(full.prompts['write-spec'], /already holds on main as written, the first Decision says so/);
+  });
+
   test('setup sizes on the session model, and must report its facts', async () => {
     const { models } = await run({ setup: facts({}) });
     assert.equal(models.setup, undefined);

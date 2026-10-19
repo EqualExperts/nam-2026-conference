@@ -57,7 +57,11 @@ export default defineConfig({
 
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    // A Chromium phone (touch, mobile UA) at an iPhone 15's Safari viewport. The
+    // Pixel 7's 839px is ~180px taller than a current iPhone, so a layout that
+    // only just fitted passed here and failed on the phones attendees hold (#140).
+    // WebKit is not installed in CI, hence not devices['iPhone 15'].
+    { name: 'mobile', use: { ...devices['Pixel 7'], viewport: { width: 393, height: 659 } } },
   ],
 
   // Reusing whatever is already on the port is a convenience when you are the

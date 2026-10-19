@@ -157,6 +157,7 @@ const SETUP = {
         openQuestions: { type: 'integer', description: 'design decisions the ticket leaves open that the spec will have to settle' },
         labelledFull: { type: 'boolean', description: 'the issue carries the ship:full label' },
         uiInteraction: { type: 'boolean', description: 'new interactive behaviour an attendee drives — focus, hover, keyboard, touch, positioning, animation, state that changes across clicks — not just new data on a page' },
+        layoutFit: { type: 'boolean', description: 'a Done-when criterion about something fitting, or staying visible, on a screen — "in view on a phone", "without scrolling" — however small the diff' },
         why: { type: 'string', description: 'one line: what the change touches' },
       },
     },
@@ -447,7 +448,9 @@ const specAsk = (path) =>
   `commit it as the branch's first commit and push — no comment on the issue: its progress comment links the spec, ` +
   `and every new comment starts a workflow run that only skips. Its *Where* is the builder's ` +
   `map — name each file, the function or line to change, the test file, and the lane or helpers the test will ` +
-  `use (tests/helpers.js), so the builder opens those and searches for nothing. Set editsHarness if the ` +
+  `use (tests/helpers.js), so the builder opens those and searches for nothing. If a Done-when criterion ` +
+  `already holds on main as written, the first Decision says so — what holds today, and the reading this build ` +
+  `proves instead — so the person merging confirms the reading rather than discovering it. Set editsHarness if the ` +
   `plan changes any file under .claude/. ${MAP} Every Done-when ` +
   `criterion must map to a named check at a named layer — judged by reading, not by running anything: the ` +
   `red-check proves it after the build. Never open data/orbit.db; the seed doc and the API say what it holds. ` +
@@ -485,7 +488,7 @@ setup = await agent(
   `is. Open the files the change would land in before you answer: a fact you guessed sizes the whole run wrong. ` +
   `The script composes the run from them — a rule, stored data or the harness gets the full loop; the API, ` +
   `breadth (three or more areas, about seven or more app files — tests, docs and the spec not counted) gets more ` +
-  `auditors; open design questions get a plan audit; new interaction gets a browser audit — and anything else ` +
+  `auditors; open design questions get a plan audit; new interaction, or a criterion about fitting on a screen, gets a browser audit — and anything else ` +
   `is small. Most tickets are small.`,
   // The one judgement every later phase is sized by, so it gets the session's
   // model: Sonnet called #100's tooltip small in prose and gave no facts, and
@@ -529,6 +532,13 @@ function profileFor(f) {
   if (f.uiInteraction) {
     p.browserAlways = true; p.probes = 4
     added.push('new interaction → a browser audit, four probes')
+  }
+  // #140 was Tailwind classes only, so it was small with no browser auditor,
+  // and its "in view on a phone" held on one phone and no other. Whether a
+  // layout fits is only seen by trying it at another size.
+  if (f.layoutFit) {
+    p.browserAlways = true; p.probes = Math.max(p.probes, 4)
+    added.push('fits a screen → a browser audit, four probes')
   }
   return { ...p, why: [f.why || 'a contained change', ...added].join('; ') }
 }
