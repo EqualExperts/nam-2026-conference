@@ -397,6 +397,13 @@ cannot start another round.
   On a fork `gh` resolves the base repo to the upstream, so an unpinned
   `gh issue create` aims the ticket at the parent — where `GITHUB_TOKEN` is
   refused, and the comment or follow-up is lost rather than misfiled.
+- **On a laptop, the first agent of ship, code review and QA pins `gh` to
+  `origin`** (`gh repo set-default "$(git remote get-url origin)"`, the `PIN`
+  constant in each script). Without a terminal `gh` prefers a remote named
+  `upstream`, and `gh repo clone` of a fork adds one, so a laptop run read the
+  upstream's issue and opened its PR there. The pin lives in `.git/config`,
+  which every worktree shares, so later agents follow it. Ship's setup stops if
+  `gh repo set-default --view` still disagrees with `origin`.
 - **A PR is reviewed by the base branch's harness** (`.claude/`, CLAUDE.md,
   playbooks), so a change to the review workflow only takes effect on the
   pull requests after it merges.
