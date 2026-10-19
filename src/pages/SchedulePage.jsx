@@ -129,7 +129,7 @@ export function SchedulePage() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Day</h3>
+        <h3 className="sr-only text-[11px] font-semibold uppercase tracking-wider text-faint lg:not-sr-only lg:mb-2 lg:block">Day</h3>
         <div className="grid grid-cols-4 gap-1.5 lg:grid-cols-1">
           {days.map((d) => {
             const active = d.date === filters.day;
@@ -160,7 +160,7 @@ export function SchedulePage() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Track</h3>
+        <h3 className="sr-only text-[11px] font-semibold uppercase tracking-wider text-faint lg:not-sr-only lg:mb-2 lg:block">Track</h3>
         <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto lg:flex-wrap">
           <button type="button" onClick={() => set('track', ALL)}
             className={cx('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
@@ -244,7 +244,7 @@ export function SchedulePage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
         <aside className={cx('lg:sticky lg:top-24 lg:block lg:self-start', railOpen ? 'block' : 'hidden')}
           aria-label="Schedule filters">
           <div className="card p-3 lg:p-4">{rail}</div>

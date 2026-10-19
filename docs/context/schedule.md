@@ -71,7 +71,7 @@ The list groups sessions by `startsAt` into `slot-<HH:MM>` sections of
 `search-input`, `starred-count` (= `reservations.size`, the agenda count), day
 buttons `tab-<date>`, track pills, and `Select`s for venue/level/format/topic.
 Below `lg` the open rail is compact so the first card stays in view at 393×659: days in one
-row (no weekday or count), tracks in one scrolling row, selects in two columns, and the
+row (no weekday or count), tracks in one scrolling row (the Day and Track headings turn screen-reader-only), selects in two columns, and the
 My agenda card is desktop-only (`starred-count` stays in the DOM, `hidden lg:block`).
 `result-count` shows `Loading…` then `N sessions`.
 
