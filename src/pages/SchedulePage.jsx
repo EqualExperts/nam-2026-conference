@@ -107,7 +107,7 @@ export function SchedulePage() {
     : `on ${days.find((d) => d.date === filters.day)?.label ?? filters.day}`;
 
   const rail = (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       <SearchInput
         value={filters.q}
         onChange={(v) => set('q', v)}
@@ -115,7 +115,7 @@ export function SchedulePage() {
         data-testid="search-input"
       />
 
-      <div className="rounded-xl border border-hairline bg-raised p-3">
+      <div className="hidden rounded-xl border border-hairline bg-raised p-3 lg:block">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">My agenda</span>
           <Link to="/my-agenda" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
@@ -130,7 +130,7 @@ export function SchedulePage() {
 
       <div>
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Day</h3>
-        <div className="grid gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5 lg:grid-cols-1">
           {days.map((d) => {
             const active = d.date === filters.day;
             return (
@@ -141,18 +141,18 @@ export function SchedulePage() {
                 data-testid={`tab-${d.date}`}
                 aria-pressed={active}
                 className={cx(
-                  'flex items-baseline justify-between rounded-lg border px-3 py-2 text-left transition-colors',
+                  'flex items-baseline justify-center rounded-lg border px-1 py-1.5 text-center transition-colors lg:justify-between lg:px-3 lg:py-2 lg:text-left',
                   active ? 'border-violet-400/50 bg-violet-500/15 text-ink'
                     : 'border-hairline bg-raised text-muted hover:bg-overlay hover:text-ink',
                 )}
               >
                 <span className="flex items-center gap-1.5 text-[13px] font-semibold">
-                  {d.label} · {shortDay(d.date)}
+                  {d.label}<span className="hidden lg:inline"> · {shortDay(d.date)}</span>
                   {d.date === clock.day && (
                     <span className="size-1.5 animate-pulse-dot rounded-full bg-rose-400" title="Today" />
                   )}
                 </span>
-                <span className="font-mono text-[10px] text-faint">{d.sessionCount}</span>
+                <span className="hidden font-mono text-[10px] text-faint lg:inline">{d.sessionCount}</span>
               </button>
             );
           })}
@@ -161,9 +161,9 @@ export function SchedulePage() {
 
       <div>
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Track</h3>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto lg:flex-wrap">
           <button type="button" onClick={() => set('track', ALL)}
-            className={cx('rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+            className={cx('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
               filters.track === ALL ? 'border-white/25 bg-overlay text-ink' : 'border-hairline text-muted hover:text-ink')}>
             All
           </button>
@@ -172,7 +172,7 @@ export function SchedulePage() {
             const active = filters.track === t.slug;
             return (
               <button key={t.id} type="button" onClick={() => set('track', active ? ALL : t.slug)}
-                className={cx('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
                   active ? a.chip : 'border-hairline text-muted hover:text-ink')}>
                 <span className={cx('size-1.5 rounded-full', a.dot)} />
                 {t.shortName ?? t.name}
@@ -182,7 +182,7 @@ export function SchedulePage() {
         </div>
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
         <Select label="Venue" value={filters.venue} onChange={(v) => set('venue', v)}
           options={[{ value: ALL, label: 'Both venues' }, ...venues.map((v) => ({ value: String(v.id), label: v.shortName }))]} />
         <Select label="Level" value={filters.level} onChange={(v) => set('level', v)}
@@ -207,7 +207,7 @@ export function SchedulePage() {
       <SectionHeader
         eyebrow="Programme"
         title="The schedule"
-        description={`${days.reduce((n, d) => n + d.sessionCount, 0)} sessions over ${plural(days.length, 'day')}. Adding one takes a seat and lands it in your agenda.`}
+        description={<span className="hidden sm:inline">{`${days.reduce((n, d) => n + d.sessionCount, 0)} sessions over ${plural(days.length, 'day')}. Adding one takes a seat and lands it in your agenda.`}</span>}
         action={
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-hairline bg-raised p-0.5" role="tablist" aria-label="Schedule view">
@@ -247,7 +247,7 @@ export function SchedulePage() {
       <div className="grid gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
         <aside className={cx('lg:sticky lg:top-24 lg:block lg:self-start', railOpen ? 'block' : 'hidden')}
           aria-label="Schedule filters">
-          <div className="card p-4">{rail}</div>
+          <div className="card p-3 lg:p-4">{rail}</div>
         </aside>
 
         <div className="min-w-0 space-y-5">
