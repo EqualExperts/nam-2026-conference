@@ -25,15 +25,17 @@ only a laptop run drifts.
   points at, with no hard-coded owner (closes #128), plus the `upstream` trap and
   the pin command.
 - `docs/harness/quickstart.md` step 3: clone, then pin.
-- Tests: `tests/unit/ship.test.js` and `tests/unit/review-workflows.test.js`.
+- Tests: `tests/unit/ship.test.js`, `tests/unit/review-workflows.test.js`, and
+  `tests/unit/tracker-context.test.js`, whose check for the literal owner becomes
+  a check for `origin`.
 
 ## How it will be proved
 | Done when | Check | Layer |
 | --- | --- | --- |
 | ship pins before any `gh` | the `setup` prompt contains `gh repo set-default "$(git remote get-url origin)"` and tells setup to stop if `--view` disagrees with origin (no such text on main) | unit, `ship.test.js` |
 | code-review and QA pin before any `gh` | the `context` (code-review) and `scope` (QA) prompts contain the same command (absent on main) | unit, `review-workflows.test.js` |
-| CLAUDE.md names no fixed owner | CLAUDE.md does not contain `EqualExperts/nam-2026-conference`, and does contain `gh repo set-default` (both fail on main) | unit, `ship.test.js` |
-| quickstart pins | `docs/harness/quickstart.md` contains `gh repo set-default` (absent on main) | unit, `ship.test.js` |
+| CLAUDE.md names no fixed owner | its *Where work is tracked* section names "`origin` points at", contains no `EqualExperts/` and does contain `gh repo set-default` (the existing test that pinned the literal name changes) | unit, `tracker-context.test.js` |
+| quickstart and playbook pin | `docs/harness/quickstart.md` contains the pin, and playbook §1 runs it right before `gh issue view` (both absent on main) | unit, `ship.test.js` |
 
 ## Decisions
 - Should the pin be `gh repo set-default`, written to `.git/config`, rather than

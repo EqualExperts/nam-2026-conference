@@ -108,6 +108,15 @@ const SKILL = 'docs/harness/ship-playbook.md'
 // through it; this prints exactly those sections in one command.
 const sections = (from, to) => `\`awk '/^## ${from}\\./,/^## ${to}\\./' ${SKILL}\``
 
+// Run without a terminal, `gh` prefers a remote named `upstream` over
+// `origin`, and `gh repo clone` of a fork adds one — so a laptop run read the
+// upstream's #42 and opened its PR there. CI pins GH_REPO on every step; here
+// the first agent pins the checkout once, in the .git/config every worktree
+// shares, and every later `gh` call follows it.
+const PIN = `Unless $GITHUB_ACTIONS is set, before any \`gh\` command run ` +
+  `\`gh repo set-default "$(git remote get-url origin)"\`: without it a clone with an \`upstream\` remote sends ` +
+  `every \`gh\` call to the upstream repository instead of this one.`
+
 // Every agent is a fresh context. Without this line each one re-reads the
 // source to learn how the app fits together, and that is most of the bill.
 const MAP =
@@ -460,9 +469,11 @@ setup = await agent(
   `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
-  `later phase would run commands that do not exist in the worktree. \`gh\` works on the repository origin points ` +
-  `at, as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
-  `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the worktree. ` +
+  `later phase would run commands that do not exist in the worktree. ${PIN} Then \`gh repo set-default --view\` ` +
+  `must name the repository origin points at; if it does not, return proceed=false saying so. \`gh\` works there ` +
+  `as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
+  `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the ` +
+  `worktree beyond that pin. ` +
   `Write no code. If you proceed and the change touches no business rule, no stored data and not the harness, ` +
   `and is not labelled ship:full, write the spec too, in the workspace you made — ` +
   `${specAsk(`specs/${issue}-<your slug>.md`)} — and return it as spec; otherwise the spec is the next step's. ` +

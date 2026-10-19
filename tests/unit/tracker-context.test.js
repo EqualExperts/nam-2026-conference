@@ -20,7 +20,11 @@ describe('tracker access in the AI context', () => {
   test('names the tracker, the repository, the route and the read-only probe rule', () => {
     const s = section();
     assert.match(s, /GitHub Issues/);
-    assert.match(s, /EqualExperts\/nam-2026-conference/);
+    // The repository is whatever `origin` is: a fixed owner is wrong in every
+    // fork, and pointed agents at the upstream — #128, #149.
+    assert.match(s, /`origin` points at/);
+    assert.doesNotMatch(s, /EqualExperts\//);
+    assert.match(s, /gh repo set-default "\$\(git remote get-url origin\)"/);
     assert.match(s, /`gh`/);
     assert.match(s, /upstream/);
     assert.match(s, /read-only/i);

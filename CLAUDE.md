@@ -150,8 +150,13 @@ app on the web port — another worktree's — and your specs pass against the
 ## Where work is tracked
 
 **Tickets are GitHub Issues** — of the fork you are working in, never the upstream's.
-In this checkout that is `EqualExperts/nam-2026-conference`, the repository `origin`
-points at; `upstream` is the repo the fork came from and is never where work goes.
+That is the repository `origin` points at (`git remote get-url origin`); `upstream`
+is the repo the fork came from and is never where work goes.
+
+`gh` does not follow `origin` on its own: without a terminal it prefers a remote
+named `upstream`, and `gh repo clone` of a fork adds one. Pin it once per clone —
+`gh repo set-default "$(git remote get-url origin)"` — or every `gh` call reads and
+writes the upstream. Ship, code review and QA do this themselves on a laptop.
 
 Reach it with the authenticated `gh` CLI (`gh issue list`, `gh issue view 42`). A
 GitHub MCP server or the REST API with a token reach the same issues; none is

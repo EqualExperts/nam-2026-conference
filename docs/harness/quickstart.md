@@ -17,6 +17,7 @@ Set up once, then one walkthrough for each harness. The talk itself is at
    terminal, Claude Code uses your own sign-in.
 3. **Clone your fork and install:**
    ```bash
+   gh repo set-default "$(git remote get-url origin)"   # keep gh on your fork, not the original
    npm install
    npx playwright install chromium   # the browser the tests run in
    npm run dev                       # optional: the app on http://localhost:5173
