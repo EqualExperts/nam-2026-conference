@@ -1,73 +1,17 @@
 ORBIT '26 demo transcript for winnow
 
-A voice note about this app, transcribed locally with Whisper (small). It is
-here so you can try winnow without an idea or a meeting of your own. The text
-below the divider is verbatim, rough edges and opening recording chatter
-included: sorting those out is part of the practice.
+A short, rough transcript of one small change to this app. It is here so you
+can try winnow without an idea or a meeting of your own. The text below the
+divider is verbatim, timestamps and transcription slips included: sorting
+those out is part of the practice.
 
 How to use it:  /winnow docs/demo/winnow-transcript.txt
 ----------------------------------------------------------------------------
-Play it again because like is rubbish and it canceled my
-Audio after I've been talking for five minutes
-Let's begin
-At the beginning
-But first of all the website looks pretty dark and I understand this is quite in fashion these days
-Using the dark mode because it makes us look like I don't know
-We are some kind of 20 developers but the truth is not everybody likes it
-So the very least we should have a switch to let the user decide whether they want to use light mode
-Or dark mode even better
-We should have an option to let the website track and match whatever the system is doing
-So if the system itself like they always the mobile whatever is in dark mode
-Then we present the website in dark mode and if it is in light mode then we present the website in light mode
-But again, this should be a an option that the user has the option to activate
-Okay, that's one thing another thing to mention on the top right half
-Corner we have a selector so we can experience the website according to different types of users different user profiles
-Now this is something that makes sense on a demo website like this one
-Obviously if this was a real website
-We wouldn't have this option because you know usually you wouldn't be able to impersonate
-Somebody else and experience the website as if you were somebody else
-So because this particular component is not something that would usually be available in a real website
-It should look
-In a way out of place at the moment
-It looks too blended with the website like it's a natural part of it
-But it shouldn't feel like a natural part of it because like I said a real website wouldn't have the option to let you
-Experience the website as somebody else
-Now on the topic of this user selector drop-down
-I've noticed that the drop-down has a
-Transparency configuration right so I can sort of see what's behind it now. There's a very nice trick
-It looks very modern, but at the same time
-The text of the users might collide with text that is behind it because of this transparency
-And it might make it difficult to read
-So this is something that we need to address either
-We remove the transparency or if we want to get the transparency then we need to combine that with some kind of like
-Blurring of the background so as to make sure that any text or any visual cues on the background
-Don't collide with any text or any visual cues on the pop-up, right?
-We need to make sure that the ones in the pop-up take precedence over the background
-Now finally the last thing that I wanted to talk about was
-Their scheduling mechanism and in particular what to do when you are trying to book
-Sessions that happen at the same time now
-The system correctly doesn't let you
-Peek a session pick two sessions at the same time
-It doesn't let you book two seats because obviously you're not going to attend both
-So you shouldn't be taking the place of somebody else
-And if you want to join a session that is currently full then well it doesn't let you
-Book a seat because there are none available, but it does let you
-Join the waitlist and then if the seat becomes available then that seat is given to you now
-The way this interacts with
-You know the joining a list and booking an actual session
-They don't interact in a nice way
-because
-if
-Let's say I book a seat and a talk at a particular time and at the same time
-I try to join the waitlist for another talk that happens at the same time
-The system doesn't let me because it says you already have a booking at this time
-So I'm not gonna let you join the waitlist for another one now. That's not great
-UX because well, maybe the one that is full of my preference
-But I don't want to miss the chance of seeing something else just because I'm on the waitlist
-So maybe I want to have the option to say this is my preference. I want to join the waitlist
-But if it doesn't happen, then I want to back up place, which is the other one the system
-Doesn't currently let you do this if you do it in the wrong order and the wrong order is you join the
-Sorry you book a place and then you try to join a waitlist
-That doesn't let you do. However, if you first join the waitlist and then you book a place that it lets you do and that is wrong
-You shouldn't have a different
-Behavior depending on the order of your actions
+0:02: So let's take a look at the website.
+0:06: Now, one of the things that I have noticed is that when I go to the search function, I can philtre by several components, one of them being the track.
+0:17: Now, for me, there is a bit of a limitation here because I can either say, show me all the tracks or the talks from all the tracks, or I can select an individual track.
+0:29: But I may want to check two different tracks.
+0:33: Maybe I'm interested in two different tracks, so I want to select those two.
+0:36: That's not something that I can do at the moment.
+0:38: So that's a change that I would like to do.
+0:40: I would like to be able to select multiple tracks and then see the talks on those tracks that I have selected.
