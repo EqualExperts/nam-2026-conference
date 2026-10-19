@@ -228,7 +228,7 @@ test.describe('Ended sessions', () => {
     // compacting must not drop a filter
     await page.getByTestId('search-input').fill('a');
     for (const d of days) await expect(page.getByTestId(`tab-${d}`)).toBeVisible();
-    await page.getByRole('button', { name: 'Product' }).click();
+    await page.getByRole('button', { name: 'Product', exact: true }).click();
     await expect(page).toHaveURL(/track=/);
     for (const l of ['Venue', 'Level', 'Format', 'Topic']) await expect(page.getByLabel(l)).toBeVisible();
   });
