@@ -214,4 +214,22 @@ test.describe('Ended sessions', () => {
     expect(reservationCalls).toEqual([]);
     await expect(page.getByTestId('toaster')).toHaveText('');
   });
+
+  test('on a phone the open filter rail leaves the first session in view', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the rail is only collapsed behind a button on phones');
+    const days = await conferenceDays();
+    await visit(page, '/schedule?view=list', { at: await momentOn(0, MID_SESSION_TIME) });
+    await waitForResults(page);
+    await page.getByRole('button', { name: /^Filters/ }).click();
+
+    await expect(page.locator('article').first()).toBeInViewport();
+    await shotForPR(page, 'open filter rail');
+
+    // compacting must not drop a filter
+    await page.getByTestId('search-input').fill('a');
+    for (const d of days) await expect(page.getByTestId(`tab-${d}`)).toBeVisible();
+    await page.getByRole('button', { name: 'Product' }).click();
+    await expect(page).toHaveURL(/track=/);
+    for (const l of ['Venue', 'Level', 'Format', 'Topic']) await expect(page.getByLabel(l)).toBeVisible();
+  });
 });
