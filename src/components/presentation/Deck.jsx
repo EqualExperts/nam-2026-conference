@@ -135,6 +135,8 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
   useEffect(() => () => clearTimeout(handoff.current), []);
 
   // read through the ref: a key pressed before the re-render still sees it
+  const at = useRef(beat);
+  at.current = beat;
   const go = useCallback((to) => {
     if (next && to >= TOTAL) {
       if (handoff.current) return;
@@ -145,6 +147,7 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
     }
     if (handoff.current) { clearTimeout(handoff.current); handoff.current = null; setLeaving(false); }
     const target = clampBeat(to, TOTAL);
+    at.current = target;
     setParams((prev) => {
       const p = new URLSearchParams(prev);
       if (target === 0) p.delete('beat');
@@ -152,7 +155,7 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
       return p;
     }, { replace: true });
   }, [setParams, TOTAL, next, navigate, still]);
-  const advance = useCallback(() => go(beat + 1), [go, beat]);
+  const advance = useCallback(() => go(at.current + 1), [go]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -165,12 +168,12 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
       if (action == null) return;
       e.preventDefault();
       // past the end, a plain forward press hands over to the next talk
-      if (next && action === 1 && beat === TOTAL - 1) { go(TOTAL); return; }
-      go(beatAfter(beat, action, TOTAL));
+      if (next && action === 1 && at.current === TOTAL - 1) { go(TOTAL); return; }
+      go(beatAfter(at.current, action, TOTAL));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [beat, go, TOTAL, next]);
+  }, [go, TOTAL, next]);
 
   const chapterStarts = useMemo(() => COUNTS.map((_, i) => COUNTS.slice(0, i).reduce((a, b) => a + b, 0)), [COUNTS]);
   const current = CHAPTERS[chapter];
@@ -184,7 +187,7 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
       <div
         className="absolute left-1/2 top-1/2 cursor-pointer"
         style={{ width: STAGE_W, height: STAGE_H, transform: `translate(-50%, -50%) scale(${scale})`, perspective: 1800 }}
-        onClick={() => go(beat + 1)}
+        onClick={advance}
       >
         <motion.div className="absolute inset-0" style={{ rotateX: parallax.rotateX, rotateY: parallax.rotateY, transformStyle: 'preserve-3d' }}>
           {CHAPTERS.map((c, i) => {
