@@ -39,11 +39,11 @@ function shortlyAfter(endsAt) {
 
 test.describe('My Agenda', () => {
   test('the waitlist tile opens the sessions I am queued for, soonest first', async ({ page }, testInfo) => {
-    const plan = await openPlan(page, ATTENDEES.amara);
+    const plan = await openPlan(page, ATTENDEES.andy);
     const queued = plan.days.flatMap((d) => d.sessions)
       .filter((s) => s.reservation === 'waitlisted')
       .sort((a, b) => a.day.localeCompare(b.day) || a.startsAt.localeCompare(b.startsAt));
-    expect(queued.length, 'Amara must hold a waitlist place').toBeGreaterThan(0);
+    expect(queued.length, 'Andy must hold a waitlist place').toBeGreaterThan(0);
 
     const tile = page.getByTestId('stat-waitlist');
     await expect(tile.getByRole('button')).toBeVisible();
@@ -137,10 +137,10 @@ test.describe('My Agenda', () => {
   });
 
   test('an attendee holding both kinds sees waitlisted time counted apart', async ({ page }) => {
-    const plan = await openPlan(page, ATTENDEES.amara);
+    const plan = await openPlan(page, ATTENDEES.andy);
     const held = plan.days.flatMap((d) => d.sessions).map((s) => s.reservation);
-    expect(held, 'Amara must hold a seat').toContain('confirmed');
-    expect(held, 'Amara must hold a waitlist place').toContain('waitlisted');
+    expect(held, 'Andy must hold a seat').toContain('confirmed');
+    expect(held, 'Andy must hold a waitlist place').toContain('waitlisted');
 
     const booked = hoursOf(plan.days);
     const waiting = hoursOf(plan.days, 'waitlistedMinutes');
@@ -220,8 +220,22 @@ test.describe('My Agenda', () => {
     await expect(page.getByRole('heading', { name: /Jonas’s agenda/ })).toBeVisible();
 
     await page.getByRole('button', { name: /Switch attendee/ }).click();
-    await page.getByRole('option', { name: /Kenji Nakamura/ }).click();
-    await expect(page.getByRole('heading', { name: /Kenji’s agenda/ })).toBeVisible();
+    await page.getByRole('option', { name: /Andy Vays/ }).click();
+    await expect(page.getByRole('heading', { name: /Andy’s agenda/ })).toBeVisible();
+  });
+
+  test('the switcher offers only the three hosts, plus whoever is already selected', async ({ page }) => {
+    await visit(page, '/my-agenda', { as: ATTENDEES.jonas });
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await expect(page.getByRole('option')).toHaveText([/Jonas Claesson/, /Andy Vays/, /Abraham Marín Pérez/]);
+    await page.keyboard.press('Escape');
+
+    // Another seeded attendee, selected through localStorage as the tests do,
+    // stays listed and selected so it can be switched away from.
+    await visit(page, '/my-agenda', { as: ATTENDEES.kenji });
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await expect(page.getByRole('option')).toHaveText([/Jonas Claesson/, /Andy Vays/, /Kenji Nakamura/, /Abraham Marín Pérez/]);
+    await expect(page.getByRole('option', { selected: true })).toContainText('Kenji Nakamura');
   });
 
   test('the Right Now card counts a finished day in the singular', async ({ page, request }, testInfo) => {
@@ -243,7 +257,7 @@ test.describe('My Agenda', () => {
 
 test.describe('Speaker view', () => {
   test('a speaking attendee sees their own sessions', async ({ page }) => {
-    await visit(page, '/my-agenda', { as: ATTENDEES.amara });
+    await visit(page, '/my-agenda', { as: ATTENDEES.andy });
     const panel = page.getByTestId('speaking-panel');
     await expect(panel).toBeVisible();
     await expect(panel).toContainText('You are speaking');

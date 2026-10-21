@@ -15,11 +15,11 @@ export const API = `http://localhost:${process.env.PORT ?? 3001}/api`;
 
 export const ATTENDEES = {
   jonas: 1,      // VIP, big plan, has cross-town clashes
-  amara: 2,      // Speaker — presenting 3 sessions
+  andy: 2,      // Speaker — presenting 3 sessions
   kenji: 3,      // Standard, small plan
   sofia: 4,      // VIP, biggest plan
   marcus: 5,     // Standard, smallest plan
-  priya: 6,      // Speaker — presenting 2 sessions
+  abraham: 6,      // Speaker — presenting 2 sessions
 };
 
 /**
@@ -108,26 +108,26 @@ export async function clearAgendaFor(request, userId, day) {
  * Lanes marked `clean` are days the seed leaves empty for that attendee, so the
  * test may clear the whole day; everywhere else, release only what you booked.
  */
-const { jonas, amara, kenji, sofia, marcus, priya } = ATTENDEES;
+const { jonas, andy, kenji, sofia, marcus, abraham } = ATTENDEES;
 export const LANES = {
-  'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: amara, day: 2, slot: '11:30' } },
-  'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: priya, day: 2, slot: '10:15' } },
-  'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: amara, day: 2, slot: '16:00' } },
+  'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: andy, day: 2, slot: '11:30' } },
+  'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: abraham, day: 2, slot: '10:15' } },
+  'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: andy, day: 2, slot: '16:00' } },
   'seats.waitlist':   { desktop: { user: kenji, day: 0 },                 mobile: { user: sofia, day: 3 } },
   // Slots pinned only so 'attendance.rating-toast' below can share this
   // attendee and day (a real seat lane, so it never sets its own slot
   // otherwise) — this test's own pick is dynamic and ignores them.
-  'seats.queue':      { desktop: { user: marcus, day: 0, slot: '13:30' }, mobile: { user: priya, day: 0, slot: '10:15' } },
-  'conflict.ui':      { desktop: { user: kenji, day: 3, clean: true },    mobile: { user: amara, day: 3, clean: true } },
-  'conflict.api':     { desktop: { user: priya, day: 3 },                 mobile: { user: jonas, day: 3 } },
+  'seats.queue':      { desktop: { user: marcus, day: 0, slot: '13:30' }, mobile: { user: abraham, day: 0, slot: '10:15' } },
+  'conflict.ui':      { desktop: { user: kenji, day: 3, clean: true },    mobile: { user: andy, day: 3, clean: true } },
+  'conflict.api':     { desktop: { user: abraham, day: 3 },                 mobile: { user: jonas, day: 3 } },
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
   // read-only: it books nothing, and needs a day the seed sells sessions out on
   'schedule.seats':   { desktop: { user: kenji, day: 1, readOnly: true }, mobile: { user: marcus, day: 0, readOnly: true } },
   // Queues for a full room, so the attendee is never Jonas. Each pane pins the
   // full slot it queues in, distinct from the other panes on its attendee and day.
-  'agenda.waitlist':  { desktop: { user: priya, day: 0, slot: '11:30' },  mobile: { user: marcus, day: 0, slot: '16:00' } },
-  'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
-  'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
+  'agenda.waitlist':  { desktop: { user: abraham, day: 0, slot: '11:30' },  mobile: { user: marcus, day: 0, slot: '16:00' } },
+  'agenda.add':       { desktop: { user: andy, day: 1 },                 mobile: { user: abraham, day: 1 } },
+  'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: andy, day: 0 } },
   // Kenji and Marcus only attend days 1–2, so day index 2 is unbooked for both —
   // a clean day to book exactly one session on, distinct from the day-4 lanes above.
   // No exact seat-count assertion here, so this owns 17:15 — the one slot on
@@ -140,10 +140,10 @@ export const LANES = {
   // Check-ins and ratings only — no seat is booked, so agenda: false lets these
   // share a day with booking lanes (see lanes.test.js). The slot is the one
   // unattendedFor() picks its session from.
-  'attendance.checkin-toast': { desktop: { user: kenji, day: 2, slot: '09:00', agenda: false },  mobile: { user: amara, day: 2, slot: '09:00', agenda: false } },
+  'attendance.checkin-toast': { desktop: { user: kenji, day: 2, slot: '09:00', agenda: false },  mobile: { user: andy, day: 2, slot: '09:00', agenda: false } },
   // Rates for real, so it must land on day index 0 — `today` — per
   // smoke.spec.js's "no session in the future carries a rating".
-  'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: priya, day: 0, slot: '09:00', agenda: false } },
+  'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: abraham, day: 0, slot: '09:00', agenda: false } },
   // Checks in to the attendee's seeded 17:15 seat on Day 1 and never rates it,
   // so My Agenda has something to list in its to-rate callout. Books nothing.
   'agenda.to-rate':           { desktop: { user: kenji, day: 0, slot: '17:15', agenda: false }, mobile: { user: sofia, day: 0, slot: '17:15', agenda: false } },

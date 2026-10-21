@@ -4,11 +4,20 @@ import { Avatar, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
 /**
+ * The workshop's hosts, who agreed to appear as themselves. Only they are
+ * offered here, since three real people demo better than six invented ones.
+ */
+const HOST_COMPANY = 'Equal Experts';
+
+/**
  * Attendee switcher. There is no auth — the app runs as whichever seeded
- * attendee is selected, and each has their own agenda and follows.
+ * attendee is selected, and each has their own agenda and follows. The other
+ * seeded attendees still exist (tests sign in as them through localStorage);
+ * one only shows here while it is the one selected, so it can be switched away from.
  */
 export function UserSwitcher() {
   const { users = [], currentUser, setCurrentUserId, reservations } = useConference();
+  const choices = users.filter((u) => u.company === HOST_COMPANY || u.id === currentUser?.id);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -57,7 +66,7 @@ export function UserSwitcher() {
             </p>
           </div>
           <ul className="max-h-[26rem] overflow-y-auto p-1.5">
-            {users.map((u) => {
+            {choices.map((u) => {
               const active = u.id === currentUser.id;
               // The store only ever holds live reservation state for the
               // signed-in attendee, so only their row can read it live; every

@@ -94,7 +94,7 @@ test.describe('Home is about you, and about now', () => {
   });
 
   test('only a speaker sees the speaker strip', async ({ page }) => {
-    await visit(page, '/', { as: ATTENDEES.priya });
+    await visit(page, '/', { as: ATTENDEES.abraham });
     await expect(page.getByTestId('speaking-strip')).toBeVisible();
 
     await visit(page, '/', { as: ATTENDEES.kenji });
@@ -104,7 +104,7 @@ test.describe('Home is about you, and about now', () => {
   test('the followed-speaker count reads singular for exactly one', async ({ page, request }, testInfo) => {
     // A different pair from the speakers/live specs' follow-toggle tests, so
     // this test's temporarily-pinned follow set is never raced by another one.
-    const user = testInfo.project.name === 'mobile' ? ATTENDEES.priya : ATTENDEES.sofia;
+    const user = testInfo.project.name === 'mobile' ? ATTENDEES.abraham : ATTENDEES.sofia;
     const me = await (await request.get(`${API}/users/${user}`)).json();
     const originalIds = me.followedSpeakers.map((s) => s.id);
     const keep = originalIds[0] ?? 1; // every speaker presents at least one session
