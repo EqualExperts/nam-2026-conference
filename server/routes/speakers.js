@@ -31,13 +31,15 @@ speakersRouter.get('/', (req, res) => {
 
   const rows = db.prepare(`
     SELECT sp.*, COUNT(ss.session_id) AS session_count,
-           SUM(CASE WHEN s.is_keynote = 1 THEN 1 ELSE 0 END) AS keynote_count
+           SUM(CASE WHEN s.is_keynote = 1 THEN 1 ELSE 0 END) AS keynote_count,
+           -- the hosts lead the headliners, in the order the seed bills them
+           EXISTS (SELECT 1 FROM users u WHERE u.speaker_id = sp.id) AS hosting
     FROM speakers sp
     LEFT JOIN session_speakers ss ON ss.speaker_id = sp.id
     LEFT JOIN sessions s ON s.id = ss.session_id
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     GROUP BY sp.id
-    ORDER BY sp.featured DESC, sp.name
+    ORDER BY sp.featured DESC, hosting DESC, CASE WHEN hosting THEN sp.id END, sp.name
   `).all(...args);
 
   res.json(rows.map((r) => toSpeaker(r, {
