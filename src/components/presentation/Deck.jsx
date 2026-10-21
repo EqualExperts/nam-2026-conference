@@ -1,22 +1,26 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AnimatePresence, MotionConfig, motion, useMotionValue, useSpring, useTransform } from 'motion/react';
-import { Backdrop } from '../components/presentation/Backdrop.jsx';
-import { CHAPTERS } from '../components/presentation/chapters.js';
-import { useEntries } from '../components/presentation/kit.jsx';
-import { beatAfter, clampBeat, keyAction, locateBeat, parseBeat } from '../lib/presentation.js';
-import { useDocumentTitle } from '../lib/useDocumentTitle.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
+import { Backdrop } from './Backdrop.jsx';
+import { useEntries } from './kit.jsx';
+import { beatAfter, clampBeat, keyAction, locateBeat, parseBeat } from '../../lib/presentation.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 /**
- * /engineering-presentation — the engineering harness, end to end, as one scene the
- * presenter steps through. Full screen, outside <Layout>: no header, no footer.
- * Each chapter is a layer on a fixed 1600×900 stage; a beat is one press.
+ * A talk the presenter steps through: full screen, outside <Layout>, no header
+ * or footer. Each chapter is a layer on a fixed 1600×900 stage; a beat is one
+ * press. Both talks — /product-presentation, then /engineering-presentation —
+ * are a Deck, so the second picks up exactly where the first leaves off.
+ *
+ * `next` is the talk that follows: from the last beat, one more press goes there.
+ * With `next.delay` (ms) the current scene is told it is `leaving` first and the
+ * stars warp, so a hand-off can play out before the route changes; under
+ * reduced motion it navigates at once. A scene also gets `advance`, so a button
+ * on the stage can be the clicker.
  */
 
 const STAGE_W = 1600;
 const STAGE_H = 900;
-const COUNTS = CHAPTERS.map((c) => c.beats.length);
-const TOTAL = COUNTS.reduce((a, b) => a + b, 0);
 
 function useStageScale() {
   const fit = () => Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
@@ -45,7 +49,7 @@ const CUT = {
   future:  { opacity: 0, scale: 1, filter: 'blur(0px)', pointerEvents: 'none' },
 };
 
-function Layer({ chapter, state, step, cut }) {
+function Layer({ chapter, state, step, cut, leaving, advance }) {
   // Re-mount the scene each time it becomes current, so its entrance plays.
   const entries = useEntries(state === 'current');
   const Scene = chapter.Scene;
@@ -61,7 +65,7 @@ function Layer({ chapter, state, step, cut }) {
       className="absolute inset-0"
     >
       <div key={entries} className="absolute inset-0">
-        <Scene step={step} />
+        <Scene step={step} leaving={state === 'current' && leaving} advance={advance} />
       </div>
     </motion.div>
   );
@@ -72,32 +76,31 @@ const WORD = {
   shown: { opacity: 1, y: 0, filter: 'blur(0px)' },
 };
 
+// No exit animation: with AnimatePresence a fast clicker could press on before
+// the old caption finished leaving, and it stayed on screen under the new beat.
+// The old caption goes at once; the new one's words still rise in.
 function Caption({ beat, accent, index }) {
+  if (!beat) return null;
   return (
-    <AnimatePresence mode="wait">
-      {beat && (
-        <motion.div
-          key={index}
-          data-testid="presentation-caption"
-          className="absolute"
-          style={{ left: 80, top: 650, width: 1440 }}
-          initial="hidden"
-          animate="shown"
-          exit={{ opacity: 0, y: -14, filter: 'blur(6px)', transition: { duration: 0.18 } }}
-          transition={{ staggerChildren: 0.035 }}
-        >
-          <motion.div variants={WORD} className={`font-mono text-[15px] uppercase tracking-[0.2em] ${accent}`}>{beat.kicker}</motion.div>
-          <h2 className="mt-2 font-display text-[46px] leading-tight text-ink">
-            {beat.title.split(' ').map((w, i) => (
-              <motion.span key={i} variants={WORD} transition={{ type: 'spring', stiffness: 220, damping: 22 }} className="mr-[0.25em] inline-block">{w}</motion.span>
-            ))}
-          </h2>
-          <motion.p variants={WORD} transition={{ duration: 0.6, delay: 0.25 }} className="mt-3 max-w-[1180px] text-[22px] leading-relaxed text-muted">
-            {beat.body}
-          </motion.p>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <motion.div
+      key={index}
+      data-testid="presentation-caption"
+      className="absolute"
+      style={{ left: 80, top: 650, width: 1440 }}
+      initial="hidden"
+      animate="shown"
+      transition={{ staggerChildren: 0.035 }}
+    >
+      <motion.div variants={WORD} className={`font-mono text-[15px] uppercase tracking-[0.2em] ${accent}`}>{beat.kicker}</motion.div>
+      <h2 className="mt-2 font-display text-[46px] leading-tight text-ink">
+        {beat.title.split(' ').map((w, i) => (
+          <motion.span key={i} variants={WORD} transition={{ type: 'spring', stiffness: 220, damping: 22 }} className="mr-[0.25em] inline-block">{w}</motion.span>
+        ))}
+      </h2>
+      <motion.p variants={WORD} transition={{ duration: 0.6, delay: 0.25 }} className="mt-3 max-w-[1180px] text-[22px] leading-relaxed text-muted">
+        {beat.body}
+      </motion.p>
+    </motion.div>
   );
 }
 
@@ -114,23 +117,42 @@ function useParallax() {
   return { rotateX, rotateY, onPointerMove };
 }
 
-export function PresentationPage() {
-  useDocumentTitle('The engineering harness');
+export function Deck({ chapters: CHAPTERS, title, next }) {
+  useDocumentTitle(title);
+  const COUNTS = useMemo(() => CHAPTERS.map((c) => c.beats.length), [CHAPTERS]);
+  const TOTAL = COUNTS.reduce((a, b) => a + b, 0);
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const beat = parseBeat(params.get('beat'), TOTAL);
   const { chapter, step } = locateBeat(beat, COUNTS);
   const scale = useStageScale();
   const parallax = useParallax();
+  const [leaving, setLeaving] = useState(false);
+  const still = useReducedMotion();
 
-  const go = useCallback((next) => {
-    const target = clampBeat(next, TOTAL);
+  // the hand-off waits for its exit animation; going back during it cancels it
+  const handoff = useRef(null);
+  useEffect(() => () => clearTimeout(handoff.current), []);
+
+  // read through the ref: a key pressed before the re-render still sees it
+  const go = useCallback((to) => {
+    if (next && to >= TOTAL) {
+      if (handoff.current) return;
+      if (!next.delay || still) { navigate(next.to); return; }
+      setLeaving(true);
+      handoff.current = setTimeout(() => navigate(next.to), next.delay);
+      return;
+    }
+    if (handoff.current) { clearTimeout(handoff.current); handoff.current = null; setLeaving(false); }
+    const target = clampBeat(to, TOTAL);
     setParams((prev) => {
       const p = new URLSearchParams(prev);
       if (target === 0) p.delete('beat');
       else p.set('beat', String(target + 1));
       return p;
     }, { replace: true });
-  }, [setParams]);
+  }, [setParams, TOTAL, next, navigate, still]);
+  const advance = useCallback(() => go(beat + 1), [go, beat]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -142,19 +164,21 @@ export function PresentationPage() {
       const action = keyAction(e.key);
       if (action == null) return;
       e.preventDefault();
+      // past the end, a plain forward press hands over to the next talk
+      if (next && action === 1 && beat === TOTAL - 1) { go(TOTAL); return; }
       go(beatAfter(beat, action, TOTAL));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [beat, go]);
+  }, [beat, go, TOTAL, next]);
 
-  const chapterStarts = useMemo(() => COUNTS.map((_, i) => COUNTS.slice(0, i).reduce((a, b) => a + b, 0)), []);
+  const chapterStarts = useMemo(() => COUNTS.map((_, i) => COUNTS.slice(0, i).reduce((a, b) => a + b, 0)), [COUNTS]);
   const current = CHAPTERS[chapter];
 
   return (
     <MotionConfig reducedMotion="user">
     <div className="fixed inset-0 select-none overflow-hidden bg-ground text-ink" data-testid="presentation" onPointerMove={parallax.onPointerMove}>
-      <Backdrop tone={current.tone} warpKey={chapter} />
+      <Backdrop tone={current.tone} warpKey={leaving ? 'leaving' : chapter} />
 
       {/* The stage. Clicking anywhere on it moves on, as a clicker would. */}
       <div
@@ -169,7 +193,7 @@ export function PresentationPage() {
             const s = state === 'current' ? step : state === 'past' ? c.beats.length - 1 : 0;
             // the boundary this layer crosses is the one into the later of the two chapters
             const cut = CHAPTERS[Math.max(i, chapter)].enter === 'cut';
-            return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} />;
+            return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} leaving={leaving} advance={advance} />;
           })}
           <Caption beat={current.beats[step]} accent={current.accent} index={beat} />
         </motion.div>
@@ -209,8 +233,9 @@ export function PresentationPage() {
         </nav>
         <button type="button" data-testid="presentation-prev" onClick={() => go(beat - 1)} disabled={beat === 0}
           className="rounded-lg border border-hairline bg-surface/80 px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30" aria-label="Previous">←</button>
-        <button type="button" data-testid="presentation-next" onClick={() => go(beat + 1)} disabled={beat === TOTAL - 1}
-          className="rounded-lg border border-hairline bg-surface/80 px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30" aria-label="Next">→</button>
+        <button type="button" data-testid="presentation-next" onClick={() => go(beat + 1)} disabled={!next && beat === TOTAL - 1}
+          className="rounded-lg border border-hairline bg-surface/80 px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30"
+          aria-label={next && beat === TOTAL - 1 ? `Next: ${next.label}` : 'Next'}>→</button>
       </div>
       <span className="sr-only" aria-live="polite">{`Beat ${beat + 1} of ${TOTAL}: ${current.beats[step]?.title ?? current.name}`}</span>
     </div>

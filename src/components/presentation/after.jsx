@@ -462,7 +462,7 @@ function CloseScene({ step }) {
       </Show>
       <Show on={step === 1} from="scale" style={at(80, 70, 1440, 760)} className="flex flex-col items-center justify-center text-center">
         <div className="font-display text-[88px] leading-[0.98] text-ink">
-          Write the ticket.<br />
+          Have the conversation.<br />
           Review the pull request.<br />
           <span className="pz-shine bg-clip-text text-transparent">The harness does the rest.</span>
         </div>
