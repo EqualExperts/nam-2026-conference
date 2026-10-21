@@ -35,8 +35,8 @@ data at the end of the script, or draw from a separate generator.
 2. Rooms: `AURORA_ROOMS` (19) and `FOUNDRY_ROOMS` (10) as literal tuples. The Cooling Tower
    and the Boiler Room are `accessible = 0`.
 3. `TRACKS` (10, slug from name) and `TAGS` by kind: `topic`, `tech`, `audience`, `vibe`.
-4. Speakers. Ids 1–2 are the hand-written `SPEAKING_ATTENDEES` (Amara Diallo, Priya
-   Venkatesan, both `featured`). Ids 3–110 come from a 108-iteration loop: the portrait's
+4. Speakers. Ids 1–2 are the hand-written `SPEAKING_ATTENDEES` (Andy Vays, Abraham
+   Marín Pérez, both `featured`). Ids 3–110 come from a 108-iteration loop: the portrait's
    presentation (`avatar-presentation.json` › `presentation[id]`) picks `FIRST_M` or
    `FIRST_F` and the pronouns; the first ten generated (ids 3–12) are `featured`.
    `avg_rating` starts at 0. Then any `public/avatars/speaker-NNN.jpg` present becomes
@@ -49,9 +49,13 @@ data at the end of the script, or draw from a separate generator.
    the room's; `seats_taken` is 22–104% of it, capped. `addSession` deals speakers from a
    weighted pool (`buildSpeakerPool`: everyone once, featured 3–5 extra) and 4–10 tags.
    Then four social events (Desert Terrace, The Smelter). About 140 sessions in total.
-6. `assignSpeaker` puts Amara on Day 2 10:15, Day 2 16:00 (Moderator), Day 4 11:30, and
-   Priya on Day 1 14:45 and Day 3 09:00 — the biggest non-keynote session in that slot,
-   replacing its speakers. Speakers left with nothing are then paired onto solo sessions.
+6. `assignSpeaker` puts Andy on Day 2 10:15, Day 2 16:00 (Moderator), Day 4 11:30, and
+   Abraham on Day 1 14:45 and Day 3 09:00 — the biggest non-keynote session in that slot
+   (or, with a pick's `track`, the biggest on that track; Abraham's Day 3 talk asks for AI
+   Product & Strategy), replacing its speakers. Each pick also carries a hand-written `talk`
+   that overwrites the session's title, subtitle, abstract, takeaways, prerequisites and
+   all its tags, so the hosts' sessions are their real subjects; format, room, track and
+   seats stay as generated. Speakers left with nothing are then paired onto solo sessions.
 7. `USERS` — six attendees (below). Ticket tier `Speaker` sets `speaker_id` by name and
    reuses the speaker portrait; the others get `attendee-00N.jpg`.
 8. Plans. Jonas's cross-town pairs are booked first (Day 1 Aurora 10:15 → Foundry 11:30;
@@ -79,11 +83,11 @@ pins it. Only dates change between machines; the PRNG output does not.
 | id | name | tier | notes |
 | --- | --- | --- | --- |
 | 1 | Jonas Claesson | VIP | all 4 days, cross-town traps, holds the promotion fixture seat |
-| 2 | Amara Diallo | Speaker | `speaker_id` 1, presents 3 sessions, 3 days |
+| 2 | Andy Vays | Speaker | `speaker_id` 1, presents 3 sessions, 3 days |
 | 3 | Kenji Nakamura | Standard | 2 days, always the keynote |
 | 4 | Sofia Almeida | VIP | 4 days, the biggest plan |
 | 5 | Marcus Whitfield | Standard | 2 days, the smallest plan |
-| 6 | Priya Venkatesan | Speaker | `speaker_id` 2, presents 2 sessions, 3 days |
+| 6 | Abraham Marín Pérez | Speaker | `speaker_id` 2, presents 2 sessions, 3 days |
 
 ## Invariants
 
@@ -98,12 +102,14 @@ pins it. Only dates change between machines; the PRNG output does not.
 - Presentation keys are **speaker ids as strings**; the loop reads `PRESENTATION[String(i + 3)]`.
   A missing key falls back to `chance(0.5)`, which consumes an extra `rnd()` and reshuffles
   everything after it.
-- Portraits (why they are synthetic: CLAUDE.md § Imagery) were fetched once by
+- Portraits (why they are synthetic: `.claude/rules/ui.md` § Imagery) were fetched once by
   `npm run avatars` (`scripts/fetch-avatars.mjs`, missing files only), downscaled to 256px
   and committed, so the app never touches the network at runtime; they are served from
   `/avatars/…` via `speakers.image_url` / `users.image_url`. A speaker with no file falls
   back to `GeneratedAvatar`, so a partial set is never a broken image. The source dataset
-  also contains children — eyeball any replacement before committing it.
+  also contains children — eyeball any replacement before committing it. The exceptions are
+  `speaker-001.jpg` (Andy Vays), `speaker-002.jpg` (Abraham Marín Pérez) and `attendee-001.jpg` (Jonas Claesson): real colleagues who agreed to appear, and `fetch-avatars.mjs`
+  skips the speaker ones (`REAL`), even with `--force`.
 - `fetch-avatars.mjs` only fetches `speaker-NNN.jpg` (default count 180, though only 110
   speakers exist) and never `attendee-*.jpg`. It is strictly sequential with a 900 ms gap
   and rejects duplicates by SHA-1 (the source serves whatever it generated most recently,
@@ -112,7 +118,7 @@ pins it. Only dates change between machines; the PRNG output does not.
 - `sessions.seats_taken` is a seeded crowd size, not a count of `reservations` rows — the
   six attendees are a tiny share of it, and step 9 overwrites it outright. Never assert
   `seats_taken == COUNT(reservations)`.
-- Seeded bookings by day: Kenji and Marcus only have Days 1–2, Amara and Priya Days 1–3,
+- Seeded bookings by day: Kenji and Marcus only have Days 1–2, Andy and Abraham Days 1–3,
   Jonas and Sofia all four. Several Playwright tests depend on that shape (Marcus empty on
   Day 4, `findPromotionFixture` in `tests/seats.spec.js`, the `clean` lanes). Changing plans or `PLAN_SHAPE` can break them;
   see testing.

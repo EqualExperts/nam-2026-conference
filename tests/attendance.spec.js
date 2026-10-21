@@ -113,7 +113,7 @@ test.describe('Check in and rate', () => {
     // the future would leave the database asserting a thing that has not
     // happened, which a smoke test now forbids.
     const mobile = testInfo.project.name === 'mobile';
-    const user = mobile ? ATTENDEES.priya : ATTENDEES.sofia;
+    const user = mobile ? ATTENDEES.abraham : ATTENDEES.sofia;
     const day = days[0];
 
     // Check-ins persist between runs and there is deliberately no way to undo

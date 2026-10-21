@@ -81,7 +81,7 @@ instead of silently testing another worktree's app.
 `tests/helpers.js` exports:
 
 - `API` — `http://localhost:${PORT ?? 3001}/api`, for `request.get(...)` calls.
-- `ATTENDEES` — `{ jonas: 1, amara: 2, kenji: 3, sofia: 4, marcus: 5, priya: 6 }` (see seed).
+- `ATTENDEES` — `{ jonas: 1, andy: 2, kenji: 3, sofia: 4, marcus: 5, abraham: 6 }` (see seed).
 - `conferenceDays()` → the four ISO dates from `/bootstrap`, cached per worker.
 - `momentOn(dayIndex, 'HH:MM')` → `'YYYY-MM-DDTHH:MM'`; `MID_SESSION_TIME = '10:30'`,
   `BETWEEN_SLOTS_TIME = '11:10'`.

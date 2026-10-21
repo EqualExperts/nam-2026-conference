@@ -130,8 +130,11 @@ sticky `glass` header, `<main id="main">`, and the footer.
 - Footer: three `nav` columns (Programme, On site, Conference) built from an
   inline array of `[label, to]`, plus `conference.dates · conference.city` from
   bootstrap and a plain `<a href="/api/bootstrap">`.
-- `UserSwitcher` sits in the header once `ready`: a `listbox` of
-  `useConference().users`, calls `setCurrentUserId`; closes on outside pointer
+- `UserSwitcher` sits in the header once `ready`: a `listbox` of the
+  `useConference().users` whose company is `HOST_COMPANY` (Equal Experts: Jonas,
+  Andy, Abraham), plus the selected attendee if it is someone else (tests pick
+  Kenji, Sofia or Marcus through localStorage, and they must be able to switch
+  back). `/bootstrap` still returns all six. Calls `setCurrentUserId`; closes on outside pointer
   or Escape. Each row shows "N on agenda"; every row but the signed-in
   attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but
   the active row counts `'confirmed'` entries in `useConference().reservations`

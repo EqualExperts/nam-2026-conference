@@ -39,10 +39,15 @@ anything a test needs to find**, never to decorative elements.
 
 ## Imagery
 
-**No photograph of a real person appears anywhere in this repo, and none should
-be added.** Portraits in `public/avatars/` are synthetic StyleGAN faces from
-thispersondoesnotexist.com — no real person, no likeness rights. If you ever
-regenerate one:
+**No photograph of a real person appears in this repo without their consent.**
+Portraits in `public/avatars/` are synthetic StyleGAN faces from
+thispersondoesnotexist.com — no real person, no likeness rights — with one kind
+of exception: a named colleague who has agreed to appear, whose photo and
+profile replace one of the hand-written attendees (`SPEAKING_ATTENDEES` and
+`USERS` in `server/seed.js`). Today that is Andy Vays (`speaker-001.jpg`), Abraham
+Marín Pérez (`speaker-002.jpg`) and Jonas Claesson (`attendee-001.jpg`). Never add a real
+person on the strength of a public photo; the repo is forked by every attendee.
+If you ever regenerate a synthetic one:
 
 1. **Fetch sequentially** — concurrent requests come back identical.
 2. **Update `server/avatar-presentation.json`** — the seed picks name and

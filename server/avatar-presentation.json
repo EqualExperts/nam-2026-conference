@@ -1,8 +1,8 @@
 {
   "_comment": "Apparent gender presentation of each generated portrait in public/avatars, classified by eye. The seed uses this to pick a first name and pronouns that match the photo, so a speaker never reads as a mismatch. Regenerate a portrait and you must update its entry here.",
   "presentation": {
-    "1": "f",
-    "2": "f",
+    "1": "m",
+    "2": "m",
     "3": "f",
     "4": "f",
     "5": "m",

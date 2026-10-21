@@ -9,7 +9,7 @@
  *
  *   npm run avatars           # fill in whatever is missing
  *   npm run avatars -- 200    # target a different count
- *   npm run avatars -- --force  # re-download everything
+ *   npm run avatars -- --force  # re-download everything but the real people
  *
  * Speakers whose file is missing fall back to the generated SVG portrait,
  * so a partial run is harmless.
@@ -38,10 +38,14 @@ mkdirSync(OUT_DIR, { recursive: true });
 mkdirSync(TMP_DIR, { recursive: true });
 
 const name = (i) => `speaker-${String(i).padStart(3, '0')}.jpg`;
+// Real colleagues who agreed to appear (see .claude/rules/ui.md § Imagery).
+// Not synthetic, so --force must never replace them.
+const REAL = new Set([1, 2]); // speaker-001: Andy Vays, speaker-002: Abraham Marín Pérez
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const todo = [];
 for (let i = 1; i <= count; i++) {
+  if (REAL.has(i)) continue;
   if (force || !existsSync(join(OUT_DIR, name(i)))) todo.push(i);
 }
 
