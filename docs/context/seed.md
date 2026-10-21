@@ -36,7 +36,7 @@ data at the end of the script, or draw from a separate generator.
    and the Boiler Room are `accessible = 0`.
 3. `TRACKS` (10, slug from name) and `TAGS` by kind: `topic`, `tech`, `audience`, `vibe`.
 4. Speakers. Ids 1–2 are the hand-written `SPEAKING_ATTENDEES` (Andy Vays, Abraham
-   Venkatesan, both `featured`). Ids 3–110 come from a 108-iteration loop: the portrait's
+   Marín Pérez, both `featured`). Ids 3–110 come from a 108-iteration loop: the portrait's
    presentation (`avatar-presentation.json` › `presentation[id]`) picks `FIRST_M` or
    `FIRST_F` and the pronouns; the first ten generated (ids 3–12) are `featured`.
    `avg_rating` starts at 0. Then any `public/avatars/speaker-NNN.jpg` present becomes
@@ -50,8 +50,12 @@ data at the end of the script, or draw from a separate generator.
    weighted pool (`buildSpeakerPool`: everyone once, featured 3–5 extra) and 4–10 tags.
    Then four social events (Desert Terrace, The Smelter). About 140 sessions in total.
 6. `assignSpeaker` puts Andy on Day 2 10:15, Day 2 16:00 (Moderator), Day 4 11:30, and
-   Abraham on Day 1 14:45 and Day 3 09:00 — the biggest non-keynote session in that slot,
-   replacing its speakers. Speakers left with nothing are then paired onto solo sessions.
+   Abraham on Day 1 14:45 and Day 3 09:00 — the biggest non-keynote session in that slot
+   (or, with a pick's `track`, the biggest on that track; Abraham's Day 3 talk asks for AI
+   Product & Strategy), replacing its speakers. Each pick also carries a hand-written `talk`
+   that overwrites the session's title, subtitle, abstract, takeaways, prerequisites and
+   all its tags, so the hosts' sessions are their real subjects; format, room, track and
+   seats stay as generated. Speakers left with nothing are then paired onto solo sessions.
 7. `USERS` — six attendees (below). Ticket tier `Speaker` sets `speaker_id` by name and
    reuses the speaker portrait; the others get `attendee-00N.jpg`.
 8. Plans. Jonas's cross-town pairs are booked first (Day 1 Aurora 10:15 → Foundry 11:30;

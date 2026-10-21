@@ -17,7 +17,9 @@ those three, so the room sees people it is about to meet.
 - `server/seed.js`
   - `SPEAKING_ATTENDEES` and `USERS`: the new profiles.
   - `assignSpeaker` takes an optional `talk` per pick (title, subtitle,
-    abstract, takeaways, tags) and overwrites the generated session. It runs
+    abstract, takeaways, prerequisites, tags) and overwrites the generated
+    session, and an optional `track` that picks that track's room in the slot
+    (a room keeps one track all day, so the track is chosen, never rewritten). It runs
     after generation and draws nothing from the PRNG, so the rest of the seed is
     unchanged.
 - `public/avatars/speaker-001.jpg`, `speaker-002.jpg`, `attendee-001.jpg`, and

@@ -482,22 +482,24 @@ const smelter = rooms.find((r) => r.name === 'The Smelter');
 /**
  * Assign the two speaking attendees to concrete sessions, replacing whichever
  * generated speaker was on them. Each gets a spread across days and venues.
- * A pick with a `talk` also replaces the generated title, abstract, takeaways
- * and tags, so the session reads like something that speaker would give.
- * It runs after generation and draws nothing from the PRNG.
+ * A pick with a `talk` also replaces the generated title, abstract, takeaways,
+ * prerequisites and tags, so the session reads like something that speaker
+ * would give; a `track` picks that track's room in the slot, since a room keeps
+ * one track all day. It runs after generation and draws nothing from the PRNG.
  */
 const assignSpeaker = (speakerName, picks) => {
   const sp = db.prepare('SELECT id FROM speakers WHERE name = ?').get(speakerName);
-  picks.forEach(({ day, startsAt, role = 'Speaker', talk }) => {
+  picks.forEach(({ day, startsAt, role = 'Speaker', track, talk }) => {
     const target = db.prepare(
-      'SELECT id FROM sessions WHERE day = ? AND starts_at = ? AND is_keynote = 0 ORDER BY capacity DESC LIMIT 1',
-    ).get(day, startsAt);
+      `SELECT id FROM sessions WHERE day = ? AND starts_at = ? AND is_keynote = 0
+         AND (? IS NULL OR track_id = ?) ORDER BY capacity DESC LIMIT 1`,
+    ).get(day, startsAt, track?.id ?? null, track?.id ?? null);
     if (!target) return;
     db.prepare('DELETE FROM session_speakers WHERE session_id = ?').run(target.id);
     ssStmt.run(target.id, sp.id, role);
     if (!talk) return;
-    db.prepare('UPDATE sessions SET title = ?, subtitle = ?, abstract = ?, takeaways = ? WHERE id = ?')
-      .run(talk.title, talk.subtitle, talk.abstract, talk.takeaways.join('|'), target.id);
+    db.prepare('UPDATE sessions SET title = ?, subtitle = ?, abstract = ?, takeaways = ?, prerequisites = ? WHERE id = ?')
+      .run(talk.title, talk.subtitle, talk.abstract, talk.takeaways.join('|'), talk.prerequisites ?? null, target.id);
     db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(target.id);
     tagRows.filter((t) => talk.tags.includes(t.name)).forEach((t) => stStmt.run(target.id, t.id));
   });
@@ -541,12 +543,13 @@ assignSpeaker('Abraham Marín Pérez', [
       title: 'The Mythical Well-Defined Project',
       subtitle: 'Feeding agents from the meetings you already have',
       abstract: 'Autonomous agents are sold on a project defined so well up front that the code writes itself. Real projects are not like that, and a PRD heavy enough to satisfy an agent is essentially Waterfall 2.0. Abraham shows Winnow, an agent-agnostic set of skills that turns brainstorms and meeting transcripts into durable project knowledge and tracker-ready tasks, agreed with a person before anything permanent changes, and installs the same way in Claude Code, Copilot, Cursor or Codex.',
+      prerequisites: 'Bring a laptop with a coding agent installed if you want to try Winnow alongside the demo.',
       takeaways: ['Why up-front specs fail agents the way they failed people', 'A loop from meeting transcript to reviewed tasks and project context', 'How to package skills so they work in any coding harness'],
       tags: ['Agent Design', 'Context Engineering', 'Tool Calling', 'Engineers', 'Product Managers', 'Live Demo'],
     },
   },
   {
-    day: DAYS[2], startsAt: '09:00',
+    day: DAYS[2], startsAt: '09:00', track: trackBy['AI Product & Strategy'],
     talk: {
       title: "Software's Plastic Moment: AI and the New Economics of Quality",
       subtitle: 'When average code is free, what is good code worth?',
