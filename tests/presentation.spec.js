@@ -211,3 +211,15 @@ test.describe('The product presentation', () => {
     await expect(page).toHaveURL(/\/product-presentation/);
   });
 });
+
+test.describe('Reaching the talks from the app', () => {
+  test('the attendee menu links to both talks from any page', async ({ page }) => {
+    for (const [title, path] of [['The product harness', '/product-presentation'], ['The engineering harness', '/engineering-presentation']]) {
+      await page.goto('/speakers');
+      await page.getByRole('button', { name: /Switch attendee/ }).click();
+      await page.getByTestId('talk-links').getByRole('link', { name: new RegExp(title) }).click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(page.getByRole('heading', { level: 1, name: new RegExp(title, 'i') })).toBeVisible();
+    }
+  });
+});

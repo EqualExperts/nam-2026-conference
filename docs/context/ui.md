@@ -136,7 +136,9 @@ sticky `glass` header, `<main id="main">`, and the footer.
   Andy, Abraham), plus the selected attendee if it is someone else (tests pick
   Kenji, Sofia or Marcus through localStorage, and they must be able to switch
   back). `/bootstrap` still returns all six. Calls `setCurrentUserId`; closes on outside pointer
-  or Escape. Each row shows "N on agenda"; every row but the signed-in
+  or Escape. Under the list, "Workshop talks" (`data-testid="talk-links"`, the
+  `TALKS` array) links to both decks, so they are one click from every page
+  without taking header space. Each row shows "N on agenda"; every row but the signed-in
   attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but
   the active row counts `'confirmed'` entries in `useConference().reservations`
   instead, since that's the only attendee the store keeps reservation state
