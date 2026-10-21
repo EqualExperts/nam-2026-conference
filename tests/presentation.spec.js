@@ -148,7 +148,10 @@ test.describe('The product presentation', () => {
   test('with reduced motion the hand-off navigates at once', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/product-presentation');
+    // keys pressed before the deck mounts go nowhere: wait for it, then for End to land
+    await expect(counter(page)).toHaveText(/^1 \//);
     await page.keyboard.press('End');
+    await expect(counter(page)).not.toHaveText(/^1 \//);
     await page.keyboard.press('ArrowRight');
     await expect(page).toHaveURL(/\/engineering-presentation$/);
   });
