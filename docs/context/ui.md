@@ -22,6 +22,7 @@ files:
   - src/components/RouteChange.jsx
   - src/pages/NotFoundPage.jsx
   - src/pages/PresentationPage.jsx
+  - src/pages/ProductPresentationPage.jsx
   - src/components/presentation/
   - src/lib/presentation.js
 tests:
@@ -135,7 +136,9 @@ sticky `glass` header, `<main id="main">`, and the footer.
   Andy, Abraham), plus the selected attendee if it is someone else (tests pick
   Kenji, Sofia or Marcus through localStorage, and they must be able to switch
   back). `/bootstrap` still returns all six. Calls `setCurrentUserId`; closes on outside pointer
-  or Escape. Each row shows "N on agenda"; every row but the signed-in
+  or Escape. Under the list, "Workshop talks" (`data-testid="talk-links"`, the
+  `TALKS` array) links to both decks, so they are one click from every page
+  without taking header space. Each row shows "N on agenda"; every row but the signed-in
   attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but
   the active row counts `'confirmed'` entries in `useConference().reservations`
   instead, since that's the only attendee the store keeps reservation state
@@ -146,24 +149,40 @@ sticky `glass` header, `<main id="main">`, and the footer.
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
 scheduled here".
 
-**`/engineering-presentation`** — a talk about the engineering harness, part of the app so
-anyone with the URL can give or watch it. The one route **outside `<Layout>`**:
-full screen, no header or footer, so the smoke suite (which expects a banner and
-footer) does not list it; `tests/presentation.spec.js` covers it instead.
-`PresentationPage` holds one flat beat index in `?beat=` (1-based, matching the
-counter; `src/lib/presentation.js` parses, clamps and maps keys — →/Space/Enter/
-PageDown on, ←/PageUp/Backspace back, Home/End, F full screen) and draws a fixed
-1600×900 stage scaled to the window. `components/presentation/chapters.js` lists
-the chapters in order; each is `{ id, name, accent, tone, beats, Scene, enter? }` — one
-caption per beat (`null` for none) and a `Scene({ step })` laid out in stage
+**`/product-presentation` and `/engineering-presentation`** — two talks, the
+product harness (a conversation → a ticket) then the engineering harness (the
+ticket → a reviewed pull request), part of the app so anyone with the URL can
+give or watch them. The routes **outside `<Layout>`**: full screen, no header or
+footer, so the smoke suite (which expects a banner and footer) does not list
+them; `tests/presentation.spec.js` covers them instead. Both pages are a
+`components/presentation/Deck.jsx`, which holds one flat beat index in `?beat=`
+(1-based, matching the counter; `src/lib/presentation.js` parses, clamps and maps
+keys — →/Space/Enter/PageDown on, ←/PageUp/Backspace back, Home/End, F full
+screen) and draws a fixed 1600×900 stage scaled to the window. `Deck`'s `next`
+is the talk that follows: one press past the last beat navigates there — with
+`next.delay` the current scene is first told it is `leaving` (and the stars warp)
+so a hand-off can play, except under reduced motion, which navigates at once; a
+scene also gets `advance`, so a button on the stage can be the clicker. The
+product deck ends on the frame the engineering deck opens with, and hands over
+with a button whose name is "Continue to the engineering harness"; the engineering
+deck has no `next`. `components/presentation/chapters.js` lists the engineering
+chapters in order and `presentation/product/chapters.js` the product ones; each is
+`{ id, name, accent, tone, beats, Scene, enter? }` — one
+caption per beat (`null` for none) and a `Scene({ step, leaving, advance })` laid out in stage
 pixels. The chapters either side of the current one stay mounted so they can fly
 in and out; a scene re-mounts each time it becomes current, so its entrance
 replays. `enter: 'cut'` swaps the fly-through for a crossfade, for a chapter whose
 predecessor already drew its opening frame — the map's last beat unpacks ship's
 stations exactly where `ship.jsx` draws them, so moving between the two must not
 move them. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
-that travels the talk, `Flip`, `Terminal`, `Verdict`…);
-`Backdrop.jsx` the starfield and aurora.
+that travels both talks, `Flip`, `Terminal`, `Verdict`…); `product/kit.jsx` the
+product talk's own (the hosts' faces, a transcript `Line` with its Me/Others lane,
+`Wave`, `Chunks`, `Flag`, the five-step `StepRail`); `Backdrop.jsx` the starfield
+and aurora. The product talk states only what the winnow skills really do
+(`.claude/skills/listen-to-meeting`, `winnow`, `create-tasks`, `update-context`):
+the flag wording, the chunk sizes, the bucket names and the ticket shape are theirs.
+Both talks render ticket #140 from one constant, `presentation/issue.js`
+(`ISSUE_140`: title, why, what, doneWhen, outOfScope), so they cannot drift apart.
 
 It is the only place that uses **Motion** (`motion/react`) — springs, the
 chapter fly-through, the camera zoom. Inside a beat, sequences are the `pz-*`
@@ -181,7 +200,7 @@ with reduced motion each beat still shows everything it should.
 - Accent classes must be literal strings in `accents.js`; see CLAUDE.md.
 - New motion needs an entry that the reduced-motion block neutralises, and must
   not leave content hidden when it is.
-- Motion (`motion/react`) stays inside `/engineering-presentation`. The app's own motion is CSS.
+- Motion (`motion/react`) stays inside the two presentations. The app's own motion is CSS.
 - The presentation states only what the harness really does; its numbers (round
   limits, typical costs, PR #96 and #97) are `docs/harness/README.md`'s — change them together.
 

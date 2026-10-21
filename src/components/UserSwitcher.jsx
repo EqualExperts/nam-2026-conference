@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
@@ -8,6 +9,12 @@ import { Icon } from './Icon.jsx';
  * offered here, since three real people demo better than six invented ones.
  */
 const HOST_COMPANY = 'Equal Experts';
+
+/** The hosts' two talks, in the order they are given. */
+const TALKS = [
+  { to: '/product-presentation', title: 'The product harness', blurb: 'A conversation → a ticket' },
+  { to: '/engineering-presentation', title: 'The engineering harness', blurb: 'A ticket → a pull request' },
+];
 
 /**
  * Attendee switcher. There is no auth — the app runs as whichever seeded
@@ -41,7 +48,7 @@ export function UserSwitcher() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         // The name is hidden on small screens, so the button needs its own label.
         aria-label={`Viewing as ${currentUser.name}. Switch attendee.`}
         className={cx(
@@ -56,7 +63,6 @@ export function UserSwitcher() {
 
       {open && (
         <div
-          role="listbox"
           className="glass absolute right-0 top-full z-50 mt-2 w-[19rem] animate-rise overflow-hidden rounded-2xl border border-hairline shadow-2xl shadow-black/60"
         >
           <div className="border-b border-hairline px-4 py-2.5">
@@ -65,7 +71,7 @@ export function UserSwitcher() {
               Each attendee has their own agenda, follows and interests.
             </p>
           </div>
-          <ul className="max-h-[26rem] overflow-y-auto p-1.5">
+          <ul role="listbox" aria-label="Attendees" className="max-h-[26rem] overflow-y-auto p-1.5">
             {choices.map((u) => {
               const active = u.id === currentUser.id;
               // The store only ever holds live reservation state for the
@@ -107,6 +113,25 @@ export function UserSwitcher() {
               );
             })}
           </ul>
+          <div className="border-t border-hairline p-1.5" data-testid="talk-links">
+            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Workshop talks</p>
+            {TALKS.map((t) => (
+              <Link
+                key={t.to}
+                to={t.to}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-raised"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-500/12 text-violet-300">
+                  <Icon name="play" className="size-3" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{t.title}</span>
+                  <span className="block truncate text-[11px] text-faint">{t.blurb}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

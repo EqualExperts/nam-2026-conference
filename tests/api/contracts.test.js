@@ -119,3 +119,12 @@ describe('Asking for something impossible', () => {
     assert.equal(live.dayStartsAt, null);
   });
 });
+
+describe('The speaker list', () => {
+  test('leads with the hosts in billing order, then the other headliners by name', async () => {
+    const featured = (await api.json('/speakers')).filter((s) => s.featured);
+    assert.deepEqual(featured.slice(0, 2).map((s) => s.name), ['Andy Vays', 'Abraham Marín Pérez']);
+    const rest = featured.slice(2).map((s) => s.name);
+    assert.deepEqual(rest, [...rest].sort((a, b) => a.localeCompare(b)));
+  });
+});

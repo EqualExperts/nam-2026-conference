@@ -27,7 +27,9 @@ related: [seed, ui, agenda, architecture]
   `firstTime=true`, `country`, `day` (speaks that day), `trackSlug` (speaks in
   that track). The two last are `EXISTS` subqueries over `session_speakers` →
   `sessions` (→ `tracks`). Rows are `LEFT JOIN`ed to sessions to add
-  `sessionCount` and `keynoteCount`, ordered `featured DESC, name`. Mapped by
+  `sessionCount` and `keynoteCount`, ordered `featured DESC`, then the hosts
+  (speakers an attendee's `speaker_id` points at) by id — the seed's billing
+  order, Andy before Abraham — then `name`. Mapped by
   `toSpeaker(row, extra)` in `server/lib/query.js`.
 - `GET /api/speakers/:id` → `toSpeaker` plus `sessions` (full `toSession` rows,
   ordered by day, start), `followerCount` (from `speaker_follows`) and

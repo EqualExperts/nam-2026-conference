@@ -175,7 +175,8 @@ const seen = new Set();
 /**
  * Two of the seeded attendees are also presenting. Their speaker profiles are
  * written explicitly (not generated) so the app can link a signed-in attendee
- * to their own sessions and show them a speaker view.
+ * to their own sessions and show them a speaker view. They are listed in
+ * billing order — most senior first — which is the order /speakers leads with.
  */
 const SPEAKING_ATTENDEES = [
   {

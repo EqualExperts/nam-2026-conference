@@ -46,10 +46,10 @@ test('no reference to the previous pin outside specs/ and the lockfile', () => {
   assert.deepEqual(hits, []);
 });
 
-test('every skill the README names is deployed', () => {
+test('every skill the README tells you to run is deployed', () => {
   const readme = read('README.md');
-  const table = readme.slice(readme.indexOf('From meeting to ticket'), readme.indexOf('<a id="set-up-your-fork">'));
-  const names = [...table.matchAll(/^\| [^|]*\| `([a-z][a-z-]+)` \|/gm)].map((m) => m[1]);
+  // /ship is a workflow, not a skill; every other slash command is one
+  const names = [...new Set([...readme.matchAll(/(?:`|^)\/([a-z][a-z-]+)/gm)].map((m) => m[1]))].filter((n) => n !== 'ship');
   assert.ok(names.length > 0);
   for (const n of names) assert.ok(existsSync(join(root, '.claude/skills', n)), `README names ${n}, which is not in .claude/skills`);
 });

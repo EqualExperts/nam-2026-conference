@@ -1,7 +1,8 @@
 # Workshop quickstart — on your laptop
 
-Set up once, then one walkthrough for each harness. The talk itself is at
-[orbit26.up.railway.app/engineering-presentation](https://orbit26.up.railway.app/engineering-presentation);
+Set up once, then one walkthrough for each harness. The two talks are
+[the product harness](https://orbit26.up.railway.app/product-presentation) and
+[the engineering harness](https://orbit26.up.railway.app/engineering-presentation);
 [the main README](../../README.md) has the fork setup, and
 [How the harness works](README.md) has every step in detail.
 

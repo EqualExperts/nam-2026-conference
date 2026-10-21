@@ -118,3 +118,108 @@ test.describe('The harness presentation', () => {
     await expect(caption.getByRole('heading', { level: 2 })).toBeVisible();
   });
 });
+
+/**
+ * /product-presentation — the product harness talk, which ends by handing over
+ * to the engineering one. Like it, it touches no attendee state.
+ */
+test.describe('The product presentation', () => {
+  test('opens full screen on its title and hands over to the engineering talk', async ({ page }) => {
+    const errors = failOnPageErrors(page);
+    await page.goto('/product-presentation');
+
+    await expect(page.getByRole('heading', { level: 1, name: /The product harness/i })).toBeVisible();
+    await expect(page.getByRole('banner')).toHaveCount(0);
+    await expect(counter(page)).toHaveText(/^1 \/ \d+$/);
+    await expect(page).toHaveTitle(/The product harness/);
+
+    await page.keyboard.press('End');
+    const { at, total } = await readCounter(page);
+    expect(at).toBe(total);
+    // past the last beat the next button is the hand-off, not disabled
+    await expect(page.getByTestId('presentation-next')).toBeEnabled();
+
+    await page.getByRole('button', { name: /^Continue to the engineering harness/ }).click();
+    await expect(page).toHaveURL(/\/engineering-presentation$/);
+    await expect(page.getByRole('heading', { level: 1, name: /The engineering harness/i })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('with reduced motion the hand-off navigates at once', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/product-presentation');
+    await page.keyboard.press('End');
+    await page.keyboard.press('ArrowRight');
+    await expect(page).toHaveURL(/\/engineering-presentation$/);
+  });
+
+  test('every beat renders without errors', async ({ page }) => {
+    const errors = failOnPageErrors(page);
+    await page.goto('/product-presentation');
+    const { total } = await readCounter(page);
+    const caption = page.getByTestId('presentation-caption');
+
+    // the title frame and the hand-off frame are bare; every beat between them is captioned
+    await expect(caption).toHaveCount(0);
+    for (let at = 2; at < total; at++) {
+      await page.keyboard.press('ArrowRight');
+      await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
+      await expect(caption.getByRole('heading', { level: 2 }), `beat ${at} has no caption`).toHaveText(/\S/);
+    }
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText(new RegExp(`^${total} /`));
+    await expect(caption).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('clicking the stage on the last beat hands over', async ({ page }) => {
+    await page.goto('/product-presentation');
+    await expect(counter(page)).toHaveText(/^1 \//);
+    await page.keyboard.press('End');
+    await expect(counter(page)).not.toHaveText(/^1 \//);
+    const { at, total } = await readCounter(page);
+    expect(at).toBe(total);
+
+    // the stage's bottom-left corner: empty, clear of every button (the stage is letterboxed on a phone)
+    const stage = await page.locator('[data-testid="presentation"] > div.cursor-pointer').boundingBox();
+    await page.mouse.click(stage.x + 8, stage.y + stage.height - 8);
+    await expect(page).toHaveURL(/\/engineering-presentation$/);
+  });
+
+  test('with reduced motion the flags still show', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/product-presentation?beat=8');
+    await expect(page.getByText('Possible conflict')).toBeVisible();
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText(/^9 \//);
+    await expect(page.getByText('Possible gap')).toBeVisible();
+  });
+
+  test('going back during the hand-off cancels it', async ({ page }) => {
+    await page.goto('/product-presentation');
+    await expect(counter(page)).toHaveText(/^1 \//);
+    await page.keyboard.press('End');
+    await expect(counter(page)).not.toHaveText(/^1 \//);
+    const { total } = await readCounter(page);
+
+    // the hand-off waits 900 ms for the stars to warp; back inside that window stops it
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(200);
+    await page.keyboard.press('ArrowLeft');
+    await expect(counter(page)).toHaveText(new RegExp(`^${total - 1} /`));
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL(/\/product-presentation/);
+  });
+});
+
+test.describe('Reaching the talks from the app', () => {
+  test('the attendee menu links to both talks from any page', async ({ page }) => {
+    for (const [title, path] of [['The product harness', '/product-presentation'], ['The engineering harness', '/engineering-presentation']]) {
+      await page.goto('/speakers');
+      await page.getByRole('button', { name: /Switch attendee/ }).click();
+      await page.getByTestId('talk-links').getByRole('link', { name: new RegExp(title) }).click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(page.getByRole('heading', { level: 1, name: new RegExp(title, 'i') })).toBeVisible();
+    }
+  });
+});

@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { at, Show, Replay, Code, Label, Terminal, IssueCard, IssueIcon, PrIcon, MergeIcon, Kicker, Token, later } from './kit.jsx';
 import { STATIONS, Station, SX, STATION_W, STATION_Y, RAIL_Y, TOKEN_PARK } from './ship.jsx';
+import { ISSUE_140 } from './issue.js';
 
 /* ------------------------------------------------------------------ *
  * Title — where we are, and where this talk starts.
@@ -58,10 +59,13 @@ function TitleScene() {
         <p className="pz-appear mt-7 max-w-[760px] text-[27px] leading-snug text-muted" style={later(260)}>
           From a GitHub issue to a reviewed pull request — and every agent in between.
         </p>
-        <div className="pz-appear mt-10 flex items-center gap-4 text-[19px] text-faint" style={later(900)}>
-          <span>🎙️ Product harness: a conversation → a ticket</span>
-          <span className="text-violet-300">→</span>
-          <span className="text-muted">🚢 <b className="text-ink">Engineering harness</b>: the ticket → a reviewed pull request</span>
+        <div className="pz-appear mt-9 space-y-1.5 whitespace-nowrap text-[19px] text-faint" style={later(900)}>
+          <div>🎙️ Product harness: a conversation → a ticket <span className="ml-2 text-emerald-300">✓</span></div>
+          <div className="text-muted"><span className="mr-3 text-violet-300">↳</span>🚢 <b className="text-ink">Engineering harness</b>: the ticket → a reviewed pull request</div>
+        </div>
+        <div className="pz-appear mt-6 flex items-center gap-3 text-[16px] text-faint" style={later(1200)}>
+          <img src="/avatars/attendee-001.jpg" alt="Jonas" width={30} height={30} className="size-[30px] shrink-0 rounded-full object-cover ring-2 ring-hairline" />
+          <span>Jonas Claesson · Equal Experts · <span className="font-mono">/ship</span>, code review and QA</span>
         </div>
       </div>
     </>
@@ -71,12 +75,6 @@ function TitleScene() {
 /* ------------------------------------------------------------------ *
  * The issue arrives.
  * ------------------------------------------------------------------ */
-
-const DONE_WHEN = [
-  'At a phone-width viewport on /schedule, the first session card is visible without scrolling past the full filter block.',
-  'Every filter (day, track, venue, level, format, topic, search) is still reachable on mobile.',
-  'Existing mobile specs still pass.',
-];
 
 const CONTEXT = [
   { name: 'CLAUDE.md', what: 'decisions and why', x: 70, y: 110, side: 'left' },
@@ -110,18 +108,19 @@ function IssueScene() {
       </svg>
 
       <div className="pz-arrive" style={at(400, 70, 800, 540)}>
-        <IssueCard number={140} title="Keep sessions in view on mobile: stop the stacked filters filling the screen" className="h-full">
+        <IssueCard number={ISSUE_140.number} title={ISSUE_140.title} className="h-full">
           <div className="px-7 py-5 text-[17px] leading-relaxed text-muted">
-            <p><b className="text-ink">Why:</b> on a phone the day tabs, track pills and venue filter stack at full width, so an attendee scrolls past the whole filter block before seeing a single session.</p>
+            <p><b className="text-ink">Why:</b> {ISSUE_140.why}</p>
             <div className="mt-4 font-display text-[22px] text-ink">Done when</div>
             <ul className="mt-2 space-y-2.5">
-              {DONE_WHEN.map((d, i) => (
+              {ISSUE_140.doneWhen.map((d, i) => (
                 <Show key={d} as="li" from="left" delay={900 + i * 300} className="flex gap-3">
                   <span className="mt-1 size-[18px] shrink-0 rounded border-2 border-violet-400/70" />
                   <span className="text-ink/90">{d}</span>
                 </Show>
               ))}
             </ul>
+            <p className="pz-appear mt-4 text-[15px]" style={later(1900)}><b className="text-ink">Out of scope:</b> {ISSUE_140.outOfScope}</p>
           </div>
         </IssueCard>
       </div>

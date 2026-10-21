@@ -287,6 +287,82 @@ body::before {
   animation: pz-shine 7s linear infinite;
 }
 
+/* ---------------------------------------------------------------- *
+ * /product-presentation — the same rules: every keyframe ends on its
+ * final frame, so with motion off a beat still shows everything.
+ * ---------------------------------------------------------------- */
+/* A waveform bar breathing between a quarter and full height; ends tall. */
+@keyframes pz-wave { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
+@utility pz-wave { transform-origin: center; animation: pz-wave 0.8s ease-in-out infinite alternate; }
+
+/* Words said in a room, fading as the meeting ends — ends as a ghost, still readable. */
+@keyframes pz-evaporate {
+  to { opacity: 0.18; transform: translateY(-26px); filter: blur(1.5px); }
+}
+@utility pz-evaporate { animation: pz-evaporate 1.6s cubic-bezier(0.65, 0, 0.35, 1) both; }
+
+/* A ring leaving the microphone while it listens — decorative, ends gone. */
+@keyframes pz-radar {
+  from { opacity: 0.7; transform: scale(0.6); }
+  to   { opacity: 0; transform: scale(1.8); }
+}
+@utility pz-radar { animation: pz-radar 2.2s ease-out infinite; }
+
+/* A chunk file landing in the session directory. */
+@keyframes pz-drop {
+  from { opacity: 0; transform: translateY(-22px) scale(1.15); }
+  60%  { opacity: 1; transform: translateY(2px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@utility pz-drop { animation: pz-drop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A flag being raised: a short shake as it lands, then still. */
+@keyframes pz-raise {
+  0%   { opacity: 0; transform: translateX(-16px) rotate(-3deg); }
+  55%  { opacity: 1; transform: translateX(6px) rotate(1.5deg); }
+  80%  { transform: translateX(-2px) rotate(-0.5deg); }
+  100% { opacity: 1; transform: none; }
+}
+@utility pz-raise { animation: pz-raise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Someone typing: three dots that show, then give way to the message. Ends gone. */
+@keyframes pz-dots {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@utility pz-dots { animation: pz-dots 0.8s ease-in-out both; }
+
+/* A line being read: dim until the reader reaches it, then its own colours. */
+@keyframes pz-lit { from { color: var(--color-faint); border-color: transparent; background-color: transparent; } }
+@utility pz-lit { animation: pz-lit 0.35s ease-out backwards; }
+
+/* A waveform coming alive while someone speaks; duration and delay inline. Ends dim, still there. */
+@keyframes pz-speak {
+  0%   { opacity: 0.3; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+@utility pz-speak { opacity: 0.3; animation: pz-speak ease-in-out both; }
+
+/* A reader's scan line sweeping down a panel once; ends gone. */
+@keyframes pz-scan-down {
+  from { transform: translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  to   { transform: translateY(var(--scan, 220px)); opacity: 0; }
+}
+@utility pz-scan-down { animation: pz-scan-down 1.6s linear both; }
+
+/* The hand-off button, ready to go: a cyan pulse rather than the violet glow. */
+@keyframes pz-launch {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(103, 232, 249, 0), 0 0 40px -6px rgba(139, 92, 246, 0.6); }
+  50%      { box-shadow: 0 0 0 10px rgba(103, 232, 249, 0.12), 0 0 80px -2px rgba(139, 92, 246, 0.85); }
+}
+@utility pz-launch { animation: pz-launch 1.8s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
