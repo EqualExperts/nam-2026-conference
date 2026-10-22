@@ -510,7 +510,9 @@ since `/ship 1 2` writes both tickets into one directory.
 (`agentType: 'ship-rote'`): Haiku, a two-line system prompt and
 `omitClaudeMd: true`, so they start ~26% lighter (13.6k against 18.4k tokens,
 measured). Only steps that run given commands and relay output belong there —
-anything that judges needs CLAUDE.md's rules.
+anything that judges needs CLAUDE.md's rules. A session started outside the
+checkout has not loaded the type: `rote()` asks for it once, and on *not found*
+runs that step and every later one as a plain agent.
 
 **Deploy.** `deploy.yml` is a `workflow_run` on `✅ verify` (main, push events,
 conclusion `success`): it checks out the verified `head_sha` and runs
