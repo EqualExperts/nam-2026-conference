@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, conferenceDays, MID_SESSION_TIME } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, MID_SESSION_TIME, ATTENDEES } from './helpers.js';
 
 test.describe('Conference clock', () => {
   test('a running session is flagged live on the schedule', async ({ page }) => {
@@ -44,3 +44,27 @@ test.describe('Food', () => {
   });
 });
 
+test.describe('Following a speaker', () => {
+  test('the follow button toggles and persists', async ({ page, request }, testInfo) => {
+    // Follows are shared state and the projects run concurrently: one attendee each.
+    const user = testInfo.project.name === 'mobile' ? ATTENDEES.kenji : ATTENDEES.marcus;
+    const me = await (await request.get(`${API}/users/${user}`)).json();
+    const wasFollowing = me.followedSpeakers.some((s) => s.id === 3);
+
+    await visit(page, '/speakers/3', { as: user });
+    const follow = page.getByTestId('follow-speaker');
+    await expect(follow).toBeVisible();
+
+    if (wasFollowing) await follow.click();
+    await expect(follow).toHaveAttribute('aria-pressed', 'false');
+
+    await follow.click();
+    await expect(follow).toHaveAttribute('aria-pressed', 'true');
+    await expect(follow).toContainText('Following');
+
+    await page.reload();
+    await expect(page.getByTestId('follow-speaker')).toHaveAttribute('aria-pressed', 'true');
+
+    if (!wasFollowing) await request.delete(`${API}/users/${user}/follows/3`);
+  });
+});

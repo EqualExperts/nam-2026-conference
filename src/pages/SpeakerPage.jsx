@@ -26,8 +26,11 @@ const handleOf = (key, value) =>
 
 export function SpeakerPage() {
   const { id } = useParams();
-  const { currentUser } = useConference();
-  const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id]);
+  const { currentUser, isFollowing, toggleFollow } = useConference();
+  const following = isFollowing(Number(id));
+  // followerCount already includes you if you follow, so refetch when that
+  // changes rather than adding one on the client and counting you twice.
+  const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id, following]);
   const notFound = error?.status === 404;
   useDocumentTitle(notFound ? 'Not found' : speaker?.name);
 
@@ -88,6 +91,17 @@ export function SpeakerPage() {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Button
+                variant={following ? 'ghost' : 'primary'}
+                size="sm"
+                onClick={() => toggleFollow(speaker.id)}
+                aria-pressed={following}
+                data-testid="follow-speaker"
+              >
+                <Icon name={following ? 'check' : 'bell'} className="size-3.5" />
+                {following ? 'Following' : 'Follow'}
+              </Button>
+              <span className="mx-1 h-5 w-px bg-hairline" />
               {SOCIALS.map(({ key, brand, icon, label }) => speaker.socials[key] && (
                 <span
                   key={key}

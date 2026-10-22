@@ -13,7 +13,8 @@ another change:
 - **My Agenda** (`/my-agenda`) is a *coming soon* placeholder.
 - **Home** is static: a hero, links into the app, the latest announcement and
   the sponsors. Nothing on it is about the signed-in attendee.
-- **Following speakers** has no UI.
+- **Following** works on the speaker pages, but nothing shows what you follow
+  outside them — that, like your seats, is for My Agenda or Home to use.
 
 Everything underneath is real and tested: seats, the waitlist, clashes,
 check-in, ratings, follows, `/users/:id/schedule`, `/users/:id/today`, `/live`

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, shotForPR, conferenceDays } from './helpers.js';
+import { API, visit, ATTENDEES, shotForPR, conferenceDays } from './helpers.js';
 
 
 test.describe('Speakers', () => {
@@ -18,12 +18,44 @@ test.describe('Speakers', () => {
     expect(idle.map((s) => s.name)).toEqual([]);
   });
 
+  test('following a speaker surfaces them at the top of the list', async ({ page, request }, testInfo) => {
+    // Follows are shared state and the projects run concurrently: one attendee each.
+    const user = testInfo.project.name === 'mobile' ? ATTENDEES.kenji : ATTENDEES.marcus;
+    const me = await (await request.get(`${API}/users/${user}`)).json();
+    const wasFollowing = me.followedSpeakers.some((s) => s.id === 9);
+
+    await visit(page, '/speakers/9', { as: user });
+    const name = await page.getByTestId('speaker-name').innerText();
+
+    const follow = page.getByTestId('follow-speaker');
+    if (wasFollowing) await follow.click();
+    await expect(follow).toHaveAttribute('aria-pressed', 'false');
+    await follow.click();
+    await expect(follow).toHaveAttribute('aria-pressed', 'true');
+
+    await page.goto('/speakers');
+    const following = page.getByTestId('followed-speakers');
+    await expect(following).toBeVisible();
+    await expect(following).toContainText(name);
+
+    // and the Following chip filters down to just them
+    await page.getByTestId('filter-following').click();
+    await expect(page.getByTestId('followed-speakers')).toContainText(name);
+    await expect(page.getByTestId('headline-speakers')).toHaveCount(0);
+
+    if (!wasFollowing) await request.delete(`${API}/users/${user}/follows/9`);
+  });
+
   test('the keynotes filter lists the keynote speakers rather than a blank page', async ({ page, request }) => {
-    // Filtering hides the headliner spotlight, so featured speakers have to show up in the results.
-    const listed = (await (await request.get(`${API}/speakers`)).json()).filter((s) => s.featured);
+    // Filtering hides the headliner spotlight, so featured speakers have to show
+    // up in the results — anyone you follow is lifted into their own section.
+    const featured = (await (await request.get(`${API}/speakers`)).json()).filter((s) => s.featured);
+    const jonas = await (await request.get(`${API}/users/${ATTENDEES.jonas}`)).json();
+    const followed = new Set(jonas.followedSpeakers.map((s) => s.id));
+    const listed = featured.filter((s) => !followed.has(s.id));
     expect(listed.length).toBeGreaterThan(0);
 
-    await visit(page, '/speakers?show=keynotes');
+    await visit(page, '/speakers?show=keynotes', { as: ATTENDEES.jonas });
     const results = page.getByTestId('all-speakers');
     await expect(results).toBeVisible();
     await expect(page.getByTestId('speaker-count')).toHaveText(String(listed.length));
@@ -127,7 +159,7 @@ test.describe('Headliner spotlight', () => {
     await shotForPR(page, 'the empty state naming the search');
   });
 
-  test('filters without a search keep the plain heading', async ({ page, request }) => {
+  test('filters without a search keep the plain heading, and following is unchanged', async ({ page, request }) => {
     const days = await conferenceDays();
     const { tracks } = await (await request.get(`${API}/bootstrap`)).json();
     let pick = null;
@@ -143,5 +175,8 @@ test.describe('Headliner spotlight', () => {
       await visit(page, `/speakers?day=${pick.day}&track=${pick.slug}`);
       await expect(page.getByRole('heading', { name: 'No speakers match', exact: true })).toBeVisible();
     }
+    // the following view keeps its own message even with a search that finds nobody
+    await visit(page, '/speakers?show=following&q=zzqx');
+    await expect(page.getByRole('heading', { name: 'You are not following anyone yet', exact: true })).toBeVisible();
   });
 });

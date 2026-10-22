@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useConference } from '../lib/store.jsx';
 import { Avatar, Chip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
@@ -9,6 +10,8 @@ import { Icon } from './Icon.jsx';
  *   "compact" — a name-index line for the long tail
  */
 export function SpeakerCard({ speaker, variant = 'grid' }) {
+  const { isFollowing } = useConference();
+  const following = isFollowing(speaker.id);
   const sessionCount = speaker.sessionCount ?? speaker.sessions?.length ?? 0;
 
   /**
@@ -28,6 +31,7 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium group-hover:text-violet-200">
           {speaker.name}
         </span>
+        {following && <Icon name="check" className="size-3 shrink-0 text-emerald-400" />}
         {sessionCount > 1 && (
           <span className="shrink-0 font-mono text-[10px] text-faint">{sessionCount}</span>
         )}
@@ -44,6 +48,11 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
       )}
     >
+      {following && (
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+          <Icon name="check" className="size-2.5" />Following
+        </span>
+      )}
       {(speaker.keynoteCount > 0 || speaker.featured) && (
         <span className="absolute right-3 top-3 rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
           {speaker.keynoteCount > 0 ? 'Keynote' : 'Featured'}

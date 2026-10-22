@@ -68,7 +68,7 @@ export function UserSwitcher() {
           <div className="border-b border-hairline px-4 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Viewing as</p>
             <p className="mt-0.5 text-[11px] text-muted">
-              Each attendee has their own agenda and interests.
+              Each attendee has their own agenda, follows and interests.
             </p>
           </div>
           <ul role="listbox" aria-label="Attendees" className="max-h-[26rem] overflow-y-auto p-1.5">
