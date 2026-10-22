@@ -10,11 +10,16 @@ A fork inherits the workflows and the skills but **not the labels**, and
 `ready-for-ai` is what starts everything — so on a fresh fork, labelling an
 issue does nothing and nothing says why.
 
-Actions → **Set up the harness** → Run workflow. It creates the four labels and
-writes a summary saying what else the fork needs: an `ANTHROPIC_API_KEY`
-secret **scoped to a workspace** (an organisation-level key is rejected, and
-the error does not say which kind to make), and optionally an
-`AGENT_GITHUB_TOKEN`.
+A fork also starts with its workflows paused: open the **Actions** tab and click
+*I understand my workflows, go ahead and enable them* first — until then no
+workflow, this one included, can run.
+
+Actions → **Set up the harness** → Run workflow. It creates the labels — the
+ones `/ship` puts on an issue from your laptop too — and writes a summary of
+what else the fork has. The agents on GitHub Actions also need an
+`ANTHROPIC_API_KEY` secret **scoped to a workspace** (an organisation-level key
+is rejected, and the error does not say which kind to make), and optionally an
+`AGENT_GITHUB_TOKEN`; running them from Claude Code needs neither.
 
 ## When the passes run
 

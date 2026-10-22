@@ -83,7 +83,7 @@ jobs:
                 echo "::error title=API key::$problem" >&2
               fi
             else
-              echo "| \`ANTHROPIC_API_KEY\` secret | ❌ **missing — nothing will run** |"
+              echo "| \`ANTHROPIC_API_KEY\` secret | ⚪ optional — only the agents on GitHub Actions need it; \`/ship\` from Claude Code does not |"
             fi
 
             if [ "$HAS_PAT" = "true" ]; then
@@ -102,7 +102,7 @@ jobs:
             echo
 
             if [ "$HAS_KEY" != "true" ]; then
-              echo "### Set the API key first"
+              echo "### To run the agents on GitHub Actions, set the API key"
               echo
               echo "Settings → Secrets and variables → Actions → New repository secret,"
               echo "named \`ANTHROPIC_API_KEY\`. It must be **scoped to a workspace**:"
