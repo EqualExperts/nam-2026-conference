@@ -175,6 +175,13 @@ named `upstream`, and `gh repo clone` of a fork adds one. Pin it once per clone 
 `gh repo set-default "$(git remote get-url origin)"` — or every `gh` call reads and
 writes the upstream. Ship, code review and QA do this themselves on a laptop.
 
+**Attendees never write to the original workshop repo** (the one forks are made
+from; `scripts/fork-guard.mjs` names it). A hook in `.claude/settings.json` runs
+that script before any tool call that creates an issue or pull request, and
+blocks one aimed at the original unless the signed-in account maintains it; ship's setup runs the same guard before it
+claims a ticket. Blocked means the wrong checkout — do not route around it.
+Setting a person up from scratch: `ONBOARD_CLAUDE.md`.
+
 Reach it with the authenticated `gh` CLI (`gh issue list`, `gh issue view 42`). A
 GitHub MCP server or the REST API with a token reach the same issues; none is
 preferred, so use whichever is available. To confirm access, probe read-only —

@@ -26,10 +26,14 @@ files:
   - scripts/agent-summary.mjs
   - scripts/ship-progress.mjs
   - scripts/ai-cost.mjs
+  - scripts/fork-guard.mjs
+  - .claude/settings.json
+  - ONBOARD_CLAUDE.md
   - docs/context/README.md
   - specs/README.md
 tests:
   - tests/unit/ship.test.js
+  - tests/unit/fork-guard.test.js
   - tests/unit/review-workflows.test.js
   - tests/unit/deploy-workflow.test.js
   - tests/unit/winnow-pin.test.js
@@ -284,6 +288,16 @@ merges the lesson or not. Its own PR is on a `learn/…` branch, so its reviews
 cannot start another round.
 
 ## Invariants
+
+- **Attendee work stays on their fork.** `scripts/fork-guard.mjs --hook` runs
+  from `.claude/settings.json` before every `Bash` and `mcp__*` call; it only
+  acts on a create (`gh issue|pr create`, a `gh api` write to `/issues` or
+  `/pulls`, a GitHub MCP create) and blocks one aimed at
+  `EqualExperts/nam-2026-conference` unless `gh` says the account can maintain
+  it. With no `-R`, the target is what `gh` would pick: the pinned default, else
+  `upstream` before `origin`. It is a no-op under `$GITHUB_ACTIONS`. Ship's setup
+  runs it without `--hook` before claiming. `ONBOARD_CLAUDE.md` is the
+  attendee setup a Claude session reads and carries out.
 
 - Only a **confirmed blocker** or a red gate costs a fix round. A refuted or
   minor finding never does.

@@ -22,6 +22,10 @@ Watch them in order:
 
 <a id="set-up-your-fork"></a>
 
+> **Or let Claude do it:** in Claude Code or Claude Desktop, say *"Set me up for
+> the workshop using https://github.com/EqualExperts/nam-2026-conference/blob/main/ONBOARD_CLAUDE.md"*.
+> It forks, clones and checks everything below, and keeps your tickets on your fork.
+
 ## 1. ⚙️ Set up your fork
 
 On GitHub, once per fork, in this order:

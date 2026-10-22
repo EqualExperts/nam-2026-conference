@@ -465,7 +465,10 @@ phase('Setup')
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
-  `${BATCH} Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
+  `${BATCH} Before anything else — before reading or claiming the ticket — ${PIN.replace(/^Unless/, 'unless')} Then run ` +
+  `\`node scripts/fork-guard.mjs\`: if it exits non-zero, this checkout writes to the workshop's original repository, ` +
+  `not the attendee's fork — return proceed=false with its message as reason and touch nothing (no label, no comment). ` +
+  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
