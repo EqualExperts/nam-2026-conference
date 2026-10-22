@@ -49,7 +49,4 @@ password if an installer wants one, and click once to turn on Actions.
 
 </details>
 
-## ▶️ Build
-
-`/winnow` turns a conversation into tickets; `/ship 42` builds one. Walkthrough:
-[docs/harness/quickstart.md](docs/harness/quickstart.md).
+Then follow the [workshop quickstart](docs/harness/quickstart.md).
