@@ -322,6 +322,14 @@ describe('ship', () => {
     assert.equal(result.rounds[0].gate, 'not run — conflicts with main');
   });
 
+  test('a conflict is a conflict even if the verify agent also relays a green gate line — #153', async () => {
+    const { calls, prompts } = await run({
+      verify: (n) => (n === 1 ? { ...GREEN, sync: 'conflict', conflicts: ['src/a.jsx'] } : { ...GREEN, sync: 'merged' }),
+    });
+    assert.ok(!calls.some(c => c.startsWith('audit') && c.endsWith('#1')), 'a conflicted round was audited as green');
+    assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx/);
+  });
+
   test('a conflict when the PR is about to open hands back as a draft, naming the files — #150', async () => {
     const { result } = await run({ 'open-pr': { ok: false, summary: 'conflicts with origin/main in src/a.jsx' } });
     assert.equal(result.outcome, 'needs-human');

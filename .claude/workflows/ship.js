@@ -794,6 +794,9 @@ for (let round = 1; ; round++) {
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
+  // The merge was aborted, so a green line after a conflict is not this branch
+  // on today's base: it goes to the fixer, never to the auditors (#153).
+  if (ran.sync === 'conflict') gate = { ...gate, ok: false }
 
   // Setup predicted the risk before any code existed; the diff now says what
   // it is. A small run whose diff reaches a risky path (server/lib, the
