@@ -474,22 +474,43 @@ the app at http://localhost:5173.
 ## Step 10 — Working in the clone
 
 The workshop's commands — `/winnow`, `/create-tasks`, `/ship`, `/code-review`,
-`/qa` — and the fork-guard hook are loaded from the folder Claude **started
-in**, when it starts. A clone made during this session is not loaded yet.
+`/qa` — the project's agent types (`.claude/agents/`, e.g. `ship-rote`) and the
+fork-guard hook come from `<clone>/.claude/`. A clone made inside the session's
+folder (Step 5) is often picked up by the running session without a restart —
+but not always, so test it rather than assume either way.
 
-**Check:** was `<clone>` already a clone when this session started (rule 1 of
-Step 5)? If so, everything is loaded — skip to the checklist.
+**Check — commands:** is `ship` among the commands (skills) you can run, and
+`ship-rote` among the agent types you can start? You can see both lists.
 
-**Restart before running anything.** The project's agent types
-(`.claude/agents/`, e.g. `ship-rote`) load at start too. Run from a session
-started elsewhere, `/ship`'s first rote step fails with *agent type
-'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
-runs as a plain agent: slower, and heavier on context. Tell the person exactly:
+**Check — hook:** run, from `<clone>`:
+
+```bash
+true || gh issue edit 0 --add-label ready-for-ai
+```
+
+`true ||` means `gh` never runs, so this touches nothing. Blocked with the fork
+guard's message (*adding the ready-for-ai label…*) → the hook is live. It just
+runs → the hook is not loaded. This is the one block that is expected — rule 3
+does not apply to it. Use this probe, not a create on the upstream repository:
+the fork guard lets the workshop's maintainers create there, so that probe
+passes for them even with the hook live; the label rule blocks everyone.
+
+**Both pass:** nothing to restart. Tell the person they can carry on in this
+session, and to run `/setup-winnow` and answer **no** to audio.
+
+**Either fails — Do:** a restart loads them. If `<clone>` is the session folder
+(rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
+the same terminal — it picks this conversation back up with the commands
+loaded. Otherwise tell them exactly:
 
 > Setup is done. To load the workshop's commands, quit Claude and start it
 > again in the project folder: in a terminal, `cd <clone> && claude` (or in
 > Claude Desktop, open the folder `<clone>`). In the new session, run
 > `/setup-winnow` and answer **no** to audio.
+
+Without the agent type, `/ship`'s first rote step fails with *agent type
+'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
+runs as a plain agent: slower, and heavier on context.
 
 **Only if they want `/ship` before restarting:** it does run from this session,
 because Step 5 put `<clone>` inside the session folder — use the Workflow tool
@@ -502,9 +523,7 @@ stays on the fork without the hook; anything else that creates an issue or pull
 request from this session runs `node scripts/fork-guard.mjs` in `<clone>`
 first — nothing else is watching.
 
-If `<clone>` is the session folder (rule 2 of Step 5), say instead: type
-`/exit`, then `claude --continue` in the same terminal — it picks this
-conversation back up with the commands loaded.
+**Verify** (after a restart): both checks pass in the new session.
 
 Claude Code may ask the person to **trust the folder** and to approve the
 project's hook the first time — they should accept; the hook is the fork guard.
@@ -535,5 +554,4 @@ Then tell the person, briefly:
   (`/winnow docs/demo/winnow-transcript.txt` to try it) or `/create-tasks <one
   line>`, then build one with `/ship <issue number>`. The walkthrough is in
   `docs/harness/quickstart.md`.
-- If the session was not started in the clone: Step 10's restart, before the
-  first `/ship`.
+- If Step 10's checks failed: its restart, before the first `/ship`.
