@@ -468,7 +468,7 @@ function criteriaCovered(criteria, ranIds) {
 
 async function publish(r) {
   const CALLOUT = { high: ['TIP', '●●●'], medium: ['NOTE', '●●○'], low: ['WARNING', '●○○'] }
-  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug', 'follow-up': 'a follow-up — reproduced, but only with an input nobody gives in normal use; filed as an issue' }
+  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug', 'follow-up': 'a follow-up — reproduced, but contrived or harmless; filed as an issue' }
   const findings = r.findings || []
   let head, line
   if (r.verdict === 'fail') {

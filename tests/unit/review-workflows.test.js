@@ -761,6 +761,9 @@ describe('qa', () => {
       assert.equal(result.verdict, 'pass');
       assert.equal(result.followUps.length, 1);
       assert.match(result.comment, /a second tooltip stays up/);
+      // #113: the label must not tell the reader a harmless glitch needs a contrived input.
+      assert.doesNotMatch(result.comment, /only with an input nobody gives/);
+      assert.match(result.comment, /a follow-up — reproduced, but contrived or harmless/);
     });
 
     test('a follow-up the last review already filed is not filed again', async () => {
