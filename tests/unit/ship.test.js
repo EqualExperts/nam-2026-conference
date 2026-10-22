@@ -965,3 +965,55 @@ describe('progress and spend on the issue, from a laptop', () => {
     assert.deepEqual(calls, ['setup']);
   });
 });
+
+/**
+ * `--fast` is for a ticket already known to work — the workshop's demo, where
+ * minutes matter. It keeps one independent audit and a skeptic, and says in
+ * the pull request what it skipped.
+ */
+describe('--fast', () => {
+  const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
+
+  test('one combined auditor, no spec audit, no browser explorer, the gate scoped to the branch', async () => {
+    const { result, calls, prompts } = await run({ implement: { ok: true, summary: 's', ui: true, browserTest: false }, verify: BRANCH_GATE }, '7 --fast');
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(result.size, 'fast');
+    assert.deepEqual(calls.filter(c => /^(spec-audit|audit)/.test(c)), ['audit:combined#1']);
+    assert.match(prompts['verify#1'], /GATE_SCOPE=branch GATE_BASE=origin\/main node scripts\/gate\.mjs/);
+    assert.match(prompts['audit:combined#1'], /the branch's own browser specs \(tests\/schedule\.spec\.js\)/);
+  });
+
+  test('a confirmed finding is fixed and re-gated, not re-audited, and nothing is learnt', async () => {
+    const { result, calls, prompts } = await run({
+      audit: (n) => ({ covered: 'all', findings: n === 1 ? [blocker('deselect is not asserted')] : [] }),
+      verify: BRANCH_GATE,
+    }, '7 --fast');
+    assert.equal(result.outcome, 'shipped');
+    assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'audit:combined#1', 'fix#1', 'verify#2']);
+    assert.ok(!calls.includes('learn'), calls.join(', '));
+    assert.match(prompts['open-pr'], /re-gated, not re-audited/);
+    assert.match(prompts['open-pr'], /the pull request's CI runs it/);
+    assert.match(prompts['open-pr'], /6 browser in tests\/schedule\.spec\.js/);
+  });
+
+  test('it never escalates, whatever the diff touches', async () => {
+    const { calls } = await run({ verify: { ...BRANCH_GATE, facts: '--risky=yes --app-lines=900' } }, '7 --fast');
+    assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1']);
+  });
+
+  test('a red gate still goes to the fixer, then to the auditor once green', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? RED([{ test: 'schedule.spec.js:10', error: 'e' }]) : BRANCH_GATE) }, '7 --fast');
+    assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'fix#1', 'verify#2', 'audit:combined#2']);
+  });
+
+  test('without --fast the gate is the whole suite, as before', async () => {
+    const { prompts } = await run();
+    assert.match(prompts['verify#1'], /`GATE_BASE=origin\/main node scripts\/gate\.mjs`/);
+    assert.doesNotMatch(prompts['verify#1'], /GATE_SCOPE/);
+  });
+
+  test('the flag is not passed on as a note', async () => {
+    const { prompts } = await run({}, '7 --fast');
+    assert.doesNotMatch(prompts.setup, /--fast/);
+  });
+});
