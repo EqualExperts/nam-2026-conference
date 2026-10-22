@@ -49,4 +49,5 @@ password if an installer wants one, and click once to turn on Actions.
 
 </details>
 
-Then follow the [workshop quickstart](docs/harness/quickstart.md).
+Then `/winnow` turns a conversation into tickets and `/ship 42` builds one —
+the [workshop quickstart](docs/harness/quickstart.md) walks through both.
