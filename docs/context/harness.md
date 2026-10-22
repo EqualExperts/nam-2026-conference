@@ -79,7 +79,7 @@ or breadth (≥ 3 areas, ~7 app files) → `criteria` + `rules` auditors and thr
 rounds; ≥ 2 open questions → one `spec-audit:combined`; `uiInteraction` →
 the browser pass always, four probes. `--full` / `--small` pick a preset.
 `--fast` is a third preset, never chosen by sizing — for a ticket already
-known to work, like the workshop's demo: no spec audit, one combined auditor
+known to work, like a demo: no spec audit, one combined auditor
 and no browser explorer; the gate runs `GATE_SCOPE=branch` (`npm test` and only
 the `tests/*.spec.js` the branch changed — the whole suite when it changed
 none, and the pull request's CI always); a confirmed finding is fixed and

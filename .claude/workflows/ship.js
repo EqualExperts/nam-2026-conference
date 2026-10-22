@@ -51,8 +51,8 @@ const TIERS = {
   // minutes matter more than the last check. Small's audit, minus what costs
   // the time: the gate runs the branch's own browser specs (the pull request's
   // CI runs the whole suite), one combined auditor and no browser explorer,
-  // and a fix is re-gated but not re-audited. #1, a multi-track filter, took
-  // 16 minutes as small: two 4-minute full gates and three auditors, twice.
+  // and a fix is re-gated but not re-audited. A one-component ticket took 16
+  // minutes as small: two 4-minute full gates and three auditors, twice.
   // The PR body says what it skipped. Never chosen by sizing — only `--fast`.
   fast: {
     // Two, not one: the round cap is checked before the fix, so one audited
