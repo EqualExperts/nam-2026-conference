@@ -243,6 +243,14 @@ describe('ship', () => {
     assert.ok(!calls.includes('learn'));
   });
 
+  test('the PR step reads an empty post-gate file list as nothing changed, not as a failure', async () => {
+    // A green, audited branch was handed back because `git log <gate>..HEAD`
+    // printed nothing — which is the normal case: no commit after the gate.
+    const { prompts } = await run();
+    assert.match(prompts['open-pr'], /Empty is the normal case[^.]*carry on/);
+    assert.match(prompts['open-pr'], /Only if it lists a file outside docs\/, specs\/ or \*\.md[^.]*return ok=false/);
+  });
+
   test('setup pins gh to origin, and stops if it still points elsewhere — #149', async () => {
     // `gh` without a terminal prefers an `upstream` remote, which `gh repo
     // clone` of a fork adds: unpinned, a laptop run worked on the upstream.

@@ -996,7 +996,9 @@ const pr = await rote(
   `then write — on #70 this step took 22 turns one command at a time:\n` +
   `\`git diff --stat origin/${BASE}...HEAD; echo ---; git log --oneline origin/${BASE}..HEAD; echo ---; ` +
   `git log --name-only --format=%h ${gate.sha}..HEAD; echo ---; git remote get-url origin\`\n` +
-  `If the third part lists a file outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
+  `The third part lists what was committed after the gate passed on ${gate.sha.slice(0, 7)}. Empty is the normal ` +
+  `case — nothing changed since the tests ran — so carry on. Only if it lists a file outside docs/, specs/ or *.md ` +
+  `did code change after the gate: then stop and return ok=false.\n\n` +
   (visible
     ? `Something an attendee sees changed. The branch's browser test calls shotForPR at the moment worth seeing: ` +
       `run only the tests this branch added — their titles are the \`+  test('…'\` lines in \`git diff origin/${BASE}...HEAD -- tests/\` — ` +
