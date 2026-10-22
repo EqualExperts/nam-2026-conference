@@ -9,11 +9,15 @@
 This repo is a working app (**ORBIT '26**, a conference companion) wired to two
 AI harnesses: a **product harness** that turns a conversation into a GitHub
 issue, and an **engineering harness** that turns that issue into a reviewed pull
-request. Fork it and you can run both on your own copy in under an hour.
+request. My Agenda is deliberately blank — building it is the workshop.
 
-**How it works:** watch the two talks, in order —
-[🎙️ the product harness](https://orbit26.up.railway.app/product-presentation) and
-[🚢 the engineering harness](https://orbit26.up.railway.app/engineering-presentation).
+## 📺 The two talks
+
+Watch them in order:
+
+1. [🎙️ **The product harness**](https://orbit26.up.railway.app/product-presentation) — a conversation → a ticket
+2. [🚢 **The engineering harness**](https://orbit26.up.railway.app/engineering-presentation) — a ticket → a pull request
+
 → or Space to advance, **F** for full screen.
 
 <a id="set-up-your-fork"></a>
@@ -49,44 +53,14 @@ Then start Claude Code in the folder (`claude`) and run **`/setup-winnow`**. Say
 **no** to audio unless you want to capture a live meeting (it needs `uv` and a
 ~500 MB model).
 
-## 3. 🎙️ Turn a conversation into a ticket
+## 3. ▶️ Go
 
-```
-/winnow docs/demo/winnow-transcript.txt
-```
-
-The [demo transcript](docs/demo/winnow-transcript.txt) is a 40-second request for
-a schedule change. Winnow sorts it into noise, decisions and work, asks you about
-anything unclear, and writes nothing until you agree. Then it raises a GitHub
-issue on your fork with a **Done when** list, and records any decisions in
-`docs/`.
-
-Other ways in: `/create-tasks <one line>` writes a ticket directly;
-`/listen-to-meeting` listens to a live meeting (needs the audio setup).
-
-## 4. 🚢 Ship the ticket
-
-```
-/ship 42
-```
-
-…with your new issue's number. It plans, writes a failing test, writes the code,
-runs every test on desktop and mobile, and audits until the work is clean —
-about 10–20 minutes for a small ticket. Progress is posted on the issue.
-
-Or, with no terminal: **label the issue `ready-for-ai`** and an agent on GitHub
-Actions picks it up.
-
-## 5. ✅ Review and merge
-
-You get a pull request with the plan, the test evidence, every audit round and
-the cost; code review and QA agents comment on it. Ask for a change with
-`@claude …` in a comment. **Nothing merges itself** — that is your call. A ticket
-that will not come together comes back as a draft labelled `needs-human`.
+The **[workshop quickstart](docs/harness/quickstart.md)** walks through both
+harnesses: turning a conversation into tickets, then shipping a ticket to a
+pull request — from your terminal or from GitHub alone.
 
 ## Read next
 
-- **[Workshop quickstart](docs/harness/quickstart.md)** — the same steps in more detail, including the GitHub-only route.
 - **[How the harness works](docs/harness/README.md)** — every agent, every check, and why it is there.
 - **[The app](docs/APP.md)** — what ORBIT '26 does; **[CLAUDE.md](CLAUDE.md)** — the rules people and agents both work to.
 
