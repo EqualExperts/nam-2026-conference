@@ -39,7 +39,9 @@ to a pull request.
 2. **Ship it:** `/ship 42`. It plans, writes a failing test, writes the code,
    runs every test on desktop and mobile, and audits until the work is clean. A
    small ticket takes about 10–20 minutes. You can watch the progress on the
-   issue.
+   issue. For the workshop's demo ticket ([docs/demo/multi-track-ticket.md](../demo/multi-track-ticket.md)),
+   use `/ship 42 --fast`: one audit, and only the branch's own browser tests —
+   the pull request's CI runs the rest.
 3. **Review the pull request** like any other. It has the plan, the test
    evidence, every audit round and the cost. Merge it, or comment `@claude …` to
    ask for a change.

@@ -130,6 +130,18 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.
+- **Several values for one filter** (several tracks at once): keep one URL key and
+  one API param, comma-separated — `?track=a,b` on the page, `trackSlug=a,b` to
+  `GET /api/sessions` (`qs()` passes the joined string through). In
+  `sessions.js` split it and bind each: `t.slug IN (?, ?)`. One slug is then the
+  same query as today, so single-track links and `tests/api/endpoints.test.js`
+  keep working, and `speakers.js` (its own `trackSlug`) is untouched. A pill
+  toggles its slug in or out of the list; `All` clears the key; `track` stays
+  in `BLOCKERS` while any is selected. Prove it in `tests/schedule.spec.js`: pick
+  a day where two tracks both have sessions (ask the API, as the empty-heading
+  test does), select both and expect `result-count` to be the two API counts
+  added, then **deselect one and expect the other's count alone** — the step a
+  test most often forgets. Expose the pill state as `aria-pressed`.
 
 ## Where to change…
 
