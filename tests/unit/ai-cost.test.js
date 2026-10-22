@@ -118,3 +118,10 @@ describe('a laptop run finds its own transcripts', () => {
     assert.equal(currentRun('nobody', root), null);
   });
 });
+
+test('in CI, --transcripts auto records nothing: the job records the billed cost, and a second row would count the run twice', () => {
+  const { execFileSync } = require('node:child_process');
+  const out = execFileSync(process.execPath, ['scripts/ai-cost.mjs', 'record', '--issue', '1', '--kind', 'ship', '--transcripts', 'auto', '--ticket', '1'],
+    { cwd: new URL('../../', import.meta.url), env: { ...process.env, GITHUB_ACTIONS: 'true', PATH: '/nonexistent' }, encoding: 'utf8' });
+  assert.match(out, /in CI the job records the spend — nothing recorded/);
+});

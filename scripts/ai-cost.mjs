@@ -183,6 +183,9 @@ export function currentRun(session = process.env.CLAUDE_CODE_SESSION_ID, root = 
 }
 
 function record(opts) {
+  // `auto` is a laptop run's; in CI the job's own step records the billed
+  // cost, and a second, estimated row would count the run twice.
+  if (opts.transcripts === 'auto' && process.env.GITHUB_ACTIONS) { console.log('in CI the job records the spend — nothing recorded'); return; }
   const dir = opts.transcripts === 'auto' ? currentRun() : opts.transcripts;
   if (!opts.stream && !dir) { console.log('no workflow transcripts found for this session — nothing recorded'); return; }
   const usage = opts.stream ? fromStream(readFileSync(opts.stream, 'utf8')) : fromTranscripts(dir, opts.phase || null, opts.ticket || null);
