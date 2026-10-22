@@ -11,13 +11,14 @@ Set up once, then one walkthrough for each harness. The two talks are
 1. **Install the tools:** [Claude Code](https://docs.claude.com/en/docs/claude-code/overview)
    (signed in), Node 22 (`nvm use` reads `.nvmrc`), and the
    [GitHub CLI](https://cli.github.com) signed in with `gh auth login`.
-2. **Fork the repo and turn on Issues.** Your tickets go to your fork. Follow
-   steps 1 and 3 of [Set up your fork](../../README.md#set-up-your-fork):
-   running *Set up the harness* creates the labels the agents use. You only
-   need the API key (step 2) to run the agents on GitHub Actions; from your
-   terminal, Claude Code uses your own sign-in.
+2. **Fork the repo** and follow the three steps of
+   [Set up your fork](../../README.md#set-up-your-fork): turn on Issues, turn on
+   Actions, and run *Set up the harness*, which creates the labels the agents
+   use. Your tickets go to your fork. The API key is optional — only the agents
+   on GitHub Actions need it; from your terminal, Claude Code uses your own sign-in.
 3. **Clone your fork and install:**
    ```bash
+   gh repo clone <you>/nam-2026-conference && cd nam-2026-conference
    gh repo set-default "$(git remote get-url origin)"   # keep gh on your fork, not the original
    npm install
    npx playwright install chromium   # the browser the tests run in

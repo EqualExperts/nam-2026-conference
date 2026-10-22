@@ -22,18 +22,42 @@ Watch them in order:
 
 <a id="set-up-your-fork"></a>
 
+> **Or let Claude do it:** in Claude Code or Claude Desktop, say *"Set me up for
+> the workshop using https://github.com/EqualExperts/nam-2026-conference/blob/main/ONBOARD_CLAUDE.md"*.
+> It forks, clones and checks everything below, and keeps your tickets on your fork.
+
 ## 1. ⚙️ Set up your fork
 
-On GitHub, once per fork, in this order — step 3 tells you if you missed anything:
+On GitHub, once per fork, in this order:
 
-1. **Fork the repo, then turn on Issues** — Settings → General → Features → *Issues*.
-2. **Add the API key** — Actions secret `ANTHROPIC_API_KEY`, a **workspace** key.
-   Only needed for the agents on GitHub Actions; from your terminal, Claude Code
-   uses your own sign-in.
-3. **Run Actions → *Set up the harness*** — creates the labels and checks the key.
-4. **Let Actions open pull requests** — Settings → Actions → General → Workflow permissions.
+1. **Fork the repo, then turn on Issues** — a fork starts with them off:
+   Settings → General → Features → *Issues*. Your tickets go here.
+2. **Turn on Actions** — a fork starts with its workflows paused: open the
+   **Actions** tab and click *I understand my workflows, go ahead and enable them*.
+3. **Run Actions → *Set up the harness*** → *Run workflow* — creates the labels
+   `/ship` puts on your issues. Its summary lists anything else missing.
+
+That is all the workshop needs: you run the agents from Claude Code on your
+laptop, signed in as yourself.
+
+<details>
+<summary><b>Optional — run the agents on GitHub Actions too</b></summary>
+
+The same agents can run in the cloud: label an issue `ready-for-ai` and one
+ships it, and every pull request gets a code review and QA pass. The workshop
+demos this on the main repo; to have it on your fork as well:
+
+- **Add the API key** — Actions secret `ANTHROPIC_API_KEY`, a **workspace** key.
+- **Let Actions open pull requests** — Settings → Actions → General → Workflow
+  permissions → *Allow GitHub Actions to create and approve pull requests*.
+
+Without the key, the 🔍 code review and 🧪 QA checks on your fork's pull
+requests fail straight away. That is expected: run `/code-review 42` and
+`/qa 42` from Claude Code instead.
 
 Keys, tokens and triggers in detail: [docs/harness/github.md](docs/harness/github.md).
+
+</details>
 
 ## 2. 💻 Set up your laptop
 

@@ -252,6 +252,14 @@ describe('ship', () => {
     assert.match(prompts.setup, /gh repo set-default --view[^.]*origin[^.]*; if it does not, return proceed=false/);
   });
 
+  test('setup refuses a checkout that would write to the workshop repo, before it claims anything', async () => {
+    const { prompts } = await run();
+    const at = prompts.setup.indexOf('node scripts/fork-guard.mjs');
+    assert.ok(at > -1, 'setup never runs the fork guard');
+    assert.ok(at < prompts.setup.indexOf('claim it'), 'the guard runs after the ticket is claimed');
+    assert.match(prompts.setup, /fork-guard\.mjs`: if it exits non-zero[^.]*proceed=false/);
+  });
+
   test('the quickstart and the playbook pin gh before anything reads an issue — #149', () => {
     const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
     assert.match(read('docs/harness/quickstart.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
