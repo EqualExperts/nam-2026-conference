@@ -17,7 +17,10 @@ session.
 - **Step 10** keeps the restart as the way in, and says why in terms of what
   the person will see: the project's agent types load only at start, so a
   `/ship` from a session started elsewhere shows *agent type 'ship-rote' not
-  found* on every rote step before ship's fallback retries it (seen on #1).
+  found* on its rote steps before ship's fallback retries them (seen on #1).
+- **`ship.js`'s `rote()`** asks for `ship-rote` once per run: after the first
+  *not found* it goes straight to a plain agent, so a run shows one red ✗, not
+  one per verify, progress and PR step.
   Running `/ship` before the restart stays possible — the Workflow tool runs
   `<clone>/.claude/workflows/ship.js` by path and ship's setup runs the fork
   guard — with the person told to expect those failures. When the clone is the

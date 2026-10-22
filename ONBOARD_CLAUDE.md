@@ -482,9 +482,9 @@ Step 5)? If so, everything is loaded — skip to the checklist.
 
 **Restart before running anything.** The project's agent types
 (`.claude/agents/`, e.g. `ship-rote`) load at start too. Run from a session
-started elsewhere, every rote step of `/ship` first fails with *agent type
-'ship-rote' not found* — a red ✗ in `/workflows` — and is retried as a plain
-agent: slower, and it reads like a broken run. Tell the person exactly:
+started elsewhere, `/ship`'s first rote step fails with *agent type
+'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
+runs as a plain agent: slower, and heavier on context. Tell the person exactly:
 
 > Setup is done. To load the workshop's commands, quit Claude and start it
 > again in the project folder: in a terminal, `cd <clone> && claude` (or in
@@ -495,8 +495,8 @@ agent: slower, and it reads like a broken run. Tell the person exactly:
 because Step 5 put `<clone>` inside the session folder — use the Workflow tool
 with `scriptPath` `<clone>/.claude/workflows/ship.js` and args
 `{ "issue": <n>, "notes": "The checkout is <clone>; cd there first." }`. Tell
-the person first that its quick steps will each show one *'ship-rote' not
-found* failure followed by a retry, and that this is expected. Its setup pins
+the person first that one *'ship-rote' not found* failure, followed by a
+retry, is expected. Its setup pins
 `gh` and runs `scripts/fork-guard.mjs` before it touches the ticket, so it
 stays on the fork without the hook; anything else that creates an issue or pull
 request from this session runs `node scripts/fork-guard.mjs` in `<clone>`
