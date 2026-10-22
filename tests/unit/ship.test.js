@@ -224,8 +224,11 @@ describe('ship-rote', () => {
     const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
     const result = await script(7, agent, parallel, () => {}, () => {});
     assert.equal(result.outcome, 'shipped');
-    assert.deepEqual(seen.filter(([l]) => l === 'verify#1' || l === 'open-pr'),
-      [['verify#1', 'ship-rote'], ['verify#1', undefined], ['open-pr', 'ship-rote'], ['open-pr', undefined]]);
+    // Asked once: a session that has not loaded it will not load it mid-run,
+    // and every retry is a red ✗ in /workflows.
+    assert.equal(seen.filter(([, t]) => t === 'ship-rote').length, 1);
+    assert.ok(seen.some(([l, t]) => l === 'verify#1' && t === undefined));
+    assert.ok(seen.some(([l, t]) => l === 'open-pr' && t === undefined));
   });
 });
 

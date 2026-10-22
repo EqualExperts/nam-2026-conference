@@ -56,10 +56,14 @@ const ROTE = 'haiku'
 const ROTE_AGENT = 'ship-rote'
 // A session loads its agent types when it starts, so one opened before
 // ship-rote.md existed throws "agent type 'ship-rote' not found" — and the
-// whole run with it. Fall back to a plain agent: slower, never broken.
-const rote = (prompt, opts) => agent(prompt, { ...opts, agentType: ROTE_AGENT }).catch((e) => {
+// whole run with it. Fall back to a plain agent: slower, never broken. Ask
+// once: a session that has not loaded it will not load it mid-run, and every
+// failed ask is a red ✗ in /workflows.
+let roteLoaded = true
+const rote = (prompt, opts) => !roteLoaded ? agent(prompt, opts) : agent(prompt, { ...opts, agentType: ROTE_AGENT }).catch((e) => {
   if (!/agent type .* not found/i.test(String(e && e.message))) throw e
-  log(`${ROTE_AGENT} is not loaded in this session — ${opts.label} runs as a plain agent`)
+  if (roteLoaded) log(`${ROTE_AGENT} is not loaded in this session — the rote steps run as plain agents (start Claude in the checkout to load it)`)
+  roteLoaded = false
   return agent(prompt, opts)
 })
 let T = TIERS.full
