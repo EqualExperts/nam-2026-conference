@@ -78,6 +78,13 @@ reports `ui` without a browser test, two build rounds, Sonnet), plus: the API
 or breadth (≥ 3 areas, ~7 app files) → `criteria` + `rules` auditors and three
 rounds; ≥ 2 open questions → one `spec-audit:combined`; `uiInteraction` →
 the browser pass always, four probes. `--full` / `--small` pick a preset.
+`--fast` is a third preset, never chosen by sizing — for a ticket already
+known to work, like a demo: no spec audit, one combined auditor
+and no browser explorer; the gate runs `GATE_SCOPE=branch` (`npm test` and only
+the `tests/*.spec.js` the branch changed — the whole suite when it changed
+none, and the pull request's CI always); a confirmed finding is fixed and
+re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
+The PR's *Not verified* says what it skipped.
 After a green gate, `verify#n` also relays `qa-facts.mjs`: a small run whose
 diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
 on the session model); a gate red twice running moves the fixer to the session
@@ -309,6 +316,12 @@ cannot start another round.
   `upstream` before `origin`. It is a no-op under `$GITHUB_ACTIONS`. Ship's setup
   runs it without `--hook` before claiming. `ONBOARD_CLAUDE.md` is the
   attendee setup a Claude session reads and carries out.
+- **No key, no agent job.** `agent-ship`, `agent-respond`, `agent-code-review` and
+  `agent-qa` each start with a `key` job that carries the trigger condition and
+  reports whether `ANTHROPIC_API_KEY` is set (a job's `if` cannot read a
+  secret); the agent job `needs: key` and runs only when it is. A workshop fork
+  has no key — its agents run from Claude on the laptop — so these show as
+  skipped in seconds, not failed after minutes of `npm install` and a browser.
 - **Agents never put `ready-for-ai` on.** The same hook blocks any call that
   adds the label (`gh issue|pr create|edit --label/--add-label`, a `gh api` or
   `curl` write naming it, a GitHub MCP label write) and answers "run `/ship

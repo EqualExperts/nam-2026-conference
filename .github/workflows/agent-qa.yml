@@ -32,6 +32,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Without an ANTHROPIC_API_KEY secret — a workshop fork, whose agents run
+  # from Claude on the laptop — the agent job has nothing to run with. A job's
+  # `if` cannot read a secret, so this one reads it, carrying the trigger
+  # condition the agent job had, and the agent job needs it: skipped in
+  # seconds, instead of failing after minutes of npm install and a browser.
+  key:
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    outputs:
+      has: ${{ steps.key.outputs.has }}
+    steps:
+      - id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.pull_request.number }}
+        run: |
+          echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          [ "$HAS_KEY" = "true" ] && exit 0
+          # Said where people look, not only in this log: why nothing ran, and the
+          # two ways to make it run. No mention in it, so no agent starts on it.
+          msg="$(cat <<EOF
+          ### 🧪 QA: API key not configured
+
+          This repository has no \`ANTHROPIC_API_KEY\` secret, so this did not run on GitHub Actions.
+
+          **You can still run it locally** — in Claude Code or Claude Desktop, opened in your clone of this repository:
+
+          \`\`\`
+          /qa ${N}
+          \`\`\`
+
+          **Or configure the key** to run it here: \`gh secret set ANTHROPIC_API_KEY\` (or *Settings → Secrets and variables → Actions*), then mark the pull request as draft and ready again.
+
+          <!-- orbit-no-key -->
+          EOF
+          )"
+          echo "::notice::No ANTHROPIC_API_KEY secret, so the agent did not run. Run it locally from Claude in your clone, or add the secret."
+          printf '%s\n' "$msg" | sed 's/^          //' >> "$GITHUB_STEP_SUMMARY"
+
   exploratory:
     outputs:
       escape: ${{ steps.escape.outputs.escape }}
@@ -40,8 +81,9 @@ jobs:
     # knows what is wrong, and says so on the pull request. Marking it ready
     # is what asks for this pass.
     # The repository is public: a stranger's fork gets no secrets, so the
-    # agent could only fail. Only pull requests from branches of this repo.
-    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    # agent could only fail. Only pull requests from branches of this repo — that condition is on `key`, above.
+    needs: key
+    if: ${{ needs.key.outputs.has == 'true' }}
     runs-on: ubuntu-latest
     # A killed run publishes nothing: QA on PR #38 hit 23 minutes mid-probe
     # and the check read "did not finish". This bounds a hung run, not a slow one.

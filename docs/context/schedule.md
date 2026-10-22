@@ -130,6 +130,14 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.
+- **A filter that takes several values** keeps one URL key and one API param,
+  comma-separated (`?track=a,b` → `trackSlug=a,b`; `qs()` passes the string
+  through), and `sessions.js` splits it into `IN (?, ?)`. One value is then the
+  same query as today, so existing links and `tests/api/endpoints.test.js` hold;
+  `speakers.js` reads its own params. A toggle control exposes `aria-pressed`. A
+  test of it adds a value *and* removes one, checking `result-count` against the
+  API's counts each time — a list that only ever grows passes a test that never
+  takes anything away.
 
 ## Where to change…
 

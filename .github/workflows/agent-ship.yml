@@ -43,13 +43,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ship:
-    # `labeled` fires for every label, so the filter is what makes this a
-    # dispatch rather than a nuisance. A comment counts only on an issue (not
-    # a pull request), only from someone with write access — it becomes part
-    # of the agent's instructions — and never from the agent's own replies.
-    # Nor from the harness's own comments (markers <!-- orbit-… / ship-progress):
-    # the AI-spend ledger once said "@claude" in its footer and started five ships.
+  # Without an ANTHROPIC_API_KEY secret — a workshop fork, whose agents run
+  # from Claude on the laptop — the agent job has nothing to run with. A job's
+  # `if` cannot read a secret, so this one reads it, carrying the trigger
+  # condition the agent job had, and the agent job needs it: skipped in
+  # seconds, instead of failing after minutes of npm install and a browser.
+  key:
     if: |
       github.event.label.name == 'ready-for-ai' ||
       (github.event_name == 'issue_comment' &&
@@ -59,6 +58,54 @@ jobs:
        !contains(github.event.comment.body, '<!-- orbit-') &&
        !contains(github.event.comment.body, '<!-- ship-progress') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    outputs:
+      has: ${{ steps.key.outputs.has }}
+    steps:
+      - id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+        run: |
+          echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          [ "$HAS_KEY" = "true" ] && exit 0
+          # Said where people look, not only in this log: why nothing ran, and the
+          # two ways to make it run. No mention in it, so no agent starts on it.
+          msg="$(cat <<EOF
+          ### 🚢 Ship: API key not configured
+
+          This repository has no \`ANTHROPIC_API_KEY\` secret, so this did not run on GitHub Actions.
+
+          **You can still run it locally** — in Claude Code or Claude Desktop, opened in your clone of this repository:
+
+          \`\`\`
+          /ship ${N}
+          \`\`\`
+
+          **Or configure the key** to run it here: \`gh secret set ANTHROPIC_API_KEY\` (or *Settings → Secrets and variables → Actions*), then add the \`ready-for-ai\` label again.
+
+          <!-- orbit-no-key -->
+          EOF
+          )"
+          echo "::notice::No ANTHROPIC_API_KEY secret, so the agent did not run. Run it locally from Claude in your clone, or add the secret."
+          printf '%s\n' "$msg" | sed 's/^          //' >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$N" ] && printf '%s\n' "$msg" | sed 's/^          //' | gh issue comment "$N" --body-file - || true
+          [ -n "$N" ] && gh issue edit "$N" --remove-label ready-for-ai || true
+
+  ship:
+    # `labeled` fires for every label, so the filter is what makes this a
+    # dispatch rather than a nuisance. A comment counts only on an issue (not
+    # a pull request), only from someone with write access — it becomes part
+    # of the agent's instructions — and never from the agent's own replies.
+    # Nor from the harness's own comments (markers <!-- orbit-… / ship-progress):
+    # the AI-spend ledger once said "@claude" in its footer and started five ships.
+    needs: key
+    if: ${{ needs.key.outputs.has == 'true' }}
     runs-on: ubuntu-latest
     # A clean ticket takes one audit round; a hard one takes four. Past this
     # it is not converging.

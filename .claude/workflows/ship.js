@@ -25,7 +25,7 @@ let MAX_BUILD_ROUNDS = 4
 // script composes the loop from it (profileFor, below): small is the base, a
 // risk adds the check that catches it, and only a rule, stored data or the
 // harness buys the full Opus loop. `ship:full` on the issue, or `--full` /
-// `--small` after the number, picks a preset outright. A three-line copy fix
+// `--small` / `--fast` after the number, picks a preset outright. A three-line copy fix
 // does not need two spec auditors, three code auditors and Opus throughout —
 // that shape took a medium ticket 57 minutes. Small keeps what makes the
 // loop trustworthy — an independent audit, a skeptic, the machine gate — and
@@ -46,6 +46,25 @@ const TIERS = {
     think: undefined,  // the session's model — Opus in CI
     build: undefined,
     probes: 5,
+  },
+  // A ticket someone has already seen work — the workshop's demo — where the
+  // minutes matter more than the last check. Small's audit, minus what costs
+  // the time: the gate runs the branch's own browser specs (the pull request's
+  // CI runs the whole suite), one combined auditor and no browser explorer,
+  // and a fix is re-gated but not re-audited. A one-component ticket took 16
+  // minutes as small: two 4-minute full gates and three auditors, twice.
+  // The PR body says what it skipped. Never chosen by sizing — only `--fast`.
+  fast: {
+    // Two, not one: the round cap is checked before the fix, so one audited
+    // round with a finding would hand back instead of fixing it.
+    specRounds: 0, buildRounds: 2,
+    specLenses: ['combined'], codeLenses: ['combined'],
+    think: 'sonnet',
+    build: 'sonnet',
+    probes: 0,
+    gateScope: 'branch',
+    reaudit: false,
+    learns: false,
   },
 }
 // Phases that run a command and copy its output back need no judgement.
@@ -79,9 +98,9 @@ const argText = typeof args === 'object' && args ? '' : String(args ?? '').trim(
 const LEAD = (/^#?\d+(?:(?:\s*,\s*|\s+and\s+|\s+)#?\d+)*/.exec(argText) || [''])[0]
 const ISSUES = [...new Set((LEAD.match(/\d+/g) || []).map(Number))]
 const issue = Number(typeof args === 'object' && args ? args.issue : ISSUES[0])
-const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small)\b/.exec(argText) || [])[1]
+const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small|fast)\b/.exec(argText) || [])[1]
 const NOTES = String((typeof args === 'object' && args ? args.notes : argText.slice(LEAD.length)) || '')
-  .replace(/@claude\b/gi, '').replace(/--(full|small)\b/g, '').trim()
+  .replace(/@claude\b/gi, '').replace(/--(full|small|fast)\b/g, '').trim()
 
 // Several tickets: one whole ship per ticket, all at once. Each gets its own
 // worktree and lane, so they build, boot the app and run the suite side by
@@ -506,7 +525,8 @@ let learned = false
 async function learn(how) {
   learned = true
   enter('Learn')
-  if (!history.length) return []
+  // Fast is for a ticket already known to work; its lessons were learnt before.
+  if (!history.length || T.learns === false) return []
   const result = await agent(
     `${inTree()}\n\nThe ship run for issue #${issue} ${how}. Along the way independent audits confirmed these ` +
     `problems the implementer had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
@@ -870,8 +890,8 @@ for (let round = 1; ; round++) {
     `${inTree()}\n\nFirst \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
-    `Then run \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
-    `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
+    `Then run \`${T.gateScope === 'branch' ? 'GATE_SCOPE=branch ' : ''}GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
+    `It runs npm test and ${T.gateScope === 'branch' ? "the branch's own Playwright specs" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
     `return the line it prints, verbatim, as facts. Change nothing and interpret nothing.`,
@@ -908,6 +928,14 @@ for (let round = 1; ; round++) {
     log(`#${issue}: the gate was red twice running — the fixer moves to the session model`)
   }
 
+  // Fast: the auditor has judged the change once. A fix after it is proved by
+  // the gate going green, not by a second audit — the round that doubled #1.
+  if (gate.ok && T.reaudit === false && audited > 0) {
+    rounds.push({ round, gate: gateLine(gate), raised: 0, confirmed: 0, covered: 'the fix, re-gated — not re-audited' })
+    log(`build round ${round}: green — the fix is not re-audited (fast)`)
+    minors = await confirm(dedupe(minors).slice(0, 3), 'the change')
+    break
+  }
   if (gate.ok) {
     audited++
     enter('Code Audit')
@@ -919,7 +947,7 @@ for (let round = 1; ; round++) {
           `read the branch's own tests only to aim your probes past them. Write every probe into one file and run it ` +
           `once for both viewports (\`npx playwright test tests/qa-probe.spec.js\` runs both projects)` +
           `${setup.runner ? '' : `, behind \`eval "$(node scripts/lane.mjs claim ${issue})" &&\`; never release the lane — it belongs to the run`}.\n\n`
-        : `The gate has just run the whole suite at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the branch's own browser specs (${(gate.specs || []).join(', ')})` : 'the whole suite'} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
           `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
@@ -1072,9 +1100,13 @@ const notVerified = [
   ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
   ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
   ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
+  ...(gate.scope === 'branch' ? ["the whole browser suite did not run here, only this branch's specs — the pull request's CI runs it"] : []),
+  ...(T.reaudit === false && rounds.some(r => r.confirmed) ? ['the fix for what the audit found was re-gated, not re-audited'] : []),
 ]
 const checksLine = [
-  `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
+  gate.scope === 'branch'
+    ? `Tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser in ${(gate.specs || []).join(', ')}, desktop and mobile`
+    : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
 ].join(' · ')
