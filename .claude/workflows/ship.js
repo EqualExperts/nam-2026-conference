@@ -1168,7 +1168,7 @@ const pr = await rote(
   `\`git merge --abort\` and return ok=false with the summary "conflicts with origin/${BASE} in <the files from ` +
   `git diff --name-only --diff-filter=U>", opening nothing. If it merged anything, end the Checks line in the body file ` +
   `with " · merged today's ${BASE} after the gate; CI re-runs the suite on it". Then \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
-  `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
+  `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : SIZE === 'fast' ? ' --label ship:fast' : ''}\` (if an open draft already exists ` +
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); ` +
   `\`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
   (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
