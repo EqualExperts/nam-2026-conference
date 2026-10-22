@@ -47,6 +47,17 @@ test.describe('Attendee switcher', () => {
     await expect(otherRow).toContainText(`${otherBefore} on agenda`);
   });
 
+  test('choosing an attendee in the switcher signs in as them', async ({ page }) => {
+    await visit(page, '/', { as: ATTENDEES.jonas });
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await page.getByRole('option', { name: /Andy Vays/ }).click();
+
+    await expect(page.getByRole('button', { name: /Viewing as Andy Vays/ })).toBeVisible();
+    // the menu now offers what only a speaker gets
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await expect(page.getByTestId('own-speaker-profile')).toBeVisible();
+  });
+
   test('the switcher offers only the three hosts, plus whoever is already selected', async ({ page }) => {
     await visit(page, '/', { as: ATTENDEES.jonas });
     await page.getByRole('button', { name: /Switch attendee/ }).click();

@@ -97,8 +97,9 @@ speakers start at 0.
 
 **`users`** — `speaker_id` links an attendee to their speaker profile. When set,
 `GET /api/users/:id` returns `isSpeaker: true`, a `speaker` object and
-`speakingSessions`. The UI only uses `speakerId`, to mark a speaker's own
-profile and link to it from the attendee menu.
+`speakingSessions`. The UI uses `isSpeaker` to offer "Your speaker profile" in
+the attendee menu and `speakerId` to link it and mark that profile as yours;
+`speaker` and `speakingSessions` have no UI yet.
 
 **`reservations`** — one row per attendee per session, `status` `confirmed` or
 `waitlisted`, `created_at` ordering the waitlist. Taking or releasing a
