@@ -242,4 +242,5 @@ with reduced motion each beat still shows everything it should.
 - A new token or utility: `@theme` / `@utility` in `index.css`.
 - A new cover composition: another `variant` branch in `GeneratedCover`.
 - A presentation beat: a caption in the chapter's `beats` and the `step` it shows in
-  its `Scene`; a new chapter: an entry in `components/presentation/chapters.js`.
+  its `Scene`; a new chapter: an entry in that talk's chapter list —
+  `components/presentation/chapters.js` (engineering) or `presentation/product/chapters.js` (product).
