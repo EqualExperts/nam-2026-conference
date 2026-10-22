@@ -9,8 +9,10 @@ import { SESSION_SELECT, hydrateSessions, toMinutes } from './query.js';
  *    gaps. Suggestions rank on what they have actually booked, because that is
  *    a truer signal than the interests they ticked at registration.
  *  - `schedule` — every seat and waitlist place, grouped by day, with the
- *    clashes and totals the agenda page renders.
+ *    clashes and totals an agenda page needs.
  *
+ * No page renders either yet: My Agenda is a placeholder that workshop teams
+ * build on these.
  * The clock comes from the client, because conference time is simulated.
  */
 
@@ -92,7 +94,7 @@ function suggestionsFor(userId, day, slot) {
 
 export function scheduleFor(userId) {
   const status = new Map(myReservations.all(userId).map((r) => [r.session_id, r.status]));
-  // Attendance on every day, not just today, so My Agenda can ask about a
+  // Attendance on every day, not just today, so an agenda can ask about a
   // Day 1 talk that is still unrated on Day 3.
   const checkedIn = new Set(myCheckIns.all(userId).map((r) => r.session_id));
   const stars = new Map(myRatings.all(userId).map((r) => [r.session_id, r.stars]));

@@ -128,6 +128,13 @@ describe('sizing — composed from what the ticket risks', () => {
     assert.match(source, /required: \['proceed', 'reason', 'sizing'\]/);
   });
 
+  test('setup must say whether the ticket adds an interaction or a layout fit, or their checks silently never run — #115', () => {
+    const required = /sizing: \{\s*type: 'object',\s*required: \[([^\]]*)\]/.exec(source);
+    assert.ok(required, 'no required list on sizing');
+    assert.match(required[1], /'uiInteraction'/);
+    assert.match(required[1], /'layoutFit'/);
+  });
+
   test('a small run whose diff reaches a risky path is escalated on that evidence', async () => {
     const { calls, models } = await run({ setup: facts({}), verify: { ...GREEN, facts: '--app-lines=40 --risky=yes' } });
     assert.ok(calls.includes('audit:criteria#1') && calls.includes('audit:rules#1'));
@@ -155,6 +162,17 @@ describe('the plan loop re-plans only for what changes the build', () => {
     const { calls, prompts } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('spec-gap') : { covered: 'all', findings: [] }) });
     assert.ok(!calls.some(c => c.startsWith('revise-spec')));
     assert.match(prompts.implement, /a spec-gap problem/);
+  });
+
+  test('a carried gap the next round raises again is confirmed and carried once — #114', async () => {
+    const gap = { ...blocker('a spec-gap problem'), category: 'spec-gap', line: 20 };
+    const logic = { ...blocker('a logic problem'), category: 'logic', line: 90 };
+    const { calls, prompts } = await run({
+      'spec-audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [gap, logic] : [gap] }),
+    });
+    assert.ok(calls.includes('revise-spec#1'));
+    assert.equal(calls.filter(c => c === 'skeptic:spec-gap').length, 1, 'the carried gap paid a second skeptic');
+    assert.equal(prompts.implement.split('a spec-gap problem').length - 1, 1, 'the implementer was told the gap twice');
   });
 
   test('a misread criterion is still re-planned', async () => {
@@ -303,6 +321,14 @@ describe('ship', () => {
     assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx — conflicts with origin\/main/);
     assert.ok(calls.includes('verify#2'));
     assert.equal(result.rounds[0].gate, 'not run — conflicts with main');
+  });
+
+  test('a conflict is a conflict even if the verify agent also relays a green gate line — #153', async () => {
+    const { calls, prompts } = await run({
+      verify: (n) => (n === 1 ? { ...GREEN, sync: 'conflict', conflicts: ['src/a.jsx'] } : { ...GREEN, sync: 'merged' }),
+    });
+    assert.ok(!calls.some(c => c.startsWith('audit') && c.endsWith('#1')), 'a conflicted round was audited as green');
+    assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx/);
   });
 
   test('a conflict when the PR is about to open hands back as a draft, naming the files — #150', async () => {

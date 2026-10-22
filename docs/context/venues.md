@@ -52,8 +52,9 @@ with different minutes; never assume symmetry.
   sessions (needs `.venue.id` and `to.room.walkMinutes`). Returns `null` if same
   venue or no route. Otherwise `{ gapMinutes, walk, options, fastest, free,
   impossible, freeTooSlow }`; each option gets `total = minutes + walk` and
-  `fits`. Excludes `Walk`. `free` = the first `costUsd === 0` option. Used by
-  `TodayPanel` on the home page.
+  `fits`. Excludes `Walk`. `free` = the first `costUsd === 0` option. No UI
+  calls it yet — it is there for an agenda view that warns about a cross-town
+  hop between two booked sessions; `tests/unit/travel.test.js` covers it.
 
 **`VenuesPage`** — URL params `venue` (id; defaults to first = primary) and
 `day` (defaults to `clock.day`). Unlike other pages, `set()` never deletes a
@@ -124,7 +125,7 @@ of step-free rooms, `Hearing loop`, `Live captions`, stairs-only; a
 ## Where to change…
 
 - A new travel mode or time: `TRAVEL` in `server/seed.js`; the UI reads rows.
-- Travel reasoning on the home page: `assessTravel` + `TodayPanel.jsx`.
+- Travel reasoning between two sessions: `travel.js:assessTravel`.
 - What a room card on the board shows: `VenueBoard`.
 - A new vendor filter: `metaRouter.get('/vendors')` + `FoodPage` `Select`.
 - Sponsor tier layout: `TIER_STYLE` in `ExpoPage.jsx`.

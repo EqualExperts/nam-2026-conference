@@ -62,7 +62,7 @@ export function ConferenceProvider({ children }) {
       else next.add(speakerId);
       return next;
     });
-    toast({ message: following ? 'Unfollowed' : 'Following — their sessions show in your feed', icon: 'bell' });
+    toast({ message: following ? 'Unfollowed' : 'Following', icon: 'bell' });
   }, [currentUserId, followingIds, toast]);
 
   /** Apply a seat-state payload from the API to local state. */

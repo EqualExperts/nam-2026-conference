@@ -147,7 +147,7 @@ const SETUP = {
     // them by one rule (profileFor below), so every ticket is sized the same way.
     sizing: {
       type: 'object',
-      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull'],
+      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull', 'uiInteraction', 'layoutFit'],
       properties: {
         areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, docs/harness/' },
         files: { type: 'integer', description: 'roughly how many app files (src/, server/) the change will edit or add — not tests, docs or the spec, which grow with any change' },
@@ -630,7 +630,10 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
   const found = specAudit.reports.flatMap(r => r.findings)
 
-  const blockers = found.filter(f => f.severity === 'blocker')
+  // A gap already carried is still in the spec, so the next round raises it
+  // again: it is already the builder's, and a second skeptic would only
+  // carry it twice (#114).
+  const blockers = found.filter(f => f.severity === 'blocker' && !carried.some(c => where(c) === where(f)))
   const confirmed = blockers.length ? await confirm(blockers, 'the spec') : []
   history.push(...confirmed)
   specRounds.push({ round, raised: found.length, confirmed: confirmed.length, what: confirmed.map(f => f.claim) })
@@ -791,6 +794,9 @@ for (let round = 1; ; round++) {
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
+  // The merge was aborted, so a green line after a conflict is not this branch
+  // on today's base: it goes to the fixer, never to the auditors (#153).
+  if (ran.sync === 'conflict') gate = { ...gate, ok: false }
 
   // Setup predicted the risk before any code existed; the diff now says what
   // it is. A small run whose diff reaches a risky path (server/lib, the

@@ -119,8 +119,8 @@ pins it. Only dates change between machines; the PRNG output does not.
   six attendees are a tiny share of it, and step 9 overwrites it outright. Never assert
   `seats_taken == COUNT(reservations)`.
 - Seeded bookings by day: Kenji and Marcus only have Days 1–2, Andy and Abraham Days 1–3,
-  Jonas and Sofia all four. Several Playwright tests depend on that shape (Marcus empty on
-  Day 4, `findPromotionFixture` in `tests/seats.spec.js`, the `clean` lanes). Changing plans or `PLAN_SHAPE` can break them;
+  Jonas and Sofia all four. Several Playwright tests depend on that shape
+  (`findPromotionFixture` in `tests/seats.spec.js`, the `clean` lanes). Changing plans or `PLAN_SHAPE` can break them;
   see testing.
 
 ## Where to change…
