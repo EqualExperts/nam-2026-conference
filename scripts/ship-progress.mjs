@@ -6,6 +6,12 @@
  *
  *   node scripts/ship-progress.mjs follow    # tails the transcript while the CLI runs
  *   node scripts/ship-progress.mjs finish    # one-shot, after the CLI is gone
+ *   node scripts/ship-progress.mjs local <issue> [<comment id>] < state.json
+ *                                            # a laptop run: ship.js hands its own state
+ *
+ * A laptop run has no stream to tail and no step to post the first comment —
+ * but ship.js knows every phase and round as it happens, so it sends the state
+ * render() takes, and `local` creates the comment (printing its id) or edits it.
  *
  * `follow` and `finish` both read `SHIP_PROGRESS_*` from the environment —
  * `agent-ship.yml`'s pre-checkout step sets `SHIP_PROGRESS_STARTED` (the
@@ -188,7 +194,8 @@ const minutesBetween = (now, started) => Math.max(0, Math.floor(((now ?? Date.no
  */
 export function render(state, { issue, runUrl, runId, repo, now, started } = {}) {
   const elapsed = minutesBetween(now, started);
-  const runLink = `[Run](${runUrl || ''})`;
+  // A laptop run has no Actions run to link to.
+  const runLink = runUrl ? `[Run](${runUrl})` : 'on a laptop';
   const lines = [`🚢 Ship · ${state.tier || 'sizing…'} · ${elapsed}m elapsed · ${runLink}`, ''];
 
   if (!state.phases || state.phases.length === 0) {
@@ -202,6 +209,8 @@ export function render(state, { issue, runUrl, runId, repo, now, started } = {})
       if (p.title === 'Spec' && state.spec) cell = `done — ${specLink(state.spec, state.branch, repo)}`;
       else if (p.status === 'not-started') cell = '—';
       else if (p.status === 'done') cell = p.title === 'Spec' && state.spec ? `done — ${specLink(state.spec, state.branch, repo)}` : 'done';
+      // ship.js reports a phase without counting its agents.
+      else if (p.total == null) cell = state.ended ? 'interrupted' : 'running';
       else cell = `${state.ended ? 'interrupted' : 'running'} — ${p.done} of ${p.total} agents finished`;
       lines.push(`| ${p.title} | ${cell} |`);
     }
@@ -217,7 +226,7 @@ export function render(state, { issue, runUrl, runId, repo, now, started } = {})
     const o = state.outcome;
     if (o && o.outcome === 'shipped') lines.push(`**Shipped** — [pull request](${o.pr})`);
     else if (o && o.outcome === 'needs-human') lines.push(`**Handed back at ${o.stage} — ${o.reason}**`);
-    else lines.push(`**The run died**${state.diedReason ? ` — ${state.diedReason}` : ''}. ${runLink}`);
+    else lines.push(`**The run died**${state.diedReason ? ` — ${state.diedReason}` : ''}.${runUrl ? ` ${runLink}` : ''}`);
     lines.push('');
   }
 
@@ -435,10 +444,43 @@ export async function finish({
   } catch { /* nothing settles the comment; the run itself is unaffected */ }
 }
 
+/**
+ * One update from a laptop run: ship.js sends the state, this renders it and
+ * creates the comment (no id yet) or edits it in place. The clock is the
+ * comment's own: it was posted when the run claimed the ticket, so its
+ * created_at is the run's start. Returns the comment id, for the next update.
+ */
+export async function local({ issue, commentId = null, state, gh, now = () => Date.now() }) {
+  const repo = gh.repo;
+  let started = now();
+  if (commentId) {
+    const at = await gh.createdAt(commentId).catch(() => null);
+    if (at && !Number.isNaN(Date.parse(at))) started = Date.parse(at);
+  }
+  const body = render(state, { issue, runId: 'local', repo, now: now(), started });
+  if (commentId) { await gh.patch(commentId, body); return commentId; }
+  return gh.create(body);
+}
+
 // ── CLI entry ────────────────────────────────────────────────────────────────
 // Never lets a failure here slow or fail the run it is reporting on.
 async function main() {
   const mode = process.argv[2];
+  if (mode === 'local') {
+    // CI has its own follower; a second comment from the same run would only repeat it.
+    if (process.env.GITHUB_ACTIONS) return;
+    const [issue, commentId] = process.argv.slice(3);
+    const state = JSON.parse(readFileSync(0, 'utf8'));
+    // The checkout's pinned repo — ship's setup pins it before anything else.
+    const repo = execFileSync('gh', ['repo', 'set-default', '--view'], { encoding: 'utf8' }).trim();
+    const gh = {
+      ...makeGh({ GH_REPO: repo, SHIP_PROGRESS_ISSUE: issue }),
+      repo,
+      async createdAt(id) { return ghApi(['api', `repos/${repo}/issues/comments/${id}`, '--jq', '.created_at']).trim(); },
+    };
+    console.log(await local({ issue, commentId: commentId || null, state, gh }));
+    return;
+  }
   const runnerTemp = process.env.RUNNER_TEMP || '/tmp';
   const transcript = process.env.SHIP_PROGRESS_TRANSCRIPT || `${runnerTemp}/claude-run.jsonl`;
   let seen = 0;

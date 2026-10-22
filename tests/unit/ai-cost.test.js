@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { fromStream, fromTranscripts, line, ledgerBody, parseLedger, priced, runComment, total, tokens } from '../../scripts/ai-cost.mjs';
+import { currentRun, fromStream, fromTranscripts, line, ledgerBody, parseLedger, priced, runComment, total, tokens } from '../../scripts/ai-cost.mjs';
 const require = createRequire(import.meta.url);
 
 // The shape `claude -p --output-format stream-json` ends with, from a real run.
@@ -81,5 +81,40 @@ describe('ai-cost', () => {
 
   test('a stream with no result records nothing rather than a zero row', () => {
     assert.equal(tokens(total(fromStream('{"type":"system"}'))), 0);
+  });
+});
+
+describe('a laptop run finds its own transcripts', () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, utimesSync } = require('node:fs');
+  const { join } = require('node:path');
+  const msg = JSON.stringify({ type: 'assistant', message: { id: 'm', model: 'claude-haiku-5', usage: {
+    input_tokens: 1_000_000, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } });
+  const agentIn = (dir, name, prompt) => writeFileSync(join(dir, `agent-${name}.jsonl`),
+    [JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }), msg].join('\n'));
+
+  test('--ticket keeps only that ticket’s agents — wt-1 is not wt-12', () => {
+    const dir = mkdtempSync(join(require('node:os').tmpdir(), 'ai-cost-'));
+    agentIn(dir, 'a', 'Work in /r/.claude/worktrees/wt-1 on branch issue-1-x');
+    agentIn(dir, 'b', 'Work in /r/.claude/worktrees/wt-12 on branch issue-12-y');
+    assert.equal(tokens(total(fromTranscripts(dir))), 2_000_000);
+    assert.equal(tokens(total(fromTranscripts(dir, null, 1))), 1_000_000);
+    assert.equal(tokens(total(fromTranscripts(dir, null, 12))), 1_000_000);
+  });
+
+  test('auto is the session’s workflow directory written to last, in whichever project', () => {
+    const root = mkdtempSync(join(require('node:os').tmpdir(), 'projects-'));
+    const run = (project, session, wf, t) => {
+      const d = join(root, project, session, 'subagents', 'workflows', wf);
+      mkdirSync(d, { recursive: true });
+      agentIn(d, 'a', 'x');
+      utimesSync(join(d, 'agent-a.jsonl'), t, t);
+      return d;
+    };
+    run('-a', 's1', 'wf_old', 1000);
+    const newest = run('-b', 's1', 'wf_new', 2000);
+    run('-a', 's2', 'wf_other_session', 3000);
+    assert.equal(currentRun('s1', root), newest);
+    assert.equal(currentRun(undefined, root), null);
+    assert.equal(currentRun('nobody', root), null);
   });
 });

@@ -376,6 +376,82 @@ const history = []
 // what it already knows it needs is the cheapest cut there is.
 const BATCH = `Each turn re-reads your whole context, so batch: when you know you need several reads — greps, seds, ` +
   `cats — put them in one Bash command, separated by \`; echo ---;\`.`
+
+// ── Progress and spend on the issue, from a laptop ───────────────────────────
+// In CI, agent-ship.yml posts the progress comment, ship-progress.mjs keeps it
+// current from the CLI's stream, and a last step records the AI spend. A
+// laptop run has none of those steps — and the issue is where people watch.
+// So off a runner the script, which knows every phase and round as it
+// happens, hands its own state to `ship-progress.mjs local`: one rote agent per
+// change, queued so the comment never goes backwards and never holds the run up.
+const PHASES = ['Setup', 'Spec', 'Spec Audit', 'Implement', 'Verify', 'Code Audit', 'Learn', 'PR'] // meta.phases
+const progress = { phases: PHASES.map(title => ({ title, status: 'not-started' })), rounds: [] }
+const REPORTED = {
+  type: 'object',
+  required: ['id'],
+  properties: { id: { type: 'string', description: 'the last line the command printed — the comment id' } },
+}
+let current = 'Setup'
+let progressComment = null
+let progressSent = ''
+let progressQueue = Promise.resolve()
+let progressUpdates = 0
+const reporting = () => !!(setup && !setup.runner && setup.workdir)
+const progressJson = (extra = {}) => JSON.stringify({
+  tier: T.size || null, branch: setup.branch || null, spec: (spec && spec.path) || null,
+  phases: progress.phases, rounds: progress.rounds, ended: false, outcome: null, ...extra,
+})
+// The id is read when the command runs, not when it is queued: the first
+// update creates the comment, and every later one edits it.
+const progressCmd = (json) =>
+  `cd ${setup.workdir} && node scripts/ship-progress.mjs local ${issue}${progressComment ? ` ${progressComment}` : ''} <<'STATE'\n${json}\nSTATE`
+
+function report() {
+  if (!reporting()) return
+  const json = progressJson()
+  if (json === progressSent) return
+  progressSent = json
+  const n = ++progressUpdates
+  const at = current
+  progressQueue = progressQueue.then(async () => {
+    const r = await rote(
+      `Run this one command exactly as written and return the last line it printed as id. Change nothing and read ` +
+      `nothing else.\n\n${progressCmd(json)}`,
+      { phase: at, label: `progress#${n}`, schema: REPORTED, effort: 'low', model: ROTE },
+    )
+    const id = String((r && r.id) || '').trim()
+    if (/^\d+$/.test(id)) progressComment = id
+  }).catch(() => {})
+}
+
+// phase(), and the issue's comment told. A phase is done once the run moves
+// on — Verify and Code Audit come round again, and Learn can follow anything.
+function enter(title) {
+  phase(title)
+  current = title
+  for (const p of progress.phases) {
+    if (p.status === 'running') p.status = 'done'
+    if (p.title === title) p.status = 'running'
+  }
+  report()
+}
+
+// The last word, awaited — the run is not over until the issue says so: the
+// comment settles on the outcome, and the run's spend goes on the issue's
+// ledger and on the pull request, as agent-ship.yml's last steps do in CI.
+async function settle(outcome) {
+  if (!reporting()) return
+  for (const p of progress.phases) if (p.status === 'running') p.status = 'done'
+  await progressQueue
+  const pr = (/\/pull\/(\d+)/.exec(outcome.pr || '') || [])[1]
+  await rote(
+    `Run these two commands exactly as written, one after the other, and return ok=true with the last line the ` +
+    `second printed as summary. Change nothing and read nothing else.\n\n${progressCmd(progressJson({ ended: true, outcome }))}\n\n` +
+    `cd ${setup.workdir} && node scripts/ai-cost.mjs record --issue ${issue} --kind ship --transcripts auto --ticket ${issue}` +
+    `${pr ? ` --pr ${pr}` : ''}`,
+    { phase: current, label: 'report', schema: DONE, effort: 'low', model: ROTE },
+  ).catch(() => null)
+}
 const inTree = ({ releases = false } = {}) =>
   `Work in ${setup.workdir} on branch ${setup.branch} (based on ${BASE}): cd there at the start of every Bash command. ${BATCH}` +
   (setup.runner
@@ -389,8 +465,8 @@ async function handBack(stage, why, open, alsoOpen) {
   // A run that could not converge is the one with the most to teach, so it
   // learns before it pushes — the lessons land on the draft with the work.
   const lessons = setup && setup.branch && !learned ? await learn(`stopped at ${stage}: ${why}`) : []
-  phase('Learn')
-  await agent(
+  enter('Learn')
+  const back = await agent(
     `Hand GitHub issue #${issue} back to a person. The automated ship run stopped at "${stage}" because: ${why}\n\n` +
     (open && open.length ? `Still open when it stopped:\n${listFindings(open)}\n\n` : '') +
     (alsoOpen && alsoOpen.length ? `Also still open — technical, not why it stopped, but the next run must settle them:\n${listFindings(alsoOpen)}\n\n` : '') +
@@ -402,10 +478,12 @@ async function handBack(stage, why, open, alsoOpen) {
         `Skip the draft if nothing beyond the spec is committed.\n`
       : '') +
     `Then comment on the issue — what was tried, what stopped it, what it needs from a person, and the draft ` +
-    `PR link if there is one — and run: gh issue edit ${issue} --add-label needs-human --remove-label ai-working`,
+    `PR link if there is one — and run: gh issue edit ${issue} --add-label needs-human --remove-label ai-working. ` +
+    `Return the draft PR's url as url, if there is one.`,
     { phase: 'Learn', label: 'hand-back', schema: DONE, effort: 'low', model: ROTE },
   )
   await cleanup()
+  await settle({ outcome: 'needs-human', stage, reason: why, pr: back && back.url })
   return { outcome: 'needs-human', issue, stage, reason: why, open: open || [], lessons }
 }
 
@@ -423,7 +501,7 @@ async function cleanup() {
 let learned = false
 async function learn(how) {
   learned = true
-  phase('Learn')
+  enter('Learn')
   if (!history.length) return []
   const result = await agent(
     `${inTree()}\n\nThe ship run for issue #${issue} ${how}. Along the way independent audits confirmed these ` +
@@ -461,7 +539,7 @@ const specAsk = (path) =>
   `Return each Decision as decisions, phrased as a yes/no question for the reviewer.`
 
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
-phase('Setup')
+enter('Setup')
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
@@ -568,7 +646,7 @@ ticket =
     `the ticket; where it is about process, it is context.` : '')
 
 // ── 2. Spec ──────────────────────────────────────────────────────────────────
-phase('Spec')
+enter('Spec')
 spec = setup.spec && setup.spec.path ? setup.spec : await agent(
   `${ticket}\n\n${inTree()}\n\n${specAsk(`specs/${issue}-${setup.slug}.md`)}`,
   { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN, model: T.think },
@@ -615,7 +693,7 @@ let carried = []
 const specRounds = []
 const REPLAN = new Set(['criterion-unmet', 'claude-md', 'logic', 'scope'])
 for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
-  phase('Spec Audit')
+  enter('Spec Audit')
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
     agent(
       `You are auditing a spec you did not write. ${BATCH} ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
@@ -670,7 +748,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
 }
 
 // ── 4. Implement ─────────────────────────────────────────────────────────────
-phase('Implement')
+enter('Implement')
 const built = await agent(
   `${ticket}\n\n${inTree()}\n\n${MAP}\n\nImplement ${spec.path}, following §4–§6 of ${SKILL} (${sections(4, '7')} prints them). The spec's *Where* is your map: open ` +
   `those files directly — the spec writer has already found them, so do not search for the change site again ` +
@@ -777,7 +855,7 @@ let audited = 0
 let lastRed = null // the last red-check, for the PR's one-line summary
 let redStreak = 0
 for (let round = 1; ; round++) {
-  phase('Verify')
+  enter('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
   // baseline before it runs anything, and red-check needs no judgement.
   // The gate tests the branch with today's base, not the one the run began
@@ -800,6 +878,9 @@ for (let round = 1; ; round++) {
   // The merge was aborted, so a green line after a conflict is not this branch
   // on today's base: it goes to the fixer, never to the auditors (#153).
   if (ran.sync === 'conflict') gate = { ...gate, ok: false }
+  // The round's line on the issue's progress comment, filled in as it goes.
+  const shown = { n: round, gate: { ok: gate.ok, unit: gate.unit, browserPassed: gate.browser.passed }, audits: 0, fixRan: false }
+  progress.rounds.push(shown)
 
   // Setup predicted the risk before any code existed; the diff now says what
   // it is. A small run whose diff reaches a risky path (server/lib, the
@@ -825,7 +906,7 @@ for (let round = 1; ; round++) {
 
   if (gate.ok) {
     audited++
-    phase('Code Audit')
+    enter('Code Audit')
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ${BATCH} ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
@@ -874,6 +955,7 @@ for (let round = 1; ; round++) {
     const missing = [...readers.missing, ...driver.missing]
     if (missing.length) return handBack('Code Audit', `the ${missing.join(', ')} auditor could not finish`)
     const reports = [...readers.reports, ...driver.reports]
+    shown.audits = reports.length
 
     const raised = [
       ...reports.flatMap(r => r.findings),
@@ -939,6 +1021,8 @@ for (let round = 1; ; round++) {
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
   if (audited >= MAX_BUILD_ROUNDS || round >= MAX_BUILD_ROUNDS + 2) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
 
+  shown.fixRan = true
+  report()
   const fixed = await agent(
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
     `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} (${sections(5, '6')}) still hold: never ` +
@@ -965,7 +1049,7 @@ for (let round = 1; ; round++) {
 const lessons = await learn('passed its audit')
 
 // ── 9. PR ────────────────────────────────────────────────────────────────────
-phase('PR')
+enter('PR')
 const auditTable = [
   ...specRounds.map(r => `| spec ${r.round} | — | ${r.raised} raised · ${r.confirmed} confirmed | ${r.what.map(brief).join('; ') || '—'} |`),
   ...rounds.map(r => `| build ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`),
@@ -1057,6 +1141,7 @@ const pr = await rote(
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
 // The PR agent released the lane on its way out.
+await settle({ outcome: 'shipped', pr: pr.url })
 return {
   outcome: 'shipped',
   issue,

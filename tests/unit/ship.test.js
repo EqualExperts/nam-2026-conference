@@ -594,7 +594,8 @@ describe('ship', () => {
 
   test('on a laptop the PR agent releases the lane on its way out, and tells other agents not to', async () => {
     const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
-    assert.equal(calls.at(-1), 'open-pr');
+    // Only the issue's progress and spend are reported after it.
+    assert.equal(calls.filter(c => !/^(progress#|report$)/.test(c)).at(-1), 'open-pr');
     assert.match(prompts['open-pr'], /node scripts\/lane\.mjs release 7/);
     assert.doesNotMatch(prompts['open-pr'], /Never release the lane/, 'the PR agent is told both to release and not to');
     assert.match(prompts.implement, /Never release the lane/);
@@ -904,5 +905,60 @@ describe('worktree paths', () => {
       .split('\n').filter(Boolean);
     const offenders = files.filter(f => /orbit-(wt|main|qa)-/.test(readFileSync(new URL(f, root), 'utf8')));
     assert.deepEqual(offenders, []);
+  });
+});
+
+/**
+ * A laptop run has no Actions steps to post the progress comment or record the
+ * spend, so the script does both through rote agents. What the test can prove
+ * is what those agents are told to run, in what order, and that CI never runs them.
+ */
+describe('progress and spend on the issue, from a laptop', () => {
+  const LAPTOP = { ...SETUP, runner: false, workdir: '/w/.claude/worktrees/wt-7' };
+  const reported = (prompt) => JSON.parse(/<<'STATE'\n(.*)\nSTATE/s.exec(prompt)[1]);
+
+  test('in CI nothing is posted from the script — agent-ship.yml does it', async () => {
+    const { calls } = await run();
+    assert.deepEqual(calls.filter(c => /^(progress#|report$)/.test(c)), []);
+  });
+
+  test('the first update creates the comment, every later one edits it by the id it printed', async () => {
+    const { calls, prompts } = await run({ setup: LAPTOP, progress: { id: '555' } });
+    const updates = calls.filter(c => c.startsWith('progress#'));
+    assert.ok(updates.length >= 3, updates.join(', '));
+    assert.match(prompts[updates[0]], /cd \/w\/\.claude\/worktrees\/wt-7 && node scripts\/ship-progress\.mjs local 7 <<'STATE'/);
+    for (const u of updates.slice(1)) assert.match(prompts[u], /ship-progress\.mjs local 7 555 <<'STATE'/);
+    assert.equal(reported(prompts[updates[0]]).phases.find(p => p.title === 'Setup').status, 'done');
+  });
+
+  test('a shipped run settles the comment on the PR and records the spend on the issue and the PR', async () => {
+    const { calls, prompts } = await run({ setup: LAPTOP, progress: { id: '555' } });
+    assert.equal(calls.at(-1), 'report');
+    const state = reported(prompts.report);
+    assert.deepEqual(state.outcome, { outcome: 'shipped', pr: 'https://github.com/o/r/pull/9' });
+    assert.equal(state.ended, true);
+    assert.deepEqual(state.phases.filter(p => p.status === 'running'), []);
+    assert.equal(state.rounds[0].gate.ok, true);
+    assert.equal(state.rounds[0].gate.unit.passed, 178);
+    assert.match(prompts.report, /ai-cost\.mjs record --issue 7 --kind ship --transcripts auto --ticket 7 --pr 9/);
+  });
+
+  test('a round that needed a fix says so, and a hand-back settles as handed back with its draft', async () => {
+    const { calls, prompts } = await run({
+      setup: LAPTOP, progress: { id: '555' },
+      audit: (n) => ({ covered: 'all', findings: [blocker('wrong total')] }),
+      'hand-back': { ok: true, summary: 'back', url: 'https://github.com/o/r/pull/12' },
+    });
+    assert.equal(calls.at(-1), 'report');
+    const state = reported(prompts.report);
+    assert.equal(state.outcome.outcome, 'needs-human');
+    assert.equal(state.outcome.stage, 'Code Audit');
+    assert.ok(state.rounds.some(r => r.fixRan), JSON.stringify(state.rounds));
+    assert.match(prompts.report, /--ticket 7 --pr 12/);
+  });
+
+  test('a declined ticket posts nothing', async () => {
+    const { calls } = await run({ setup: { ...LAPTOP, proceed: false, reason: 'closed' } });
+    assert.deepEqual(calls, ['setup']);
   });
 });
