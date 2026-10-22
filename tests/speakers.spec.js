@@ -186,12 +186,16 @@ test.describe('Following from where the speaker is shown', () => {
   const userFor = (testInfo) => (testInfo.project.name === 'mobile' ? ATTENDEES.kenji : ATTENDEES.marcus);
 
   /** A speaker this attendee does not follow, off the ids the other follow tests use. */
-  async function pick(request, user, { featured, skip = [] }) {
+  async function pick(request, user, { featured, nth = 0 }) {
     const me = await (await request.get(`${API}/users/${user}`)).json();
     const followed = new Set(me.followedSpeakers.map((s) => s.id));
     const all = await (await request.get(`${API}/speakers`)).json();
-    const speaker = all.find((s) => Boolean(s.featured) === featured && !followed.has(s.id)
-      && ![3, 9, ...skip].includes(s.id));
+    // Each test takes its own `nth` (0-4) and steps by 5 past anyone already followed, so
+    // tests running at once as one attendee never share a speaker.
+    const pool = all.filter((s) => Boolean(s.featured) === featured && ![3, 9].includes(s.id));
+    let i = nth;
+    while (followed.has(pool[i].id)) i += 5;
+    const speaker = pool[i];
     return { speaker, followedCount: followed.size };
   }
   async function firstSessionId(request, speakerId) {
@@ -208,7 +212,7 @@ test.describe('Following from where the speaker is shown', () => {
 
   test('the carousel follows the current headliner without leaving the page', async ({ page, request }, testInfo) => {
     const user = userFor(testInfo);
-    const { speaker } = await pick(request, user, { featured: true });
+    const { speaker } = await pick(request, user, { featured: true, nth: 0 });
     try {
       await visit(page, '/speakers', { as: user });
       const spotlight = page.getByTestId('speaker-spotlight');
@@ -231,7 +235,7 @@ test.describe('Following from where the speaker is shown', () => {
 
   test('a grid card toggles follow without opening the profile, and the rest of it still does', async ({ page, request }, testInfo) => {
     const user = userFor(testInfo);
-    const { speaker } = await pick(request, user, { featured: false });
+    const { speaker } = await pick(request, user, { featured: false, nth: 0 });
     try {
       await request.put(`${API}/users/${user}/follows/${speaker.id}`);
       await visit(page, '/speakers', { as: user });
@@ -251,7 +255,11 @@ test.describe('Following from where the speaker is shown', () => {
       await section.getByTestId('speaker-card').filter({ hasText: speaker.name }).getByRole('heading').click();
       await expect(page).toHaveURL(new RegExp(`/speakers/${speaker.id}$`));
       await visit(page, '/speakers', { as: user });
-      await section.getByTestId('speaker-card').filter({ hasText: speaker.name }).locator('img, [data-avatar]').first().click();
+      // click where the portrait is: the stretched link sits over it, so a locator click would be refused
+      const portrait = section.getByTestId('speaker-card').filter({ hasText: speaker.name }).locator('img, [role="img"]').first();
+      await portrait.scrollIntoViewIfNeeded();
+      const avatar = await portrait.boundingBox();
+      await page.mouse.click(avatar.x + avatar.width / 2, avatar.y + avatar.height / 2);
       await expect(page).toHaveURL(new RegExp(`/speakers/${speaker.id}$`));
     } finally {
       await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
@@ -260,7 +268,7 @@ test.describe('Following from where the speaker is shown', () => {
 
   test('a session page speaker has the toggle, and it is reflected everywhere without a reload', async ({ page, request }, testInfo) => {
     const user = userFor(testInfo);
-    const { speaker, followedCount } = await pick(request, user, { featured: false, skip: [] });
+    const { speaker } = await pick(request, user, { featured: false, nth: 2 });
     const sessionId = await firstSessionId(request, speaker.id);
     try {
       await visit(page, `/sessions/${sessionId}`, { as: user });
@@ -284,8 +292,8 @@ test.describe('Following from where the speaker is shown', () => {
       await expect(page.getByTestId('followed-speakers')).toContainText(speaker.name);
 
       await spaGo(page, '/');
-      const n = followedCount + 1;
-      await expect(page.getByTestId('followed-sessions')).toContainText(`${n} ${n === 1 ? 'speaker' : 'speakers'} followed`);
+      // the exact count would race the other tests following as this attendee
+      await expect(page.getByTestId('followed-sessions')).toContainText(/\d+ speakers? followed/);
       await expect(page.getByTestId('followed-sessions').getByTestId('session-card').first()).toBeVisible();
     } finally {
       await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
@@ -294,7 +302,7 @@ test.describe('Following from where the speaker is shown', () => {
 
   test('the session page toggle is reachable by keyboard and the name opens the profile', async ({ page, request }, testInfo) => {
     const user = userFor(testInfo);
-    const { speaker } = await pick(request, user, { featured: false, skip: [] });
+    const { speaker } = await pick(request, user, { featured: false, nth: 3 });
     const sessionId = await firstSessionId(request, speaker.id);
     try {
       await visit(page, `/sessions/${sessionId}`, { as: user });
@@ -338,7 +346,7 @@ test.describe('Following from where the speaker is shown', () => {
 
   test('the toggle does not overlap the rest of a card', async ({ page, request }, testInfo) => {
     const user = userFor(testInfo);
-    const { speaker } = await pick(request, user, { featured: false });
+    const { speaker } = await pick(request, user, { featured: false, nth: 1 });
     const sessionId = await firstSessionId(request, speaker.id);
     try {
       await request.put(`${API}/users/${user}/follows/${speaker.id}`);

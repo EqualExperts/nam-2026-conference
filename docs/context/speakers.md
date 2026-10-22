@@ -7,6 +7,7 @@ files:
   - src/pages/SpeakerPage.jsx
   - src/components/SpeakerCard.jsx
   - src/components/SpeakerSpotlight.jsx
+  - src/components/FollowButton.jsx
   - server/routes/speakers.js
 tests:
   - tests/speakers.spec.js
@@ -66,7 +67,7 @@ key): `q`, `track` (sent as `trackSlug`), `day`, `show`
 | Section (testid) | Who | Renders as |
 | --- | --- | --- |
 | `followed-speakers` | everyone in `followingIds` | `SpeakerCard` grid variant |
-| `headline-speakers` | `featured` and not followed; **only when not narrowed** | `SpeakerSpotlight` |
+| `headline-speakers` | `featured`, followed or not (a followed headliner stays so Follow can read Following); **only when not narrowed** | `SpeakerSpotlight` |
 | `all-speakers` | not followed, and (not featured, or narrowed) | `AlphabeticalList` if not narrowed and `sort=featured`; otherwise one flat `compact` grid |
 
 `AlphabeticalList` (local to the page) groups by first letter, renders a sticky
@@ -77,12 +78,24 @@ X") and `#letter-X` anchors. The count in `all-speakers` is
 **`SpeakerCard`** — `variant="grid"` (default: avatar, title, company, two
 expertise chips, session count, city, Following / Keynote / Featured badges) or
 `variant="compact"` (one line: small avatar, name, check if followed, session
-count if > 1). Both are a `Link` to `/speakers/:id`.
+count if > 1). Compact is one `Link` to `/speakers/:id`. Grid is a
+`div` (`data-testid="speaker-card"`, badges `speaker-badge`): the name's `Link`
+is stretched over the card (`after:absolute after:inset-0`) so the whole card
+opens the profile, and a `FollowButton` sits in the flow below, `relative z-10`
+— a sibling of the link, never inside it. Playwright refuses a locator click on
+the portrait (the overlay intercepts); click the heading or by coordinates.
+
+**`FollowButton`** (`src/components/FollowButton.jsx`, `data-testid="follow-toggle"`)
+— `{ speaker, size }`; reads `isFollowing` / `toggleFollow` from the store, so
+every surface updates at once. `aria-pressed`, `aria-label` "Follow <name>" /
+"Following <name>". Used by the grid card, the spotlight and each speaker on
+`SessionPage` (same stretched-link layout). The profile keeps its own
+`follow-speaker` button.
 
 **`SpeakerSpotlight`** (`data-testid="speaker-spotlight"`) — takes
 `speakers`, holds `index` / `paused`. Autoplays every `ROTATE_MS` (7000) via
 `setInterval`; never if `prefers-reduced-motion`, or fewer than 2 speakers.
-Pauses on hover/focus and permanently on any manual control (arrows, filmstrip,
+Pauses on hover/focus (its `FollowButton` sits inside the section, so it pauses too) and permanently on any manual control (arrows, filmstrip,
 ←/→ keys when the section has focus). Filmstrip is `role="tablist"` of
 `role="tab"` buttons with `aria-label` = name and `aria-selected`. Next button
 is `data-testid="spotlight-next"`. Uses `animate-ken-burns`, `animate-slide-in`,
@@ -103,8 +116,8 @@ grouped by `day` with `dayLabel` and rendered as `SessionCard` in a
 
 ## Invariants
 
-- A followed speaker appears only in `followed-speakers`, never also in the
-  spotlight or the list.
+- A followed speaker appears in `followed-speakers`, and never in the A–Z list;
+  a followed headliner also stays in the spotlight.
 - When narrowed, featured speakers must fall into `all-speakers` — otherwise
   `show=keynotes` renders nothing (tested).
 - Every speaker has a portrait at `/avatars/speaker-NNN.jpg` and pronouns

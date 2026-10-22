@@ -10,6 +10,7 @@ import { SeatPanel } from '../components/SeatPanel.jsx';
 import { AttendancePanel } from '../components/AttendancePanel.jsx';
 import { Avatar, Button, Chip, ErrorState, NotFoundState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { FollowButton } from '../components/FollowButton.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 import { hasEnded } from '../lib/clock.js';
 
@@ -208,15 +209,22 @@ export function SessionPage() {
             <h2 className="font-display text-xl">{plural(session.speakers.length, 'Speaker')}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {session.speakers.map((sp) => (
-                <Link
+                <div
                   key={sp.id}
-                  to={`/speakers/${sp.id}`}
-                  className="group flex gap-3.5 rounded-2xl border border-hairline bg-surface/70 p-4 transition-colors hover:border-white/15 hover:bg-raised/70"
+                  data-testid="session-speaker"
+                  className="group relative flex gap-3.5 rounded-2xl border border-hairline bg-surface/70 p-4 transition-colors hover:border-white/15 hover:bg-raised/70"
                 >
                   <Avatar name={sp.name} initials={sp.initials} accent={sp.accent} imageUrl={sp.imageUrl} size="lg" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate font-semibold group-hover:text-violet-200">{sp.name}</h3>
+                      <h3 className="min-w-0 truncate font-semibold group-hover:text-violet-200">
+                        <Link
+                          to={`/speakers/${sp.id}`}
+                          className="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-violet-400"
+                        >
+                          {sp.name}
+                        </Link>
+                      </h3>
                       {sp.role !== 'Speaker' && (
                         <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-faint">
                           {sp.role}
@@ -226,8 +234,9 @@ export function SessionPage() {
                     <p className="truncate text-xs text-muted">{sp.jobTitle}</p>
                     <p className="truncate text-xs font-medium text-faint">{sp.company}</p>
                     <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted">{sp.bio}</p>
+                    <FollowButton speaker={sp} className="relative z-10 mt-3" />
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </section>

@@ -111,7 +111,7 @@ export function SpeakersPage() {
 
   const narrowed = Boolean(q) || track !== ALL || day !== ALL || view !== ALL;
   const followed = all.filter((s) => followingIds.has(s.id));
-  const headline = all.filter((s) => s.featured && !followingIds.has(s.id));
+  const headline = all.filter((s) => s.featured);
   // Once narrowed, the headliner spotlight is hidden, so featured people belong in the results.
   const rest = all.filter((s) => (narrowed || !s.featured) && !followingIds.has(s.id));
 

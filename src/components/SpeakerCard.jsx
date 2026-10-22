@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, Chip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { FollowButton } from './FollowButton.jsx';
 
 /**
  * Two densities, because a hundred-plus speakers cannot all be equally important
@@ -40,30 +41,35 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
   }
 
   return (
-    <Link
-      to={`/speakers/${speaker.id}`}
+    <div
+      data-testid="speaker-card"
       className={cx(
         'group relative flex flex-col items-center gap-3 rounded-xl border border-hairline bg-raised p-5 text-center',
         'transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-overlay/70',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
       )}
     >
       {following && (
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+        <span data-testid="speaker-badge" className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
           <Icon name="check" className="size-2.5" />Following
         </span>
       )}
       {(speaker.keynoteCount > 0 || speaker.featured) && (
-        <span className="absolute right-3 top-3 rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
+        <span data-testid="speaker-badge" className="absolute right-3 top-3 rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
           {speaker.keynoteCount > 0 ? 'Keynote' : 'Featured'}
         </span>
       )}
       <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
         imageUrl={speaker.imageUrl} size="lg" />
       <div className="min-w-0">
-        <h3 className="truncate font-semibold leading-tight transition-colors group-hover:text-violet-200">
-          {speaker.name}
-        </h3>
+        {/* the stretched link makes the whole card open the profile; the follow button sits above it */}
+        <Link
+          to={`/speakers/${speaker.id}`}
+          className="block after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-violet-400"
+        >
+          <h3 className="truncate font-semibold leading-tight transition-colors group-hover:text-violet-200">
+            {speaker.name}
+          </h3>
+        </Link>
         <p className="mt-0.5 line-clamp-1 text-xs text-muted">{speaker.jobTitle}</p>
         <p className="line-clamp-1 text-xs font-medium text-faint">{speaker.company}</p>
       </div>
@@ -76,6 +82,7 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
         <span className="inline-flex items-center gap-1"><Icon name="mic" className="size-3" />{sessionCount}</span>
         <span className="inline-flex items-center gap-1"><Icon name="globe" className="size-3" />{speaker.city}</span>
       </div>
-    </Link>
+      <FollowButton speaker={speaker} className="relative z-10" />
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { accent } from '../lib/accents.js';
 import { plural } from '../lib/format.js';
 import { Avatar, Button, Chip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { FollowButton } from './FollowButton.jsx';
 import { GeneratedCover } from './GeneratedCover.jsx';
 
 const ROTATE_MS = 7000;
@@ -110,6 +111,7 @@ export function SpeakerSpotlight({ speakers }) {
             <Button to={`/speakers/${speaker.id}`} variant="primary" size="sm">
               View profile <Icon name="chevronRight" className="size-3.5" />
             </Button>
+            <FollowButton speaker={speaker} />
             {speaker.expertise.slice(0, 3).map((e) => (
               <Chip key={e} className="!text-[10px]">{e}</Chip>
             ))}

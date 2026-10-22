@@ -109,7 +109,7 @@ An unknown id (the fetch's `error.status === 404`) renders `NotFoundState`
 never succeed on retry; any other failure still shows `ErrorState` with "Try
 again". Main column: header (`session-title`, `header-seats`, `save-session`
 toggle, Add to calendar), `video-poster` if `isRecorded`,
-abstract/takeaways/prerequisites, speakers (link to `/speakers/:id`),
+abstract/takeaways/prerequisites, speakers (`session-speaker` cards: name links to `/speakers/:id`, plus a `FollowButton`),
 "Attendee feedback", "Also at HH:MM"
 (`competing` as row cards). Aside: `TravelNotice` (`travel-notice`, off-site only,
 non-Walk routes from `travel.js:routesBetween`), `SeatPanel`, `AttendancePanel`,
