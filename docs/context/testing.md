@@ -83,8 +83,8 @@ instead of silently testing another worktree's app.
 - `API` — `http://localhost:${PORT ?? 3001}/api`, for `request.get(...)` calls.
 - `ATTENDEES` — `{ jonas: 1, andy: 2, kenji: 3, sofia: 4, marcus: 5, abraham: 6 }` (see seed).
 - `conferenceDays()` → the four ISO dates from `/bootstrap`, cached per worker.
-- `momentOn(dayIndex, 'HH:MM')` → `'YYYY-MM-DDTHH:MM'`; `MID_SESSION_TIME = '10:30'`,
-  `BETWEEN_SLOTS_TIME = '11:10'`.
+- `momentOn(dayIndex, 'HH:MM')` → `'YYYY-MM-DDTHH:MM'`; `MID_SESSION_TIME = '10:30'`
+  (inside the 10:15 slot).
 - `visit(page, path = '/', { as = ATTENDEES.jonas, at = null })` — an init script sets
   `orbit:currentUserId` and sets or **removes** `orbit:clockAt`, then `goto` and waits for
   the `banner` role.
@@ -103,9 +103,8 @@ Entry shape: `'area.case': { desktop: { user, day, slot?, clean? }, mobile: {…
 `slot` own their slot on day index 2 outright — they assert an exact seat count, so any other
 lane booking *a session in one of those slots* that day, even for a different attendee, can
 shift it mid-assertion. The slot is what is owned, not the attendee.
-It also names the read-only fixtures, including that **Jonas holds no waitlist place on any
-day** — `plan.spec.js` reads him as the attendee who sees no waitlisted hours, so no test
-may queue him for a full room.
+It also names the one read-only fixture: Jonas and Kenji on Day 2, the promotion
+fixture `tests/seats.spec.js` reads.
 
 **Port lanes** (`scripts/lane.mjs`). In a worktree, run `eval "$(node scripts/lane.mjs
 claim 42)"` (42 = the issue) before anything else. `claim()` sweeps stale claims (worktree gone), returns
@@ -180,8 +179,7 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - `tests/unit/lanes.test.js` fails `npm test` when two panes share an attendee and day
   (unless one is `readOnly: true`, exactly one is `agenda: false`, or both pin distinct
   `slot`s) — mark a lane that reads only `readOnly`, and one that writes check-ins or
-  ratings but books nothing `agenda: false`. It also fails a lane whose test mentions a
-  waitlist if it puts Jonas on it — he is the attendee read as on no waitlist. Six attendees × four days are nearly all
+  ratings but books nothing `agenda: false`. Six attendees × four days are nearly all
   taken, so a new attendance lane usually has to be `agenda: false`. Before claiming a lane, check the whole `LANES` table *and* the read-only fixtures in its
   comment: the promotion test picks its session (and therefore its day) at runtime, so the
   day it occupies is not visible in the table.
@@ -190,7 +188,7 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - A `Stat` tile counts up from zero only once the number is properly on screen, so a tile
   below the fold reads `0` however long you wait. Centre it first
   (`el.scrollIntoView({ block: 'center' })`); Playwright's `scrollIntoViewIfNeeded` counts a
-  clipped tile as visible and is not enough — see `openPlan` in `tests/plan.spec.js`.
+  clipped tile as visible and is not enough.
 - Only `momentOn`/full `THH:MM` values pin the clock; a bare date in `at` is ignored.
 - `clearAgendaFor` on a non-`clean` lane deletes seeded bookings, which the next run
   (without a reseed) no longer has — tests that expect seeded plans then fail far away.
@@ -200,7 +198,7 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - **Add a data lane**: add an entry to `LANES` in `tests/helpers.js` with a `desktop` and a
   `mobile` pair whose `user`+`day` no other lane or fixture holds (see *Gotchas*), and — on
   day index 2 — that is pinned to a slot no `slot` lane owns (`09:00, 10:15, 11:30, 13:30,
-  14:45, 16:00` belong to the seat-count lanes and `17:15` to `agenda.next-up-done`, so day index 2 has no free slot left) rather than picked dynamically with
+  14:45, 16:00` belong to the seat-count lanes, leaving `17:15` as day index 2's one free slot) rather than picked dynamically with
   `bookableFor`, which can land on a seat-count lane's session. Check the whole table, not
   just lanes for the same attendee. Mark `clean: true` only if the seed books nothing for
   that attendee that day (seed doc lists who has which days). Read it with

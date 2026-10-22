@@ -23,12 +23,12 @@ Approximate counts from a fresh seed. The tables attendees write to drift as you
 | `session_tags` | ~980 | Many-to-many |
 | `users` | 6 | Attendees. No passwords — there is no auth |
 | `reservations` | ~60 | An attendee's agenda. Holds a real seat; `status` is `confirmed` or `waitlisted` |
-| `speaker_follows` | ~20 | |
+| `speaker_follows` | ~20 | Read and written by the API; no UI follows anyone yet |
 | `ratings` | ~10 | Only submittable by someone who checked in, once the session is over |
 | `check_ins` | ~10, grows | Proof of attendance; gates rating. Seeded only for Day 1's morning |
 | `vendors` | 24 | Food and drink at both venues, with opening hours and wait times |
 | `sponsors` | 28 | Five tiers, booth numbers, perks |
-| `announcements` | 10 | Two are pinned. The home page shows the latest one already posted at the clock's time |
+| `announcements` | 10 | Two are pinned. Home shows the latest one already posted at the clock's time |
 
 ## The two-venue split
 
@@ -97,8 +97,8 @@ speakers start at 0.
 
 **`users`** — `speaker_id` links an attendee to their speaker profile. When set,
 `GET /api/users/:id` returns `isSpeaker: true`, a `speaker` object and
-`speakingSessions`, which is what renders the speaking panel on My Agenda and
-the home page.
+`speakingSessions`. The UI only uses `speakerId`, to mark a speaker's own
+profile and link to it from the attendee menu.
 
 **`reservations`** — one row per attendee per session, `status` `confirmed` or
 `waitlisted`, `created_at` ordering the waitlist. Taking or releasing a

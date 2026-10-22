@@ -1,7 +1,7 @@
 ---
 area: speakers
-summary: The speakers index (follows first, a headliner carousel, then an A–Z long tail) and each speaker's profile with their sessions and a Follow button.
-read_when: touching /speakers or /speakers/:id, SpeakerCard, SpeakerSpotlight, speaker filters or sort, following a speaker
+summary: The speakers index (a headliner carousel, then an A–Z long tail) and each speaker's profile with their sessions — plus the follow endpoints, which have no UI yet.
+read_when: touching /speakers or /speakers/:id, SpeakerCard, SpeakerSpotlight, speaker filters or sort, the "This is you" marker, or following a speaker
 files:
   - src/pages/SpeakersPage.jsx
   - src/pages/SpeakerPage.jsx
@@ -42,32 +42,33 @@ related: [seed, ui, agenda, architecture]
 
 **Follows** live in `server/routes/users.js`, not here:
 `PUT` / `DELETE /api/users/:id/follows/:speakerId` (table `speaker_follows`,
-`INSERT OR IGNORE`). `GET /api/users/:id` returns `followedSpeakers`. Client:
-`api.followSpeaker` / `api.unfollowSpeaker`; `useConference()` exposes
-`followingIds` (a `Set`), `isFollowing(id)` and `toggleFollow(id)` (store.jsx —
-calls the API, updates the set, toasts). The home page's `FromSpeakersYouFollow`
-uses `GET /api/sessions?followedBy=`.
+`INSERT OR IGNORE`). `GET /api/users/:id` returns `followedSpeakers`, and
+`GET /api/sessions?followedBy=<userId>` lists the sessions of speakers that user
+follows. Client: `api.followSpeaker`, `api.unfollowSpeaker`,
+`api.getFollowedSessions`. **No UI uses any of it yet** — there is no Follow
+button, no follow state in the store and no following view; the endpoints are
+there for workshop teams to build on. The profile's follower count is seeded
+data (`followerCount`) and is shown.
 
 **`SpeakersPage` — URL params** (`useSearchParams`, `'all'`/empty deletes the
 key): `q`, `track` (sent as `trackSlug`), `day`, `show`
-(`all | following | keynotes | first-time`), `sort`
+(`all | keynotes | first-time`), `sort`
 (`featured` default | `sessions` | `rating` | `name`).
 
 - Server-side: `q`, `trackSlug`, `day`; `show=keynotes` → `featured=true`,
   `show=first-time` → `firstTime=true`. The "Keynotes" chip therefore filters
   on the **`featured` flag**, not on `keynoteCount`.
-- Client-side (in the `all` memo): `show=following` filters by `followingIds`;
-  every `sort` except `featured` re-sorts (the server order *is* "featured").
+- Client-side (in the `all` memo): every `sort` except `featured` re-sorts
+  (the server order *is* "featured").
 - `narrowed` = any of `q`, `track`, `day`, `show` set. Sort does not count.
-- The empty state heading is `No speakers match “<q>”` when a search is active, plain `No speakers match` otherwise; the following view keeps `You are not following anyone yet`.
+- The empty state heading is `No speakers match “<q>”` when a search is active, plain `No speakers match` otherwise.
 
-**Tiering** (three sections, each self-hides when empty):
+**Tiering** (two sections, each self-hides when empty):
 
 | Section (testid) | Who | Renders as |
 | --- | --- | --- |
-| `followed-speakers` | everyone in `followingIds` | `SpeakerCard` grid variant |
-| `headline-speakers` | `featured` and not followed; **only when not narrowed** | `SpeakerSpotlight` |
-| `all-speakers` | not followed, and (not featured, or narrowed) | `AlphabeticalList` if not narrowed and `sort=featured`; otherwise one flat `compact` grid |
+| `headline-speakers` | `featured`; **only when not narrowed** | `SpeakerSpotlight` |
+| `all-speakers` | not featured, or everyone once narrowed | `AlphabeticalList` if not narrowed and `sort=featured`; otherwise one flat `compact` grid |
 
 `AlphabeticalList` (local to the page) groups by first letter, renders a sticky
 jump bar of 26 buttons (`aria-label` "Jump to X" / disabled "No speakers under
@@ -75,9 +76,8 @@ X") and `#letter-X` anchors. The count in `all-speakers` is
 `data-testid="speaker-count"` and counts only that section.
 
 **`SpeakerCard`** — `variant="grid"` (default: avatar, title, company, two
-expertise chips, session count, city, Following / Keynote / Featured badges) or
-`variant="compact"` (one line: small avatar, name, check if followed, session
-count if > 1). Both are a `Link` to `/speakers/:id`.
+expertise chips, session count, city, a Keynote / Featured badge) or
+`variant="compact"` (one line: small avatar, name, session count if > 1). Both are a `Link` to `/speakers/:id`.
 
 **`SpeakerSpotlight`** (`data-testid="speaker-spotlight"`) — takes
 `speakers`, holds `index` / `paused`. Autoplays every `ROTATE_MS` (7000) via
@@ -90,21 +90,24 @@ is `data-testid="spotlight-next"`. Uses `animate-ken-burns`, `animate-slide-in`,
 falls back to `Avatar` when `imageUrl` is null. The heading is the speaker name.
 
 **`SpeakerPage`** (`data-testid="speaker-detail"`) — `useFetch(api.getSpeaker,
-[id, following])`: it refetches when you (un)follow so `followerCount` stays
-right. An unknown id (`error.status === 404`) renders `NotFoundState`
+[id])`. An unknown id (`error.status === 404`) renders `NotFoundState`
 ("Speaker not found", back to `/speakers`) instead of `ErrorState` — a 404
 can never succeed on retry; any other failure still shows `ErrorState` with
 "Try again". Header uses `GeneratedCover variant="strata"`; name is
-`data-testid="speaker-name"`; the follow button is
-`data-testid="follow-speaker"` with `aria-pressed`. Socials (`SOCIALS` +
+`data-testid="speaker-name"`. When the signed-in attendee *is* this speaker
+(`currentUser.speakerId === speaker.id` — `toUser` maps `speakerId` and
+`isSpeaker`), a `This is you` chip (`speaker-is-you`) leads the badge row; it is
+a plain marker over the same page, not a speaker dashboard. The way there is
+`UserSwitcher`'s `Your speaker profile` link (`own-speaker-profile`), shown only
+while `currentUser.isSpeaker` (`tests/switcher.spec.js`). Socials (`SOCIALS` +
 `handleOf`) render as plain spans with `BrandIcon`, never links. Sessions are
 grouped by `day` with `dayLabel` and rendered as `SessionCard` in a
 `grid-flow-row-dense` grid.
 
 ## Invariants
 
-- A followed speaker appears only in `followed-speakers`, never also in the
-  spotlight or the list.
+- Without narrowing, a featured speaker appears only in the spotlight, never
+  also in the list.
 - When narrowed, featured speakers must fall into `all-speakers` — otherwise
   `show=keynotes` renders nothing (tested).
 - Every speaker has a portrait at `/avatars/speaker-NNN.jpg` and pronouns
@@ -117,8 +120,8 @@ grouped by `day` with `dayLabel` and rendered as `SessionCard` in a
 
 - `SearchInput`, `Select` and `ChipGroup` are in `src/components/FilterBar.jsx`,
   shared with the schedule — changing them affects both pages.
-- Follows are shared DB state: the Playwright follow test uses a different
-  attendee per project and unfollows afterwards. Do the same.
+- Follows are shared DB state: a test that follows must use a different
+  attendee per project and unfollow afterwards.
 - `sort=rating` sorts by `speakers.avg_rating`, which is 0 for anyone not rated
   on Day 1 morning — most of the list.
 - `GET /api/speakers?country=` exists but the page has no control for it.
@@ -130,4 +133,6 @@ grouped by `day` with `dayLabel` and rendered as `SessionCard` in a
 - A new sort: the `all` memo in `SpeakersPage` and the `Select` options.
 - A new field on a card: add the column to `toSpeaker` first, then `SpeakerCard`.
 - Carousel timing or behaviour: `SpeakerSpotlight` (`ROTATE_MS`, the effects).
-- Follow behaviour or its toast: `toggleFollow` in `src/lib/store.jsx`.
+- Following from the UI: nothing exists yet — call `api.followSpeaker` /
+  `api.unfollowSpeaker` and keep the state in the store (`src/lib/store.jsx`),
+  like reservations, so every view agrees.

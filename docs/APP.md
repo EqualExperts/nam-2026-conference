@@ -22,16 +22,20 @@ you arrive mid-conference and the clock ticks while you watch. Pin it with
 
 ## What is in it
 
-- **My Agenda** — adding a session takes a seat, or a waitlist place when the
+- **Seats** — adding a session takes a seat, or a waitlist place when the
   room is full. Two seats in overlapping slots is a choice, not an error: the
   app offers a swap.
+- **My Agenda** — a blank page marked *coming soon*. Building it is the
+  workshop: the seats, the per-attendee schedule and today's view are all in
+  the API, waiting for a page.
 - **Check in and rate** — check-in opens 15 minutes before a session and closes
   when it ends; you can rate only what you attended, once it is over.
 - **Schedule** — a grid of rooms by time on desktop, a list on a phone, with
   filters that live in the URL.
 - **Speakers, venues, sponsors** — a tiered speaker index, the two venues on a
   real map, travel times between them.
-- **Calendar export** — any session, or your whole agenda, as `.ics`.
+- **Calendar export** — any session as `.ics` from its page; your whole agenda
+  from the API, with no button yet.
 
 ## The stack
 
