@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { creates, verdict, WORKSHOP_REPO } from '../../scripts/fork-guard.mjs';
+import { addsShipLabel, creates, verdict, WORKSHOP_REPO } from '../../scripts/fork-guard.mjs';
 
 const bash = (command) => creates({ toolName: 'Bash', command });
 
@@ -35,4 +35,26 @@ test('the workshop repo is blocked for an attendee, and a fork or a maintainer i
   assert.equal(verdict(WORKSHOP_REPO, true).ok, true);
   assert.equal(verdict('someone/nam-2026-conference', false).ok, true);
   assert.equal(verdict(null, false).ok, true);
+});
+
+const labels = (command) => addsShipLabel({ toolName: 'Bash', command });
+
+test('putting ready-for-ai on an issue is caught, however it is written', () => {
+  assert.equal(labels('gh issue edit 42 --add-label ready-for-ai'), true);
+  assert.equal(labels('gh issue edit 42 --add-label "bug,ready-for-ai"'), true);
+  assert.equal(labels('gh issue create --title x --body y --label ready-for-ai'), true);
+  assert.equal(labels('gh issue create -t x -b y -l ready-for-ai'), true);
+  assert.equal(labels('gh api repos/a/b/issues/42/labels -f "labels[]=ready-for-ai"'), true);
+  assert.equal(labels('curl -X POST -d \'{"labels":["ready-for-ai"]}\' https://api.github.com/repos/a/b/issues/42/labels'), true);
+  assert.equal(addsShipLabel({ toolName: 'mcp__github__issue_write', toolInput: { labels: ['ready-for-ai'] } }), true);
+});
+
+test('taking ready-for-ai off, or any other label, is let through', () => {
+  assert.equal(labels('gh issue edit 42 --add-label ai-working --remove-label ready-for-ai'), false);
+  assert.equal(labels('gh issue edit 42 --add-label needs-human'), false);
+  assert.equal(labels('gh api -X DELETE repos/a/b/issues/42/labels/ready-for-ai'), false);
+  assert.equal(labels('gh label create ready-for-ai --color 8250DF'), false);
+  assert.equal(labels('gh issue list --label ready-for-ai'), false);
+  assert.equal(addsShipLabel({ toolName: 'mcp__github__remove_issue_label', toolInput: { label: 'ready-for-ai' } }), false);
+  assert.equal(addsShipLabel({ toolName: 'Read', command: '' }), false);
 });

@@ -276,6 +276,17 @@ the base branch, beside `agent-run.sh`. None of this is a model call: it is
 call is wrapped so a rate limit or a malformed reply leaves the run
 untouched.
 
+**On a laptop** — how the workshop runs `/ship` — there is no pre-checkout
+post, no stream and no finish step, so `ship.js` reports itself. Off a runner
+(`!setup.runner`), every `enter(<phase>)` and each fix round queues a rote
+agent that pipes the script's own state (the shape `render()` takes) into
+`node scripts/ship-progress.mjs local <n> [<comment id>]`: the first creates
+the comment and prints its id, every later one edits it, and the elapsed
+clock is the comment's own `created_at`. The queue is never awaited mid-run,
+so reporting never holds a phase up; `settle()` awaits it at the end, writes
+**shipped** / **handed back**, and records the spend (below). In CI `local`
+is a no-op, and the script never queues it.
+
 **Escapes.** A code review or QA **FAIL** on a pull request ship built
 (branch `issue-<n>-…`) is something ship's own loop let through. The job's
 *🧯 Flag a harness escape* step labels the PR `harness-escape` — `gh pr list
@@ -298,6 +309,12 @@ cannot start another round.
   `upstream` before `origin`. It is a no-op under `$GITHUB_ACTIONS`. Ship's setup
   runs it without `--hook` before claiming. `ONBOARD_CLAUDE.md` is the
   attendee setup a Claude session reads and carries out.
+- **Agents never put `ready-for-ai` on.** The same hook blocks any call that
+  adds the label (`gh issue|pr create|edit --label/--add-label`, a `gh api` or
+  `curl` write naming it, a GitHub MCP label write) and answers "run `/ship
+  <n>`": the workshop ships from Claude on the laptop, and the label starts the
+  Actions ship, which attendees have no key for. Taking it off — ship's setup
+  does — is allowed, as is `gh label create`.
 
 - Only a **confirmed blocker** or a red gate costs a fix round. A refuted or
   minor finding never does.
@@ -437,7 +454,12 @@ cannot start another round.
   design for the progress comment was to have `ship.js` log milestones for
   `ship-progress.mjs` to read, and that recording is what ruled it out. What
   *is* live is each agent's `resultPreview` on `system/task_progress` — that
-  is what the follower reads instead.
+  is what the follower reads instead. A laptop run has no stream at all, so
+  there an agent is the only way out of the script: `report()` is one rote
+  agent per update, never awaited until `settle()`.
+- **A workflow script has no filesystem, shell or clock** — no `Date.now()`, no
+  env. Anything that needs one (the comment's age, the session's transcript
+  directory) is computed by the script an agent runs, never in `ship.js`.
 - Every tracked file under `server/`, `src/`, `scripts/` and `tests/` must be
   owned by a doc; a new script fails `npm test` until it is listed here or in
   its area's doc.
@@ -477,7 +499,12 @@ opened. CI rows are what the CLI billed (`modelUsage[*].costUSD` in the final
 `result`); a local run is a subscription, so `record --transcripts <workflow
 dir>` prices the per-agent transcripts with `RATES` and marks the row `~`. The
 step is `continue-on-error` and the script catches everything: reporting cost
-never fails the job that did the work.
+never fails the job that did the work. A laptop ship has no such step: its
+last rote agent runs `record --transcripts auto --ticket <n> [--pr <n>]` —
+`auto` is the `$CLAUDE_CODE_SESSION_ID` workflow directory under
+`~/.claude/projects` written to last (the asking agent's own transcript is in
+it), and `--ticket` keeps the agents whose prompt names `worktrees/wt-<n>`,
+since `/ship 1 2` writes both tickets into one directory.
 
 **Rote agents.** Ship's verify and PR steps run as `.claude/agents/ship-rote.md`
 (`agentType: 'ship-rote'`): Haiku, a two-line system prompt and

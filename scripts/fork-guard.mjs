@@ -23,6 +23,29 @@ const CREATE_CMD = /\bgh\s+(?:issue|pr)\s+create\b/;
 const API_CREATE = /\bgh\s+api\b(?=.*\/(?:issues|pulls)\b)(?=.*(?:-X\s*POST|--method[=\s]+POST|\s-[fF]\s|--field|--raw-field|--input))/;
 const MCP_CREATE = /github.*(?:create_issue|issue_write|create_pull_request|create_pr\b)/i;
 
+// The workshop runs /ship from Claude on the laptop. `ready-for-ai` starts the
+// GitHub Actions ship instead, which attendees have no key for — so an agent
+// may take the label off (ship does) but never put it on.
+export const SHIP_LABEL = 'ready-for-ai';
+const LABEL_FLAG = new RegExp(`(?:--add-label|--label|-l)[=\\s]+["']?[^\\s"']*\\b${SHIP_LABEL}\\b`);
+const API_LABEL = new RegExp(`\\b(?:gh\\s+api|curl)\\b(?=.*\\b${SHIP_LABEL}\\b)(?!.*(?:-X\\s*DELETE|--method[=\\s]+DELETE|--request[=\\s]+DELETE))`);
+
+/** Whether a tool call puts the `ready-for-ai` label on an issue or pull request. */
+export function addsShipLabel({ toolName = '', command = '', toolInput = {} }) {
+  if (toolName === 'Bash') {
+    if (/\bgh\s+(?:issue|pr)\s+(?:create|edit)\b/.test(command) && LABEL_FLAG.test(command)) return true;
+    return /\/labels\b|labels(?:\[\])?=|"labels"/.test(command) && API_LABEL.test(command);
+  }
+  if (toolName.startsWith('mcp__') && /github/i.test(toolName) && !/remove/i.test(toolName)) {
+    return JSON.stringify(toolInput.labels ?? toolInput.label ?? '').includes(SHIP_LABEL);
+  }
+  return false;
+}
+
+const SHIP_LABEL_MESSAGE =
+  `Blocked: adding the ${SHIP_LABEL} label starts the GitHub Actions ship, which this workshop does not use. ` +
+  `Build the ticket from Claude instead: run /ship <issue number> in Claude Code or Claude Desktop, opened in your clone.`;
+
 /** The `owner/repo` a creating tool call names outright, if any; `undefined` if it does not create. */
 export function creates({ toolName = '', command = '', toolInput = {} }) {
   if (toolName === 'Bash') {
@@ -74,7 +97,12 @@ function main() {
   if (hook) {
     let input = {};
     try { input = JSON.parse(readFileSync(0, 'utf8') || '{}'); } catch { return 0; }
-    const named = creates({ toolName: input.tool_name, command: input.tool_input?.command, toolInput: input.tool_input });
+    const call = { toolName: input.tool_name, command: input.tool_input?.command, toolInput: input.tool_input };
+    if (addsShipLabel(call)) {
+      process.stderr.write(`${SHIP_LABEL_MESSAGE}\n`);
+      return 2;
+    }
+    const named = creates(call);
     if (named === undefined) return 0;
     target = named ?? defaultTarget();
   } else {

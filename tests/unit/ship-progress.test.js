@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  readPreview, readStream, render, prLine, follow, finish, makeGh,
+  readPreview, readStream, render, prLine, follow, finish, makeGh, local,
 } from '../../scripts/ship-progress.mjs';
 
 /**
@@ -557,5 +557,44 @@ describe('sized from what runs, now that setup reports facts', () => {
     const body = render({ ...s, ended: false }, { issue: 7, runUrl: 'https://github.com/o/r/actions/runs/1', runId: '1', repo: 'o/r', now: 0, started: 0 });
     assert.match(body, /\[specs\/7-x\.md\]\(https:\/\/github\.com\/o\/r\/blob\/issue-7-x\/specs\/7-x\.md\)/);
     assert.doesNotMatch(body, /home\/runner/);
+  });
+});
+
+describe('local() — a laptop run, where ship.js sends its own state', () => {
+  const STATE = {
+    tier: 'small', branch: 'issue-7-x', spec: 'specs/7-x.md',
+    phases: [{ title: 'Setup', status: 'done' }, { title: 'Spec', status: 'done' }, { title: 'Implement', status: 'running' }, { title: 'PR', status: 'not-started' }],
+    rounds: [], ended: false, outcome: null,
+  };
+  const stub = () => {
+    const calls = [];
+    return { calls, repo: 'o/r',
+      create: async (b) => { calls.push(['create', b]); return '42'; },
+      patch: async (id, b) => { calls.push(['patch', id, b]); },
+      createdAt: async () => '2026-01-01T10:00:00.000Z' };
+  };
+
+  test('with no id it creates the comment and returns its id; with one it edits that comment', async () => {
+    const gh = stub();
+    assert.equal(await local({ issue: 7, state: STATE, gh, now: () => NOW }), '42');
+    assert.equal(await local({ issue: 7, commentId: '42', state: STATE, gh, now: () => NOW }), '42');
+    assert.deepEqual(gh.calls.map(c => c.slice(0, 2)), [['create', gh.calls[0][1]], ['patch', '42']]);
+  });
+
+  test('the clock is the comment’s own age, a phase it has not counted reads running, and there is no run link', async () => {
+    const gh = stub();
+    await local({ issue: 7, commentId: '42', state: STATE, gh, now: () => Date.parse('2026-01-01T10:12:00.000Z') });
+    const body = gh.calls[0][2];
+    assert.match(body, /🚢 Ship · small · 12m elapsed · on a laptop/);
+    assert.match(body, /\| Implement \| running \|/);
+    assert.match(body, /\| Spec \| done — \[specs\/7-x\.md\]\(https:\/\/github\.com\/o\/r\/blob\/issue-7-x\/specs\/7-x\.md\) \|/);
+    assert.doesNotMatch(body, /\[Run\]/);
+  });
+
+  test('a settled run says where it ended', async () => {
+    const gh = stub();
+    await local({ issue: 7, commentId: '42', gh, now: () => NOW,
+      state: { ...STATE, ended: true, outcome: { outcome: 'shipped', pr: 'https://github.com/o/r/pull/9' } } });
+    assert.match(gh.calls[0][2], /\*\*Shipped\*\* — \[pull request\]\(https:\/\/github\.com\/o\/r\/pull\/9\)/);
   });
 });
