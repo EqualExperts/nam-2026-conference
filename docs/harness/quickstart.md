@@ -1,34 +1,9 @@
-# Workshop quickstart — on your laptop
+# Workshop quickstart — using the harnesses
 
-Set up once, then one walkthrough for each harness. The two talks are
-[the product harness](https://orbit26.up.railway.app/product-presentation) and
-[the engineering harness](https://orbit26.up.railway.app/engineering-presentation);
-[the main README](../../README.md) has the fork setup, and
-[How the harness works](README.md) has every step in detail.
-
-## Once: get set up
-
-1. **Install the tools:** [Claude Code](https://docs.claude.com/en/docs/claude-code/overview)
-   (signed in), Node 22 (`nvm use` reads `.nvmrc`), and the
-   [GitHub CLI](https://cli.github.com) signed in with `gh auth login`.
-2. **Fork the repo** and follow the three steps of
-   [Set up your fork](../../README.md#set-up-your-fork): turn on Issues, turn on
-   Actions, and run *Set up the harness*, which creates the labels the agents
-   use. Your tickets go to your fork. The API key is optional — only the agents
-   on GitHub Actions need it; from your terminal, Claude Code uses your own sign-in.
-3. **Clone your fork and install:**
-   ```bash
-   gh repo clone <you>/nam-2026-conference && cd nam-2026-conference
-   gh repo set-default "$(git remote get-url origin)"   # keep gh on your fork, not the original
-   npm install
-   npx playwright install chromium   # the browser the tests run in
-   npm run dev                       # optional: the app on http://localhost:5173
-   ```
-4. **Start Claude Code** in the repo folder (`claude`) and run
-   `/setup-winnow`. It checks the context docs and that it can reach your
-   issues. It also asks whether you want audio. Say **no** unless you plan to
-   capture a live meeting or a recording: audio needs `uv` and a model download
-   of about 500 MB.
+Not set up yet? Paste the prompt from the [README](../../README.md) into Claude
+Code: it follows [ONBOARD_CLAUDE.md](../../ONBOARD_CLAUDE.md). Once you're set
+up, run everything below from Claude in your fork's folder. Every step in detail:
+[How the harness works](README.md).
 
 ## The product harness: from a conversation to tickets
 
@@ -73,13 +48,8 @@ to a pull request.
 its own ports. If a ticket will not come together, you get a **draft** pull
 request labelled `needs-human` that lists what is still open.
 
-## In GitHub — no terminal needed
+## On GitHub Actions instead
 
-| | |
-| --- | --- |
-| **1. Write the issue** | Why, what, and a **Done when:** list a test could check — *New issue → Ticket for the agents* gives you the shape |
-| **2. Label it `ready-for-ai`** | An agent picks it up and posts its progress on the issue |
-| **3. Review the pull request** | Comment `@claude …` and it makes the change and replies |
-| **4. Merge** | Or don't — nothing merges itself |
-
-Label ten issues and ten agents get to work.
+The same agents can run in the cloud — label an issue `ready-for-ai` and one
+ships it. The workshop demos that on the main repo; a fork needs an API key for
+it, set up as in [github.md](github.md).
