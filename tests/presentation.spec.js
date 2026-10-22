@@ -14,6 +14,14 @@ async function readCounter(page) {
   return { at, total };
 }
 
+/**
+ * Freeze the page's timers (needs `page.clock.install()` before `goto`), so the
+ * hand-off's 900 ms setTimeout fires only when a test runs the clock on.
+ */
+async function pauseTimers(page) {
+  await page.clock.pauseAt(Date.now() + 60_000);
+}
+
 test.describe('The harness presentation', () => {
   test('opens full screen on its title, with no app chrome', async ({ page }) => {
     const errors = failOnPageErrors(page);
@@ -147,11 +155,14 @@ test.describe('The product presentation', () => {
 
   test('with reduced motion the hand-off navigates at once', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.install();
     await page.goto('/product-presentation');
     // keys pressed before the deck mounts go nowhere: wait for it, then for End to land
     await expect(counter(page)).toHaveText(/^1 \//);
     await page.keyboard.press('End');
     await expect(counter(page)).not.toHaveText(/^1 \//);
+    // with timers paused the delayed hand-off can never fire: only "at once" gets there
+    await pauseTimers(page);
     await page.keyboard.press('ArrowRight');
     await expect(page).toHaveURL(/\/engineering-presentation$/);
   });
@@ -199,18 +210,20 @@ test.describe('The product presentation', () => {
   });
 
   test('going back during the hand-off cancels it', async ({ page }) => {
+    await page.clock.install();
     await page.goto('/product-presentation');
     await expect(counter(page)).toHaveText(/^1 \//);
     await page.keyboard.press('End');
     await expect(counter(page)).not.toHaveText(/^1 \//);
     const { total } = await readCounter(page);
 
-    // the hand-off waits 900 ms for the stars to warp; back inside that window stops it
+    // the hand-off waits 900 ms for the stars to warp; with time paused, back is
+    // always inside that window, however slow the runner
+    await pauseTimers(page);
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(200);
     await page.keyboard.press('ArrowLeft');
     await expect(counter(page)).toHaveText(new RegExp(`^${total - 1} /`));
-    await page.waitForTimeout(1500);
+    await page.clock.runFor(2000);
     await expect(page).toHaveURL(/\/product-presentation/);
   });
 });
