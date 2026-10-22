@@ -179,15 +179,30 @@ test('a lane can be released by the label it was claimed with', async () => {
   assert.equal(list(root).length, 0);
 });
 
-test('a port held only on IPv6 localhost is not free — Vite binds [::1]', async () => {
+test('a port held only on IPv6 localhost is not free — Vite binds [::1]', async (t) => {
   const { createServer } = await import('node:net');
   const { portFree } = await import('../../scripts/lane.mjs');
   const held = createServer();
-  await new Promise((done) => held.listen(0, '::1', done));
+  const listening = await new Promise((done, fail) => {
+    held.once('error', (err) => (err.code === 'EAFNOSUPPORT' ? done(false) : fail(err)));
+    held.listen(0, '::1', () => done(true));
+  });
+  // A container without IPv6 cannot hold [::1] at all; the next test covers it.
+  if (!listening) return t.skip('this machine has no IPv6');
   const { port } = held.address();
   try {
     assert.equal(await portFree(port), false);
   } finally {
     await new Promise((done) => held.close(done));
   }
+});
+
+test('a free port is free on a machine without IPv6 — a missing host does not count against it', async () => {
+  const { createServer } = await import('node:net');
+  const { portFree } = await import('../../scripts/lane.mjs');
+  const probe = createServer();
+  await new Promise((done) => probe.listen(0, '127.0.0.1', done));
+  const { port } = probe.address();
+  await new Promise((done) => probe.close(done));
+  assert.equal(await portFree(port), true);
 });
