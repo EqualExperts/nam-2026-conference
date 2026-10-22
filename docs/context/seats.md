@@ -74,8 +74,11 @@ the body; `api()` throws on non-2xx but keeps `err.status` and `err.payload`.
 - `reserveSeat` sends `clock`, catches a 409 and uses `err.payload`. `'ended'`
   → toast only; `'overlap'` → `setConflict(state)` and nothing applied;
   otherwise `applySeatState` + toast ("Seat booked" or the waitlist position).
+  Any other failure toasts "Could not book that seat: …" (`alert`) and resolves
+  `undefined`, applying nothing.
 - `releaseSeat(id, session)` → `applySeatState` + toast; the message differs
-  when `promoted`. The `action: { label: 'Undo', onClick: () => reserveSeat(id) }`
+  when `promoted`. A failure toasts "Could not remove that seat: …", applies
+  nothing and resolves `undefined`. The `action: { label: 'Undo', onClick: () => reserveSeat(id) }`
   is attached **only** when a `session` is passed and `hasEnded(session, clock)`
   is false — Undo is a fresh reservation and the API refuses one for a finished
   session, so no session means no Undo.
