@@ -11,6 +11,22 @@ AI harnesses: a **product harness** that turns a conversation into a GitHub
 issue, and an **engineering harness** that turns that issue into a reviewed pull
 request. My Agenda is deliberately blank — building it is the workshop.
 
+## 🚀 Let Claude set you up
+
+Start [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) (in a
+terminal, or the Code tab of Claude Desktop), then copy this — the button is at
+the top right of the box — and paste it in:
+
+```text
+Set me up for the ORBIT '26 workshop. Read https://raw.githubusercontent.com/EqualExperts/nam-2026-conference/main/ONBOARD_CLAUDE.md and follow it step by step.
+```
+
+It follows **[ONBOARD_CLAUDE.md](ONBOARD_CLAUDE.md)** — open it to see every
+step: it installs what is missing (git, the GitHub CLI, Node 22), forks this
+repo, clones your fork and checks everything works. The only thing it asks is where to
+fork to; you click or type a password only where a machine cannot. Prefer to do
+it by hand? Steps 1 and 2 below are the same setup.
+
 ## 📺 The two talks
 
 Watch them in order:
@@ -21,10 +37,6 @@ Watch them in order:
 → or Space to advance, **F** for full screen.
 
 <a id="set-up-your-fork"></a>
-
-> **Or let Claude do it:** in Claude Code or Claude Desktop, say *"Set me up for
-> the workshop using https://github.com/EqualExperts/nam-2026-conference/blob/main/ONBOARD_CLAUDE.md"*.
-> It forks, clones and checks everything below, and keeps your tickets on your fork.
 
 ## 1. ⚙️ Set up your fork
 
@@ -85,6 +97,7 @@ pull request — from your terminal or from GitHub alone.
 
 ## Read next
 
+- **[ONBOARD_CLAUDE.md](ONBOARD_CLAUDE.md)** — the setup procedure Claude follows, step by step.
 - **[How the harness works](docs/harness/README.md)** — every agent, every check, and why it is there.
 - **[The app](docs/APP.md)** — what ORBIT '26 does; **[CLAUDE.md](CLAUDE.md)** — the rules people and agents both work to.
 
