@@ -205,7 +205,7 @@ export function SpeakersPage() {
           icon="users"
           title={view === 'following' ? 'You are not following anyone yet' : (q ? `No speakers match “${q}”` : 'No speakers match')}
           description={view === 'following'
-            ? 'Follow a speaker from their profile and they collect here, with everything they are presenting.'
+            ? 'Follow a speaker from their profile and they collect here, at the top of the list.'
             : 'Try a different search, day or track.'}
           action={<Button size="sm" onClick={() => setParams(new URLSearchParams())}>Show everyone</Button>}
         />

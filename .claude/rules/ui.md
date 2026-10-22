@@ -118,7 +118,8 @@ When you add a new card type, ask what makes one instance more important than
 another and show it.
 
 The speakers page is tiered because 110 people are too many for one flat grid
-— followed, then featured headliners, then an A–Z index — and flattens once the
-user searches, filters or re-sorts, because then they have stated what matters.
+— followed, then featured headliners, then an A–Z index. The headliners and the
+index flatten into one list once the user searches, filters or re-sorts, because
+then they have stated what matters; the followed tier stays on top regardless.
 Mixed grids use `grid-flow-row-dense` so wide cards leave no holes. (how:
 `docs/context/speakers.md`)
