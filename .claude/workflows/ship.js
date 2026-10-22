@@ -635,8 +635,10 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
 
   // A gap already carried is still in the spec, so the next round raises it
   // again: it is already the builder's, and a second skeptic would only
-  // carry it twice (#114).
-  const blockers = found.filter(f => f.severity === 'blocker' && !carried.some(c => where(c) === where(f)))
+  // carry it twice (#114). Only the same finding, though — a different
+  // category at that spot is news, and one worth re-planning for never skips (#179).
+  const alreadyCarried = f => !REPLAN.has(f.category) && carried.some(c => where(c) === where(f) && c.category === f.category)
+  const blockers = found.filter(f => f.severity === 'blocker' && !alreadyCarried(f))
   const confirmed = blockers.length ? await confirm(blockers, 'the spec') : []
   history.push(...confirmed)
   specRounds.push({ round, raised: found.length, confirmed: confirmed.length, what: confirmed.map(f => f.claim) })
