@@ -113,6 +113,8 @@ export const LANES = {
   'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: andy, day: 2, slot: '11:30' } },
   'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: abraham, day: 2, slot: '10:15' } },
   'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: andy, day: 2, slot: '16:00' } },
+  // Fails a reserve and a release on purpose; owns a slot no other pane on this attendee and day pins.
+  'seats.failure-toast': { desktop: { user: jonas, day: 1, slot: '11:30' }, mobile: { user: sofia, day: 2, slot: '11:30' } },
   'seats.waitlist':   { desktop: { user: kenji, day: 0 },                 mobile: { user: sofia, day: 3 } },
   // Slots pinned only so 'attendance.rating-toast' below can share this
   // attendee and day (a real seat lane, so it never sets its own slot
