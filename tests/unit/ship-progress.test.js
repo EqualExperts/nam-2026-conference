@@ -585,7 +585,7 @@ describe('local() — a laptop run, where ship.js sends its own state', () => {
     const gh = stub();
     await local({ issue: 7, commentId: '42', state: STATE, gh, now: () => Date.parse('2026-01-01T10:12:00.000Z') });
     const body = gh.calls[0][2];
-    assert.match(body, /🚢 Ship · small · 12m elapsed · on a laptop/);
+    assert.match(body, /🚢 Ship · small · 12m elapsed · run from Claude/);
     assert.match(body, /\| Implement \| running \|/);
     assert.match(body, /\| Spec \| done — \[specs\/7-x\.md\]\(https:\/\/github\.com\/o\/r\/blob\/issue-7-x\/specs\/7-x\.md\) \|/);
     assert.doesNotMatch(body, /\[Run\]/);
