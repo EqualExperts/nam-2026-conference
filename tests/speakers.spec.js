@@ -180,3 +180,185 @@ test.describe('Headliner spotlight', () => {
     await expect(page.getByRole('heading', { name: 'You are not following anyone yet', exact: true })).toBeVisible();
   });
 });
+
+test.describe('Following from where the speaker is shown', () => {
+  const ROTATE_MS = 7000;
+  const userFor = (testInfo) => (testInfo.project.name === 'mobile' ? ATTENDEES.kenji : ATTENDEES.marcus);
+
+  /** A speaker this attendee does not follow, off the ids the other follow tests use. */
+  async function pick(request, user, { featured, skip = [] }) {
+    const me = await (await request.get(`${API}/users/${user}`)).json();
+    const followed = new Set(me.followedSpeakers.map((s) => s.id));
+    const all = await (await request.get(`${API}/speakers`)).json();
+    const speaker = all.find((s) => Boolean(s.featured) === featured && !followed.has(s.id)
+      && ![3, 9, ...skip].includes(s.id));
+    return { speaker, followedCount: followed.size };
+  }
+  async function firstSessionId(request, speakerId) {
+    const sp = await (await request.get(`${API}/speakers/${speakerId}`)).json();
+    return sp.sessions[0].id;
+  }
+  /** Client-side navigation: no reload, so the store must carry the change. */
+  const spaGo = (page, path) => page.evaluate((to) => {
+    window.history.pushState({}, '', to);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, path);
+  const intersects = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width
+    && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  test('the carousel follows the current headliner without leaving the page', async ({ page, request }, testInfo) => {
+    const user = userFor(testInfo);
+    const { speaker } = await pick(request, user, { featured: true });
+    try {
+      await visit(page, '/speakers', { as: user });
+      const spotlight = page.getByTestId('speaker-spotlight');
+      await spotlight.getByRole('tab', { name: speaker.name, exact: true }).click();
+      await expect(spotlight.getByRole('heading', { name: speaker.name })).toBeVisible();
+      const toggle = spotlight.getByTestId('follow-toggle');
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      await expect(toggle).toHaveAccessibleName(`Follow ${speaker.name}`);
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      await expect(toggle).toHaveText(/Following/);
+      await expect(page).toHaveURL(/\/speakers$/);
+      await expect(spotlight.getByRole('heading', { name: speaker.name })).toBeVisible();
+      await expect(page.getByTestId('followed-speakers')).toContainText(speaker.name);
+      await shotForPR(page, 'Follow button on the Featured speakers carousel, reading Following');
+    } finally {
+      await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
+    }
+  });
+
+  test('a grid card toggles follow without opening the profile, and the rest of it still does', async ({ page, request }, testInfo) => {
+    const user = userFor(testInfo);
+    const { speaker } = await pick(request, user, { featured: false });
+    try {
+      await request.put(`${API}/users/${user}/follows/${speaker.id}`);
+      await visit(page, '/speakers', { as: user });
+      const section = page.getByTestId('followed-speakers');
+      const card = section.getByTestId('speaker-card').filter({ hasText: speaker.name });
+      await expect(card).toBeVisible();
+      const toggle = card.getByTestId('follow-toggle');
+      await expect(toggle).toHaveAccessibleName(`Following ${speaker.name}`);
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      await toggle.click();
+      await expect(page).toHaveURL(/\/speakers$/);
+      await expect(card).toHaveCount(0);
+
+      // the card body still opens the profile
+      await request.put(`${API}/users/${user}/follows/${speaker.id}`);
+      await visit(page, '/speakers', { as: user });
+      await section.getByTestId('speaker-card').filter({ hasText: speaker.name }).getByRole('heading').click();
+      await expect(page).toHaveURL(new RegExp(`/speakers/${speaker.id}$`));
+      await visit(page, '/speakers', { as: user });
+      await section.getByTestId('speaker-card').filter({ hasText: speaker.name }).locator('img, [data-avatar]').first().click();
+      await expect(page).toHaveURL(new RegExp(`/speakers/${speaker.id}$`));
+    } finally {
+      await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
+    }
+  });
+
+  test('a session page speaker has the toggle, and it is reflected everywhere without a reload', async ({ page, request }, testInfo) => {
+    const user = userFor(testInfo);
+    const { speaker, followedCount } = await pick(request, user, { featured: false, skip: [] });
+    const sessionId = await firstSessionId(request, speaker.id);
+    try {
+      await visit(page, `/sessions/${sessionId}`, { as: user });
+      const card = page.getByTestId('session-speaker').filter({ hasText: speaker.name });
+      const toggle = card.getByRole('button', { name: `Follow ${speaker.name}` });
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      await toggle.click();
+      await expect(card.getByRole('button', { name: `Following ${speaker.name}` })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}$`));
+      await shotForPR(page, 'Follow toggle on a session page speaker');
+
+      // in-app navigation only
+      await card.getByRole('link', { name: speaker.name }).click();
+      await expect(page).toHaveURL(new RegExp(`/speakers/${speaker.id}$`));
+      await expect(page.getByTestId('follow-speaker')).toHaveAttribute('aria-pressed', 'true');
+
+      await spaGo(page, '/speakers');
+      const followed = page.getByTestId('followed-speakers');
+      await expect(followed.getByTestId('speaker-card').filter({ hasText: speaker.name })).toContainText('Following');
+      await page.getByTestId('filter-following').click();
+      await expect(page.getByTestId('followed-speakers')).toContainText(speaker.name);
+
+      await spaGo(page, '/');
+      const n = followedCount + 1;
+      await expect(page.getByTestId('followed-sessions')).toContainText(`${n} ${n === 1 ? 'speaker' : 'speakers'} followed`);
+      await expect(page.getByTestId('followed-sessions').getByTestId('session-card').first()).toBeVisible();
+    } finally {
+      await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
+    }
+  });
+
+  test('the session page toggle is reachable by keyboard and the name opens the profile', async ({ page, request }, testInfo) => {
+    const user = userFor(testInfo);
+    const { speaker } = await pick(request, user, { featured: false, skip: [] });
+    const sessionId = await firstSessionId(request, speaker.id);
+    try {
+      await visit(page, `/sessions/${sessionId}`, { as: user });
+      const card = page.getByTestId('session-speaker').filter({ hasText: speaker.name });
+      await card.getByRole('link', { name: speaker.name }).focus();
+      await page.keyboard.press('Tab');
+      const toggle = card.getByTestId('follow-toggle');
+      await expect(toggle).toBeFocused();
+      await expect(toggle).toHaveAccessibleName(`Follow ${speaker.name}`);
+      await page.keyboard.press('Enter');
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}$`));
+
+      await card.getByRole('link', { name: speaker.name }).click();
+      await expect(page).toHaveURL(new RegExp(`/speakers/${speaker.id}$`));
+    } finally {
+      await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
+    }
+  });
+
+  test('the carousel does not rotate away while Follow is hovered or focused', async ({ page, request }, testInfo) => {
+    const user = userFor(testInfo);
+    await page.clock.install();
+    await visit(page, '/speakers', { as: user });
+    const spotlight = page.getByTestId('speaker-spotlight');
+    const heading = spotlight.getByRole('heading', { level: 3 });
+    const first = await heading.innerText();
+    const toggle = spotlight.getByTestId('follow-toggle');
+
+    if (testInfo.project.name === 'mobile') await toggle.focus();
+    else await toggle.hover();
+    await page.clock.runFor(ROTATE_MS * 2);
+    await expect(heading).toHaveText(first);
+
+    // control: once it is let go the carousel does move on
+    if (testInfo.project.name === 'mobile') await toggle.blur();
+    else await page.mouse.move(0, 0);
+    await page.clock.runFor(ROTATE_MS + 500);
+    await expect(heading).not.toHaveText(first);
+  });
+
+  test('the toggle does not overlap the rest of a card', async ({ page, request }, testInfo) => {
+    const user = userFor(testInfo);
+    const { speaker } = await pick(request, user, { featured: false });
+    const sessionId = await firstSessionId(request, speaker.id);
+    try {
+      await request.put(`${API}/users/${user}/follows/${speaker.id}`);
+      await visit(page, '/speakers', { as: user });
+      const card = page.getByTestId('followed-speakers').getByTestId('speaker-card').filter({ hasText: speaker.name });
+      const box = await card.getByTestId('follow-toggle').boundingBox();
+      for (const other of [card.getByRole('heading'), ...await card.getByTestId('speaker-badge').all()]) {
+        expect(intersects(box, await other.boundingBox())).toBe(false);
+      }
+
+      await visit(page, `/sessions/${sessionId}`, { as: user });
+      const sc = page.getByTestId('session-speaker').filter({ hasText: speaker.name });
+      const sbox = await sc.getByTestId('follow-toggle').boundingBox();
+      for (const other of [sc.getByRole('heading'), sc.locator('p')]) {
+        for (const el of await other.all()) {
+          expect(intersects(sbox, await el.boundingBox())).toBe(false);
+        }
+      }
+    } finally {
+      await request.delete(`${API}/users/${user}/follows/${speaker.id}`);
+    }
+  });
+});
