@@ -53,8 +53,3 @@ password if an installer wants one, and click once to turn on Actions.
 
 `/winnow` turns a conversation into tickets; `/ship 42` builds one. Walkthrough:
 [docs/harness/quickstart.md](docs/harness/quickstart.md).
-
----
-
-Ship loop by **Andy Vays**; built by **Jonas Claesson** and **Abraham Marín Pérez**
-at Equal Experts, with Abraham's [winnow](https://github.com/quiram/winnow).
