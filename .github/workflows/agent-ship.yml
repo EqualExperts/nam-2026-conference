@@ -43,13 +43,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ship:
-    # `labeled` fires for every label, so the filter is what makes this a
-    # dispatch rather than a nuisance. A comment counts only on an issue (not
-    # a pull request), only from someone with write access — it becomes part
-    # of the agent's instructions — and never from the agent's own replies.
-    # Nor from the harness's own comments (markers <!-- orbit-… / ship-progress):
-    # the AI-spend ledger once said "@claude" in its footer and started five ships.
+  # Without an ANTHROPIC_API_KEY secret — a workshop fork, whose agents run
+  # from Claude on the laptop — the agent job has nothing to run with. A job's
+  # `if` cannot read a secret, so this one reads it, carrying the trigger
+  # condition the agent job had, and the agent job needs it: skipped in
+  # seconds, instead of failing after minutes of npm install and a browser.
+  key:
     if: |
       github.event.label.name == 'ready-for-ai' ||
       (github.event_name == 'issue_comment' &&
@@ -59,6 +58,26 @@ jobs:
        !contains(github.event.comment.body, '<!-- orbit-') &&
        !contains(github.event.comment.body, '<!-- ship-progress') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    runs-on: ubuntu-latest
+    outputs:
+      has: ${{ steps.key.outputs.has }}
+    steps:
+      - id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          [ "$HAS_KEY" = "true" ] || echo "::notice::No ANTHROPIC_API_KEY secret — the agent is skipped. Run it from Claude on your laptop instead."
+
+  ship:
+    # `labeled` fires for every label, so the filter is what makes this a
+    # dispatch rather than a nuisance. A comment counts only on an issue (not
+    # a pull request), only from someone with write access — it becomes part
+    # of the agent's instructions — and never from the agent's own replies.
+    # Nor from the harness's own comments (markers <!-- orbit-… / ship-progress):
+    # the AI-spend ledger once said "@claude" in its footer and started five ships.
+    needs: key
+    if: ${{ needs.key.outputs.has == 'true' }}
     runs-on: ubuntu-latest
     # A clean ticket takes one audit round; a hard one takes four. Past this
     # it is not converging.

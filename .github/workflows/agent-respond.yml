@@ -23,6 +23,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Without an ANTHROPIC_API_KEY secret — a workshop fork, whose agents run
+  # from Claude on the laptop — the agent job has nothing to run with. A job's
+  # `if` cannot read a secret, so this one reads it, carrying the trigger
+  # condition the agent job had, and the agent job needs it: skipped in
+  # seconds, instead of failing after minutes of npm install and a browser.
+  key:
+    if: |
+      (contains(github.event.comment.body, '@claude') ||
+       contains(github.event.review.body, '@claude')) &&
+      !contains(github.event.comment.body, 'Claude finished') &&
+      !contains(github.event.comment.body, '<!-- orbit-') &&
+      !contains(github.event.comment.body, '<!-- ship-progress') &&
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association)
+    runs-on: ubuntu-latest
+    outputs:
+      has: ${{ steps.key.outputs.has }}
+    steps:
+      - id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          [ "$HAS_KEY" = "true" ] || echo "::notice::No ANTHROPIC_API_KEY secret — the agent is skipped. Run it from Claude on your laptop instead."
+
   respond:
     # A review carries its body on `review`, a comment on `comment`. The other
     # is null, and `contains(null, ...)` is false, so this covers both.
@@ -32,14 +57,8 @@ jobs:
     # another reply. Its reports all carry this marker.
     # On a plain issue `@claude` means "build this", which agent-ship.yml
     # handles with the ship loop; this job answers on pull requests only.
-    if: |
-      (contains(github.event.comment.body, '@claude') ||
-       contains(github.event.review.body, '@claude')) &&
-      !contains(github.event.comment.body, 'Claude finished') &&
-      !contains(github.event.comment.body, '<!-- orbit-') &&
-      !contains(github.event.comment.body, '<!-- ship-progress') &&
-      (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association)
+    needs: key
+    if: ${{ needs.key.outputs.has == 'true' }}
     runs-on: ubuntu-latest
     # On #41 it confirmed a review blocker, found a second bug, and died at
     # 19 minutes before pushing either — out of turns. A fix plus the gate
