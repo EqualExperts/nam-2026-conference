@@ -216,23 +216,21 @@ export function SessionPage() {
                 >
                   <Avatar name={sp.name} initials={sp.initials} accent={sp.accent} imageUrl={sp.imageUrl} size="lg" />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="min-w-0 truncate font-semibold group-hover:text-violet-200">
-                        <Link
-                          to={`/speakers/${sp.id}`}
-                          className="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-violet-400"
-                        >
-                          {sp.name}
-                        </Link>
-                      </h3>
-                      {sp.role !== 'Speaker' && (
-                        <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-faint">
-                          {sp.role}
-                        </span>
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-muted">{sp.jobTitle}</p>
-                    <p className="truncate text-xs font-medium text-faint">{sp.company}</p>
+                    <Link
+                      to={`/speakers/${sp.id}`}
+                      className="block after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-violet-400"
+                    >
+                      <span className="flex items-center gap-2">
+                        <h3 className="min-w-0 truncate font-semibold group-hover:text-violet-200">{sp.name}</h3>
+                        {sp.role !== 'Speaker' && (
+                          <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-faint">
+                            {sp.role}
+                          </span>
+                        )}
+                      </span>
+                      <span className="block truncate text-xs text-muted">{sp.jobTitle}</span>
+                      <span className="block truncate text-xs font-medium text-faint">{sp.company}</span>
+                    </Link>
                     <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted">{sp.bio}</p>
                     <FollowButton speaker={sp} className="relative z-10 mt-3" />
                   </div>
