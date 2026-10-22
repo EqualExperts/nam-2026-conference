@@ -796,7 +796,7 @@ const ciStmt = prep('INSERT OR IGNORE INTO check_ins (user_id,session_id,checked
  * "This morning" is a fixed cutoff, not the wall clock, so the seed stays
  * deterministic. The same rules as the API apply: you held a confirmed seat,
  * you checked in, and only then do you get to rate it. Not everyone gets round
- * to rating, which leaves the home page something to ask about.
+ * to rating, which leaves an agenda something to ask about.
  */
 const MORNING_ENDS = '12:15';
 

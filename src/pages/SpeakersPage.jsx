@@ -73,13 +73,13 @@ function AlphabeticalList({ speakers }) {
 
 export function SpeakersPage() {
   useDocumentTitle('Speakers');
-  const { tracks, days, followingIds } = useConference();
+  const { tracks, days } = useConference();
   const [params, setParams] = useSearchParams();
 
   const q = params.get('q') ?? '';
   const track = params.get('track') ?? ALL;
   const day = params.get('day') ?? ALL;
-  const view = params.get('show') ?? ALL; // all | following | keynotes | first-time
+  const view = params.get('show') ?? ALL; // all | keynotes | first-time
   const sort = params.get('sort') ?? 'featured';
 
   const set = (key, value) => {
@@ -102,18 +102,16 @@ export function SpeakersPage() {
 
   const all = useMemo(() => {
     let list = [...(data ?? [])];
-    if (view === 'following') list = list.filter((s) => followingIds.has(s.id));
     if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
     if (sort === 'sessions') list.sort((a, b) => (b.sessionCount ?? 0) - (a.sessionCount ?? 0));
     if (sort === 'rating') list.sort((a, b) => b.avgRating - a.avgRating);
     return list;
-  }, [data, sort, view, followingIds]);
+  }, [data, sort]);
 
   const narrowed = Boolean(q) || track !== ALL || day !== ALL || view !== ALL;
-  const followed = all.filter((s) => followingIds.has(s.id));
-  const headline = all.filter((s) => s.featured && !followingIds.has(s.id));
+  const headline = all.filter((s) => s.featured);
   // Once narrowed, the headliner spotlight is hidden, so featured people belong in the results.
-  const rest = all.filter((s) => (narrowed || !s.featured) && !followingIds.has(s.id));
+  const rest = all.filter((s) => narrowed || !s.featured);
 
   return (
     <div className="space-y-8">
@@ -144,16 +142,6 @@ export function SpeakersPage() {
           onChange={(v) => set('show', v)}
           options={[
             { value: ALL, label: 'Everyone', testId: 'filter-all' },
-            {
-              value: 'following',
-              label: 'Following',
-              icon: 'check',
-              count: followingIds.size || undefined,
-              disabled: followingIds.size === 0,
-              title: followingIds.size === 0 ? 'You are not following anyone yet' : undefined,
-              testId: 'filter-following',
-              activeClass: 'border-emerald-400/50 bg-emerald-500/15 text-ink',
-            },
             { value: 'keynotes', label: 'Keynotes', icon: 'mic', testId: 'filter-keynotes' },
             { value: 'first-time', label: 'First-timers', icon: 'sparkle', testId: 'filter-first-time' },
           ]}
@@ -203,30 +191,10 @@ export function SpeakersPage() {
       {!loading && !error && all.length === 0 && (
         <EmptyState
           icon="users"
-          title={view === 'following' ? 'You are not following anyone yet' : (q ? `No speakers match “${q}”` : 'No speakers match')}
-          description={view === 'following'
-            ? 'Follow a speaker from their profile and they collect here, with everything they are presenting.'
-            : 'Try a different search, day or track.'}
+          title={q ? `No speakers match “${q}”` : 'No speakers match'}
+          description="Try a different search, day or track."
           action={<Button size="sm" onClick={() => setParams(new URLSearchParams())}>Show everyone</Button>}
         />
-      )}
-
-      {/* People you follow always come first, whatever else is on screen. */}
-      {!loading && followed.length > 0 && (
-        <section data-testid="followed-speakers">
-          <div className="mb-4 flex items-baseline gap-3">
-            <h2 className="font-display text-xl">Following</h2>
-            <span className="h-px flex-1 bg-hairline" />
-            <span className="text-[11px] text-faint">{plural(followed.length, 'speaker')}</span>
-          </div>
-          <div className="stagger grid gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-            {followed.map((s, i) => (
-              <div key={s.id} style={{ '--i': Math.min(i, 12) }} className="contents">
-                <SpeakerCard speaker={s} />
-              </div>
-            ))}
-          </div>
-        </section>
       )}
 
       {!loading && !narrowed && headline.length > 0 && (

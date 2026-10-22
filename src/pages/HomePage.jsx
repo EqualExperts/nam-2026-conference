@@ -2,14 +2,11 @@ import { Link } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 import * as api from '../lib/api.js';
-import { plural, relativeDate, shortDay, time as fmtTime } from '../lib/format.js';
-import { SessionCard } from '../components/SessionCard.jsx';
-import { LiveNow } from '../components/LiveNow.jsx';
-import { TodayPanel } from '../components/TodayPanel.jsx';
+import { relativeDate, time as fmtTime } from '../lib/format.js';
 import { SponsorMarquee } from '../components/SponsorMarquee.jsx';
 import { Reveal } from '../components/Reveal.jsx';
 import { HeroMedia } from '../components/HeroMedia.jsx';
-import { Avatar, Button, Chip, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
+import { Button, Chip, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 
 /**
@@ -50,60 +47,42 @@ function HeroBar({ conference }) {
           <Button to={`/schedule?day=${clock.day}`} variant="primary" size="sm">
             Browse today <Icon name="arrowRight" className="size-3.5" />
           </Button>
-          <Button to="/my-agenda" size="sm">My agenda</Button>
+          <Button to="/speakers" size="sm">Speakers</Button>
         </div>
       </div>
     </section>
   );
 }
 
-/** Speakers check their seat count obsessively. Give them it. */
-function SpeakingStrip() {
-  const { currentUser } = useConference();
-  const { data } = useFetch(() => api.getUser(currentUser.id), [currentUser.id]);
-  if (!currentUser.isSpeaker || !data?.speakingSessions?.length) return null;
+/** The main pages, one tap each — a way in, not a feed. */
+const LINKS = [
+  { to: '/schedule', label: 'Schedule', blurb: 'Every session, by day, room and track', icon: 'calendar' },
+  { to: '/speakers', label: 'Speakers', blurb: 'Who is on stage, A to Z', icon: 'users' },
+  { to: '/venues', label: 'Venues', blurb: 'Both sites, their rooms and getting between them', icon: 'building' },
+  { to: '/food', label: 'Food & drink', blurb: 'What is open, and where', icon: 'food' },
+  { to: '/expo', label: 'Expo', blurb: 'Partners and sponsors', icon: 'grid' },
+];
 
-  const sessions = data.speakingSessions;
+function QuickLinks() {
   return (
-    <section className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-5 sm:p-6"
-      data-testid="speaking-strip">
-      <div className="flex flex-wrap items-center gap-3">
-        <Avatar name={data.speaker.name} initials={data.speaker.initials}
-          accent={data.speaker.accent} imageUrl={data.speaker.imageUrl} size="md" />
-        <div>
-          <Chip accent="violet" className="!py-0.5 !text-[10px]">
-            <Icon name="mic" className="size-3" /> You are on stage
-          </Chip>
-          <h2 className="mt-1 font-display text-lg leading-tight">
-            {plural(sessions.length, 'session')} on your programme
-          </h2>
-        </div>
-        <Button to="/my-agenda" size="sm" className="ml-auto">Speaker view</Button>
-      </div>
-
-      <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {sessions.slice(0, 3).map((s) => {
-          const pct = Math.round(s.fillRate * 100);
-          return (
-            <li key={s.id}>
-              <Link to={`/sessions/${s.id}`}
-                className="block rounded-xl border border-hairline bg-surface p-3 transition-colors hover:border-white/20">
-                <div className="flex items-baseline justify-between gap-2 font-mono text-[11px]">
-                  <span className="text-muted">{shortDay(s.day)} · {fmtTime(s.startsAt)}</span>
-                  <span className="text-ink">{s.seatsTaken}/{s.capacity}</span>
-                </div>
-                <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug">{s.title}</p>
-                <div className="mt-2 h-1 overflow-hidden rounded-full bg-overlay">
-                  <div className={cx('h-full rounded-full',
-                    pct >= 95 ? 'bg-rose-400' : pct >= 80 ? 'bg-amber-400' : 'bg-emerald-400')}
-                    style={{ width: `${Math.min(100, pct)}%` }} />
-                </div>
-              </Link>
-            </li>
-          );
-        })}
+    <nav aria-label="Explore the conference" data-testid="quick-links">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {LINKS.map((l) => (
+          <li key={l.to}>
+            <Link to={l.to}
+              className="group flex items-start gap-3 rounded-xl border border-hairline bg-surface p-4 transition-colors hover:border-white/20 hover:bg-raised">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-500/12 text-violet-300">
+                <Icon name={l.icon} className="size-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold group-hover:text-violet-200">{l.label}</span>
+                <span className="block text-[13px] text-muted">{l.blurb}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
       </ul>
-    </section>
+    </nav>
   );
 }
 
@@ -148,33 +127,6 @@ function LatestAnnouncement() {
   );
 }
 
-function FromSpeakersYouFollow() {
-  const { currentUser, followingIds } = useConference();
-  const { data, loading } = useFetch(
-    () => api.getFollowedSessions(currentUser.id),
-    [currentUser.id, followingIds.size],
-  );
-  const sessions = (data ?? []).slice(0, 3);
-  if (!loading && sessions.length === 0) return null;
-
-  return (
-    <section data-testid="followed-sessions">
-      <SectionHeader
-        eyebrow={`${plural(followingIds.size, 'speaker')} followed`}
-        title="From speakers you follow"
-        action={<Button to="/speakers?show=following" size="sm">
-          Manage <Icon name="chevronRight" className="size-3.5" />
-        </Button>}
-      />
-      <div className="mt-6 grid grid-flow-row-dense grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
-        {loading
-          ? Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-64" />)
-          : sessions.map((s) => <SessionCard key={s.id} session={s} showDay />)}
-      </div>
-    </section>
-  );
-}
-
 export function HomePage() {
   const { conference } = useConference();
   useDocumentTitle("ORBIT '26");
@@ -184,11 +136,8 @@ export function HomePage() {
     // each one leaves a blank gap in the stack.
     <div className="space-y-8 [&>:empty]:hidden">
       <HeroBar conference={conference} />
-      <LiveNow />
-      <Reveal><TodayPanel /></Reveal>
-      <Reveal><SpeakingStrip /></Reveal>
+      <QuickLinks />
       <Reveal><LatestAnnouncement /></Reveal>
-      <Reveal><FromSpeakersYouFollow /></Reveal>
       <SponsorMarquee />
     </div>
   );

@@ -22,7 +22,6 @@ export function ConferenceProvider({ children }) {
     const stored = Number(localStorage.getItem(STORAGE_KEY));
     return Number.isFinite(stored) && stored > 0 ? stored : 1;
   });
-  const [followingIds, setFollowingIds] = useState(() => new Set());
   // sessionId -> 'confirmed' | 'waitlisted'
   const [reservations, setReservations] = useState(() => new Map());
   // sessionId -> live seat counts, so a reservation updates every view at once
@@ -40,30 +39,15 @@ export function ConferenceProvider({ children }) {
     let active = true;
     localStorage.setItem(STORAGE_KEY, String(currentUserId));
     // Never let one attendee act on the previous attendee's state.
-    setFollowingIds(new Set());
     setReservations(new Map());
     api.getUser(currentUserId)
       .then((u) => {
         if (!active) return;
-        setFollowingIds(new Set(u.followedSpeakers.map((s) => s.id)));
         setReservations(new Map((u.reservations ?? []).map((r) => [r.sessionId, r.status])));
       })
       .catch(() => {});
     return () => { active = false; };
   }, [currentUserId]);
-
-  const toggleFollow = useCallback(async (speakerId) => {
-    const following = followingIds.has(speakerId);
-    const call = following ? api.unfollowSpeaker : api.followSpeaker;
-    await call(currentUserId, speakerId);
-    setFollowingIds((prev) => {
-      const next = new Set(prev);
-      if (following) next.delete(speakerId);
-      else next.add(speakerId);
-      return next;
-    });
-    toast({ message: following ? 'Unfollowed' : 'Following — their sessions show in your feed', icon: 'bell' });
-  }, [currentUserId, followingIds, toast]);
 
   /** Apply a seat-state payload from the API to local state. */
   const applySeatState = useCallback((state) => {
@@ -170,9 +154,6 @@ export function ConferenceProvider({ children }) {
       currentUser: users.find((u) => u.id === currentUserId) ?? users[0] ?? null,
       currentUserId,
       setCurrentUserId,
-      followingIds,
-      isFollowing: (id) => followingIds.has(id),
-      toggleFollow,
       reservations,
       reservationFor: (id) => reservations.get(id) ?? null,
       seatCounts,
@@ -187,7 +168,7 @@ export function ConferenceProvider({ children }) {
       venueById: Object.fromEntries((data?.venues ?? []).map((v) => [v.id, v])),
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
-  }, [data, error, clock, currentUserId, followingIds, toggleFollow,
+  }, [data, error, clock, currentUserId,
       reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat,
       conflict, resolveConflict]);
 

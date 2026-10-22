@@ -42,7 +42,6 @@ export async function momentOn(dayIndex, time) {
 }
 
 export const MID_SESSION_TIME = '10:30';   // inside the 10:15 slot
-export const BETWEEN_SLOTS_TIME = '11:10'; // the gap before 11:30
 
 /** Open a route as a given attendee, optionally with the clock pinned. */
 export async function visit(page, path = '/', { as = ATTENDEES.jonas, at = null } = {}) {
@@ -100,11 +99,8 @@ export async function clearAgendaFor(request, userId, day) {
  * `seats.twice` use there. A lane that only needs a clean day (no count
  * assertion) may take day 3's one remaining slot instead, same as any other day.
  *
- * Read-only fixtures to leave alone: Jonas on day 1 (home page), Jonas and
- * Kenji on day 2 (the promotion fixture), Marcus on day 4 (must stay empty).
- * Jonas holds no waitlist place anywhere, and `plan.spec.js` reads him as the
- * attendee who sees no waitlisted hours — so never queue him for a full room
- * (`tests/unit/lanes.test.js` fails a lane whose test says "waitlist" on him).
+ * Read-only fixture to leave alone: Jonas and Kenji on day 2 (the promotion
+ * fixture).
  * Lanes marked `clean` are days the seed leaves empty for that attendee, so the
  * test may clear the whole day; everywhere else, release only what you booked.
  */
@@ -123,17 +119,7 @@ export const LANES = {
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
   // read-only: it books nothing, and needs a day the seed sells sessions out on
   'schedule.seats':   { desktop: { user: kenji, day: 1, readOnly: true }, mobile: { user: marcus, day: 0, readOnly: true } },
-  // Queues for a full room, so the attendee is never Jonas. Each pane pins the
-  // full slot it queues in, distinct from the other panes on its attendee and day.
-  'agenda.waitlist':  { desktop: { user: abraham, day: 0, slot: '11:30' },  mobile: { user: marcus, day: 0, slot: '16:00' } },
-  'agenda.add':       { desktop: { user: andy, day: 1 },                 mobile: { user: abraham, day: 1 } },
   'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: andy, day: 0 } },
-  // Kenji and Marcus only attend days 1–2, so day index 2 is unbooked for both —
-  // a clean day to book exactly one session on, distinct from the day-4 lanes above.
-  // No exact seat-count assertion here, so this owns 17:15 — the one slot on
-  // day index 2 the seats.* lanes above leave alone — rather than a dynamic
-  // pick that could otherwise land on one of their sessions.
-  'agenda.next-up-done': { desktop: { user: marcus, day: 2, slot: '17:15', clean: true }, mobile: { user: kenji, day: 2, slot: '17:15', clean: true } },
   // marcus/day 3 desktop and jonas/day 0 mobile are each used by no other lane,
   // so concurrent tests cannot collide on these attendee+day pairs.
   'switcher.live-count': { desktop: { user: marcus, day: 3 }, mobile: { user: jonas, day: 0, clean: true } },
@@ -144,9 +130,6 @@ export const LANES = {
   // Rates for real, so it must land on day index 0 — `today` — per
   // smoke.spec.js's "no session in the future carries a rating".
   'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: abraham, day: 0, slot: '09:00', agenda: false } },
-  // Checks in to the attendee's seeded 17:15 seat on Day 1 and never rates it,
-  // so My Agenda has something to list in its to-rate callout. Books nothing.
-  'agenda.to-rate':           { desktop: { user: kenji, day: 0, slot: '17:15', agenda: false }, mobile: { user: sofia, day: 0, slot: '17:15', agenda: false } },
 };
 
 /**

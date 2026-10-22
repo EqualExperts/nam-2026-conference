@@ -7,7 +7,7 @@ import { plural, time as fmtTime } from '../lib/format.js';
 import { toMinutes, relativeToNow } from '../lib/clock.js';
 import { Chip, Skeleton, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
-import { LiveBadge } from './LiveNow.jsx';
+import { LiveBadge } from './LiveBadge.jsx';
 
 /**
  * A live board of every room at one venue: what is on now, what is next, and

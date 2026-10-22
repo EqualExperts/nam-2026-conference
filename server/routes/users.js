@@ -57,7 +57,7 @@ usersRouter.get('/:id/agenda.ics', (req, res) => {
 /**
  * GET /api/users/:id/today?day=&time=
  *
- * Everything the home page needs about *this* attendee at *this* moment:
+ * Everything a personal view needs about *this* attendee at *this* moment:
  * what they are in now, what is next, what they are waiting on, and — for the
  * slots they have left empty — a few suggestions drawn from what they have
  * actually been booking rather than what they once declared.

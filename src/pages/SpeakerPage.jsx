@@ -26,11 +26,8 @@ const handleOf = (key, value) =>
 
 export function SpeakerPage() {
   const { id } = useParams();
-  const { isFollowing, toggleFollow } = useConference();
-  const following = isFollowing(Number(id));
-  // followerCount already includes you if you follow, so refetch when that
-  // changes rather than adding one on the client and counting you twice.
-  const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id, following]);
+  const { currentUser } = useConference();
+  const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id]);
   const notFound = error?.status === 404;
   useDocumentTitle(notFound ? 'Not found' : speaker?.name);
 
@@ -39,6 +36,8 @@ export function SpeakerPage() {
   if (error) return <ErrorState error={error} onRetry={reload} />;
   if (!speaker) return <NotFoundState title="Speaker not found" backTo="/speakers" backLabel="All speakers" />;
 
+  // A plain marker, not a speaker dashboard: the account menu links here.
+  const isYou = currentUser?.speakerId === speaker.id;
   const byDay = speaker.sessions.reduce((acc, s) => {
     (acc[s.day] ??= []).push(s);
     return acc;
@@ -62,6 +61,7 @@ export function SpeakerPage() {
             imageUrl={speaker.imageUrl} size="xl" className="-mt-16 ring-4 ring-surface sm:-mt-24" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
+              {isYou && <Chip accent="cyan" data-testid="speaker-is-you">This is you</Chip>}
               {speaker.keynoteCount > 0
                 ? <Chip accent="violet">Keynote speaker</Chip>
                 : speaker.featured && <Chip accent="violet">Featured speaker</Chip>}
@@ -88,17 +88,6 @@ export function SpeakerPage() {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <Button
-                variant={following ? 'ghost' : 'primary'}
-                size="sm"
-                onClick={() => toggleFollow(speaker.id)}
-                aria-pressed={following}
-                data-testid="follow-speaker"
-              >
-                <Icon name={following ? 'check' : 'bell'} className="size-3.5" />
-                {following ? 'Following' : 'Follow'}
-              </Button>
-              <span className="mx-1 h-5 w-px bg-hairline" />
               {SOCIALS.map(({ key, brand, icon, label }) => speaker.socials[key] && (
                 <span
                   key={key}
