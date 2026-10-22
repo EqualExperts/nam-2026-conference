@@ -630,7 +630,10 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
   const found = specAudit.reports.flatMap(r => r.findings)
 
-  const blockers = found.filter(f => f.severity === 'blocker')
+  // A gap already carried is still in the spec, so the next round raises it
+  // again: it is already the builder's, and a second skeptic would only
+  // carry it twice (#114).
+  const blockers = found.filter(f => f.severity === 'blocker' && !carried.some(c => where(c) === where(f)))
   const confirmed = blockers.length ? await confirm(blockers, 'the spec') : []
   history.push(...confirmed)
   specRounds.push({ round, raised: found.length, confirmed: confirmed.length, what: confirmed.map(f => f.claim) })

@@ -79,7 +79,8 @@ diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
 on the session model); a gate red twice running moves the fixer to the session
 model. In the plan loop only `criterion-unmet`, `claude-md`, `logic` and
 `scope` cost a `revise-spec` round; other confirmed spec findings are carried
-to the builder as notes. Both keep the skeptic and the machine gate, and both run Verify, hand-back
+to the builder as notes, once: a later round raising the same location again
+does not re-confirm it. Both keep the skeptic and the machine gate, and both run Verify, hand-back
 and lane release on Haiku — they only run a command and copy its output.
 
 **`ship.js`** takes `args` as an issue number (`/ship 42`) or
