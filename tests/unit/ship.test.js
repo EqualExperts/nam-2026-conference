@@ -268,9 +268,9 @@ describe('ship', () => {
     assert.match(prompts.setup, /fork-guard\.mjs`: if it exits non-zero[^.]*proceed=false/);
   });
 
-  test('the quickstart and the playbook pin gh before anything reads an issue — #149', () => {
+  test('the onboarding and the playbook pin gh before anything reads an issue — #149', () => {
     const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
-    assert.match(read('docs/harness/quickstart.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
+    assert.match(read('ONBOARD_CLAUDE.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
     assert.match(read('docs/harness/ship-playbook.md'), /gh repo set-default "\$\(git remote get-url origin\)"\ngh issue view/);
   });
 
