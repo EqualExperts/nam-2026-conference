@@ -330,33 +330,45 @@ be on.
 
 ## Step 5 — Clone the fork
 
-Clone into the home folder: `~/nam-2026-conference`. Do not ask where — tell the
-person where it went at the end.
+Clone into the folder this session was started in, so you can read and run
+the clone from here without a restart (Step 10). Do not ask where — tell the
+person where it went at the end. Call that absolute path `<clone>`, and take
+the first rule that fits:
+
+1. The session folder already is a clone whose `origin` is the fork → `<clone>`
+   is the session folder; there is nothing to clone.
+2. The session folder is empty (`ls -A` prints nothing) → `<clone>` is the
+   session folder itself.
+3. Anything else, the home folder included → `<clone>` is
+   `<session folder>/nam-2026-conference`.
+
+If the session folder cannot be written to (`/`, a system folder), use
+`~/nam-2026-conference`. Shell state does not carry between commands, so write
+`<clone>` out in full in every command below.
 
 **Check:**
 
 ```bash
-git -C ~/nam-2026-conference remote get-url origin 2>/dev/null
+git -C <clone> remote get-url origin 2>/dev/null
 ```
 
 Passing: a URL ending in `<you>/nam-2026-conference.git` (or without `.git`).
 
-**Do** (only if the folder does not exist):
+**Do** (only if `<clone>` does not exist, or is the empty session folder):
 
 ```bash
-gh repo clone <you>/nam-2026-conference ~/nam-2026-conference
+gh repo clone <you>/nam-2026-conference <clone>
 ```
 
 - *If the folder exists but `origin` is anything other than the fork* (for
   example a clone of the original `EqualExperts/nam-2026-conference`), leave it
-  untouched and clone the fork to `~/nam-2026-conference-fork` instead; if that
-  is taken too, add `-2`, `-3`… Use the folder you cloned into, everywhere below
-  where `~/nam-2026-conference` is written, and tell the person at the end why
-  their existing folder was not used.
+  untouched and clone the fork to `<clone>-fork` instead; if that is taken too,
+  add `-2`, `-3`… That folder is `<clone>` from here on; tell the person at the
+  end why their existing folder was not used.
 - Never delete, move or modify an existing folder.
 
 From here on, **run every command inside the clone folder**
-(`cd ~/nam-2026-conference` first, or `git -C`).
+(`cd <clone>` first, or `git -C`).
 
 ## Step 6 — Pin `gh` to the fork
 
@@ -367,7 +379,7 @@ every `gh` command would read and write the original repo.
 **Check:**
 
 ```bash
-cd ~/nam-2026-conference
+cd <clone>
 gh repo set-default --view          # must print <you>/nam-2026-conference
 ```
 
@@ -431,7 +443,7 @@ gh run watch "$RUN" -R <you>/nam-2026-conference --exit-status
 ## Step 9 — Install and test the app
 
 ```bash
-cd ~/nam-2026-conference
+cd <clone>
 npm install
 npx playwright install chromium
 npm test
@@ -459,22 +471,40 @@ npm test
 Do not start `npm run dev` as part of setup. Mention at the end that it starts
 the app at http://localhost:5173.
 
-## Step 10 — Restart Claude inside the clone
+## Step 10 — Working in the clone
 
 The workshop's commands — `/winnow`, `/create-tasks`, `/ship`, `/code-review`,
-`/qa` — and the fork-guard hook are loaded from the project folder **when Claude
-starts**. If this session was not started inside the clone, they are not loaded
-yet.
+`/qa` — and the fork-guard hook are loaded from the folder Claude **started
+in**, when it starts. A clone made during this session is not loaded yet.
 
-**Check:** is your current working directory, at session start, the clone
-folder? If unsure, assume not.
+**Check:** was `<clone>` already a clone when this session started (rule 1 of
+Step 5)? If so, everything is loaded — skip to the checklist.
 
-**Do:** tell the person exactly:
+**Restart before running anything.** The project's agent types
+(`.claude/agents/`, e.g. `ship-rote`) load at start too. Run from a session
+started elsewhere, every rote step of `/ship` first fails with *agent type
+'ship-rote' not found* — a red ✗ in `/workflows` — and is retried as a plain
+agent: slower, and it reads like a broken run. Tell the person exactly:
 
-> Setup is done. Please start Claude again inside the project folder so the
-> workshop commands load: in a terminal, `cd ~/nam-2026-conference && claude`
-> (or in Claude Desktop, open the folder `~/nam-2026-conference`). In the new
-> session, run `/setup-winnow` and answer **no** to audio.
+> Setup is done. To load the workshop's commands, quit Claude and start it
+> again in the project folder: in a terminal, `cd <clone> && claude` (or in
+> Claude Desktop, open the folder `<clone>`). In the new session, run
+> `/setup-winnow` and answer **no** to audio.
+
+**Only if they want `/ship` before restarting:** it does run from this session,
+because Step 5 put `<clone>` inside the session folder — use the Workflow tool
+with `scriptPath` `<clone>/.claude/workflows/ship.js` and args
+`{ "issue": <n>, "notes": "The checkout is <clone>; cd there first." }`. Tell
+the person first that its quick steps will each show one *'ship-rote' not
+found* failure followed by a retry, and that this is expected. Its setup pins
+`gh` and runs `scripts/fork-guard.mjs` before it touches the ticket, so it
+stays on the fork without the hook; anything else that creates an issue or pull
+request from this session runs `node scripts/fork-guard.mjs` in `<clone>`
+first — nothing else is watching.
+
+If `<clone>` is the session folder (rule 2 of Step 5), say instead: type
+`/exit`, then `claude --continue` in the same terminal — it picks this
+conversation back up with the commands loaded.
 
 Claude Code may ask the person to **trust the folder** and to approve the
 project's hook the first time — they should accept; the hook is the fork guard.
@@ -485,7 +515,7 @@ Run these from the clone folder and confirm each before telling the person they
 are ready:
 
 ```bash
-cd ~/nam-2026-conference
+cd <clone>
 node -v                                    # v22.x
 gh repo set-default --view                 # <you>/nam-2026-conference
 git remote get-url origin                  # …/<you>/nam-2026-conference(.git)
@@ -505,4 +535,5 @@ Then tell the person, briefly:
   (`/winnow docs/demo/winnow-transcript.txt` to try it) or `/create-tasks <one
   line>`, then build one with `/ship <issue number>`. The walkthrough is in
   `docs/harness/quickstart.md`.
-- Remind them of step 10 if the session has not been restarted in the clone.
+- If the session was not started in the clone: Step 10's restart, before the
+  first `/ship`.
