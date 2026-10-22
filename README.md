@@ -1,8 +1,8 @@
 <div align="center">
 
-# The AI Engineering Harness
+# ORBIT '26
 
-**From a conversation to a reviewed pull request — fork it, set it up, ship a ticket**
+**A workshop on AI across the software delivery lifecycle — from a conversation to a reviewed pull request**
 
 </div>
 
