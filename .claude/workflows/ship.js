@@ -147,7 +147,7 @@ const SETUP = {
     // them by one rule (profileFor below), so every ticket is sized the same way.
     sizing: {
       type: 'object',
-      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull', 'uiInteraction'],
+      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull', 'uiInteraction', 'layoutFit'],
       properties: {
         areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, docs/harness/' },
         files: { type: 'integer', description: 'roughly how many app files (src/, server/) the change will edit or add — not tests, docs or the spec, which grow with any change' },

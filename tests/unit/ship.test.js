@@ -128,10 +128,11 @@ describe('sizing — composed from what the ticket risks', () => {
     assert.match(source, /required: \['proceed', 'reason', 'sizing'\]/);
   });
 
-  test('setup must say whether the ticket adds an interaction, or the browser audit silently never runs — #115', () => {
+  test('setup must say whether the ticket adds an interaction or a layout fit, or their checks silently never run — #115', () => {
     const required = /sizing: \{\s*type: 'object',\s*required: \[([^\]]*)\]/.exec(source);
     assert.ok(required, 'no required list on sizing');
     assert.match(required[1], /'uiInteraction'/);
+    assert.match(required[1], /'layoutFit'/);
   });
 
   test('a small run whose diff reaches a risky path is escalated on that evidence', async () => {

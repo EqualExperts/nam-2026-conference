@@ -23,8 +23,8 @@ smallest fix the issue names and a unit test that fails without it.
 ## Decisions
 - #114 dedupes by the same location key `confirm()` already groups on
   (`where`), so a re-raise is recognised however the auditor words it.
-- #115 touches `uiInteraction` only. `layoutFit` has the same gap, but the
-  issue does not name it; it is left for its own ticket.
+- #115 names `uiInteraction`, but `layoutFit` had the same gap (an omitted
+  fact read as false skips the layout checks), so both are now required.
 
 ## Out of scope
 Restructuring the spec or build loops; anything outside the lines each issue names.
