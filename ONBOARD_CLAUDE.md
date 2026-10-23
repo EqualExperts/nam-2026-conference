@@ -13,17 +13,52 @@ step by step, in order. Every step has the same shape:
   output, explain it to the person in one or two plain sentences, and fix it with
   them. Never skip a failed step.
 
-Do not paste long command output at them. Instead, keep them with you on the
+The person following along may not be technical. Make this feel like a
+friendly onboarding, not a terminal session, and keep them with you on the
 **progress board** below.
+
+### Talking to the person
+
+Be a friendly guide getting them ready for launch, not a build log.
+
+- **Welcome them first.** Before the first board, write two or three warm
+  sentences: what you're about to do together, that it takes about ten
+  minutes, and that you'll do almost all of it for them.
+- **Friendly first, technical second.** Lead with what the step means for
+  them. A short technical status after that is fine and often reassuring:
+  *"You have your own copy of the workshop now: github.com/you/nam-2026-conference."*
+  *"The app works on your machine: all 560 tests pass (Node 22, Playwright
+  ready)."* Explain a technical term in a few words the first time you use it
+  ("a fork, your own copy of the repo"). Skip internals they can't act on:
+  exit codes, GraphQL, hook names.
+- **Say why, briefly.** One clause on why a step matters makes it feel less
+  like a chore: *"turning on Actions lets your copy run its checks on
+  GitHub"*.
+- **Keep it moving.** Between boards, one short line at most. Don't narrate
+  each command.
+- **Readable command lines.** The person sees the first line of every command
+  you run. Make that line a plain-English comment, such as
+  `# Checking your GitHub account`, and put the commands below it.
+- **No pasted output.** If something really failed, say so calmly in one or
+  two sentences: what went wrong, and what happens next. It's never their
+  fault, and you'll fix it together.
+- **Celebrate the finish.** At the end, a short, genuine *you're ready* goes a
+  long way. Then say clearly what to try first.
 
 ### The progress board
 
 This is a workshop, and setup is its first exercise — make it feel like one.
-Show the board once before Step 0 and again each time a step finishes, as plain
-Markdown (no code block, so it renders). Print it in your own reply text, in
-full, every time. A task or to-do list does not count: the person may never
-see it. Saying that you set up a checklist does not count either: they need to
-see the board itself.
+Show the board, as plain Markdown (no code block, so it renders), at these
+moments:
+
+- once before Step 0
+- whenever you stop for the person (a 🙋)
+- after any step that took more than a minute
+- at the end
+
+Print it in your own reply text, in full. A task or to-do list does not count:
+the person may never see it. Saying that you set up a checklist does not
+count either: they need to see the board itself.
 
 With the first board, add one line: setup is automatic except for **one
 click** on GitHub, and you will say exactly when. (Count it as one click:
@@ -32,24 +67,25 @@ done.)
 
 > **🛰️ ORBIT '26 — launch checklist** · 3 of 11 done
 >
-> ✅ Can run commands
-> ✅ Has a GitHub account
-> ⏭️ Operating system — macOS, Apple Silicon
-> 🔄 Install git, gh and Node 22
+> ✅ Ready to set up
+> ✅ GitHub account
+> ⏭️ Your computer — macOS, Apple Silicon
+> 🔄 Install the tools
 > ⬜ Sign in to GitHub
-> ⬜ Fork the repo
-> ⬜ Clone it
-> ⬜ Point `gh` at the fork
-> ⬜ Turn on Actions
-> ⬜ Create the labels
+> ⬜ Make your own copy of the workshop
+> ⬜ Download it to this computer
+> ⬜ Connect it to your copy
+> ⬜ Turn on GitHub Actions
+> ⬜ Set up the workshop labels
 > ⬜ Install and test the app
 >
 > *Tools next — this is the longest step, a few minutes at most.*
 
-- ✅ done in this run · ⏭️ already done (its check passed) · 🔄 in progress ·
-  🙋 waiting on the person · ❌ failed — fixing it with them · ⬜ to do. Put the
-  step's one useful fact after a dash, as the operating system line does: the
-  GitHub account, the fork's URL, the test count.
+- ✅ done in this run · ⏭️ already done · 🔄 in progress ·
+  🙋 waiting on the person · ❌ failed — fixing it with them · ⬜ to do. Rows map
+  one-to-one to Steps 0–9. After a dash, give the step's one useful fact in
+  plain words, as the computer line does: the GitHub account, the link to
+  their copy, the folder it's in, how many checks passed.
 - Under the board, one short line in italics: what is next and roughly how long
   it takes. At a 🙋, the **👉 Your turn** block (below) replaces it. Light and friendly is
   good; a joke per step is not. Never more than one line.
@@ -60,7 +96,8 @@ done.)
 
 **Ask at most two questions:** whether they have a GitHub account (Step 0b),
 and only when `gh` is not signed in already; and **where to fork the
-repository to** (Step 4). Decide
+repository to** (Step 4). The yes/no offer to start the app at the end
+doesn't count toward that limit. Decide
 everything else yourself with the defaults given here. The person is otherwise
 only interrupted for things no agent can do for them — typing a password,
 approving an administrator prompt, logging in in a browser, or clicking a
@@ -104,6 +141,13 @@ carrying on in the meantime, end the block with *(I'll keep going meanwhile.)*
    workshop runs the agents from Claude on the laptop, not on GitHub Actions.
 6. **Do not use `sudo`** yourself. If something genuinely needs it, hand the
    command to the person.
+7. **A check that finds "not done yet" is not an error, so don't let it look
+   like one.** A command that exits non-zero shows up as a red *Error* to the
+   person, even when the result is expected. Write each probe so it always exits
+   0 and prints a plain answer: send stderr to `/dev/null`, end it with
+   `|| echo "<what that means>"`, and end any batch of probes run together
+   with `true`. The checks below are already written this way. Keep that shape
+   when you combine or adapt them. Save real errors for real failures.
 
 ---
 
@@ -379,9 +423,10 @@ person's (a browser login), so give them the exact command.
 4. **The name is free, or already the right fork:**
    ```bash
    gh repo view <you>/nam-2026-conference --json isFork,parent \
-     --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name)"' 2>&1
+     --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name)"' 2>/dev/null \
+     || echo "name free"
    ```
-   "Could not resolve" means free; `fork=true parent=EqualExperts/nam-2026-conference`
+   `name free` means free; `fork=true parent=EqualExperts/nam-2026-conference`
    means it was already forked (fine — Step 4 reuses it); anything else is a
    different repository with that name (see *If it fails* below).
 
@@ -391,7 +436,8 @@ Only when all four pass, carry on.
 
 ```bash
 gh repo view <you>/nam-2026-conference --json isFork,parent,hasIssuesEnabled \
-  --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name) issues=\(.hasIssuesEnabled)"'
+  --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name) issues=\(.hasIssuesEnabled)"' \
+  2>/dev/null || echo "not forked yet"
 ```
 
 Passing: `fork=true parent=EqualExperts/nam-2026-conference issues=true`.
@@ -424,7 +470,9 @@ person where it went at the end. Call that absolute path `<clone>`, and take
 the first rule that fits:
 
 1. The session folder already is a clone whose `origin` is the fork → `<clone>`
-   is the session folder; there is nothing to clone.
+   is the session folder; there is nothing to clone. Probe it with
+   `git remote get-url origin 2>/dev/null || echo "not a clone"`, not with a
+   bare `git` command that fails with *fatal: not a git repository*.
 2. The session folder is empty (`ls -A` prints nothing) → `<clone>` is the
    session folder itself.
 3. Anything else, the home folder included → `<clone>` is
@@ -437,7 +485,7 @@ If the session folder cannot be written to (`/`, a system folder), use
 **Check:**
 
 ```bash
-git -C <clone> remote get-url origin 2>/dev/null
+git -C <clone> remote get-url origin 2>/dev/null || echo "not cloned yet"
 ```
 
 Passing: a URL ending in `<you>/nam-2026-conference.git` (or without `.git`).
@@ -468,7 +516,7 @@ every `gh` command would read and write the original repo.
 
 ```bash
 cd <clone>
-gh repo set-default --view          # must print <you>/nam-2026-conference
+gh repo set-default --view 2>/dev/null || echo "not set"   # must print <you>/nam-2026-conference
 ```
 
 **Do:**
@@ -564,8 +612,7 @@ npm test
   failing test's name and first error lines in the final summary — say plainly
   that setup finished with a failing test rather than declaring success.
 
-Do not start `npm run dev` as part of setup. Mention at the end that it starts
-the app at http://localhost:5173.
+Do not start `npm run dev` as part of setup. The *Done* hand-off offers to.
 
 ## Step 10 — Working in the clone
 
@@ -592,13 +639,13 @@ the fork guard lets the workshop's maintainers create there, so that probe
 passes for them even with the hook live; the label rule blocks everyone.
 
 **Both pass:** nothing to restart. Tell the person they can carry on in this
-session, and to run `/setup-winnow` and answer **no** to audio.
+session, and to run `/setup-winnow` (audio is optional, and recommended).
 
 **Only `ship-rote` is missing** (`ship` is listed and the hook blocks): do
 not ask for a restart. `/ship` works from this session. Its first rote step
 shows one red ✗ (*agent type 'ship-rote' not found*), and the rest run as plain
-agents, which is a bit slower. Mention it in one line as optional. To load the
-agent type later, type `/exit` and then `claude --continue`.
+agents, which is a bit slower. Mention it only as the 💡 tip in the *Done*
+hand-off, without naming the agent type.
 
 **`ship` is missing or the hook does not block — Do:** a restart loads them. If `<clone>` is the session folder
 (rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
@@ -608,7 +655,7 @@ loaded. Otherwise tell them exactly:
 > Setup is done. To load the workshop's commands, quit Claude and start it
 > again in the project folder: in a terminal, `cd <clone> && claude` (or in
 > Claude Desktop, open the folder `<clone>`). In the new session, run
-> `/setup-winnow` and answer **no** to audio.
+> `/setup-winnow` (audio is optional, and recommended).
 
 Without the agent type, `/ship`'s first rote step fails with *agent type
 'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
@@ -646,15 +693,37 @@ gh label list --json name --jq '.[].name' | grep -c -x -E 'ai-working|ready-for-
 npm test 2>&1 | grep -E '^# fail'          # # fail 0
 ```
 
-Then show the final board (**🚀 ready for launch**) and tell the person, briefly:
+Then show the final board (**🚀 ORBIT '26 — ready for launch** · 11 of 11)
+and, under it, a short hand-off in exactly this shape, with the real values
+filled in:
 
-- Where the clone is (the folder path), and that `npm run dev` starts the app at
-  http://localhost:5173.
-- They are set up; tickets and pull requests will go to
-  `https://github.com/<you>/nam-2026-conference`.
-- Next: turn a conversation into tickets with `/winnow`
-  (`/winnow docs/demo/winnow-transcript.txt` to try it) or `/create-tasks <one
-  line>`, then build one with `/ship <issue number>`. The walkthrough is in
-  `docs/harness/quickstart.md`.
-- If Step 10's command or hook check failed: its restart, before the first
-  `/ship`.
+> 🎉 **You're ready!** Your project is in `<clone>`, and your copy on GitHub is
+> https://github.com/<you>/nam-2026-conference.
+>
+> **First:** run `/setup-winnow`. When it asks about audio, we recommend
+> **yes**: the workshop plans to listen to a live conversation. It's a one-time
+> download of a few hundred MB plus a microphone permission, so it's best done
+> now rather than on the day. Then
+> `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
+> tickets, and `/ship <ticket number>` to build one.
+
+Then offer to start the app with one yes/no question, using the question tool
+if you have one: *Want me to start the app and open it in your browser?*
+
+- **Yes:** in `<clone>`, run `npm run dev` in the background, wait until
+  http://localhost:5173 answers (`curl -s -o /dev/null -w '%{http_code}'`),
+  then open it with `open` (macOS), `xdg-open` (Linux) or `start ""` (Git Bash).
+  On WSL, give them the link to open themselves. Then say in one line that it's
+  running there and how to stop it: press Ctrl+C, or ask you to stop it.
+- **No:** one line, saying `npm run dev` in that folder starts it whenever
+  they want.
+
+Rules for the hand-off:
+
+- If Step 10's command or hook check failed, the restart comes first, in Step
+  10's exact words, before **First:**. Do not offer to start the app in that
+  case: the restart would stop it.
+- If Step 10 found only `ship-rote` missing, add one line at the end:
+  *💡 For the fastest `/ship`, type `/exit` and then `claude --continue`.*
+- Nothing else. Don't list the commands that now work, mention the fork guard,
+  or say that you reran the checks. The board already says so.
