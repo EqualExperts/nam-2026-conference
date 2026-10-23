@@ -318,8 +318,12 @@ cannot start another round.
   `EqualExperts/nam-2026-conference` unless `gh` says the account can maintain
   it. With no `-R`, the target is what `gh` would pick: the pinned default, else
   `upstream` before `origin`. It is a no-op under `$GITHUB_ACTIONS`. Ship's setup
-  runs it without `--hook` before claiming. `ONBOARD_CLAUDE.md` is the
-  attendee setup a Claude session reads and carries out.
+  runs it without `--hook` before claiming. The hook also blocks any call that
+  adds `ready-for-ai`. It lets `fork-guard.mjs --probe <word>` through, after
+  marking a temp file named with the word; the probe prints `fork guard: live`
+  or `not loaded` and exits 0. That is how onboarding's Step 10 checks the hook
+  without showing a red block. `ONBOARD_CLAUDE.md` is the attendee setup a
+  Claude session reads and carries out.
 - **No key, no agent job.** `agent-ship`, `agent-respond`, `agent-code-review` and
   `agent-qa` each start with a `key` job that carries the trigger condition and
   reports whether `ANTHROPIC_API_KEY` is set (a job's `if` cannot read a

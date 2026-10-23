@@ -628,26 +628,26 @@ but not always, so test it rather than assume either way.
 **Check — hook:** run, from `<clone>`:
 
 ```bash
-true || gh issue edit 0 --add-label ready-for-ai
+# Checking that the workshop's safety guard is active
+node scripts/fork-guard.mjs --probe <word>
 ```
 
-`true ||` means `gh` never runs, so this touches nothing. Blocked with the fork
-guard's message (*adding the ready-for-ai label…*) → the hook is live. It just
-runs → the hook is not loaded. This is the one block that is expected — rule 3
-does not apply to it. Use this probe, not a create on the upstream repository:
-the fork guard lets the workshop's maintainers create there, so that probe
-passes for them even with the hook live; the label rule blocks everyone.
+Make up a fresh `<word>` each time, using only letters and digits (e.g.
+`k7q2`). The hook notices the probe and lets it through, and the probe prints
+`fork guard: live` if the hook saw it, or `fork guard: not loaded` if not. It
+touches nothing and never shows an error. Don't test the hook by making it
+block something: a block shows the person a red error.
 
 **Both pass:** nothing to restart. Tell the person they can carry on in this
 session, and to run `/setup-winnow` (audio is optional, and recommended).
 
-**Only `ship-rote` is missing** (`ship` is listed and the hook blocks): do
+**Only `ship-rote` is missing** (`ship` is listed and the guard is live): do
 not ask for a restart. `/ship` works from this session. Its first rote step
 shows one red ✗ (*agent type 'ship-rote' not found*), and the rest run as plain
 agents, which is a bit slower. Mention it only as the 💡 tip in the *Done*
 hand-off, without naming the agent type.
 
-**`ship` is missing or the hook does not block — Do:** a restart loads them. If `<clone>` is the session folder
+**`ship` is missing or the guard is not loaded — Do:** a restart loads them. If `<clone>` is the session folder
 (rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
 the same terminal — it picks this conversation back up with the commands
 loaded. Otherwise tell them exactly:
