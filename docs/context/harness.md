@@ -85,6 +85,10 @@ the `tests/*.spec.js` the branch changed — the whole suite when it changed
 none, and the pull request's CI always); a confirmed finding is fixed and
 re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
 The PR's *Not verified* says what it skipped.
+Its pull request is labelled `ship:fast`, and `verify.yml`'s Playwright jobs
+read the label: they run only the specs the merge commit changed against its
+base (`HEAD^1`, `branchSpecs`), or the whole suite if none; the push to main
+runs the whole suite as always.
 After a green gate, `verify#n` also relays `qa-facts.mjs`: a small run whose
 diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
 on the session model); a gate red twice running moves the fixer to the session

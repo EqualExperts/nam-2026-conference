@@ -194,8 +194,8 @@ const minutesBetween = (now, started) => Math.max(0, Math.floor(((now ?? Date.no
  */
 export function render(state, { issue, runUrl, runId, repo, now, started } = {}) {
   const elapsed = minutesBetween(now, started);
-  // A laptop run has no Actions run to link to.
-  const runLink = runUrl ? `[Run](${runUrl})` : 'on a laptop';
+  // A run outside Actions — a terminal, Desktop, a cloud session — has no run to link to.
+  const runLink = runUrl ? `[Run](${runUrl})` : 'run from Claude';
   const lines = [`🚢 Ship · ${state.tier || 'sizing…'} · ${elapsed}m elapsed · ${runLink}`, ''];
 
   if (!state.phases || state.phases.length === 0) {

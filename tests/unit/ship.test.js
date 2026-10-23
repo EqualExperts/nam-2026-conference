@@ -1012,6 +1012,12 @@ describe('--fast', () => {
     assert.doesNotMatch(prompts['verify#1'], /GATE_SCOPE/);
   });
 
+  test('its pull request is labelled ship:fast, so CI runs the same light check', async () => {
+    const { prompts } = await run({}, '7 --fast');
+    assert.match(prompts['open-pr'], /--label ship:fast/);
+    assert.doesNotMatch((await run()).prompts['open-pr'], /ship:fast/);
+  });
+
   test('the flag is not passed on as a note', async () => {
     const { prompts } = await run({}, '7 --fast');
     assert.doesNotMatch(prompts.setup, /--fast/);

@@ -48,6 +48,7 @@ jobs:
           label harness-escape  D93F0B "A blocker found after ship opened this PR — its own loop let it through."
           label follow-up       0E8A16 "Worth doing, but nobody hits it in normal use. Filed by a review that passed."
           label ship:full       0969DA "Give this ticket the full ship loop — more auditors, more rounds, Opus."
+          label ship:fast       C5DEF5 "Built with /ship --fast: its PR runs only the browser specs it changed; main runs them all."
 
       - name: Say what else this fork needs
         env:
