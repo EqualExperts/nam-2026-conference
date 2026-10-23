@@ -21,7 +21,7 @@ Start [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), copy
 this and paste it in:
 
 ```text
-Set me up for the ORBIT '26 workshop. Read https://raw.githubusercontent.com/EqualExperts/nam-2026-conference/main/ONBOARD_CLAUDE.md and follow it step by step.
+Set me up for the Equal Experts workshop. Read https://raw.githubusercontent.com/EqualExperts/nam-2026-conference/main/ONBOARD_CLAUDE.md and follow it step by step.
 ```
 
 **Claude will** install what's missing (git, the GitHub CLI, Node 22), fork this
