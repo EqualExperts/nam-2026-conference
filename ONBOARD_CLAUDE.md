@@ -644,8 +644,8 @@ session, and to run `/setup-winnow` and answer **no** to audio.
 **Only `ship-rote` is missing** (`ship` is listed and the hook blocks): do
 not ask for a restart. `/ship` works from this session. Its first rote step
 shows one red ✗ (*agent type 'ship-rote' not found*), and the rest run as plain
-agents, which is a bit slower. Mention it in one line as optional. To load the
-agent type later, type `/exit` and then `claude --continue`.
+agents, which is a bit slower. Mention it only as the 💡 tip in the *Done*
+hand-off, without naming the agent type.
 
 **`ship` is missing or the hook does not block — Do:** a restart loads them. If `<clone>` is the session folder
 (rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
@@ -693,15 +693,35 @@ gh label list --json name --jq '.[].name' | grep -c -x -E 'ai-working|ready-for-
 npm test 2>&1 | grep -E '^# fail'          # # fail 0
 ```
 
-Then show the final board (**🚀 ready for launch**) and tell the person, briefly:
+Then show the final board (**🚀 ORBIT '26 — ready for launch** · 11 of 11)
+and, under it, a short, warm hand-off in this shape. Fill in the real values.
+Leave out a line that doesn't apply.
 
-- Where the clone is (the folder path), and that `npm run dev` starts the app at
-  http://localhost:5173.
-- They are set up; tickets and pull requests will go to
-  `https://github.com/<you>/nam-2026-conference`.
-- Next: turn a conversation into tickets with `/winnow`
-  (`/winnow docs/demo/winnow-transcript.txt` to try it) or `/create-tasks <one
-  line>`, then build one with `/ship <issue number>`. The walkthrough is in
-  `docs/harness/quickstart.md`.
-- If Step 10's command or hook check failed: its restart, before the first
-  `/ship`.
+> 🎉 **You're ready for launch!** Everything is set up and checked.
+>
+> - 📁 **Your project:** `<clone>`
+> - 🌐 **Your copy on GitHub:** https://github.com/<you>/nam-2026-conference.
+>   Everything you make today goes here, and nothing goes to the shared repo.
+> - ▶️ **See the app:** run `npm run dev` in that folder, then open
+>   http://localhost:5173
+>
+> **Your first move:** type `/setup-winnow` and answer **no** when it asks
+> about audio. After that:
+>
+> 1. `/winnow docs/demo/winnow-transcript.txt` turns a sample conversation
+>    into tickets. Or try `/create-tasks <one line describing a feature>`.
+> 2. `/ship <ticket number>` builds one of them for you, all the way to a pull
+>    request.
+>
+> 📖 New to this? `docs/harness/quickstart.md` walks you through it.
+>
+> 💡 *Tip: for the fastest `/ship`, type `/exit` and then `claude --continue`.
+> It reloads this conversation with everything in place.*
+
+- Include the 💡 tip only when Step 10 found just `ship-rote` missing. Don't
+  name the agent type or describe the red ✗.
+- When Step 10's command or hook check failed, the restart isn't optional.
+  Replace **Your first move** with that restart, using Step 10's exact words,
+  and put `/setup-winnow` after it.
+- Don't list the commands that now work, mention the fork guard, or say that
+  you reran the checks. The board already says so.
