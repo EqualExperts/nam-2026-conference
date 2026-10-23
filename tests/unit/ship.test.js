@@ -175,6 +175,17 @@ describe('the plan loop re-plans only for what changes the build', () => {
     assert.equal(prompts.implement.split('a spec-gap problem').length - 1, 1, 'the implementer was told the gap twice');
   });
 
+  test('a different finding where a gap is carried still reaches the skeptic and re-plans — #179', async () => {
+    const gap = { ...blocker('a spec-gap problem'), category: 'spec-gap', line: 20 };
+    const logic = { ...blocker('a logic problem'), category: 'logic', line: 90 };
+    const sameSpot = { ...blocker('a new logic problem'), category: 'logic', line: 20 };
+    const { calls } = await run({
+      'spec-audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [gap, logic] : n === 2 ? [gap, sameSpot] : [] }),
+    });
+    assert.equal(calls.filter(c => c === 'skeptic:logic').length, 2, 'the new finding was dropped as already carried');
+    assert.ok(calls.includes('revise-spec#2'), 'a logic finding on a carried line did not re-plan');
+  });
+
   test('a misread criterion is still re-planned', async () => {
     const { calls } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('criterion-unmet') : { covered: 'all', findings: [] }) });
     assert.ok(calls.includes('revise-spec#1'));
