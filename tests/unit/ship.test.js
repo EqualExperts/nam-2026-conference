@@ -1018,6 +1018,11 @@ describe('--fast', () => {
     assert.doesNotMatch((await run()).prompts['open-pr'], /ship:fast/);
   });
 
+  test('setup runs on Sonnet, since its sizing is never read — every other gear keeps the session model', async () => {
+    assert.equal((await run({}, '7 --fast')).models.setup, 'sonnet');
+    for (const a of [7, '7 --small', '7 --full']) assert.equal((await run({}, a)).models.setup, undefined, String(a));
+  });
+
   test('the flag is not passed on as a note', async () => {
     const { prompts } = await run({}, '7 --fast');
     assert.doesNotMatch(prompts.setup, /--fast/);

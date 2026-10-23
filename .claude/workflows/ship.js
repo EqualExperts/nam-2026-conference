@@ -597,8 +597,10 @@ setup = await agent(
   `is small. Most tickets are small.`,
   // The one judgement every later phase is sized by, so it gets the session's
   // model: Sonnet called #100's tooltip small in prose and gave no facts, and
-  // the run fell through to the full loop — 33 agents and $26.
-  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium' },
+  // the run fell through to the full loop — 33 agents and $26. Forced fast is
+  // the exception: its sizing is never read, so Opus would only be slower —
+  // setup was the slowest step of a 6-minute `--fast` run, at 2:04.
+  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium', ...(FORCED === 'fast' ? { model: 'sonnet' } : {}) },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
