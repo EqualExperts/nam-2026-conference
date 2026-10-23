@@ -93,7 +93,10 @@ export function ConferenceProvider({ children }) {
       state = await api.reserveSeat(currentUserId, sessionId, clock);
     } catch (err) {
       // 409 means an overlapping seat; the API sends the clash back in the body
-      if (err.status !== 409) throw err;
+      if (err.status !== 409) {
+        toast({ message: `Could not book that seat: ${err.message}`, icon: 'alert' });
+        return undefined;
+      }
       state = err.payload;
     }
     if (state.rejected === 'ended') {
@@ -123,7 +126,13 @@ export function ConferenceProvider({ children }) {
     * cannot re-open that by forgetting to pass it.
     */
   const releaseSeat = useCallback(async (sessionId, session) => {
-    const state = await api.releaseSeat(currentUserId, sessionId);
+    let state;
+    try {
+      state = await api.releaseSeat(currentUserId, sessionId);
+    } catch (err) {
+      toast({ message: `Could not remove that seat: ${err.message}`, icon: 'alert' });
+      return undefined;
+    }
     applySeatState(state);
     const canUndo = session ? !hasEnded(session, clock) : false;
     toast({
