@@ -13,17 +13,37 @@ step by step, in order. Every step has the same shape:
   output, explain it to the person in one or two plain sentences, and fix it with
   them. Never skip a failed step.
 
-Do not paste long command output at them. Instead, keep them with you on the
-**progress board** below.
+The person following along may not be technical. Keep what they read short and
+plain, and keep them with you on the **progress board** below.
+
+### Talking to the person
+
+- **Plain words.** Say what happened in everyday terms ("Your copy of the
+  workshop is on GitHub", "The app works: all 560 checks passed"). Do not mention
+  commands, flags, file paths, exit codes, `origin`, hooks, GraphQL, or tool
+  names unless the person has to type or click that exact thing.
+- **Quiet between boards.** Don't narrate each command. If you say anything
+  between boards, keep it to one short line, or say nothing.
+- **Readable command lines.** The person sees the first line of every command
+  you run. Make that line a plain-English comment, such as
+  `# Checking your GitHub account`, and put the commands below it.
+- **Never paste command output.** If something really failed, explain it in
+  one or two plain sentences and say what happens next.
 
 ### The progress board
 
 This is a workshop, and setup is its first exercise — make it feel like one.
-Show the board once before Step 0 and again each time a step finishes, as plain
-Markdown (no code block, so it renders). Print it in your own reply text, in
-full, every time. A task or to-do list does not count: the person may never
-see it. Saying that you set up a checklist does not count either: they need to
-see the board itself.
+Show the board, as plain Markdown (no code block, so it renders), at these
+moments:
+
+- once before Step 0
+- whenever you stop for the person (a 🙋)
+- after any step that took more than a minute
+- at the end
+
+Print it in your own reply text, in full. A task or to-do list does not count:
+the person may never see it. Saying that you set up a checklist does not
+count either: they need to see the board itself.
 
 With the first board, add one line: setup is automatic except for **one
 click** on GitHub, and you will say exactly when. (Count it as one click:
@@ -32,24 +52,25 @@ done.)
 
 > **🛰️ ORBIT '26 — launch checklist** · 3 of 11 done
 >
-> ✅ Can run commands
-> ✅ Has a GitHub account
-> ⏭️ Operating system — macOS, Apple Silicon
-> 🔄 Install git, gh and Node 22
+> ✅ Ready to set up
+> ✅ GitHub account
+> ⏭️ Your computer — macOS, Apple Silicon
+> 🔄 Install the tools
 > ⬜ Sign in to GitHub
-> ⬜ Fork the repo
-> ⬜ Clone it
-> ⬜ Point `gh` at the fork
-> ⬜ Turn on Actions
-> ⬜ Create the labels
+> ⬜ Make your own copy of the workshop
+> ⬜ Download it to this computer
+> ⬜ Connect it to your copy
+> ⬜ Turn on GitHub Actions
+> ⬜ Set up the workshop labels
 > ⬜ Install and test the app
 >
 > *Tools next — this is the longest step, a few minutes at most.*
 
-- ✅ done in this run · ⏭️ already done (its check passed) · 🔄 in progress ·
-  🙋 waiting on the person · ❌ failed — fixing it with them · ⬜ to do. Put the
-  step's one useful fact after a dash, as the operating system line does: the
-  GitHub account, the fork's URL, the test count.
+- ✅ done in this run · ⏭️ already done · 🔄 in progress ·
+  🙋 waiting on the person · ❌ failed — fixing it with them · ⬜ to do. Rows map
+  one-to-one to Steps 0–9. After a dash, give the step's one useful fact in
+  plain words, as the computer line does: the GitHub account, the link to
+  their copy, the folder it's in, how many checks passed.
 - Under the board, one short line in italics: what is next and roughly how long
   it takes. At a 🙋, the **👉 Your turn** block (below) replaces it. Light and friendly is
   good; a joke per step is not. Never more than one line.
@@ -104,6 +125,13 @@ carrying on in the meantime, end the block with *(I'll keep going meanwhile.)*
    workshop runs the agents from Claude on the laptop, not on GitHub Actions.
 6. **Do not use `sudo`** yourself. If something genuinely needs it, hand the
    command to the person.
+7. **A check that finds "not done yet" is not an error, so don't let it look
+   like one.** A command that exits non-zero shows up as a red *Error* to the
+   person, even when the result is expected. Write each probe so it always exits
+   0 and prints a plain answer: send stderr to `/dev/null`, end it with
+   `|| echo "<what that means>"`, and end any batch of probes run together
+   with `true`. The checks below are already written this way. Keep that shape
+   when you combine or adapt them. Save real errors for real failures.
 
 ---
 
@@ -379,9 +407,10 @@ person's (a browser login), so give them the exact command.
 4. **The name is free, or already the right fork:**
    ```bash
    gh repo view <you>/nam-2026-conference --json isFork,parent \
-     --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name)"' 2>&1
+     --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name)"' 2>/dev/null \
+     || echo "name free"
    ```
-   "Could not resolve" means free; `fork=true parent=EqualExperts/nam-2026-conference`
+   `name free` means free; `fork=true parent=EqualExperts/nam-2026-conference`
    means it was already forked (fine — Step 4 reuses it); anything else is a
    different repository with that name (see *If it fails* below).
 
@@ -391,7 +420,8 @@ Only when all four pass, carry on.
 
 ```bash
 gh repo view <you>/nam-2026-conference --json isFork,parent,hasIssuesEnabled \
-  --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name) issues=\(.hasIssuesEnabled)"'
+  --jq '"fork=\(.isFork) parent=\(.parent.owner.login)/\(.parent.name) issues=\(.hasIssuesEnabled)"' \
+  2>/dev/null || echo "not forked yet"
 ```
 
 Passing: `fork=true parent=EqualExperts/nam-2026-conference issues=true`.
@@ -424,7 +454,9 @@ person where it went at the end. Call that absolute path `<clone>`, and take
 the first rule that fits:
 
 1. The session folder already is a clone whose `origin` is the fork → `<clone>`
-   is the session folder; there is nothing to clone.
+   is the session folder; there is nothing to clone. Probe it with
+   `git remote get-url origin 2>/dev/null || echo "not a clone"`, not with a
+   bare `git` command that fails with *fatal: not a git repository*.
 2. The session folder is empty (`ls -A` prints nothing) → `<clone>` is the
    session folder itself.
 3. Anything else, the home folder included → `<clone>` is
@@ -437,7 +469,7 @@ If the session folder cannot be written to (`/`, a system folder), use
 **Check:**
 
 ```bash
-git -C <clone> remote get-url origin 2>/dev/null
+git -C <clone> remote get-url origin 2>/dev/null || echo "not cloned yet"
 ```
 
 Passing: a URL ending in `<you>/nam-2026-conference.git` (or without `.git`).
@@ -468,7 +500,7 @@ every `gh` command would read and write the original repo.
 
 ```bash
 cd <clone>
-gh repo set-default --view          # must print <you>/nam-2026-conference
+gh repo set-default --view 2>/dev/null || echo "not set"   # must print <you>/nam-2026-conference
 ```
 
 **Do:**
