@@ -302,6 +302,24 @@ first try the platform's PATH fix below; if that does not help, ask the person t
 quit and restart Claude (or open a new terminal and start `claude` again), then
 resume this procedure from Step 2 — the checks will skip what is already done.
 
+**Node still on the old version in a later command?** Claude captures its
+shell when the session starts. A Node you install or switch to now doesn't
+reach later commands, even though `nvm alias default 22` or `~/.zprofile` will
+fix every new session. So after installing or switching Node, run `node -v` in
+a **new** command. If it doesn't print `v22.`, put the activation for your
+platform in front of every command that runs `node`, `npm` or `npx` for the
+rest of setup. Call that prefix `<node22>`:
+
+- nvm (Linux, WSL, or macOS with nvm):
+  `. "$HOME/.nvm/nvm.sh" && nvm use 22 >/dev/null &&`
+- Homebrew `node@22`: `export PATH="$(brew --prefix node@22)/bin:$PATH" &&`
+
+Never run Step 9 on the wrong Node. `npm test` fails with *Could not find
+'tests/unit/\*.test.js'*, and `better-sqlite3` gets built for the wrong
+version. `/ship` and the other workshop commands run in this session's shell
+too, so a session that needed `<node22>` must restart before the first
+`/ship` (Step 10).
+
 ### macOS
 
 1. **git.** If `git --version` fails or opens a dialog: run `xcode-select --install`.
@@ -367,14 +385,19 @@ Claude Code on Windows needs Git for Windows, so git is usually present already.
 
 Use the distribution's package manager for git (`sudo apt-get install -y git` —
 the person runs it). For gh follow https://github.com/cli/cli/blob/trunk/docs/install_linux.md.
-For Node 22 use nvm, which needs no sudo:
+For Node 22 use nvm, which needs no sudo. Install nvm only if it isn't
+there already:
 
 ```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] || curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+. "$NVM_DIR/nvm.sh"
 nvm install 22 && nvm alias default 22
 node -v   # → v22.x
 ```
+
+Then check `node -v` in a new command. It usually still shows the old version,
+so use `<node22>` from here on (see *Node still on the old version* above).
 
 **Verify Step 2:** `git --version && gh --version && node -v` all succeed and
 Node prints `v22.`.
@@ -544,9 +567,16 @@ Otherwise, take the first rule that fits:
    is the session folder; there is nothing to clone. Probe it with
    `git remote get-url origin 2>/dev/null || echo "not a clone"`, not with a
    bare `git` command that fails with *fatal: not a git repository*.
-2. The session folder is empty (`ls -A` prints nothing) → `<clone>` is the
-   session folder itself.
-3. Anything else, the home folder included → `<clone>` is
+2. The session folder is empty (`ls -A` prints nothing) and not inside a git
+   repository (rule 3's probe) → `<clone>` is the session folder itself.
+3. The session folder is inside some other git repository, for example a
+   clone of the original `EqualExperts/nam-2026-conference`. Probe it with
+   `git rev-parse --show-toplevel 2>/dev/null || echo "not in a repo"`. A path
+   here means it is → `<clone>` is `~/nam-2026-conference`, never a folder
+   nested inside that repository. The *Do* rules' `-fork` / `-2` collision
+   handling applies, and the workshop commands load after Step 10's restart in
+   that folder.
+4. Anything else, the home folder included → `<clone>` is
    `<session folder>/nam-2026-conference`.
 
 If the session folder cannot be written to (`/`, a system folder), also use
@@ -653,7 +683,7 @@ toward the two-question limit.
 
 ```bash
 gh label list -R <you>/nam-2026-conference --limit 100 --json name --jq '.[].name' \
-  | grep -c -x -E 'ready-for-ai|ai-working|ready-for-human|needs-human'   # passing: 4
+  | grep -c -x -E 'ready-for-ai|ai-working|ready-for-human|needs-human' || true   # passing: 4
 ```
 
 **Do:**
@@ -682,6 +712,9 @@ npm install
 npx playwright install chromium
 npm test
 ```
+
+If Step 2 needed `<node22>`, put it in front of each of these:
+`cd <clone> && <node22> npm install`, and so on.
 
 **Verify:** `npm test` ends with `# fail 0`. It takes a few seconds.
 
@@ -731,7 +764,12 @@ Make up a fresh `<word>` each time, using only letters and digits (e.g.
 touches nothing and never shows an error. Don't test the hook by making it
 block something: a block shows the person a red error.
 
-**Both pass:** nothing to restart. Tell the person they can carry on in this
+**Check — Node:** did Step 2 need `<node22>`? If so, this session's shell
+still has the old Node, and `/ship` would run on it. That counts as a failed
+check: the restart below fixes it, because a new session picks up Node 22 as
+the default.
+
+**All pass:** nothing to restart. Tell the person they can carry on in this
 session, and to run `/setup-winnow` (audio is optional, and recommended).
 
 **Only `ship-rote` is missing** (`ship` is listed and the guard is live): do
@@ -742,12 +780,13 @@ the 💡 tip to the hand-off only if it is still missing then. If it never loads
 (*agent type 'ship-rote' not found*), and the rest run as plain agents, which
 is a bit slower. Never name the agent type to the person.
 
-**`ship` is missing or the guard is not loaded — Do:** a restart loads them. If `<clone>` is the session folder
+**`ship` is missing, the guard is not loaded, or Node needed `<node22>` —
+Do:** a restart fixes it. If `<clone>` is the session folder
 (rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
 the same terminal — it picks this conversation back up with the commands
-loaded. Otherwise tell them exactly (this always applies when Step 5 used a
-temporary workspace, with `<clone>` being `~/nam-2026-conference` or its
-`-fork` / `-2` variant):
+loaded. Otherwise tell them exactly. This always applies when Step 5 used a
+temporary workspace or rule 3 (another repository), with `<clone>` being
+`~/nam-2026-conference` or its `-fork` / `-2` variant:
 
 > Setup is done. To load the workshop's commands, start Claude again in the
 > project folder: in Claude Desktop, start a new session and choose the folder
@@ -759,7 +798,7 @@ Without the agent type, `/ship`'s first rote step fails with *agent type
 runs as a plain agent: slower, and heavier on context.
 
 **Only if they want `/ship` before restarting** (not after a temporary
-workspace, where `<clone>` is outside the session folder): it does run from
+workspace or Step 5's rule 3, where `<clone>` is outside the session folder): it does run from
 this session, because Step 5 put `<clone>` inside the session folder — use the Workflow tool
 with `scriptPath` `<clone>/.claude/workflows/ship.js` and args
 `{ "issue": <n>, "notes": "The checkout is <clone>; cd there first." }`. Tell
@@ -778,7 +817,8 @@ project's hook the first time — they should accept; the hook is the fork guard
 ## Done — final checklist
 
 Run these from the clone folder and confirm each before telling the person they
-are ready:
+are ready. If Step 2 needed `<node22>`, put it in front of the `node` and
+`npm` lines:
 
 ```bash
 cd <clone>
@@ -787,7 +827,7 @@ gh repo set-default --view                 # <you>/nam-2026-conference
 git remote get-url origin                  # …/<you>/nam-2026-conference(.git)
 node scripts/fork-guard.mjs && echo ok     # ok
 gh api repos/<you>/nam-2026-conference --jq .has_issues               # true
-gh label list --json name --jq '.[].name' | grep -c -x -E 'ai-working|ready-for-human|needs-human|ready-for-ai'   # 4
+gh label list --json name --jq '.[].name' | grep -c -x -E 'ai-working|ready-for-human|needs-human|ready-for-ai' || true   # 4
 npm test 2>&1 | grep -E '^# fail'          # # fail 0
 ```
 
@@ -823,7 +863,7 @@ if you have one: *Want me to start the app and open it in your browser?*
 
 Rules for the hand-off:
 
-- If Step 10's command or hook check failed, the restart comes first, in Step
+- If any of Step 10's checks failed (commands, hook or Node), the restart comes first, in Step
   10's exact words, before **First:**. Do not offer to start the app in that
   case: the restart would stop it.
 - If Step 0c is ⚠️, replace the `/ship` part of **First:** with the fix for
