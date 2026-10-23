@@ -26,8 +26,10 @@ Set me up for the ORBIT '26 workshop. Read https://raw.githubusercontent.com/Equ
 
 **Claude will** install what's missing (git, the GitHub CLI, Node 22), fork this
 repo, clone your fork and run the tests.
-**It asks** where to fork to — and needs you only to sign in to GitHub, type a
-password if an installer wants one, and click once to turn on Actions.
+**It asks** whether you have a GitHub account (no account? it helps you make
+one, or pair with someone who has one) and where to fork to — and needs you only
+to sign in to GitHub, type a password if an installer wants one, and click once
+to turn on Actions. A checklist shows how far along you are.
 ([Every step](ONBOARD_CLAUDE.md))
 
 <a id="set-up-your-fork"></a>
