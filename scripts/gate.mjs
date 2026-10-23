@@ -2,6 +2,7 @@
  * The gate, as a command rather than a report.
  *
  *   node scripts/gate.mjs        # npm test, then the Playwright suite; prints one JSON line
+ *   GATE_SCOPE=branch node scripts/gate.mjs   # …only the browser specs the branch changed (ship --fast)
  *
  * The ship loop used to ask an agent whether the suite was green and branch on
  * its answer. That is an agent marking its own homework. This runs the suites,
@@ -115,6 +116,17 @@ export function tampered(diff) {
 }
 
 /**
+ * `GATE_SCOPE=branch`: the browser specs this branch added or changed
+ * (`git diff --name-only --diff-filter=d`), for ship's fast tier — a round
+ * runs those instead of the whole suite, and the pull request's CI runs the
+ * rest. The probe file is QA's scratch, never the branch's proof.
+ */
+export function branchSpecs(nameOnly) {
+  return nameOnly.split('\n').map(s => s.trim())
+    .filter(f => /^tests\/[^/]+\.spec\.js$/.test(f) && f !== 'tests/qa-probe.spec.js');
+}
+
+/**
  * Does `git status --porcelain` show work the pull request will not contain?
  * Any tracked change counts; an untracked file only under tests/. `pinned`
  * names files the caller swapped in on purpose — the ship job runs main's
@@ -170,10 +182,20 @@ function main() {
   const unit = spawnSync('npm', ['test', '--silent'], { cwd: ROOT, encoding: 'utf8' });
   const unitCounts = /# pass (\d+)[\s\S]*?# fail (\d+)/.exec(unit.stdout || '') || [];
 
+  // GATE_BASE: what the branch is judged against — main, unless it stacks on
+  // another pull request.
+  const base = process.env.GATE_BASE || 'origin/main';
+  // A branch that changed no browser spec has nothing narrower to run: the
+  // whole suite, as without the scope.
+  let specs = [];
+  if (process.env.GATE_SCOPE === 'branch') {
+    try { specs = branchSpecs(git('diff', '--name-only', '--diff-filter=d', `${base}...HEAD`, '--', 'tests/')); } catch { /* no base */ }
+  }
+
   spawnSync('npm', ['run', 'db:seed', '--silent'], { cwd: ROOT, stdio: 'ignore' });
   // A report left by an earlier run must never be read as this one's.
   rmSync(json, { force: true });
-  const pw = spawnSync('npx', ['playwright', 'test', '--retries=1', '--forbid-only', '--reporter=json'], {
+  const pw = spawnSync('npx', ['playwright', 'test', ...specs, '--retries=1', '--forbid-only', '--reporter=json'], {
     cwd: ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
     env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: json, PLAYWRIGHT_JSON_OUTPUT_FILE: json },
   });
@@ -182,9 +204,6 @@ function main() {
   catch { browser = { passed: 0, failed: [{ test: 'playwright', error: (pw.stderr || 'no report written').slice(-600) }], flaky: 0, skipped: 0 }; }
 
   let diff = '';
-  // GATE_BASE: what the branch is judged against — main, unless it stacks on
-  // another pull request.
-  const base = process.env.GATE_BASE || 'origin/main';
   try { diff = git('diff', `${base}...HEAD`, '--', ...WATCHED); } catch { /* no base to compare with */ }
 
   let testDiff = '';
@@ -202,6 +221,9 @@ function main() {
       ? { passed: Number(unitCounts[1] || 0), failed: Math.max(1, Number(unitCounts[2] || 0)), output: (unit.stdout || '').split('\n').filter(l => /not ok|Error|assert|cancelled/.test(l)).slice(0, 12).join('\n') }
       : { passed: Number(unitCounts[1] || 0), failed: 0 },
     browser,
+    // What the browser count covers: `full`, or the branch's own specs.
+    scope: specs.length ? 'branch' : 'full',
+    ...(specs.length ? { specs } : {}),
     tampered: tampered(diff),
   };
   writeFileSync(join(OUT, 'gate.json'), JSON.stringify(result, null, 2));

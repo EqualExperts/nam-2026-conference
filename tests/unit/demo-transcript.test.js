@@ -36,10 +36,10 @@ test('the transcript is tracked and the audio is not', () => {
   assert.deepEqual(files.filter((f) => f.endsWith('.m4a')), []);
 });
 
-test('the README links to the transcript from the winnow step', () => {
-  const readme = readFileSync('README.md', 'utf8');
-  const start = readme.indexOf('Turn a conversation into a ticket');
-  const end = readme.indexOf('Ship the ticket');
+test('the quickstart links to the transcript from the product harness walkthrough', () => {
+  const guide = readFileSync('docs/harness/quickstart.md', 'utf8');
+  const start = guide.indexOf('## The product harness');
+  const end = guide.indexOf('## The engineering harness');
   assert.ok(start > -1 && end > start);
-  assert.ok(readme.slice(start, end).includes(PATH));
+  assert.ok(guide.slice(start, end).includes(PATH));
 });

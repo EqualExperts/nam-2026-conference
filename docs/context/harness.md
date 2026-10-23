@@ -26,10 +26,14 @@ files:
   - scripts/agent-summary.mjs
   - scripts/ship-progress.mjs
   - scripts/ai-cost.mjs
+  - scripts/fork-guard.mjs
+  - .claude/settings.json
+  - ONBOARD_CLAUDE.md
   - docs/context/README.md
   - specs/README.md
 tests:
   - tests/unit/ship.test.js
+  - tests/unit/fork-guard.test.js
   - tests/unit/review-workflows.test.js
   - tests/unit/deploy-workflow.test.js
   - tests/unit/winnow-pin.test.js
@@ -74,12 +78,24 @@ reports `ui` without a browser test, two build rounds, Sonnet), plus: the API
 or breadth (≥ 3 areas, ~7 app files) → `criteria` + `rules` auditors and three
 rounds; ≥ 2 open questions → one `spec-audit:combined`; `uiInteraction` →
 the browser pass always, four probes. `--full` / `--small` pick a preset.
+`--fast` is a third preset, never chosen by sizing — for a ticket already
+known to work, like a demo: no spec audit, one combined auditor
+and no browser explorer; the gate runs `GATE_SCOPE=branch` (`npm test` and only
+the `tests/*.spec.js` the branch changed — the whole suite when it changed
+none, and the pull request's CI always); a confirmed finding is fixed and
+re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
+The PR's *Not verified* says what it skipped.
+Its pull request is labelled `ship:fast`, and `verify.yml`'s Playwright jobs
+read the label: they run only the specs the merge commit changed against its
+base (`HEAD^1`, `branchSpecs`), or the whole suite if none; the push to main
+runs the whole suite as always.
 After a green gate, `verify#n` also relays `qa-facts.mjs`: a small run whose
 diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
 on the session model); a gate red twice running moves the fixer to the session
 model. In the plan loop only `criterion-unmet`, `claude-md`, `logic` and
 `scope` cost a `revise-spec` round; other confirmed spec findings are carried
-to the builder as notes. Both keep the skeptic and the machine gate, and both run Verify, hand-back
+to the builder as notes, once: a later round raising the same location again
+does not re-confirm it. Both keep the skeptic and the machine gate, and both run Verify, hand-back
 and lane release on Haiku — they only run a command and copy its output.
 
 **`ship.js`** takes `args` as an issue number (`/ship 42`) or
@@ -271,6 +287,17 @@ the base branch, beside `agent-run.sh`. None of this is a model call: it is
 call is wrapped so a rate limit or a malformed reply leaves the run
 untouched.
 
+**On a laptop** — how the workshop runs `/ship` — there is no pre-checkout
+post, no stream and no finish step, so `ship.js` reports itself. Off a runner
+(`!setup.runner`), every `enter(<phase>)` and each fix round queues a rote
+agent that pipes the script's own state (the shape `render()` takes) into
+`node scripts/ship-progress.mjs local <n> [<comment id>]`: the first creates
+the comment and prints its id, every later one edits it, and the elapsed
+clock is the comment's own `created_at`. The queue is never awaited mid-run,
+so reporting never holds a phase up; `settle()` awaits it at the end, writes
+**shipped** / **handed back**, and records the spend (below). In CI `local`
+is a no-op, and the script never queues it.
+
 **Escapes.** A code review or QA **FAIL** on a pull request ship built
 (branch `issue-<n>-…`) is something ship's own loop let through. The job's
 *🧯 Flag a harness escape* step labels the PR `harness-escape` — `gh pr list
@@ -283,6 +310,32 @@ merges the lesson or not. Its own PR is on a `learn/…` branch, so its reviews
 cannot start another round.
 
 ## Invariants
+
+- **Attendee work stays on their fork.** `scripts/fork-guard.mjs --hook` runs
+  from `.claude/settings.json` before every `Bash` and `mcp__*` call; it only
+  acts on a create (`gh issue|pr create`, a `gh api` write to `/issues` or
+  `/pulls`, a GitHub MCP create) and blocks one aimed at
+  `EqualExperts/nam-2026-conference` unless `gh` says the account can maintain
+  it. With no `-R`, the target is what `gh` would pick: the pinned default, else
+  `upstream` before `origin`. It is a no-op under `$GITHUB_ACTIONS`. Ship's setup
+  runs it without `--hook` before claiming. The hook also blocks any call that
+  adds `ready-for-ai`. It lets `fork-guard.mjs --probe <word>` through, after
+  marking a temp file named with the word; the probe prints `fork guard: live`
+  or `not loaded` and exits 0. That is how onboarding's Step 10 checks the hook
+  without showing a red block. `ONBOARD_CLAUDE.md` is the attendee setup a
+  Claude session reads and carries out.
+- **No key, no agent job.** `agent-ship`, `agent-respond`, `agent-code-review` and
+  `agent-qa` each start with a `key` job that carries the trigger condition and
+  reports whether `ANTHROPIC_API_KEY` is set (a job's `if` cannot read a
+  secret); the agent job `needs: key` and runs only when it is. A workshop fork
+  has no key — its agents run from Claude on the laptop — so these show as
+  skipped in seconds, not failed after minutes of `npm install` and a browser.
+- **Agents never put `ready-for-ai` on.** The same hook blocks any call that
+  adds the label (`gh issue|pr create|edit --label/--add-label`, a `gh api` or
+  `curl` write naming it, a GitHub MCP label write) and answers "run `/ship
+  <n>`": the workshop ships from Claude on the laptop, and the label starts the
+  Actions ship, which attendees have no key for. Taking it off — ship's setup
+  does — is allowed, as is `gh label create`.
 
 - Only a **confirmed blocker** or a red gate costs a fix round. A refuted or
   minor finding never does.
@@ -422,7 +475,12 @@ cannot start another round.
   design for the progress comment was to have `ship.js` log milestones for
   `ship-progress.mjs` to read, and that recording is what ruled it out. What
   *is* live is each agent's `resultPreview` on `system/task_progress` — that
-  is what the follower reads instead.
+  is what the follower reads instead. A laptop run has no stream at all, so
+  there an agent is the only way out of the script: `report()` is one rote
+  agent per update, never awaited until `settle()`.
+- **A workflow script has no filesystem, shell or clock** — no `Date.now()`, no
+  env. Anything that needs one (the comment's age, the session's transcript
+  directory) is computed by the script an agent runs, never in `ship.js`.
 - Every tracked file under `server/`, `src/`, `scripts/` and `tests/` must be
   owned by a doc; a new script fails `npm test` until it is listed here or in
   its area's doc.
@@ -462,13 +520,22 @@ opened. CI rows are what the CLI billed (`modelUsage[*].costUSD` in the final
 `result`); a local run is a subscription, so `record --transcripts <workflow
 dir>` prices the per-agent transcripts with `RATES` and marks the row `~`. The
 step is `continue-on-error` and the script catches everything: reporting cost
-never fails the job that did the work.
+never fails the job that did the work. A laptop ship has no such step: its
+last rote agent runs `record --transcripts auto --ticket <n> [--pr <n>]` —
+`auto` is the `$CLAUDE_CODE_SESSION_ID` workflow directory under
+`~/.claude/projects` written to last (the asking agent's own transcript is in
+it), and `--ticket` keeps the agents whose prompt names `worktrees/wt-<n>`,
+since `/ship 1 2` writes both tickets into one directory.
 
 **Rote agents.** Ship's verify and PR steps run as `.claude/agents/ship-rote.md`
 (`agentType: 'ship-rote'`): Haiku, a two-line system prompt and
 `omitClaudeMd: true`, so they start ~26% lighter (13.6k against 18.4k tokens,
 measured). Only steps that run given commands and relay output belong there —
-anything that judges needs CLAUDE.md's rules.
+anything that judges needs CLAUDE.md's rules. A session started outside the
+checkout may not have loaded the type (one that cloned into its own folder
+usually has — `ONBOARD_CLAUDE.md` Step 10 tests it): when it has not, `rote()`
+asks for it once, and on *not found* runs that step and every later one as a
+plain agent.
 
 **Deploy.** `deploy.yml` is a `workflow_run` on `✅ verify` (main, push events,
 conclusion `success`): it checks out the verified `head_sha` and runs

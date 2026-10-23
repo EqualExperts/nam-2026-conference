@@ -113,6 +113,21 @@ export function UserSwitcher() {
               );
             })}
           </ul>
+          {currentUser.isSpeaker && (
+            <div className="border-t border-hairline p-1.5">
+              <Link
+                to={`/speakers/${currentUser.speakerId}`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-raised"
+                data-testid="own-speaker-profile"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-cyan-500/12 text-cyan-300">
+                  <Icon name="mic" className="size-3" />
+                </span>
+                <span className="text-sm font-semibold">Your speaker profile</span>
+              </Link>
+            </div>
+          )}
           <div className="border-t border-hairline p-1.5" data-testid="talk-links">
             <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Workshop talks</p>
             {TALKS.map((t) => (

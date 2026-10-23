@@ -1,0 +1,145 @@
+#!/usr/bin/env node
+/**
+ * Keep workshop tickets and pull requests on the attendee's own fork.
+ *
+ *   node scripts/fork-guard.mjs          # exit 1 if this checkout would write to the workshop repo
+ *   node scripts/fork-guard.mjs --hook   # PreToolUse hook: exit 2 blocks the tool call
+ *   node scripts/fork-guard.mjs --probe <word>   # is the hook live in this session?
+ *
+ * Every attendee forks EqualExperts/nam-2026-conference and files tickets on
+ * the fork. A clone of the original instead of the fork — or a fork clone whose
+ * `gh` was never pinned, so it falls through to the `upstream` remote — would
+ * open every attendee's issues and pull requests on the shared repo. The hook
+ * in .claude/settings.json runs this before any tool call that creates one;
+ * the workshop's maintainers (maintain or admin on the repo) are let through.
+ */
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const WORKSHOP_REPO = 'EqualExperts/nam-2026-conference';
+
+const CREATE_CMD = /\bgh\s+(?:issue|pr)\s+create\b/;
+// `gh api … repos/<o>/<r>/issues` or `/pulls`, written with fields or an explicit POST
+const API_CREATE = /\bgh\s+api\b(?=.*\/(?:issues|pulls)\b)(?=.*(?:-X\s*POST|--method[=\s]+POST|\s-[fF]\s|--field|--raw-field|--input))/;
+const MCP_CREATE = /github.*(?:create_issue|issue_write|create_pull_request|create_pr\b)/i;
+
+// The workshop runs /ship from Claude on the laptop. `ready-for-ai` starts the
+// GitHub Actions ship instead, which attendees have no key for — so an agent
+// may take the label off (ship does) but never put it on.
+export const SHIP_LABEL = 'ready-for-ai';
+const LABEL_FLAG = new RegExp(`(?:--add-label|--label|-l)[=\\s]+["']?[^\\s"']*\\b${SHIP_LABEL}\\b`);
+const API_LABEL = new RegExp(`\\b(?:gh\\s+api|curl)\\b(?=.*\\b${SHIP_LABEL}\\b)(?!.*(?:-X\\s*DELETE|--method[=\\s]+DELETE|--request[=\\s]+DELETE))`);
+
+/** Whether a tool call puts the `ready-for-ai` label on an issue or pull request. */
+export function addsShipLabel({ toolName = '', command = '', toolInput = {} }) {
+  if (toolName === 'Bash') {
+    if (/\bgh\s+(?:issue|pr)\s+(?:create|edit)\b/.test(command) && LABEL_FLAG.test(command)) return true;
+    return /\/labels\b|labels(?:\[\])?=|"labels"/.test(command) && API_LABEL.test(command);
+  }
+  if (toolName.startsWith('mcp__') && /github/i.test(toolName) && !/remove/i.test(toolName)) {
+    return JSON.stringify(toolInput.labels ?? toolInput.label ?? '').includes(SHIP_LABEL);
+  }
+  return false;
+}
+
+const SHIP_LABEL_MESSAGE =
+  `Blocked: adding the ${SHIP_LABEL} label starts the GitHub Actions ship, which this workshop does not use. ` +
+  `Build the ticket from Claude instead: run /ship <issue number> in Claude Code or Claude Desktop, opened in your clone.`;
+
+// Onboarding asks whether the hook is live. Making it block something works,
+// but a block shows the person a red error. Instead the hook marks a probe it
+// lets through, and the probe reports whether the mark is there. The word is
+// fresh each time, so an old mark cannot answer for a new session.
+const PROBE = /\bfork-guard\.mjs\s+--probe\s+([A-Za-z0-9]{1,32})\b/;
+export const probeFile = (word) => join(tmpdir(), `fork-guard-probe-${word}`);
+
+/** The probe word a tool call carries, if it is the hook probe. */
+export function probeWord({ toolName = '', command = '' }) {
+  return toolName === 'Bash' ? PROBE.exec(command)?.[1] : undefined;
+}
+
+/** The `owner/repo` a creating tool call names outright, if any; `undefined` if it does not create. */
+export function creates({ toolName = '', command = '', toolInput = {} }) {
+  if (toolName === 'Bash') {
+    if (!CREATE_CMD.test(command) && !API_CREATE.test(command)) return undefined;
+    const flag = /(?:^|\s)(?:-R|--repo)[=\s]+["']?([\w.-]+\/[\w.-]+)/.exec(command);
+    const path = /\brepos\/([\w.-]+\/[\w.-]+)\/(?:issues|pulls)\b/.exec(command);
+    return flag?.[1] ?? path?.[1] ?? null;
+  }
+  if (toolName.startsWith('mcp__') && MCP_CREATE.test(toolName)) {
+    return toolInput.owner && toolInput.repo ? `${toolInput.owner}/${toolInput.repo}` : null;
+  }
+  return undefined;
+}
+
+/** Block only a write to the workshop repo by someone who cannot maintain it. */
+export function verdict(target, canMaintain) {
+  if (!target || target.toLowerCase() !== WORKSHOP_REPO.toLowerCase() || canMaintain) return { ok: true };
+  return {
+    ok: false,
+    message:
+      `Blocked: this would create an issue or pull request on ${WORKSHOP_REPO}, the workshop's original repo. ` +
+      `Your tickets and pull requests belong on your own fork. Work in a clone of your fork ` +
+      `(gh repo fork ${WORKSHOP_REPO} --clone), and pin gh to it there: ` +
+      `gh repo set-default "$(git remote get-url origin)". Setup steps: ONBOARD_CLAUDE.md.`,
+  };
+}
+
+const run = (cmd, args) => {
+  try { return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch { return ''; }
+};
+const slug = (url) => /github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url)?.[1] ?? null;
+
+/** Where `gh` sends a call with no `-R`: the pinned default, else upstream before origin, as gh does. */
+function defaultTarget() {
+  const pinned = run('gh', ['repo', 'set-default', '--view']);
+  if (/^[\w.-]+\/[\w.-]+$/.test(pinned)) return pinned;
+  return slug(run('git', ['remote', 'get-url', 'upstream'])) ?? slug(run('git', ['remote', 'get-url', 'origin']));
+}
+
+const maintains = (repo) => run('gh', ['api', `repos/${repo}`, '--jq', '.permissions.maintain or .permissions.admin']) === 'true';
+
+function main() {
+  // A runner works on the repository it belongs to; forks get no secrets, so
+  // a stranger's run never gets this far (see the workflows' `if`).
+  if (process.env.GITHUB_ACTIONS) return 0;
+  const probe = process.argv.indexOf('--probe');
+  if (probe !== -1) {
+    const word = process.argv[probe + 1] ?? '';
+    const live = /^[A-Za-z0-9]{1,32}$/.test(word) && existsSync(probeFile(word));
+    if (live) rmSync(probeFile(word), { force: true });
+    process.stdout.write(live ? 'fork guard: live\n' : 'fork guard: not loaded\n');
+    return 0;
+  }
+  const hook = process.argv.includes('--hook');
+  let target;
+  if (hook) {
+    let input = {};
+    try { input = JSON.parse(readFileSync(0, 'utf8') || '{}'); } catch { return 0; }
+    const call = { toolName: input.tool_name, command: input.tool_input?.command, toolInput: input.tool_input };
+    const word = probeWord(call);
+    if (word) {
+      try { writeFileSync(probeFile(word), ''); } catch { /* the probe then reports "not loaded" */ }
+      return 0;
+    }
+    if (addsShipLabel(call)) {
+      process.stderr.write(`${SHIP_LABEL_MESSAGE}\n`);
+      return 2;
+    }
+    const named = creates(call);
+    if (named === undefined) return 0;
+    target = named ?? defaultTarget();
+  } else {
+    target = defaultTarget();
+  }
+  const v = verdict(target, target?.toLowerCase() === WORKSHOP_REPO.toLowerCase() && maintains(target));
+  if (v.ok) return 0;
+  process.stderr.write(`${v.message}\n`);
+  return hook ? 2 : 1;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exitCode = main();

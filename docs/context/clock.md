@@ -1,10 +1,10 @@
 ---
 area: clock
-summary: The simulated conference "now" — the viewer's time of day projected onto Day 1, pinnable for demos and tests — and the live strip it drives.
-read_when: touching simulated time, ?at= or orbit:clockAt, anything that asks "what is happening now", /api/live, or LiveNow
+summary: The simulated conference "now" — the viewer's time of day projected onto Day 1, pinnable for demos and tests — the /api/live endpoint and the LIVE badge.
+read_when: touching simulated time, ?at= or orbit:clockAt, anything that asks "what is happening now", /api/live, or LiveBadge
 files:
   - src/lib/clock.js
-  - src/components/LiveNow.jsx
+  - src/components/LiveBadge.jsx
 tests:
   - tests/unit/clock.test.js
   - tests/live.spec.js
@@ -43,10 +43,9 @@ CLAUDE.md § The conference clock.
 
 **Getting the clock.** `src/lib/store.jsx` calls `useConferenceClock(data?.days)`
 and exposes it as `useConference().clock`. Pages and components read it from
-there (`HomePage`, `SchedulePage`, `MyAgendaPage`, `SessionPage`, `VenuesPage`,
-`FoodPage`, `SessionCard`, `ScheduleGrid`, `TodayPanel`, `NextUpCard`,
-`VenueBoard`, `AttendancePanel`, …). The store passes `clock` as the body of
-seat PUTs; attendance passes it as query/body. `format.js:relativeDate(iso,
+there (`HomePage`, `SchedulePage`, `SessionPage`, `VenuesPage`, `FoodPage`,
+`SessionCard`, `ScheduleGrid`, `VenueBoard`, `AttendancePanel`, …). The store
+passes `clock` as the body of seat PUTs; attendance passes it as query/body. `format.js:relativeDate(iso,
 clock)` measures "ago" against it.
 
 **`GET /api/live?day=&time=`** (`server/routes/meta.js`, 400 without both):
@@ -55,18 +54,15 @@ clock)` measures "ago" against it.
 then capacity first; `nextSlot` = the earliest `starts_at > time`; `upNext` =
 everything starting at `nextSlot`, keynotes then rating first. `dayStartsAt` /
 `dayEndsAt` are the day's `MIN(starts_at)` / `MAX(ends_at)`, `null` for a day
-with no sessions. Client: `api.getLive({ day, time })`.
+with no sessions.
 
-**`LiveNow`** (rendered once, on `HomePage`) fetches `/live` keyed on
-`clock.day`+`clock.time`, then picks a phase from the clock against the day's
-bounds: `loading`, `before` (< `dayStartsAt`), `after` (>= `dayEndsAt`),
-`running`, `gap` (nothing running, something next), else `after`. It shows up
-to four `RunningCard`s (running, or next in `gap`/`before`), sorted so the
-attendee's own reservations come first and tagged "Yours", with progress bars
-from `progressOf`, plus an "Up next" list of six when not in a gap. The day
-label comes from `days.find(d => d.date === clock.day)`, falling back to
-'Day 1'. `LiveBadge` is exported and reused by `SessionCard`, `NextUpCard`
-and `VenueBoard`. Testid: `live-now`.
+Client: `api.getLive({ day, time })` — **no UI calls it yet**; it is there for
+workshop teams to build a "happening now" view on. `tests/live.spec.js` covers
+the endpoint (`the live endpoint lists only what is running`).
+
+**`LiveBadge`** (`src/components/LiveBadge.jsx`, the file's only export) — the
+pulsing red dot + "LIVE" chip, `{ className, label = 'Live' }`. Used by
+`SessionCard` and `VenueBoard` for whatever is in progress at `clock`.
 
 ## Invariants
 
@@ -92,8 +88,9 @@ and `VenueBoard`. Testid: `live-now`.
 - Tests pin via `visit(page, path, { at })`, which writes `orbit:clockAt` in
   an init script — build `at` with `momentOn(dayIndex, time)` from
   `tests/helpers.js`.
-- Branch LiveNow's state on the day bounds, not on array lengths (the comment
-  in `LiveNow` records the bug that caused).
+- A "happening now" view built on `/live` should branch on `dayStartsAt` /
+  `dayEndsAt`, not on array lengths — `happeningNow` is empty in every gap
+  between slots, which is not the same as the day being over.
 
 ## Where to change…
 
@@ -101,4 +98,4 @@ and `VenueBoard`. Testid: `live-now`.
 - A new override source or validation: `clock.js:readOverride`.
 - What counts as "running" or "next": the `runningAt` / `nextSlotAfter` /
   `startingAt` statements in `server/routes/meta.js`.
-- The live strip's copy or phases: `LiveNow.jsx`.
+- The LIVE chip's look: `LiveBadge.jsx`.

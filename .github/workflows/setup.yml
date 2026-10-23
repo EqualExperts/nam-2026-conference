@@ -48,6 +48,7 @@ jobs:
           label harness-escape  D93F0B "A blocker found after ship opened this PR — its own loop let it through."
           label follow-up       0E8A16 "Worth doing, but nobody hits it in normal use. Filed by a review that passed."
           label ship:full       0969DA "Give this ticket the full ship loop — more auditors, more rounds, Opus."
+          label ship:fast       C5DEF5 "Built with /ship --fast: its PR runs only the browser specs it changed; main runs them all."
 
       - name: Say what else this fork needs
         env:
@@ -83,7 +84,7 @@ jobs:
                 echo "::error title=API key::$problem" >&2
               fi
             else
-              echo "| \`ANTHROPIC_API_KEY\` secret | ❌ **missing — nothing will run** |"
+              echo "| \`ANTHROPIC_API_KEY\` secret | ⚪ optional — only the agents on GitHub Actions need it; \`/ship\` from Claude Code does not |"
             fi
 
             if [ "$HAS_PAT" = "true" ]; then
@@ -102,7 +103,7 @@ jobs:
             echo
 
             if [ "$HAS_KEY" != "true" ]; then
-              echo "### Set the API key first"
+              echo "### To run the agents on GitHub Actions, set the API key"
               echo
               echo "Settings → Secrets and variables → Actions → New repository secret,"
               echo "named \`ANTHROPIC_API_KEY\`. It must be **scoped to a workspace**:"

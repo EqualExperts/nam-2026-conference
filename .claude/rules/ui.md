@@ -63,22 +63,21 @@ lat/lng are real. There was once a per-venue "floor plan" built from invented
 removed. Do not bring it back — `VenueBoard` shows what is actually happening
 in each room instead.
 
-## The home page is about *this* attendee, at *this* moment
+## Home and My Agenda are blank on purpose
 
-Everything on `/` is personal or time-sensitive. It is not a brochure — an
-attendee bought a ticket, so the dates and track list tell them nothing new.
+`/` is a way in — hero, links, the latest announcement, sponsors — and
+`/my-agenda` is a *coming soon* placeholder. Personal views are what workshop
+teams build; build one when a ticket asks for it. When you do:
 
-- **Suggestions rank on behaviour, not declaration.** `interests` is what
+- **Rank suggestions on behaviour, not declaration.** `interests` is what
   someone ticked at registration; the topic tags on what they have actually
-  booked are what they want, so suggestions rank on those.
-- **Everything is driven by `clock.day`.** The old page rendered `days[0]`, so
-  on day 3 it presented day 1 as if it were happening.
-- Sections **self-hide when empty** — follow `FromSpeakersYouFollow`.
-
-If you add a section here, it has to answer "why is this on the home page and
-not on the page that owns it?" Keynotes, the track list, the venue split and
-featured speakers all failed that test and were removed. (how:
-`docs/context/agenda.md`)
+  booked are what they want. `/users/:id/today` already ranks that way.
+- **Drive everything from `clock.day`**, never `days[0]` — otherwise on day 3
+  the page presents day 1 as if it were happening.
+- Sections **self-hide when empty** — follow `LatestAnnouncement`.
+- Home is not a brochure: an attendee bought a ticket, so the dates and track
+  list tell them nothing new. A section there has to answer "why here and not on
+  the page that owns it?" (how: `docs/context/agenda.md`)
 
 ## Chrome and correctness
 

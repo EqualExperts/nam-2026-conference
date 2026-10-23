@@ -128,6 +128,13 @@ describe('sizing — composed from what the ticket risks', () => {
     assert.match(source, /required: \['proceed', 'reason', 'sizing'\]/);
   });
 
+  test('setup must say whether the ticket adds an interaction or a layout fit, or their checks silently never run — #115', () => {
+    const required = /sizing: \{\s*type: 'object',\s*required: \[([^\]]*)\]/.exec(source);
+    assert.ok(required, 'no required list on sizing');
+    assert.match(required[1], /'uiInteraction'/);
+    assert.match(required[1], /'layoutFit'/);
+  });
+
   test('a small run whose diff reaches a risky path is escalated on that evidence', async () => {
     const { calls, models } = await run({ setup: facts({}), verify: { ...GREEN, facts: '--app-lines=40 --risky=yes' } });
     assert.ok(calls.includes('audit:criteria#1') && calls.includes('audit:rules#1'));
@@ -155,6 +162,17 @@ describe('the plan loop re-plans only for what changes the build', () => {
     const { calls, prompts } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('spec-gap') : { covered: 'all', findings: [] }) });
     assert.ok(!calls.some(c => c.startsWith('revise-spec')));
     assert.match(prompts.implement, /a spec-gap problem/);
+  });
+
+  test('a carried gap the next round raises again is confirmed and carried once — #114', async () => {
+    const gap = { ...blocker('a spec-gap problem'), category: 'spec-gap', line: 20 };
+    const logic = { ...blocker('a logic problem'), category: 'logic', line: 90 };
+    const { calls, prompts } = await run({
+      'spec-audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [gap, logic] : [gap] }),
+    });
+    assert.ok(calls.includes('revise-spec#1'));
+    assert.equal(calls.filter(c => c === 'skeptic:spec-gap').length, 1, 'the carried gap paid a second skeptic');
+    assert.equal(prompts.implement.split('a spec-gap problem').length - 1, 1, 'the implementer was told the gap twice');
   });
 
   test('a misread criterion is still re-planned', async () => {
@@ -206,8 +224,11 @@ describe('ship-rote', () => {
     const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
     const result = await script(7, agent, parallel, () => {}, () => {});
     assert.equal(result.outcome, 'shipped');
-    assert.deepEqual(seen.filter(([l]) => l === 'verify#1' || l === 'open-pr'),
-      [['verify#1', 'ship-rote'], ['verify#1', undefined], ['open-pr', 'ship-rote'], ['open-pr', undefined]]);
+    // Asked once: a session that has not loaded it will not load it mid-run,
+    // and every retry is a red ✗ in /workflows.
+    assert.equal(seen.filter(([, t]) => t === 'ship-rote').length, 1);
+    assert.ok(seen.some(([l, t]) => l === 'verify#1' && t === undefined));
+    assert.ok(seen.some(([l, t]) => l === 'open-pr' && t === undefined));
   });
 });
 
@@ -225,6 +246,14 @@ describe('ship', () => {
     assert.ok(!calls.includes('learn'));
   });
 
+  test('the PR step reads an empty post-gate file list as nothing changed, not as a failure', async () => {
+    // A green, audited branch was handed back because `git log <gate>..HEAD`
+    // printed nothing — which is the normal case: no commit after the gate.
+    const { prompts } = await run();
+    assert.match(prompts['open-pr'], /Empty is the normal case[^.]*carry on/);
+    assert.match(prompts['open-pr'], /Only if it lists a file outside docs\/, specs\/ or \*\.md[^.]*return ok=false/);
+  });
+
   test('setup pins gh to origin, and stops if it still points elsewhere — #149', async () => {
     // `gh` without a terminal prefers an `upstream` remote, which `gh repo
     // clone` of a fork adds: unpinned, a laptop run worked on the upstream.
@@ -234,9 +263,17 @@ describe('ship', () => {
     assert.match(prompts.setup, /gh repo set-default --view[^.]*origin[^.]*; if it does not, return proceed=false/);
   });
 
-  test('the quickstart and the playbook pin gh before anything reads an issue — #149', () => {
+  test('setup refuses a checkout that would write to the workshop repo, before it claims anything', async () => {
+    const { prompts } = await run();
+    const at = prompts.setup.indexOf('node scripts/fork-guard.mjs');
+    assert.ok(at > -1, 'setup never runs the fork guard');
+    assert.ok(at < prompts.setup.indexOf('claim it'), 'the guard runs after the ticket is claimed');
+    assert.match(prompts.setup, /fork-guard\.mjs`: if it exits non-zero[^.]*proceed=false/);
+  });
+
+  test('the onboarding and the playbook pin gh before anything reads an issue — #149', () => {
     const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
-    assert.match(read('docs/harness/quickstart.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
+    assert.match(read('ONBOARD_CLAUDE.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
     assert.match(read('docs/harness/ship-playbook.md'), /gh repo set-default "\$\(git remote get-url origin\)"\ngh issue view/);
   });
 
@@ -303,6 +340,14 @@ describe('ship', () => {
     assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx — conflicts with origin\/main/);
     assert.ok(calls.includes('verify#2'));
     assert.equal(result.rounds[0].gate, 'not run — conflicts with main');
+  });
+
+  test('a conflict is a conflict even if the verify agent also relays a green gate line — #153', async () => {
+    const { calls, prompts } = await run({
+      verify: (n) => (n === 1 ? { ...GREEN, sync: 'conflict', conflicts: ['src/a.jsx'] } : { ...GREEN, sync: 'merged' }),
+    });
+    assert.ok(!calls.some(c => c.startsWith('audit') && c.endsWith('#1')), 'a conflicted round was audited as green');
+    assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx/);
   });
 
   test('a conflict when the PR is about to open hands back as a draft, naming the files — #150', async () => {
@@ -552,7 +597,8 @@ describe('ship', () => {
 
   test('on a laptop the PR agent releases the lane on its way out, and tells other agents not to', async () => {
     const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
-    assert.equal(calls.at(-1), 'open-pr');
+    // Only the issue's progress and spend are reported after it.
+    assert.equal(calls.filter(c => !/^(progress#|report$)/.test(c)).at(-1), 'open-pr');
     assert.match(prompts['open-pr'], /node scripts\/lane\.mjs release 7/);
     assert.doesNotMatch(prompts['open-pr'], /Never release the lane/, 'the PR agent is told both to release and not to');
     assert.match(prompts.implement, /Never release the lane/);
@@ -862,5 +908,123 @@ describe('worktree paths', () => {
       .split('\n').filter(Boolean);
     const offenders = files.filter(f => /orbit-(wt|main|qa)-/.test(readFileSync(new URL(f, root), 'utf8')));
     assert.deepEqual(offenders, []);
+  });
+});
+
+/**
+ * A laptop run has no Actions steps to post the progress comment or record the
+ * spend, so the script does both through rote agents. What the test can prove
+ * is what those agents are told to run, in what order, and that CI never runs them.
+ */
+describe('progress and spend on the issue, from a laptop', () => {
+  const LAPTOP = { ...SETUP, runner: false, workdir: '/w/.claude/worktrees/wt-7' };
+  const reported = (prompt) => JSON.parse(/<<'STATE'\n(.*)\nSTATE/s.exec(prompt)[1]);
+
+  test('in CI nothing is posted from the script — agent-ship.yml does it', async () => {
+    const { calls } = await run();
+    assert.deepEqual(calls.filter(c => /^(progress#|report$)/.test(c)), []);
+  });
+
+  test('the first update creates the comment, every later one edits it by the id it printed', async () => {
+    const { calls, prompts } = await run({ setup: LAPTOP, progress: { id: '555' } });
+    const updates = calls.filter(c => c.startsWith('progress#'));
+    assert.ok(updates.length >= 3, updates.join(', '));
+    assert.match(prompts[updates[0]], /cd \/w\/\.claude\/worktrees\/wt-7 && node scripts\/ship-progress\.mjs local 7 <<'STATE'/);
+    for (const u of updates.slice(1)) assert.match(prompts[u], /ship-progress\.mjs local 7 555 <<'STATE'/);
+    assert.equal(reported(prompts[updates[0]]).phases.find(p => p.title === 'Setup').status, 'done');
+  });
+
+  test('a shipped run settles the comment on the PR and records the spend on the issue and the PR', async () => {
+    const { calls, prompts } = await run({ setup: LAPTOP, progress: { id: '555' } });
+    assert.equal(calls.at(-1), 'report');
+    const state = reported(prompts.report);
+    assert.deepEqual(state.outcome, { outcome: 'shipped', pr: 'https://github.com/o/r/pull/9' });
+    assert.equal(state.ended, true);
+    assert.deepEqual(state.phases.filter(p => p.status === 'running'), []);
+    assert.equal(state.rounds[0].gate.ok, true);
+    assert.equal(state.rounds[0].gate.unit.passed, 178);
+    assert.match(prompts.report, /ai-cost\.mjs record --issue 7 --kind ship --transcripts auto --ticket 7 --pr 9/);
+  });
+
+  test('a round that needed a fix says so, and a hand-back settles as handed back with its draft', async () => {
+    const { calls, prompts } = await run({
+      setup: LAPTOP, progress: { id: '555' },
+      audit: (n) => ({ covered: 'all', findings: [blocker('wrong total')] }),
+      'hand-back': { ok: true, summary: 'back', url: 'https://github.com/o/r/pull/12' },
+    });
+    assert.equal(calls.at(-1), 'report');
+    const state = reported(prompts.report);
+    assert.equal(state.outcome.outcome, 'needs-human');
+    assert.equal(state.outcome.stage, 'Code Audit');
+    assert.ok(state.rounds.some(r => r.fixRan), JSON.stringify(state.rounds));
+    assert.match(prompts.report, /--ticket 7 --pr 12/);
+  });
+
+  test('a declined ticket posts nothing', async () => {
+    const { calls } = await run({ setup: { ...LAPTOP, proceed: false, reason: 'closed' } });
+    assert.deepEqual(calls, ['setup']);
+  });
+});
+
+/**
+ * `--fast` is for a ticket already known to work — the workshop's demo, where
+ * minutes matter. It keeps one independent audit and a skeptic, and says in
+ * the pull request what it skipped.
+ */
+describe('--fast', () => {
+  const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
+
+  test('one combined auditor, no spec audit, no browser explorer, the gate scoped to the branch', async () => {
+    const { result, calls, prompts } = await run({ implement: { ok: true, summary: 's', ui: true, browserTest: false }, verify: BRANCH_GATE }, '7 --fast');
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(result.size, 'fast');
+    assert.deepEqual(calls.filter(c => /^(spec-audit|audit)/.test(c)), ['audit:combined#1']);
+    assert.match(prompts['verify#1'], /GATE_SCOPE=branch GATE_BASE=origin\/main node scripts\/gate\.mjs/);
+    assert.match(prompts['audit:combined#1'], /the branch's own browser specs \(tests\/schedule\.spec\.js\)/);
+  });
+
+  test('a confirmed finding is fixed and re-gated, not re-audited, and nothing is learnt', async () => {
+    const { result, calls, prompts } = await run({
+      audit: (n) => ({ covered: 'all', findings: n === 1 ? [blocker('deselect is not asserted')] : [] }),
+      verify: BRANCH_GATE,
+    }, '7 --fast');
+    assert.equal(result.outcome, 'shipped');
+    assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'audit:combined#1', 'fix#1', 'verify#2']);
+    assert.ok(!calls.includes('learn'), calls.join(', '));
+    assert.match(prompts['open-pr'], /re-gated, not re-audited/);
+    assert.match(prompts['open-pr'], /the pull request's CI runs it/);
+    assert.match(prompts['open-pr'], /6 browser in tests\/schedule\.spec\.js/);
+  });
+
+  test('it never escalates, whatever the diff touches', async () => {
+    const { calls } = await run({ verify: { ...BRANCH_GATE, facts: '--risky=yes --app-lines=900' } }, '7 --fast');
+    assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1']);
+  });
+
+  test('a red gate still goes to the fixer, then to the auditor once green', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? RED([{ test: 'schedule.spec.js:10', error: 'e' }]) : BRANCH_GATE) }, '7 --fast');
+    assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'fix#1', 'verify#2', 'audit:combined#2']);
+  });
+
+  test('without --fast the gate is the whole suite, as before', async () => {
+    const { prompts } = await run();
+    assert.match(prompts['verify#1'], /`GATE_BASE=origin\/main node scripts\/gate\.mjs`/);
+    assert.doesNotMatch(prompts['verify#1'], /GATE_SCOPE/);
+  });
+
+  test('its pull request is labelled ship:fast, so CI runs the same light check', async () => {
+    const { prompts } = await run({}, '7 --fast');
+    assert.match(prompts['open-pr'], /--label ship:fast/);
+    assert.doesNotMatch((await run()).prompts['open-pr'], /ship:fast/);
+  });
+
+  test('setup runs on Sonnet, since its sizing is never read — every other gear keeps the session model', async () => {
+    assert.equal((await run({}, '7 --fast')).models.setup, 'sonnet');
+    for (const a of [7, '7 --small', '7 --full']) assert.equal((await run({}, a)).models.setup, undefined, String(a));
+  });
+
+  test('the flag is not passed on as a note', async () => {
+    const { prompts } = await run({}, '7 --fast');
+    assert.doesNotMatch(prompts.setup, /--fast/);
   });
 });

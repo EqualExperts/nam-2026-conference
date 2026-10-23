@@ -48,8 +48,11 @@ test('no reference to the previous pin outside specs/ and the lockfile', () => {
 
 test('every skill the README tells you to run is deployed', () => {
   const readme = read('README.md');
-  // /ship is a workflow, not a skill; every other slash command is one
-  const names = [...new Set([...readme.matchAll(/(?:`|^)\/([a-z][a-z-]+)/gm)].map((m) => m[1]))].filter((n) => n !== 'ship');
+  // a slash command is a skill, or a saved workflow (/ship, /code-review, /qa)
+  const names = [...new Set([...readme.matchAll(/(?:`|^)\/([a-z][a-z-]+)/gm)].map((m) => m[1]))];
   assert.ok(names.length > 0);
-  for (const n of names) assert.ok(existsSync(join(root, '.claude/skills', n)), `README names ${n}, which is not in .claude/skills`);
+  for (const n of names) {
+    assert.ok(existsSync(join(root, '.claude/skills', n)) || existsSync(join(root, '.claude/workflows', `${n}.js`)),
+      `README names /${n}, which is neither in .claude/skills nor .claude/workflows`);
+  }
 });

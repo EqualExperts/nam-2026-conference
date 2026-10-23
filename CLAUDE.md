@@ -4,6 +4,23 @@ A sample app for a workshop on using AI across the software delivery lifecycle.
 Attendees fork this repo, turn requirements into GitHub Issues, and let an
 engineering harness implement them. **Read this file before writing code here.**
 
+## Deliberately unbuilt
+
+The personal side of the app is left for workshop teams to build, so it is
+blank on purpose — build it when a ticket asks, never as a side effect of
+another change:
+
+- **My Agenda** (`/my-agenda`) is a *coming soon* placeholder.
+- **Home** is static: a hero, links into the app, the latest announcement and
+  the sponsors. Nothing on it is about the signed-in attendee.
+- **Following** works on the speaker pages, but nothing shows what you follow
+  outside them — that, like your seats, is for My Agenda or Home to use.
+
+Everything underneath is real and tested: seats, the waitlist, clashes,
+check-in, ratings, follows, `/users/:id/schedule`, `/users/:id/today`, `/live`
+and the `.ics` exports, each with a function in `src/lib/api.js`. A ticket that
+only needs a page on top of one of those is small. (how: `docs/context/agenda.md`)
+
 ## Run it
 
 ```bash
@@ -64,12 +81,12 @@ what this app does.
   promotes whoever has waited longest (skipping anyone who has since taken a seat
   in that slot). All transactional — `server/lib/seats.js`.
 - **Hours are hours you hold a chair for.** Anything counting booked time —
-  `scheduleFor`'s `totalMinutes`, My Agenda's hours tile and day lines — counts
+  `scheduleFor`'s `totalMinutes` and whatever a page builds on it — counts
   confirmed seats only; queued time is totalled apart (`waitlistedMinutes`,
   `+Nh waitlisted`) rather than folded in or dropped. A waitlist place may never
   come good, so counting it as booked promises a fuller day than the room can give.
 - The page is **My Agenda** (`/my-agenda`), which is what Whova, Cvent, EventMobi
-  and AWS all call it. `/my-plan` redirects.
+  and AWS all call it. `/my-plan` redirects. It is a placeholder for now (above).
 - The store (`useConference()`: `toggleSeat`, `reservationFor`, `onAgenda`) is
   the source of truth for your own reservation state — never fall back to the
   payload a page was fetched with, or "removed" stays unreachable until a refresh.
@@ -157,6 +174,13 @@ is the repo the fork came from and is never where work goes.
 named `upstream`, and `gh repo clone` of a fork adds one. Pin it once per clone —
 `gh repo set-default "$(git remote get-url origin)"` — or every `gh` call reads and
 writes the upstream. Ship, code review and QA do this themselves on a laptop.
+
+**Attendees never write to the original workshop repo** (the one forks are made
+from; `scripts/fork-guard.mjs` names it). A hook in `.claude/settings.json` runs
+that script before any tool call that creates an issue or pull request, and
+blocks one aimed at the original unless the signed-in account maintains it; ship's setup runs the same guard before it
+claims a ticket. Blocked means the wrong checkout — do not route around it.
+Setting a person up from scratch: `ONBOARD_CLAUDE.md`.
 
 Reach it with the authenticated `gh` CLI (`gh issue list`, `gh issue view 42`). A
 GitHub MCP server or the REST API with a token reach the same issues; none is

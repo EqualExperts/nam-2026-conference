@@ -4,6 +4,13 @@
  *   node scripts/ai-cost.mjs line --stream <claude-run.jsonl>        # one line, for a summary
  *   node scripts/ai-cost.mjs record --issue 42 --kind ship --run <url> \
  *     (--stream <claude-run.jsonl> | --transcripts <workflow transcript dir> [--phase '▸ ship #2']) [--pr 57]
+ *   node scripts/ai-cost.mjs record --issue 42 --kind ship --transcripts auto --ticket 42 [--pr 57]
+ *
+ * `--transcripts auto` is for an agent inside a laptop run: the run it belongs
+ * to is the workflow directory of this session ($CLAUDE_CODE_SESSION_ID) that
+ * was written to last — the asking agent's own transcript is in it. `--ticket`
+ * keeps only that ticket's agents, since `/ship 1 2` writes both into one
+ * directory and every ship agent's prompt names its worktree, `wt-<n>`.
  *
  * `record` keeps one comment on the issue — every ship, code review, QA and
  * respond run as a row, and the total — so the ticket says what AI spent on
@@ -16,7 +23,8 @@
  * an estimate, and labelled as one.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,16 +68,20 @@ export function fromStream(text) {
 }
 
 /** A local workflow's transcript dir (agent-*.jsonl + .meta.json) → usage by model, priced by RATES. */
-export function fromTranscripts(dir, phase = null) {
+export function fromTranscripts(dir, phase = null, ticket = null) {
   const models = {};
+  const ours = ticket ? new RegExp(`worktrees/wt-${ticket}(?![0-9])`) : null;
   for (const f of readdirSync(dir).filter((f) => /^agent-.*\.jsonl$/.test(f))) {
     let model = 'sonnet', meta = {};
     try { meta = JSON.parse(readFileSync(join(dir, f.replace(/\.jsonl$/, '.meta.json')), 'utf8')); model = meta.model || model; } catch { /* default */ }
     // `/ship 64 65 66` writes every ticket's agents into one directory; each
     // child run's are tagged with its phase group (▸ ship, ▸ ship #2, …).
     if (phase && meta.workflowPhase !== phase) continue;
+    const lines = readFileSync(join(dir, f), 'utf8').split('\n').filter(Boolean);
+    // The first line is the agent's prompt.
+    if (ours && !ours.test(lines[0] || '')) continue;
     const byMessage = new Map();
-    for (const line of readFileSync(join(dir, f), 'utf8').split('\n').filter(Boolean)) {
+    for (const line of lines) {
       let e; try { e = JSON.parse(line); } catch { continue; }
       if (e.type === 'assistant' && e.message?.usage) {
         byMessage.set(e.message.id, e.message.usage);
@@ -153,8 +165,30 @@ function gh(args, input) {
   return execFileSync('gh', args, { input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 }
 
+/** The workflow transcript directory of this session written to last, or null. */
+export function currentRun(session = process.env.CLAUDE_CODE_SESSION_ID, root = join(homedir(), '.claude', 'projects')) {
+  if (!session) return null;
+  let best = null;
+  const ls = (d) => { try { return readdirSync(d); } catch { return []; } };
+  for (const project of ls(root)) {
+    const runs = join(root, project, session, 'subagents', 'workflows');
+    for (const run of ls(runs)) {
+      for (const f of ls(join(runs, run))) {
+        let t = 0; try { t = statSync(join(runs, run, f)).mtimeMs; } catch { continue; }
+        if (!best || t > best.t) best = { dir: join(runs, run), t };
+      }
+    }
+  }
+  return best && best.dir;
+}
+
 function record(opts) {
-  const usage = opts.stream ? fromStream(readFileSync(opts.stream, 'utf8')) : fromTranscripts(opts.transcripts, opts.phase || null);
+  // `auto` is a laptop run's; in CI the job's own step records the billed
+  // cost, and a second, estimated row would count the run twice.
+  if (opts.transcripts === 'auto' && process.env.GITHUB_ACTIONS) { console.log('in CI the job records the spend — nothing recorded'); return; }
+  const dir = opts.transcripts === 'auto' ? currentRun() : opts.transcripts;
+  if (!opts.stream && !dir) { console.log('no workflow transcripts found for this session — nothing recorded'); return; }
+  const usage = opts.stream ? fromStream(readFileSync(opts.stream, 'utf8')) : fromTranscripts(dir, opts.phase || null, opts.ticket || null);
   const t = total(usage);
   const text = line(usage);
   if (!tokens(t)) { console.log(`no usage found — nothing recorded`); return; }

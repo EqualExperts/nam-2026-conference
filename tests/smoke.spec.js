@@ -8,7 +8,7 @@ import { API, visit, failOnPageErrors, waitForResults, ATTENDEES } from './helpe
  */
 
 const ROUTES = [
-  { path: '/', name: 'Home', heading: /Your day|Not started|Happening right now|changing rooms|is done/i },
+  { path: '/', name: 'Home', heading: /ORBIT/ },
   { path: '/schedule', name: 'Schedule', heading: /The schedule/i },
   { path: '/speakers', name: 'Speakers', heading: /^Speakers$/i },
   { path: '/my-agenda', name: 'My Agenda', heading: /agenda$/i },

@@ -35,7 +35,7 @@ and a bound `?` to `args`:
 | `q` | `LIKE %q%` on title, abstract, subtitle, or any speaker name (`EXISTS`) |
 | `tagSlug` | `EXISTS` on `session_tags` ⨝ `tags` |
 | `speakerId` | `EXISTS` on `session_speakers` |
-| `followedBy` | `EXISTS` sessions by speakers in that user's `speaker_follows` |
+| `followedBy` | `EXISTS` sessions by speakers in that user's `speaker_follows` (no UI sends it yet; `api.getFollowedSessions`) |
 | `reservedBy` | `EXISTS` any reservation (confirmed **or** waitlisted) |
 | `sort` | `rating` → avg_rating, rating_count desc · `popularity` → fill ratio desc · default `s.day, s.starts_at, r.name` |
 
@@ -72,7 +72,8 @@ The list groups sessions by `startsAt` into `slot-<HH:MM>` sections of
 buttons `tab-<date>`, track pills, and `Select`s for venue/level/format/topic.
 Below `lg` the open rail is compact so the first card stays in view at 393×659: days in one
 row (no weekday or count), tracks in one scrolling row (the Day and Track headings turn screen-reader-only), selects in two columns, and the
-My agenda card is desktop-only (`starred-count` stays in the DOM, `hidden lg:block`).
+My agenda card is desktop-only (`starred-count` stays in the DOM, `hidden lg:block`);
+its link opens `/my-agenda`, which is a placeholder (agenda doc).
 `result-count` shows `Loading…` then `N sessions`.
 
 **`ScheduleGrid`** (`schedule-grid`, `role="table"`) — splits `sessions` into
@@ -88,9 +89,10 @@ A seat button on a session that `hasEnded` and is not held is disabled and named
 "Session ended" (banner) / "<title> has ended" (cell).
 
 **`SessionCard`** — `variant="grid"` (default, an `<article>`) or `variant="row"`
-(a `<div>`, used by My Agenda and the session page's competing list). `showDay`
+(a `<div>`, used by the session page's competing list). `showDay`
 prefixes `MM-DD`. Row only: an optional `attendance` prop (`{ ended, checkedIn, myStars }`,
-passed by My Agenda for confirmed seats) renders `attendance-status` in the meta line —
+meant for confirmed seats; no page passes it yet — an agenda view would, from
+`scheduleFor`'s `checkedIn`/`myStars`) renders `attendance-status` in the meta line —
 `Rated ★N`, `Checked in` (+ a `Rate it` link, `relative z-10` above the cover link, once
 ended), or `Missed`; `null` renders nothing. The **feature** treatment is not a variant: `feature = session.isKeynote`
 adds `sm:col-span-2`, a `GeneratedCover variant="orbit"` banner with seat count,
@@ -128,6 +130,14 @@ room/amenities/step-free card, topic chips linking `/schedule?tag=`, `alsoInRoom
 - Seat buttons sit inside a `Link`; they `preventDefault` so a click toggles rather than navigates.
 - `starred-count` is the agenda count despite its name — tests rely on the id.
 - `competing`/`alsoInRoom` items lack `speakers`, so the row variant must not need them.
+- **A filter that takes several values** keeps one URL key and one API param,
+  comma-separated (`?track=a,b` → `trackSlug=a,b`; `qs()` passes the string
+  through), and `sessions.js` splits it into `IN (?, ?)`. One value is then the
+  same query as today, so existing links and `tests/api/endpoints.test.js` hold;
+  `speakers.js` reads its own params. A toggle control exposes `aria-pressed`. A
+  test of it adds a value *and* removes one, checking `result-count` against the
+  API's counts each time — a list that only ever grows passes a test that never
+  takes anything away.
 
 ## Where to change…
 

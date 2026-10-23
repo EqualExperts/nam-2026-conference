@@ -99,7 +99,7 @@ Escape unless `busy`.
 `SeatPanel({ session })` is rendered on `SessionPage`. It reads counts from
 `seatsFor()` first, then `session.seats`, then `session.capacity/seatsTaken`;
 its own status comes **only** from `reservationFor()`. Card-level buttons
-(`SessionCard`, `ScheduleGrid`, `TodayPanel`, `SessionPage`) call `toggleSeat`.
+(`SessionCard`, `ScheduleGrid`, `SessionPage`) call `toggleSeat`.
 
 Once `hasEnded(session, clock)` (`src/lib/clock.js`) is true and no seat is
 held, no control offers one: `SeatPanel` renders a disabled

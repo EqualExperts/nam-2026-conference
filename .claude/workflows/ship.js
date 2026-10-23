@@ -25,7 +25,7 @@ let MAX_BUILD_ROUNDS = 4
 // script composes the loop from it (profileFor, below): small is the base, a
 // risk adds the check that catches it, and only a rule, stored data or the
 // harness buys the full Opus loop. `ship:full` on the issue, or `--full` /
-// `--small` after the number, picks a preset outright. A three-line copy fix
+// `--small` / `--fast` after the number, picks a preset outright. A three-line copy fix
 // does not need two spec auditors, three code auditors and Opus throughout —
 // that shape took a medium ticket 57 minutes. Small keeps what makes the
 // loop trustworthy — an independent audit, a skeptic, the machine gate — and
@@ -47,6 +47,25 @@ const TIERS = {
     build: undefined,
     probes: 5,
   },
+  // A ticket someone has already seen work — the workshop's demo — where the
+  // minutes matter more than the last check. Small's audit, minus what costs
+  // the time: the gate runs the branch's own browser specs (the pull request's
+  // CI runs the whole suite), one combined auditor and no browser explorer,
+  // and a fix is re-gated but not re-audited. A one-component ticket took 16
+  // minutes as small: two 4-minute full gates and three auditors, twice.
+  // The PR body says what it skipped. Never chosen by sizing — only `--fast`.
+  fast: {
+    // Two, not one: the round cap is checked before the fix, so one audited
+    // round with a finding would hand back instead of fixing it.
+    specRounds: 0, buildRounds: 2,
+    specLenses: ['combined'], codeLenses: ['combined'],
+    think: 'sonnet',
+    build: 'sonnet',
+    probes: 0,
+    gateScope: 'branch',
+    reaudit: false,
+    learns: false,
+  },
 }
 // Phases that run a command and copy its output back need no judgement.
 const ROTE = 'haiku'
@@ -56,10 +75,14 @@ const ROTE = 'haiku'
 const ROTE_AGENT = 'ship-rote'
 // A session loads its agent types when it starts, so one opened before
 // ship-rote.md existed throws "agent type 'ship-rote' not found" — and the
-// whole run with it. Fall back to a plain agent: slower, never broken.
-const rote = (prompt, opts) => agent(prompt, { ...opts, agentType: ROTE_AGENT }).catch((e) => {
+// whole run with it. Fall back to a plain agent: slower, never broken. Ask
+// once: a session that has not loaded it will not load it mid-run, and every
+// failed ask is a red ✗ in /workflows.
+let roteLoaded = true
+const rote = (prompt, opts) => !roteLoaded ? agent(prompt, opts) : agent(prompt, { ...opts, agentType: ROTE_AGENT }).catch((e) => {
   if (!/agent type .* not found/i.test(String(e && e.message))) throw e
-  log(`${ROTE_AGENT} is not loaded in this session — ${opts.label} runs as a plain agent`)
+  if (roteLoaded) log(`${ROTE_AGENT} is not loaded in this session — the rote steps run as plain agents (start Claude in the checkout to load it)`)
+  roteLoaded = false
   return agent(prompt, opts)
 })
 let T = TIERS.full
@@ -75,9 +98,9 @@ const argText = typeof args === 'object' && args ? '' : String(args ?? '').trim(
 const LEAD = (/^#?\d+(?:(?:\s*,\s*|\s+and\s+|\s+)#?\d+)*/.exec(argText) || [''])[0]
 const ISSUES = [...new Set((LEAD.match(/\d+/g) || []).map(Number))]
 const issue = Number(typeof args === 'object' && args ? args.issue : ISSUES[0])
-const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small)\b/.exec(argText) || [])[1]
+const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small|fast)\b/.exec(argText) || [])[1]
 const NOTES = String((typeof args === 'object' && args ? args.notes : argText.slice(LEAD.length)) || '')
-  .replace(/@claude\b/gi, '').replace(/--(full|small)\b/g, '').trim()
+  .replace(/@claude\b/gi, '').replace(/--(full|small|fast)\b/g, '').trim()
 
 // Several tickets: one whole ship per ticket, all at once. Each gets its own
 // worktree and lane, so they build, boot the app and run the suite side by
@@ -147,7 +170,7 @@ const SETUP = {
     // them by one rule (profileFor below), so every ticket is sized the same way.
     sizing: {
       type: 'object',
-      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull'],
+      required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull', 'uiInteraction', 'layoutFit'],
       properties: {
         areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, docs/harness/' },
         files: { type: 'integer', description: 'roughly how many app files (src/, server/) the change will edit or add — not tests, docs or the spec, which grow with any change' },
@@ -376,6 +399,82 @@ const history = []
 // what it already knows it needs is the cheapest cut there is.
 const BATCH = `Each turn re-reads your whole context, so batch: when you know you need several reads — greps, seds, ` +
   `cats — put them in one Bash command, separated by \`; echo ---;\`.`
+
+// ── Progress and spend on the issue, from a laptop ───────────────────────────
+// In CI, agent-ship.yml posts the progress comment, ship-progress.mjs keeps it
+// current from the CLI's stream, and a last step records the AI spend. A
+// laptop run has none of those steps — and the issue is where people watch.
+// So off a runner the script, which knows every phase and round as it
+// happens, hands its own state to `ship-progress.mjs local`: one rote agent per
+// change, queued so the comment never goes backwards and never holds the run up.
+const PHASES = ['Setup', 'Spec', 'Spec Audit', 'Implement', 'Verify', 'Code Audit', 'Learn', 'PR'] // meta.phases
+const progress = { phases: PHASES.map(title => ({ title, status: 'not-started' })), rounds: [] }
+const REPORTED = {
+  type: 'object',
+  required: ['id'],
+  properties: { id: { type: 'string', description: 'the last line the command printed — the comment id' } },
+}
+let current = 'Setup'
+let progressComment = null
+let progressSent = ''
+let progressQueue = Promise.resolve()
+let progressUpdates = 0
+const reporting = () => !!(setup && !setup.runner && setup.workdir)
+const progressJson = (extra = {}) => JSON.stringify({
+  tier: T.size || null, branch: setup.branch || null, spec: (spec && spec.path) || null,
+  phases: progress.phases, rounds: progress.rounds, ended: false, outcome: null, ...extra,
+})
+// The id is read when the command runs, not when it is queued: the first
+// update creates the comment, and every later one edits it.
+const progressCmd = (json) =>
+  `cd ${setup.workdir} && node scripts/ship-progress.mjs local ${issue}${progressComment ? ` ${progressComment}` : ''} <<'STATE'\n${json}\nSTATE`
+
+function report() {
+  if (!reporting()) return
+  const json = progressJson()
+  if (json === progressSent) return
+  progressSent = json
+  const n = ++progressUpdates
+  const at = current
+  progressQueue = progressQueue.then(async () => {
+    const r = await rote(
+      `Run this one command exactly as written and return the last line it printed as id. Change nothing and read ` +
+      `nothing else.\n\n${progressCmd(json)}`,
+      { phase: at, label: `progress#${n}`, schema: REPORTED, effort: 'low', model: ROTE },
+    )
+    const id = String((r && r.id) || '').trim()
+    if (/^\d+$/.test(id)) progressComment = id
+  }).catch(() => {})
+}
+
+// phase(), and the issue's comment told. A phase is done once the run moves
+// on — Verify and Code Audit come round again, and Learn can follow anything.
+function enter(title) {
+  phase(title)
+  current = title
+  for (const p of progress.phases) {
+    if (p.status === 'running') p.status = 'done'
+    if (p.title === title) p.status = 'running'
+  }
+  report()
+}
+
+// The last word, awaited — the run is not over until the issue says so: the
+// comment settles on the outcome, and the run's spend goes on the issue's
+// ledger and on the pull request, as agent-ship.yml's last steps do in CI.
+async function settle(outcome) {
+  if (!reporting()) return
+  for (const p of progress.phases) if (p.status === 'running') p.status = 'done'
+  await progressQueue
+  const pr = (/\/pull\/(\d+)/.exec(outcome.pr || '') || [])[1]
+  await rote(
+    `Run these two commands exactly as written, one after the other, and return ok=true with the last line the ` +
+    `second printed as summary. Change nothing and read nothing else.\n\n${progressCmd(progressJson({ ended: true, outcome }))}\n\n` +
+    `cd ${setup.workdir} && node scripts/ai-cost.mjs record --issue ${issue} --kind ship --transcripts auto --ticket ${issue}` +
+    `${pr ? ` --pr ${pr}` : ''}`,
+    { phase: current, label: 'report', schema: DONE, effort: 'low', model: ROTE },
+  ).catch(() => null)
+}
 const inTree = ({ releases = false } = {}) =>
   `Work in ${setup.workdir} on branch ${setup.branch} (based on ${BASE}): cd there at the start of every Bash command. ${BATCH}` +
   (setup.runner
@@ -389,8 +488,8 @@ async function handBack(stage, why, open, alsoOpen) {
   // A run that could not converge is the one with the most to teach, so it
   // learns before it pushes — the lessons land on the draft with the work.
   const lessons = setup && setup.branch && !learned ? await learn(`stopped at ${stage}: ${why}`) : []
-  phase('Learn')
-  await agent(
+  enter('Learn')
+  const back = await agent(
     `Hand GitHub issue #${issue} back to a person. The automated ship run stopped at "${stage}" because: ${why}\n\n` +
     (open && open.length ? `Still open when it stopped:\n${listFindings(open)}\n\n` : '') +
     (alsoOpen && alsoOpen.length ? `Also still open — technical, not why it stopped, but the next run must settle them:\n${listFindings(alsoOpen)}\n\n` : '') +
@@ -402,10 +501,12 @@ async function handBack(stage, why, open, alsoOpen) {
         `Skip the draft if nothing beyond the spec is committed.\n`
       : '') +
     `Then comment on the issue — what was tried, what stopped it, what it needs from a person, and the draft ` +
-    `PR link if there is one — and run: gh issue edit ${issue} --add-label needs-human --remove-label ai-working`,
+    `PR link if there is one — and run: gh issue edit ${issue} --add-label needs-human --remove-label ai-working. ` +
+    `Return the draft PR's url as url, if there is one.`,
     { phase: 'Learn', label: 'hand-back', schema: DONE, effort: 'low', model: ROTE },
   )
   await cleanup()
+  await settle({ outcome: 'needs-human', stage, reason: why, pr: back && back.url })
   return { outcome: 'needs-human', issue, stage, reason: why, open: open || [], lessons }
 }
 
@@ -423,8 +524,9 @@ async function cleanup() {
 let learned = false
 async function learn(how) {
   learned = true
-  phase('Learn')
-  if (!history.length) return []
+  enter('Learn')
+  // Fast is for a ticket already known to work; its lessons were learnt before.
+  if (!history.length || T.learns === false) return []
   const result = await agent(
     `${inTree()}\n\nThe ship run for issue #${issue} ${how}. Along the way independent audits confirmed these ` +
     `problems the implementer had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
@@ -461,11 +563,14 @@ const specAsk = (path) =>
   `Return each Decision as decisions, phrased as a yes/no question for the reviewer.`
 
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
-phase('Setup')
+enter('Setup')
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
-  `${BATCH} Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
+  `${BATCH} Before anything else — before reading or claiming the ticket — ${PIN.replace(/^Unless/, 'unless')} Then run ` +
+  `\`node scripts/fork-guard.mjs\`: if it exits non-zero, this checkout writes to the workshop's original repository, ` +
+  `not the attendee's fork — return proceed=false with its message as reason and touch nothing (no label, no comment). ` +
+  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
@@ -492,8 +597,10 @@ setup = await agent(
   `is small. Most tickets are small.`,
   // The one judgement every later phase is sized by, so it gets the session's
   // model: Sonnet called #100's tooltip small in prose and gave no facts, and
-  // the run fell through to the full loop — 33 agents and $26.
-  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium' },
+  // the run fell through to the full loop — 33 agents and $26. Forced fast is
+  // the exception: its sizing is never read, so Opus would only be slower —
+  // setup was the slowest step of a 6-minute `--fast` run, at 2:04.
+  { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium', ...(FORCED === 'fast' ? { model: 'sonnet' } : {}) },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
@@ -565,7 +672,7 @@ ticket =
     `the ticket; where it is about process, it is context.` : '')
 
 // ── 2. Spec ──────────────────────────────────────────────────────────────────
-phase('Spec')
+enter('Spec')
 spec = setup.spec && setup.spec.path ? setup.spec : await agent(
   `${ticket}\n\n${inTree()}\n\n${specAsk(`specs/${issue}-${setup.slug}.md`)}`,
   { phase: 'Spec', label: 'write-spec', schema: SPEC_WRITTEN, model: T.think },
@@ -612,7 +719,7 @@ let carried = []
 const specRounds = []
 const REPLAN = new Set(['criterion-unmet', 'claude-md', 'logic', 'scope'])
 for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
-  phase('Spec Audit')
+  enter('Spec Audit')
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
     agent(
       `You are auditing a spec you did not write. ${BATCH} ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
@@ -630,7 +737,10 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   if (specAudit.missing.length) return handBack('Spec Audit', `the ${specAudit.missing.join(', ')} auditor could not finish`)
   const found = specAudit.reports.flatMap(r => r.findings)
 
-  const blockers = found.filter(f => f.severity === 'blocker')
+  // A gap already carried is still in the spec, so the next round raises it
+  // again: it is already the builder's, and a second skeptic would only
+  // carry it twice (#114).
+  const blockers = found.filter(f => f.severity === 'blocker' && !carried.some(c => where(c) === where(f)))
   const confirmed = blockers.length ? await confirm(blockers, 'the spec') : []
   history.push(...confirmed)
   specRounds.push({ round, raised: found.length, confirmed: confirmed.length, what: confirmed.map(f => f.claim) })
@@ -664,7 +774,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
 }
 
 // ── 4. Implement ─────────────────────────────────────────────────────────────
-phase('Implement')
+enter('Implement')
 const built = await agent(
   `${ticket}\n\n${inTree()}\n\n${MAP}\n\nImplement ${spec.path}, following §4–§6 of ${SKILL} (${sections(4, '7')} prints them). The spec's *Where* is your map: open ` +
   `those files directly — the spec writer has already found them, so do not search for the change site again ` +
@@ -771,7 +881,7 @@ let audited = 0
 let lastRed = null // the last red-check, for the PR's one-line summary
 let redStreak = 0
 for (let round = 1; ; round++) {
-  phase('Verify')
+  enter('Verify')
   // One rote agent for both commands: each agent costs its ~30k-token
   // baseline before it runs anything, and red-check needs no judgement.
   // The gate tests the branch with today's base, not the one the run began
@@ -782,8 +892,8 @@ for (let round = 1; ; round++) {
     `${inTree()}\n\nFirst \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
-    `Then run \`GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
-    `It runs npm test and the whole Playwright suite; in a runner Chromium is installed — never run playwright ` +
+    `Then run \`${T.gateScope === 'branch' ? 'GATE_SCOPE=branch ' : ''}GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
+    `It runs npm test and ${T.gateScope === 'branch' ? "the branch's own Playwright specs" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
     `return the line it prints, verbatim, as facts. Change nothing and interpret nothing.`,
@@ -791,6 +901,12 @@ for (let round = 1; ; round++) {
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
   gate = readGate(ran)
+  // The merge was aborted, so a green line after a conflict is not this branch
+  // on today's base: it goes to the fixer, never to the auditors (#153).
+  if (ran.sync === 'conflict') gate = { ...gate, ok: false }
+  // The round's line on the issue's progress comment, filled in as it goes.
+  const shown = { n: round, gate: { ok: gate.ok, unit: gate.unit, browserPassed: gate.browser.passed }, audits: 0, fixRan: false }
+  progress.rounds.push(shown)
 
   // Setup predicted the risk before any code existed; the diff now says what
   // it is. A small run whose diff reaches a risky path (server/lib, the
@@ -814,9 +930,17 @@ for (let round = 1; ; round++) {
     log(`#${issue}: the gate was red twice running — the fixer moves to the session model`)
   }
 
+  // Fast: the auditor has judged the change once. A fix after it is proved by
+  // the gate going green, not by a second audit — the round that doubled #1.
+  if (gate.ok && T.reaudit === false && audited > 0) {
+    rounds.push({ round, gate: gateLine(gate), raised: 0, confirmed: 0, covered: 'the fix, re-gated — not re-audited' })
+    log(`build round ${round}: green — the fix is not re-audited (fast)`)
+    minors = await confirm(dedupe(minors).slice(0, 3), 'the change')
+    break
+  }
   if (gate.ok) {
     audited++
-    phase('Code Audit')
+    enter('Code Audit')
     const run = (l, retry) => agent(
       `You are auditing a change you did not write, on branch ${setup.branch} in ${setup.workdir}. ${BATCH} ` +
       `${ticket}\n\nThe spec is ${spec.path}. ${MAP} ${l.ask}\n\n` +
@@ -825,7 +949,7 @@ for (let round = 1; ; round++) {
           `read the branch's own tests only to aim your probes past them. Write every probe into one file and run it ` +
           `once for both viewports (\`npx playwright test tests/qa-probe.spec.js\` runs both projects)` +
           `${setup.runner ? '' : `, behind \`eval "$(node scripts/lane.mjs claim ${issue})" &&\`; never release the lane — it belongs to the run`}.\n\n`
-        : `The gate has just run the whole suite at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the branch's own browser specs (${(gate.specs || []).join(', ')})` : 'the whole suite'} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
           `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
@@ -865,6 +989,7 @@ for (let round = 1; ; round++) {
     const missing = [...readers.missing, ...driver.missing]
     if (missing.length) return handBack('Code Audit', `the ${missing.join(', ')} auditor could not finish`)
     const reports = [...readers.reports, ...driver.reports]
+    shown.audits = reports.length
 
     const raised = [
       ...reports.flatMap(r => r.findings),
@@ -930,6 +1055,8 @@ for (let round = 1; ; round++) {
   if (stuck.length) return handBack('Code Audit', `the same finding survived ${STUCK_AFTER} fix attempts`, open)
   if (audited >= MAX_BUILD_ROUNDS || round >= MAX_BUILD_ROUNDS + 2) return handBack('Code Audit', `still not clean after ${round} rounds`, open)
 
+  shown.fixRan = true
+  report()
   const fixed = await agent(
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
     `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} (${sections(5, '6')}) still hold: never ` +
@@ -956,7 +1083,7 @@ for (let round = 1; ; round++) {
 const lessons = await learn('passed its audit')
 
 // ── 9. PR ────────────────────────────────────────────────────────────────────
-phase('PR')
+enter('PR')
 const auditTable = [
   ...specRounds.map(r => `| spec ${r.round} | — | ${r.raised} raised · ${r.confirmed} confirmed | ${r.what.map(brief).join('; ') || '—'} |`),
   ...rounds.map(r => `| build ${r.round} | ${r.gate} | ${r.raised} raised · ${r.confirmed} confirmed | ${r.covered || '—'} |`),
@@ -975,9 +1102,13 @@ const notVerified = [
   ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
   ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
   ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
+  ...(gate.scope === 'branch' ? ["the whole browser suite did not run here, only this branch's specs — the pull request's CI runs it"] : []),
+  ...(T.reaudit === false && rounds.some(r => r.confirmed) ? ['the fix for what the audit found was re-gated, not re-audited'] : []),
 ]
 const checksLine = [
-  `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
+  gate.scope === 'branch'
+    ? `Tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser in ${(gate.specs || []).join(', ')}, desktop and mobile`
+    : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
 ].join(' · ')
@@ -987,7 +1118,9 @@ const pr = await rote(
   `then write — on #70 this step took 22 turns one command at a time:\n` +
   `\`git diff --stat origin/${BASE}...HEAD; echo ---; git log --oneline origin/${BASE}..HEAD; echo ---; ` +
   `git log --name-only --format=%h ${gate.sha}..HEAD; echo ---; git remote get-url origin\`\n` +
-  `If the third part lists a file outside docs/, specs/ or *.md, stop and return ok=false.\n\n` +
+  `The third part lists what was committed after the gate passed on ${gate.sha.slice(0, 7)}. Empty is the normal ` +
+  `case — nothing changed since the tests ran — so carry on. Only if it lists a file outside docs/, specs/ or *.md ` +
+  `did code change after the gate: then stop and return ok=false.\n\n` +
   (visible
     ? `Something an attendee sees changed. The branch's browser test calls shotForPR at the moment worth seeing: ` +
       `run only the tests this branch added — their titles are the \`+  test('…'\` lines in \`git diff origin/${BASE}...HEAD -- tests/\` — ` +
@@ -1037,7 +1170,7 @@ const pr = await rote(
   `\`git merge --abort\` and return ok=false with the summary "conflicts with origin/${BASE} in <the files from ` +
   `git diff --name-only --diff-filter=U>", opening nothing. If it merged anything, end the Checks line in the body file ` +
   `with " · merged today's ${BASE} after the gate; CI re-runs the suite on it". Then \`git push -u origin HEAD\`; \`gh pr create --base ${BASE} --title "${setup.title.replace(/"/g, '\\"')}" ` +
-  `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : ''}\` (if an open draft already exists ` +
+  `--body-file /tmp/pr-body-${issue}.md${SIZE === 'full' ? ' --label ship:full' : SIZE === 'fast' ? ' --label ship:fast' : ''}\` (if an open draft already exists ` +
   `for this branch, \`gh pr edit\` its body and \`gh pr ready\` it instead); ` +
   `\`gh issue edit ${issue} --add-label ready-for-human --remove-label ai-working\`` +
   (setup.runner ? '' : `; then \`node scripts/lane.mjs release ${issue}\``) + `. Return the PR url.`,
@@ -1046,6 +1179,7 @@ const pr = await rote(
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
 // The PR agent released the lane on its way out.
+await settle({ outcome: 'shipped', pr: pr.url })
 return {
   outcome: 'shipped',
   issue,

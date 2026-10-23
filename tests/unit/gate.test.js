@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -149,5 +149,18 @@ describe('a test the branch added that never ran', () => {
   test('added titles are read from the diff, in any quote style', () => {
     const d = 'diff --git a/tests/a.spec.js b/tests/a.spec.js\n+test("double", () => {})\n+  test(`tick`, () => {})\n-  test(\'removed\', () => {})';
     assert.deepEqual(addedTests(d), ['a.spec.js › double', 'a.spec.js › tick']);
+  });
+});
+
+describe('branchSpecs — what GATE_SCOPE=branch runs', () => {
+  test('the browser specs the branch changed, and nothing else under tests/', () => {
+    const names = ['tests/schedule.spec.js', 'tests/helpers.js', 'tests/unit/ship.test.js', 'tests/api/endpoints.test.js',
+      'tests/qa-probe.spec.js', 'tests/seats.spec.js', ''].join('\n');
+    assert.deepEqual(branchSpecs(names), ['tests/schedule.spec.js', 'tests/seats.spec.js']);
+  });
+
+  test('a branch that changed no browser spec gets an empty list — the gate then runs the whole suite', () => {
+    assert.deepEqual(branchSpecs('tests/unit/ship.test.js\n'), []);
+    assert.deepEqual(branchSpecs(''), []);
   });
 });

@@ -1,7 +1,7 @@
 ---
 area: ui
-summary: The shared look and chrome — design tokens, primitives in ui.jsx, icons, accents, toasts, generated art, motion utilities, the header/nav/footer and the not-found page.
-read_when: adding a component or page, styling anything, touching the nav or footer, icons, toasts, generated avatars or covers, animation, formatting times/dates/plurals
+summary: The shared look and chrome — design tokens, primitives in ui.jsx, icons, accents, toasts, generated art, motion utilities, the header/nav/footer, the attendee switcher, the static home page and the not-found page.
+read_when: adding a component or page, styling anything, touching the home page, the nav or footer, the attendee switcher, icons, toasts, generated avatars or covers, animation, formatting times/dates/plurals
 files:
   - src/index.css
   - src/lib/accents.js
@@ -20,6 +20,7 @@ files:
   - src/components/HeroMedia.jsx
   - src/components/UserSwitcher.jsx
   - src/components/RouteChange.jsx
+  - src/pages/HomePage.jsx
   - src/pages/NotFoundPage.jsx
   - src/pages/PresentationPage.jsx
   - src/pages/ProductPresentationPage.jsx
@@ -29,6 +30,8 @@ tests:
   - tests/unit/format.test.js
   - tests/unit/presentation.test.js
   - tests/smoke.spec.js
+  - tests/home.spec.js
+  - tests/switcher.spec.js
   - tests/presentation.spec.js
 related: [architecture, speakers, venues, schedule, testing]
 ---
@@ -88,7 +91,7 @@ Dates are parsed at `T12:00:00Z` with `timeZone: 'UTC'` so they never shift.
 | `EmptyState` | `icon='search', title, description, action` |
 | `ErrorState` | `error, onRetry` — an `EmptyState` titled "That did not load" |
 | `NotFoundState` | `title, backTo, backLabel` — an `EmptyState` with a link back instead of a retry button, for a 404 that can never succeed on retry (`SessionPage`, `SpeakerPage`) |
-| `Stat` | `value` (numbers animate via `CountUp`), `label, accent, testId, note?` — `note` is a quieter line under the label, for a caveat on the number (My Agenda's `+Nh waitlisted`) |
+| `Stat` | `value` (numbers animate via `CountUp`), `label, accent, testId, note?` — `note` is a quieter line under the label, for a caveat on the number (e.g. `+Nh waitlisted` beside booked hours). No page renders one yet |
 
 **`Icon.jsx`.** `Icon({ name, className='size-5', filled, ...rest })` — stroke
 icons, `aria-hidden`; an unknown name renders **nothing** (no error). Names:
@@ -144,6 +147,25 @@ sticky `glass` header, `<main id="main">`, and the footer.
   instead, since that's the only attendee the store keeps reservation state
   for live — so booking or releasing a seat updates your own row without a
   reload, while everyone else's stays as `/bootstrap` had it.
+  When `currentUser.isSpeaker`, a `Your speaker profile` link
+  (`own-speaker-profile`) sits between the list and the talk links and opens
+  `/speakers/<currentUser.speakerId>`, which marks itself "This is you"
+  (speakers doc). `tests/switcher.spec.js` covers the switcher and that link.
+
+**`HomePage`** (`/`) — static: nothing on it is about the signed-in attendee or
+what is live. It stacks `HeroBar` (`hero`: name, `conference.dates · city`, a
+`Day n · time` chip from `clock`, and `Browse today` → `/schedule?day=<clock.day>`
+plus `Speakers` buttons) → `QuickLinks` (`quick-links`, a `nav` of the `LINKS`
+array: Schedule, Speakers, Venues, Food & drink, Expo) → `LatestAnnouncement`
+(`announcements`: the single newest posted one, pinned first, filtered by
+`postedAt <= clock`, so nothing appears before it was written) →
+`SponsorMarquee` (venues doc). Sections that return `null` would leave their
+`<Reveal>` wrapper as a gap, so the container has `[&>:empty]:hidden`.
+`tests/home.spec.js` asserts the five links, the announcement cut-off, and that
+none of `today-panel`, `live-now`, `speaking-strip`, `followed-sessions`, `next-up`
+is on the page — no component renders those ids; a ticket that puts a personal or
+live section on Home updates that test. A new home section is a component that
+returns `null` when empty, wrapped in `<Reveal>`.
 
 **`RouteChange`** — on `pathname` change only (not search), scrolls to top and
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
@@ -214,9 +236,11 @@ with reduced motion each beat still shows everything it should.
 ## Where to change…
 
 - A nav item: `NAV` in `Layout.jsx` (icon must exist in `Icon.jsx`).
+- A link on the home page: `LINKS` in `HomePage.jsx`, and the count in `tests/home.spec.js`.
 - A footer link: the column array in `Layout`'s footer; add the route first.
 - A new primitive used by more than one page: `ui.jsx`.
 - A new token or utility: `@theme` / `@utility` in `index.css`.
 - A new cover composition: another `variant` branch in `GeneratedCover`.
 - A presentation beat: a caption in the chapter's `beats` and the `step` it shows in
-  its `Scene`; a new chapter: an entry in `components/presentation/chapters.js`.
+  its `Scene`; a new chapter: an entry in that talk's chapter list —
+  `components/presentation/chapters.js` (engineering) or `presentation/product/chapters.js` (product).

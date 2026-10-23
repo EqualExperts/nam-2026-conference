@@ -45,8 +45,9 @@ related: [seed, ui, agenda, architecture]
 `INSERT OR IGNORE`). `GET /api/users/:id` returns `followedSpeakers`. Client:
 `api.followSpeaker` / `api.unfollowSpeaker`; `useConference()` exposes
 `followingIds` (a `Set`), `isFollowing(id)` and `toggleFollow(id)` (store.jsx —
-calls the API, updates the set, toasts). The home page's `FromSpeakersYouFollow`
-uses `GET /api/sessions?followedBy=`.
+calls the API, updates the set, toasts). Nothing shows a followed speaker's
+sessions yet — `GET /api/sessions?followedBy=` (`api.getFollowedSessions`) is
+there for whoever builds Home or My Agenda.
 
 **`SpeakersPage` — URL params** (`useSearchParams`, `'all'`/empty deletes the
 key): `q`, `track` (sent as `trackSlug`), `day`, `show`
@@ -96,7 +97,12 @@ right. An unknown id (`error.status === 404`) renders `NotFoundState`
 can never succeed on retry; any other failure still shows `ErrorState` with
 "Try again". Header uses `GeneratedCover variant="strata"`; name is
 `data-testid="speaker-name"`; the follow button is
-`data-testid="follow-speaker"` with `aria-pressed`. Socials (`SOCIALS` +
+`data-testid="follow-speaker"` with `aria-pressed`. When the signed-in attendee
+*is* this speaker (`currentUser.speakerId === speaker.id`), a `This is you` chip
+(`speaker-is-you`) leads the badge row — a plain marker, not a speaker
+dashboard. The way there is `UserSwitcher`'s `Your speaker profile` link
+(`own-speaker-profile`), shown only while `currentUser.isSpeaker`
+(`tests/switcher.spec.js`). Socials (`SOCIALS` +
 `handleOf`) render as plain spans with `BrandIcon`, never links. Sessions are
 grouped by `day` with `dayLabel` and rendered as `SessionCard` in a
 `grid-flow-row-dense` grid.

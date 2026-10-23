@@ -5,7 +5,7 @@ import { useConference } from '../lib/store.jsx';
 import { Avatar, Chip, SeatButton, Rating, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 import { GeneratedCover } from './GeneratedCover.jsx';
-import { LiveBadge } from './LiveNow.jsx';
+import { LiveBadge } from './LiveBadge.jsx';
 import { hasEnded, progressOf, toMinutes } from '../lib/clock.js';
 
 /**
