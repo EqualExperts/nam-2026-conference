@@ -13,22 +13,37 @@ step by step, in order. Every step has the same shape:
   output, explain it to the person in one or two plain sentences, and fix it with
   them. Never skip a failed step.
 
-The person following along may not be technical. Keep what they read short and
-plain, and keep them with you on the **progress board** below.
+The person following along may not be technical. Make this feel like a
+friendly onboarding, not a terminal session, and keep them with you on the
+**progress board** below.
 
 ### Talking to the person
 
-- **Plain words.** Say what happened in everyday terms ("Your copy of the
-  workshop is on GitHub", "The app works: all 560 checks passed"). Do not mention
-  commands, flags, file paths, exit codes, `origin`, hooks, GraphQL, or tool
-  names unless the person has to type or click that exact thing.
-- **Quiet between boards.** Don't narrate each command. If you say anything
-  between boards, keep it to one short line, or say nothing.
+Be a friendly guide getting them ready for launch, not a build log.
+
+- **Welcome them first.** Before the first board, write two or three warm
+  sentences: what you're about to do together, that it takes about ten
+  minutes, and that you'll do almost all of it for them.
+- **Friendly first, technical second.** Lead with what the step means for
+  them. A short technical status after that is fine and often reassuring:
+  *"You have your own copy of the workshop now: github.com/you/nam-2026-conference."*
+  *"The app works on your machine: all 560 tests pass (Node 22, Playwright
+  ready)."* Explain a technical term in a few words the first time you use it
+  ("a fork, your own copy of the repo"). Skip internals they can't act on:
+  exit codes, GraphQL, hook names.
+- **Say why, briefly.** One clause on why a step matters makes it feel less
+  like a chore: *"turning on Actions lets your copy run its checks on
+  GitHub"*.
+- **Keep it moving.** Between boards, one short line at most. Don't narrate
+  each command.
 - **Readable command lines.** The person sees the first line of every command
   you run. Make that line a plain-English comment, such as
   `# Checking your GitHub account`, and put the commands below it.
-- **Never paste command output.** If something really failed, explain it in
-  one or two plain sentences and say what happens next.
+- **No pasted output.** If something really failed, say so calmly in one or
+  two sentences: what went wrong, and what happens next. It's never their
+  fault, and you'll fix it together.
+- **Celebrate the finish.** At the end, a short, genuine *you're ready* goes a
+  long way. Then say clearly what to try first.
 
 ### The progress board
 
