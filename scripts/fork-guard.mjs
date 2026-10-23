@@ -4,6 +4,7 @@
  *
  *   node scripts/fork-guard.mjs          # exit 1 if this checkout would write to the workshop repo
  *   node scripts/fork-guard.mjs --hook   # PreToolUse hook: exit 2 blocks the tool call
+ *   node scripts/fork-guard.mjs --probe <word>   # is the hook live in this session?
  *
  * Every attendee forks EqualExperts/nam-2026-conference and files tickets on
  * the fork. A clone of the original instead of the fork — or a fork clone whose
@@ -13,7 +14,9 @@
  * the workshop's maintainers (maintain or admin on the repo) are let through.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const WORKSHOP_REPO = 'EqualExperts/nam-2026-conference';
@@ -45,6 +48,18 @@ export function addsShipLabel({ toolName = '', command = '', toolInput = {} }) {
 const SHIP_LABEL_MESSAGE =
   `Blocked: adding the ${SHIP_LABEL} label starts the GitHub Actions ship, which this workshop does not use. ` +
   `Build the ticket from Claude instead: run /ship <issue number> in Claude Code or Claude Desktop, opened in your clone.`;
+
+// Onboarding asks whether the hook is live. Making it block something works,
+// but a block shows the person a red error. Instead the hook marks a probe it
+// lets through, and the probe reports whether the mark is there. The word is
+// fresh each time, so an old mark cannot answer for a new session.
+const PROBE = /\bfork-guard\.mjs\s+--probe\s+([A-Za-z0-9]{1,32})\b/;
+export const probeFile = (word) => join(tmpdir(), `fork-guard-probe-${word}`);
+
+/** The probe word a tool call carries, if it is the hook probe. */
+export function probeWord({ toolName = '', command = '' }) {
+  return toolName === 'Bash' ? PROBE.exec(command)?.[1] : undefined;
+}
 
 /** The `owner/repo` a creating tool call names outright, if any; `undefined` if it does not create. */
 export function creates({ toolName = '', command = '', toolInput = {} }) {
@@ -92,12 +107,25 @@ function main() {
   // A runner works on the repository it belongs to; forks get no secrets, so
   // a stranger's run never gets this far (see the workflows' `if`).
   if (process.env.GITHUB_ACTIONS) return 0;
+  const probe = process.argv.indexOf('--probe');
+  if (probe !== -1) {
+    const word = process.argv[probe + 1] ?? '';
+    const live = /^[A-Za-z0-9]{1,32}$/.test(word) && existsSync(probeFile(word));
+    if (live) rmSync(probeFile(word), { force: true });
+    process.stdout.write(live ? 'fork guard: live\n' : 'fork guard: not loaded\n');
+    return 0;
+  }
   const hook = process.argv.includes('--hook');
   let target;
   if (hook) {
     let input = {};
     try { input = JSON.parse(readFileSync(0, 'utf8') || '{}'); } catch { return 0; }
     const call = { toolName: input.tool_name, command: input.tool_input?.command, toolInput: input.tool_input };
+    const word = probeWord(call);
+    if (word) {
+      try { writeFileSync(probeFile(word), ''); } catch { /* the probe then reports "not loaded" */ }
+      return 0;
+    }
     if (addsShipLabel(call)) {
       process.stderr.write(`${SHIP_LABEL_MESSAGE}\n`);
       return 2;
