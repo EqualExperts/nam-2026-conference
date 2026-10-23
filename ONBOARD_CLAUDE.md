@@ -639,7 +639,7 @@ the fork guard lets the workshop's maintainers create there, so that probe
 passes for them even with the hook live; the label rule blocks everyone.
 
 **Both pass:** nothing to restart. Tell the person they can carry on in this
-session, and to run `/setup-winnow` and answer **no** to audio.
+session, and to run `/setup-winnow` (audio is optional, and recommended).
 
 **Only `ship-rote` is missing** (`ship` is listed and the hook blocks): do
 not ask for a restart. `/ship` works from this session. Its first rote step
@@ -655,7 +655,7 @@ loaded. Otherwise tell them exactly:
 > Setup is done. To load the workshop's commands, quit Claude and start it
 > again in the project folder: in a terminal, `cd <clone> && claude` (or in
 > Claude Desktop, open the folder `<clone>`). In the new session, run
-> `/setup-winnow` and answer **no** to audio.
+> `/setup-winnow` (audio is optional, and recommended).
 
 Without the agent type, `/ship`'s first rote step fails with *agent type
 'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
@@ -700,8 +700,11 @@ filled in:
 > 🎉 **You're ready!** Your project is in `<clone>`, and your copy on GitHub is
 > https://github.com/<you>/nam-2026-conference.
 >
-> **First:** run `/setup-winnow`, and answer **no** to audio: today's
-> conversations are text, and audio is a large download. Then
+> **First:** run `/setup-winnow`. When it asks about audio, we recommend
+> **yes**: the workshop plans to listen to a live conversation. It's a one-time
+> download of a few hundred MB plus a microphone permission, so it's best done
+> now rather than on the day. Say **no** to skip it; you can still follow along
+> from a transcript. Then
 > `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
 > tickets, and `/ship <ticket number>` to build one.
 
