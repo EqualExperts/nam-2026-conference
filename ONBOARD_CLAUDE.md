@@ -13,10 +13,46 @@ step by step, in order. Every step has the same shape:
   output, explain it to the person in one or two plain sentences, and fix it with
   them. Never skip a failed step.
 
-Keep the person informed in one short sentence per step ("Installing the GitHub
-CLI…"). Do not paste long command output at them.
+Do not paste long command output at them. Instead, keep them with you on the
+**progress board** below.
 
-**Ask exactly one question: where to fork the repository to** (Step 4). Decide
+### The progress board
+
+This is a workshop, and setup is its first exercise — make it feel like one.
+Show the board once before Step 0 and again each time a step finishes, as plain
+Markdown (no code block, so it renders):
+
+> **🛰️ ORBIT '26 — launch checklist** · 3 of 11 done
+>
+> ✅ Can run commands
+> ✅ Has a GitHub account
+> ⏭️ Operating system — macOS, Apple Silicon
+> 🔄 Install git, gh and Node 22
+> ⬜ Sign in to GitHub
+> ⬜ Fork the repo
+> ⬜ Clone it
+> ⬜ Point `gh` at the fork
+> ⬜ Turn on Actions
+> ⬜ Create the labels
+> ⬜ Install and test the app
+>
+> *Tools next — this is the longest step, a few minutes at most.*
+
+- ✅ done in this run · ⏭️ already done (its check passed) · 🔄 in progress ·
+  🙋 waiting on the person · ❌ failed — fixing it with them · ⬜ to do. Put the
+  step's one useful fact after a dash, as the operating system line does: the
+  GitHub account, the fork's URL, the test count.
+- Under the board, one short line in italics: what is next and roughly how long
+  it takes, or — at a 🙋 — exactly what they need to do. Light and friendly is
+  good; a joke per step is not. Never more than one line.
+- Step 10 (*loading the workshop commands*) is not on the board: it is the
+  hand-off. When the last row is ✅, show the board one final time with the
+  header **🚀 ORBIT '26 — ready for launch** · 11 of 11, then the *Done*
+  summary.
+
+**Ask at most two questions:** whether they have a GitHub account (Step 0b),
+and only when `gh` is not signed in already; and **where to fork the
+repository to** (Step 4). Decide
 everything else yourself with the defaults given here. The person is otherwise
 only interrupted for things no agent can do for them — typing a password,
 approving an administrator prompt, logging in in a browser, or clicking a
@@ -60,6 +96,39 @@ not ask.
   tool), stop and tell the person: *"I need to run commands to do this. Please
   open this in Claude Code (the `claude` command in a terminal) or the Code tab
   of Claude Desktop, and ask me again."* Do nothing else.
+
+## Step 0b — Does the person have a GitHub account?
+
+Developers at the workshop have one; product managers and others often do not.
+Everything the exercise makes lives on GitHub, so find out now — not after ten
+minutes of installing.
+
+**Check:** `gh auth status 2>&1`. If it shows `✓ Logged in to github.com`, they
+have an account: mark the row ✅ with the account name and go on. (A missing
+`gh` or "not logged in" proves nothing yet.)
+
+**Do:** ask — this is the first of the two questions:
+
+> *"Do you have a GitHub account? You'll need one — the workshop's tickets and
+> pull requests live there."*
+> - **Yes** — carry on; they sign in at Step 3.
+> - **No, I'll make one now** — free, about two minutes.
+> - **No — I'll team up with someone who has one**
+
+- **Yes:** ✅ and carry on.
+- **Make one now:** 🙋. Tell them: open https://github.com/signup, use any email
+  they can read now (work or personal), pick the **Free** plan, and confirm the
+  email GitHub sends — an unconfirmed account cannot fork. Carry on with Steps 1
+  and 2 while they do it; they sign in at Step 3. Mark ✅ when they say it is
+  done.
+- **Team up:** stop here. Tell them: *"No problem — pair with a developer, or
+  anyone with a GitHub account, and run the exercise together on their laptop,
+  signed in as them. Please don't type their password here; work at their
+  machine instead. Or come back to me any time once you've made an account at
+  https://github.com/signup."* Do nothing else on this machine.
+
+Never create the account for them, and never ask for, or accept, anyone's
+password (rule 4).
 
 ## Step 1 — Identify the operating system and shell
 
@@ -227,7 +296,7 @@ Never overwrite values that are already set.
 
 ## Step 4 — Fork the repository and turn on Issues
 
-**The one question — where to fork to.** If the person already said where
+**The other question — where to fork to.** If the person already said where
 (for example "set me up and fork it to my-org", or named an account), use that
 and do not ask. Otherwise list the options and ask:
 
@@ -544,7 +613,7 @@ gh label list --json name --jq '.[].name' | grep -c -x -E 'ai-working|ready-for-
 npm test 2>&1 | grep -E '^# fail'          # # fail 0
 ```
 
-Then tell the person, briefly:
+Then show the final board (**🚀 ready for launch**) and tell the person, briefly:
 
 - Where the clone is (the folder path), and that `npm run dev` starts the app at
   http://localhost:5173.
