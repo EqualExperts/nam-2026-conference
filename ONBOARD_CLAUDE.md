@@ -703,8 +703,7 @@ filled in:
 > **First:** run `/setup-winnow`. When it asks about audio, we recommend
 > **yes**: the workshop plans to listen to a live conversation. It's a one-time
 > download of a few hundred MB plus a microphone permission, so it's best done
-> now rather than on the day. Say **no** to skip it; you can still follow along
-> from a transcript. Then
+> now rather than on the day. Then
 > `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
 > tickets, and `/ship <ticket number>` to build one.
 
