@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addsShipLabel, creates, verdict, WORKSHOP_REPO } from '../../scripts/fork-guard.mjs';
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { addsShipLabel, creates, probeFile, probeWord, verdict, WORKSHOP_REPO } from '../../scripts/fork-guard.mjs';
 
 const bash = (command) => creates({ toolName: 'Bash', command });
 
@@ -57,4 +60,25 @@ test('taking ready-for-ai off, or any other label, is let through', () => {
   assert.equal(labels('gh issue list --label ready-for-ai'), false);
   assert.equal(addsShipLabel({ toolName: 'mcp__github__remove_issue_label', toolInput: { label: 'ready-for-ai' } }), false);
   assert.equal(addsShipLabel({ toolName: 'Read', command: '' }), false);
+});
+
+test('the hook probe is recognised by its word, and only in a Bash call', () => {
+  assert.equal(probeWord({ toolName: 'Bash', command: 'node scripts/fork-guard.mjs --probe k7q2' }), 'k7q2');
+  assert.equal(probeWord({ toolName: 'Bash', command: '# Checking the guard\ncd /x && node scripts/fork-guard.mjs --probe Ab3' }), 'Ab3');
+  assert.equal(probeWord({ toolName: 'Bash', command: 'node scripts/fork-guard.mjs --hook' }), undefined);
+  assert.equal(probeWord({ toolName: 'Read', command: 'node scripts/fork-guard.mjs --probe k7q2' }), undefined);
+});
+
+test('the probe reports live only after the hook has seen it, and quietly either way', () => {
+  const word = `t${process.pid}`;
+  const guard = (args, input) => spawnSync(process.execPath, [fileURLToPath(new URL('../../scripts/fork-guard.mjs', import.meta.url)), ...args],
+    { input, encoding: 'utf8', env: { ...process.env, GITHUB_ACTIONS: '' } });
+  const before = guard(['--probe', word]);
+  assert.equal(before.status, 0);
+  assert.equal(before.stdout.trim(), 'fork guard: not loaded');
+  const hook = guard(['--hook'], JSON.stringify({ tool_name: 'Bash', tool_input: { command: `node scripts/fork-guard.mjs --probe ${word}` } }));
+  assert.equal(hook.status, 0);
+  assert.equal(guard(['--probe', word]).stdout.trim(), 'fork guard: live');
+  assert.equal(existsSync(probeFile(word)), false);
+  assert.equal(guard(['--probe', word]).stdout.trim(), 'fork guard: not loaded');
 });
