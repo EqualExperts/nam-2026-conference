@@ -120,6 +120,11 @@ label. Use this block only for real requests, never for status. Don't call
 anything "waiting on you" unless you have actually stopped for it. If you are
 carrying on in the meantime, end the block with *(I'll keep going meanwhile.)*
 
+**If you ask with a question tool, the question must stand on its own.** The
+question card may be the only thing the person sees, because it can appear on
+top of your message. Put the full link and the button's exact label in the
+question text itself, never only in the message above it.
+
 ---
 
 ## Rules you must follow throughout
@@ -617,7 +622,12 @@ ask properly:
    open `https://github.com/<you>/nam-2026-conference/actions` and click the
    green **I understand my workflows, go ahead and enable them**.
 3. **Ask with the question tool** if you have one (it shows as a prompt they
-   can't miss), with exactly these two options:
+   can't miss). Put the link in the question itself, using exactly this text:
+
+   > Open https://github.com/<you>/nam-2026-conference/actions and click the
+   > green **I understand my workflows, go ahead and enable them**. Done?
+
+   Give exactly these two options:
    - **Done, I clicked it**
    - **I don't see that button**
 
