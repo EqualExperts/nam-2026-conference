@@ -20,7 +20,15 @@ Do not paste long command output at them. Instead, keep them with you on the
 
 This is a workshop, and setup is its first exercise — make it feel like one.
 Show the board once before Step 0 and again each time a step finishes, as plain
-Markdown (no code block, so it renders):
+Markdown (no code block, so it renders). Print it in your own reply text, in
+full, every time. A task or to-do list does not count: the person may never
+see it. Saying that you set up a checklist does not count either: they need to
+see the board itself.
+
+With the first board, add one line: setup is automatic except for **one
+click** on GitHub, and you will say exactly when. (Count it as one click:
+signing in or making a GitHub account only applies when those aren't already
+done.)
 
 > **🛰️ ORBIT '26 — launch checklist** · 3 of 11 done
 >
@@ -43,7 +51,7 @@ Markdown (no code block, so it renders):
   step's one useful fact after a dash, as the operating system line does: the
   GitHub account, the fork's URL, the test count.
 - Under the board, one short line in italics: what is next and roughly how long
-  it takes, or — at a 🙋 — exactly what they need to do. Light and friendly is
+  it takes. At a 🙋, the **👉 Your turn** block (below) replaces it. Light and friendly is
   good; a joke per step is not. Never more than one line.
 - Step 10 (*loading the workshop commands*) is not on the board: it is the
   hand-off. When the last row is ✅, show the board one final time with the
@@ -58,6 +66,17 @@ only interrupted for things no agent can do for them — typing a password,
 approving an administrator prompt, logging in in a browser, or clicking a
 button on github.com — and for those you tell them exactly what to do, you do
 not ask.
+
+**Whenever the person has to do something, make it impossible to miss.** End
+your message with one block in this shape, with nothing after it:
+
+> **👉 Your turn:** open https://github.com/you/nam-2026-conference/actions and
+> click the green **I understand my workflows, go ahead and enable them**.
+
+Give one action, with the link or the exact command, and the button's exact
+label. Use this block only for real requests, never for status. Don't call
+anything "waiting on you" unless you have actually stopped for it. If you are
+carrying on in the meantime, end the block with *(I'll keep going meanwhile.)*
 
 ---
 
@@ -475,9 +494,17 @@ gh api repos/<you>/nam-2026-conference/actions/workflows --jq .total_count   # p
 
 **Do:** ask the person to open
 `https://github.com/<you>/nam-2026-conference/actions` in their browser and click
-the green button **I understand my workflows, go ahead and enable them**. Wait
-for them to confirm, then verify. (`total_count` can take a few seconds to update
-after the click; retry once or twice.)
+the green button **I understand my workflows, go ahead and enable them**. This is
+the one click. Ask for it once, in the **👉 Your turn** block, ending with
+*(I'll keep going meanwhile.)* Do not ask them to tell you when they're done, and do not repeat
+the request.
+
+Do not wait for a reply. Step 9 does not need Actions, so run it now: mark this
+row 🙋 and that one 🔄. When Step 9 finishes, run this step's check yourself.
+If it passes, mark the step ✅ and go on to Step 8 without saying anything
+about it. Only if it still fails, show the 🙋 row again with the
+**👉 Your turn** block. (`total_count` can take a few seconds to update after
+the click; retry once or twice before you ask again.)
 
 ## Step 8 — Set up the harness (creates the labels)
 
@@ -567,7 +594,13 @@ passes for them even with the hook live; the label rule blocks everyone.
 **Both pass:** nothing to restart. Tell the person they can carry on in this
 session, and to run `/setup-winnow` and answer **no** to audio.
 
-**Either fails — Do:** a restart loads them. If `<clone>` is the session folder
+**Only `ship-rote` is missing** (`ship` is listed and the hook blocks): do
+not ask for a restart. `/ship` works from this session. Its first rote step
+shows one red ✗ (*agent type 'ship-rote' not found*), and the rest run as plain
+agents, which is a bit slower. Mention it in one line as optional. To load the
+agent type later, type `/exit` and then `claude --continue`.
+
+**`ship` is missing or the hook does not block — Do:** a restart loads them. If `<clone>` is the session folder
 (rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
 the same terminal — it picks this conversation back up with the commands
 loaded. Otherwise tell them exactly:
@@ -623,4 +656,5 @@ Then show the final board (**🚀 ready for launch**) and tell the person, brief
   (`/winnow docs/demo/winnow-transcript.txt` to try it) or `/create-tasks <one
   line>`, then build one with `/ship <issue number>`. The walkthrough is in
   `docs/harness/quickstart.md`.
-- If Step 10's checks failed: its restart, before the first `/ship`.
+- If Step 10's command or hook check failed: its restart, before the first
+  `/ship`.
