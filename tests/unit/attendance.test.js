@@ -1,12 +1,12 @@
 import './sandbox-db.js';
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { migrate } from '../../server/db.js';
+import { db, migrate } from '../../server/db.js';
 
 // attendance.js prepares its statements at module scope, so the tables have to
 // exist before it is imported.
 migrate();
-const { attendanceWindow, CHECK_IN_OPENS_MINS } = await import('../../server/lib/attendance.js');
+const { attendanceWindow, CHECK_IN_OPENS_MINS, checkIn, rateSession } = await import('../../server/lib/attendance.js');
 
 /** A 45-minute talk on day 2, in the shape the sessions table hands back. */
 const session = { id: 42, day: '2026-10-13', starts_at: '14:30', ends_at: '15:15' };
@@ -74,4 +74,55 @@ describe('Without a clock there is nothing to say', () => {
       assert.deepEqual(attendanceWindow(session, now), { phase: 'unknown', canCheckIn: false });
     });
   }
+});
+
+describe('Statements are prepared once, at module scope', () => {
+  // Minimal fixture rows for checkIn/rateSession to act on, inserted straight
+  // into the sandbox DB rather than through seed.js.
+  db.exec(`
+    INSERT INTO venues (id, name, short_name, address, city, description, accent, emoji, lat, lng)
+      VALUES (1, 'Fixture Venue', 'FV', '1 Test St', 'Testville', 'A venue', 'violet', '\u{1F3DF}', 0, 0);
+    INSERT INTO rooms (id, venue_id, name, building, floor, capacity)
+      VALUES (1, 1, 'Fixture Room', 'Main', '1', 100);
+    INSERT INTO tracks (id, name, short_name, slug, color)
+      VALUES (1, 'Fixture Track', 'Fix', 'fixture-track', '#000000');
+    INSERT INTO users (id, name, email, initials, accent)
+      VALUES (1, 'Fixture User', 'fixture@example.com', 'FU', 'violet');
+    INSERT INTO sessions
+      (id, title, abstract, track_id, room_id, day, starts_at, ends_at, duration_mins, format, level, capacity)
+      VALUES
+      (1, 'Checkable Session', 'abstract', 1, 1, '2026-10-13', '09:00', '09:45', 45, 'Talk', 'Beginner', 50),
+      (2, 'Ratable Session',   'abstract', 1, 1, '2026-10-13', '08:00', '08:15', 15, 'Talk', 'Beginner', 50);
+    INSERT INTO check_ins (user_id, session_id, checked_in_at)
+      VALUES (1, 2, '2026-10-13T08:05:00.000Z');
+  `);
+
+  /** Runs `fn`, counting how many times `db.prepare` is called while it runs. */
+  const countPrepares = (fn) => {
+    const original = db.prepare.bind(db);
+    let count = 0;
+    db.prepare = (...args) => {
+      count += 1;
+      return original(...args);
+    };
+    try {
+      fn();
+    } finally {
+      db.prepare = original;
+    }
+    return count;
+  };
+
+  test('checking in prepares no statement of its own', () => {
+    const calls = countPrepares(() => checkIn(1, 1, { day: '2026-10-13', time: '09:05' }));
+    assert.equal(calls, 0);
+  });
+
+  test('rating prepares no statement of its own', () => {
+    // Session 2 has already ended, and the fixture check-in above covers it,
+    // so this exercises the upsert rather than tripping a rejection first.
+    const calls = countPrepares(() =>
+      rateSession(1, 2, { stars: 5, comment: 'Nicely paced' }, { day: '2026-10-13', time: '09:00' }));
+    assert.equal(calls, 0);
+  });
 });

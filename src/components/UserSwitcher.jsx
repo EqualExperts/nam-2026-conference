@@ -1,14 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
 /**
+ * The workshop's hosts, who agreed to appear as themselves. Only they are
+ * offered here, since three real people demo better than six invented ones.
+ */
+const HOST_COMPANY = 'Equal Experts';
+
+/** The hosts' two talks, in the order they are given. */
+const TALKS = [
+  { to: '/product-presentation', title: 'The product harness', blurb: 'A conversation → a ticket' },
+  { to: '/engineering-presentation', title: 'The engineering harness', blurb: 'A ticket → a pull request' },
+];
+
+/**
  * Attendee switcher. There is no auth — the app runs as whichever seeded
- * attendee is selected, and each has their own agenda and follows.
+ * attendee is selected, and each has their own agenda and follows. The other
+ * seeded attendees still exist (tests sign in as them through localStorage);
+ * one only shows here while it is the one selected, so it can be switched away from.
  */
 export function UserSwitcher() {
-  const { users = [], currentUser, setCurrentUserId } = useConference();
+  const { users = [], currentUser, setCurrentUserId, reservations } = useConference();
+  const choices = users.filter((u) => u.company === HOST_COMPANY || u.id === currentUser?.id);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -32,7 +48,7 @@ export function UserSwitcher() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         // The name is hidden on small screens, so the button needs its own label.
         aria-label={`Viewing as ${currentUser.name}. Switch attendee.`}
         className={cx(
@@ -47,7 +63,6 @@ export function UserSwitcher() {
 
       {open && (
         <div
-          role="listbox"
           className="glass absolute right-0 top-full z-50 mt-2 w-[19rem] animate-rise overflow-hidden rounded-2xl border border-hairline shadow-2xl shadow-black/60"
         >
           <div className="border-b border-hairline px-4 py-2.5">
@@ -56,9 +71,15 @@ export function UserSwitcher() {
               Each attendee has their own agenda, follows and interests.
             </p>
           </div>
-          <ul className="max-h-[26rem] overflow-y-auto p-1.5">
-            {users.map((u) => {
+          <ul role="listbox" aria-label="Attendees" className="max-h-[26rem] overflow-y-auto p-1.5">
+            {choices.map((u) => {
               const active = u.id === currentUser.id;
+              // The store only ever holds live reservation state for the
+              // signed-in attendee, so only their row can read it live; every
+              // other row keeps the count `/bootstrap` gave it on load.
+              const agendaCount = active
+                ? Array.from(reservations.values()).filter((status) => status === 'confirmed').length
+                : u.reservedCount ?? 0;
               return (
                 <li key={u.id}>
                   <button
@@ -83,7 +104,7 @@ export function UserSwitcher() {
                       </div>
                       <div className="truncate text-[11px] text-muted">{u.jobTitle}</div>
                       <div className="truncate text-[11px] text-faint">
-                        {u.company} · {u.reservedCount ?? 0} on agenda
+                        {u.company} · {agendaCount} on agenda
                       </div>
                     </div>
                     {active && <Icon name="check" className="size-4 shrink-0 text-violet-300" />}
@@ -92,6 +113,40 @@ export function UserSwitcher() {
               );
             })}
           </ul>
+          {currentUser.isSpeaker && (
+            <div className="border-t border-hairline p-1.5">
+              <Link
+                to={`/speakers/${currentUser.speakerId}`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-raised"
+                data-testid="own-speaker-profile"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-cyan-500/12 text-cyan-300">
+                  <Icon name="mic" className="size-3" />
+                </span>
+                <span className="text-sm font-semibold">Your speaker profile</span>
+              </Link>
+            </div>
+          )}
+          <div className="border-t border-hairline p-1.5" data-testid="talk-links">
+            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Workshop talks</p>
+            {TALKS.map((t) => (
+              <Link
+                key={t.to}
+                to={t.to}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-raised"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-500/12 text-violet-300">
+                  <Icon name="play" className="size-3" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{t.title}</span>
+                  <span className="block truncate text-[11px] text-faint">{t.blurb}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

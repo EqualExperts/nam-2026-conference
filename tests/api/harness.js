@@ -21,8 +21,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
  * Boot the app on an ephemeral port against this file's own database.
  * `ORBIT_DB` must be set before anything imports `server/db.js`, which is why
  * the import is dynamic and why nothing up top reaches into `server/`.
+ * `distDir` points `ORBIT_DIST_DIR` at a fixture build; without it no `dist/`
+ * is mounted, as under `npm run dev`.
  */
-export async function startApi() {
+export async function startApi({ distDir } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'orbit-api-'));
   const path = join(dir, 'orbit.db');
   // Seeding is deterministic and takes about a quarter of a second, and
@@ -32,13 +34,17 @@ export async function startApi() {
     stdio: 'ignore',
   });
   process.env.ORBIT_DB = path;
+  if (distDir) process.env.ORBIT_DIST_DIR = distDir;
+  else delete process.env.ORBIT_DIST_DIR;
 
   const { app } = await import('../../server/index.js');
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
 
+  const origin = `http://127.0.0.1:${server.address().port}`;
   return {
-    api: client(`http://127.0.0.1:${server.address().port}/api`),
+    api: client(`${origin}/api`),
+    origin,
     async close() {
       await new Promise((done) => server.close(done));
       rmSync(dir, { recursive: true, force: true });
@@ -48,10 +54,10 @@ export async function startApi() {
 
 /** Minimal fetch wrapper: every call reports its status and its parsed body. */
 export function client(base) {
-  const send = async (method, path, body) => {
+  const send = async (method, path, body, headers) => {
     const res = await fetch(base + path, {
       method,
-      headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+      headers: body === undefined ? headers : { 'content-type': 'application/json', ...headers },
       // a string body goes out verbatim, so a test can post malformed JSON
       body: body === undefined || typeof body === 'string' ? body : JSON.stringify(body),
     });
@@ -61,7 +67,7 @@ export function client(base) {
   };
 
   return {
-    get: (path) => send('GET', path),
+    get: (path, headers) => send('GET', path, undefined, headers),
     put: (path, body) => send('PUT', path, body),
     del: (path) => send('DELETE', path),
     /** The body of a GET that is expected to succeed. */
@@ -91,6 +97,22 @@ export function shiftTime(hhmm, mins) {
  * everyone a plan, and the overlap guard is per attendee, so a test that wants
  * to book freely starts by clearing the board.
  */
+/**
+ * A seeded attendee and a Day 1 morning session they checked in to and rated
+ * (`{ userId, session, stars }`) — the seed rates every check-in it makes, so
+ * a rating or check-in test needs no clock games to reach the insert. For an
+ * attended-but-unrated session, check in yourself inside the window
+ * (`startsAt − 15` … `endsAt`) and rate after `endsAt`.
+ */
+export async function attendedSession(api) {
+  for (const u of await api.json('/users')) {
+    const full = await api.json(`/users/${u.id}`);
+    const rating = full.ratings.find((r) => full.checkIns.includes(r.sessionId));
+    if (rating) return { userId: u.id, session: await api.json(`/sessions/${rating.sessionId}`), stars: rating.stars };
+  }
+  throw new Error('the seed has no attendee with a rated check-in');
+}
+
 export async function clearAgenda(api, userId) {
   const { reservations } = await api.json(`/users/${userId}`);
   for (const r of reservations) await api.del(`/users/${userId}/reservations/${r.sessionId}`);

@@ -1,0 +1,1030 @@
+import { describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+
+/**
+ * The ship workflow's control flow, with every agent stubbed.
+ *
+ * The prompts are judgement; the loop is not. When does it stop, when does it
+ * hand a ticket to a person, does a refuted finding cost a fix round — those
+ * are rules, and a rule in a script nobody can run without spending an hour of
+ * agent time is a rule nobody has checked. Here each agent is a function of
+ * its label, so a whole run takes milliseconds.
+ */
+
+const source = readFileSync(new URL('../../.claude/workflows/ship.js', import.meta.url), 'utf8')
+  .replace(/^export const meta/m, 'const meta');
+const AsyncFunction = (async () => {}).constructor;
+const script = new AsyncFunction('args', 'agent', 'parallel', 'phase', 'log', 'workflow', source);
+
+const SETUP = {
+  proceed: true, reason: 'ok', title: 'Total hours', slug: 'hours', branch: 'issue-7-hours',
+  workdir: '/w', runner: true, doneWhen: ['the agenda shows total hours'],
+};
+const gateResult = (over = {}) => ({
+  ok: true, sha: 'abc1234def', dirty: false, unit: { passed: 178, failed: 0 },
+  browser: { passed: 155, failed: [], flaky: 0, skipped: 1 }, tampered: [], ...over,
+});
+const GREEN = { json: JSON.stringify(gateResult()) };
+const RED = (failed) => ({ json: JSON.stringify(gateResult({ ok: false, browser: { passed: 150, failed, flaky: 0, skipped: 1 } })) });
+const blocker = (claim) => ({
+  severity: 'blocker', category: 'logic', file: 'server/lib/agenda.js', line: 10, claim, evidence: 'e', fix: 'f',
+});
+
+/**
+ * Run the workflow. `answers` maps a label prefix to a value, or to a function
+ * of the round number (the `#n` suffix). Returns the result and every label
+ * that ran, in order.
+ */
+async function run(answers = {}, args = 7) {
+  const calls = [];
+  const prompts = {};
+  const models = {};
+  const agent = async (prompt, opts) => {
+    calls.push(opts.label);
+    prompts[opts.label] = prompt;
+    models[opts.label] = opts.model;
+    const [name, n] = opts.label.replace('-retry', '').split('#');
+    const hit = Object.keys(answers).find(k => name === k || name.startsWith(k + ':'));
+    if (hit) { const a = answers[hit]; return typeof a === 'function' ? a(Number(n), prompt) : a; }
+    if (name === 'setup') return SETUP;
+    if (name.startsWith('verify')) return GREEN;
+    if (name.includes('audit')) return { covered: 'all', findings: [] };
+    if (name.startsWith('skeptic')) return { refuted: false, why: 'real' };
+    if (name === 'learn') return { lessons: [] };
+    if (name === 'write-spec' || name.startsWith('revise-spec')) return { path: 'specs/7-hours.md', summary: 's' };
+    if (name === 'open-pr') return { ok: true, summary: 'opened', url: 'https://github.com/o/r/pull/9' };
+    return { ok: true, summary: 'done' };
+  };
+  const parallel = async (thunks) => Promise.all(thunks.map(t => t().catch(() => null)));
+  const result = await script(args, agent, parallel, () => {}, () => {});
+  return { result, calls, prompts, models };
+}
+
+describe('sizing — composed from what the ticket risks', () => {
+  const facts = (f) => ({ ...SETUP, sizing: { areas: ['ui', 'tests'], files: 3, changesApi: false, changesRule: false,
+    changesData: false, openQuestions: 1, labelledFull: false, uiInteraction: false, why: 'one component', ...f } });
+
+  test('a careful ticket about one component is small, however many criteria it lists — #100', async () => {
+    const { result } = await run({ setup: { ...facts({}), doneWhen: Array.from({ length: 7 }, (_, i) => `criterion ${i}`) } });
+    assert.equal(result.size, 'small');
+    assert.doesNotMatch(source, /more than four Done-when criteria/);
+  });
+
+  test('only a rule, stored data, the harness or the label buys the full loop', async () => {
+    for (const f of [{ changesRule: true }, { changesData: true }, { areas: ['harness'] }, { labelledFull: true }]) {
+      assert.equal((await run({ setup: facts(f) })).result.size, 'full', JSON.stringify(f));
+    }
+  });
+
+  test('the API or breadth adds the criteria and rules auditors, on Sonnet — not the full loop', async () => {
+    for (const f of [{ changesApi: true }, { areas: ['ui', 'server-routes', 'server-rules'] }, { files: 7 }]) {
+      const { result, calls, models } = await run({ setup: facts(f) });
+      assert.equal(result.size, 'small', JSON.stringify(f));
+      assert.ok(calls.includes('audit:criteria#1') && calls.includes('audit:rules#1'), JSON.stringify(f));
+      assert.equal(models['audit:rules#1'], 'sonnet');
+      assert.ok(!calls.some(c => c.startsWith('spec-audit')));
+    }
+    assert.equal((await run({ setup: facts({ areas: ['ui', 'tests', 'docs'] }) })).result.size, 'small', 'tests and docs are not areas of change');
+  });
+
+  test('open design questions buy one plan audit on Sonnet, not three on Opus', async () => {
+    const { calls, models } = await run({ setup: facts({ openQuestions: 2 }) });
+    assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), ['spec-audit:combined#1']);
+    assert.equal(models['spec-audit:combined#1'], 'sonnet');
+  });
+
+  test('new interaction buys a browser audit with four probes, even when a browser test exists — #105', async () => {
+    const { calls, prompts } = await run({ setup: facts({ uiInteraction: true }), implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+    assert.ok(calls.includes('audit:browser#1'));
+    assert.match(prompts['audit:browser#1'], /Budget: 4 probes/);
+  });
+
+  test('a criterion about fitting on a screen buys a browser audit, even when the diff is only classes — #140', async () => {
+    const { calls, prompts } = await run({ setup: facts({ layoutFit: true }), implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+    assert.ok(calls.includes('audit:browser#1'));
+    assert.match(prompts['audit:browser#1'], /Budget: 4 probes/);
+  });
+
+  test('the mobile project is a modern iPhone\'s height, not the Pixel 7\'s 839px — #140', async () => {
+    // "In view on a phone" passed at 839px and failed by 151px on an iPhone 15.
+    const { default: config } = await import('../../playwright.config.js');
+    const mobile = config.projects.find(p => p.name === 'mobile');
+    assert.deepEqual(mobile.use.viewport, { width: 393, height: 659 });
+    assert.equal(mobile.use.isMobile, true);
+  });
+
+  test('a criterion that already holds on main is named in the spec\'s first Decision — #140', async () => {
+    const small = await run({ setup: facts({}) });
+    assert.match(small.prompts.setup, /already holds on main as written, the first Decision says so/);
+    const full = await run({ setup: facts({ changesRule: true }) });
+    assert.match(full.prompts['write-spec'], /already holds on main as written, the first Decision says so/);
+  });
+
+  test('setup sizes on the session model, and must report its facts', async () => {
+    const { models } = await run({ setup: facts({}) });
+    assert.equal(models.setup, undefined);
+    assert.match(source, /required: \['proceed', 'reason', 'sizing'\]/);
+  });
+
+  test('setup must say whether the ticket adds an interaction or a layout fit, or their checks silently never run — #115', () => {
+    const required = /sizing: \{\s*type: 'object',\s*required: \[([^\]]*)\]/.exec(source);
+    assert.ok(required, 'no required list on sizing');
+    assert.match(required[1], /'uiInteraction'/);
+    assert.match(required[1], /'layoutFit'/);
+  });
+
+  test('a small run whose diff reaches a risky path is escalated on that evidence', async () => {
+    const { calls, models } = await run({ setup: facts({}), verify: { ...GREEN, facts: '--app-lines=40 --risky=yes' } });
+    assert.ok(calls.includes('audit:criteria#1') && calls.includes('audit:rules#1'));
+    assert.ok(!calls.includes('audit:combined#1'));
+    assert.equal(models['audit:rules#1'], undefined, 'the session model');
+  });
+
+  test('a small run whose diff stays small is not escalated', async () => {
+    const { calls } = await run({ setup: facts({}), verify: { ...GREEN, facts: '--app-lines=40 --risky=no' } });
+    assert.ok(calls.includes('audit:combined#1') && !calls.includes('audit:rules#1'));
+  });
+
+  test('a gate red twice running moves the fixer to the session model', async () => {
+    const red = RED([{ test: '[mobile] plan.spec.js:40 › x', error: 'e' }]);
+    const { models } = await run({ setup: facts({}), verify: (n) => (n <= 2 ? red : GREEN) });
+    assert.equal(models['fix#1'], 'sonnet');
+    assert.equal(models['fix#2'], undefined);
+  });
+});
+
+describe('the plan loop re-plans only for what changes the build', () => {
+  const spec = (category) => ({ covered: 'all', findings: [{ ...blocker(`a ${category} problem`), category }] });
+
+  test('a confirmed gap in the plan goes to the builder as a note, without another plan round — #105', async () => {
+    const { calls, prompts } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('spec-gap') : { covered: 'all', findings: [] }) });
+    assert.ok(!calls.some(c => c.startsWith('revise-spec')));
+    assert.match(prompts.implement, /a spec-gap problem/);
+  });
+
+  test('a carried gap the next round raises again is confirmed and carried once — #114', async () => {
+    const gap = { ...blocker('a spec-gap problem'), category: 'spec-gap', line: 20 };
+    const logic = { ...blocker('a logic problem'), category: 'logic', line: 90 };
+    const { calls, prompts } = await run({
+      'spec-audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [gap, logic] : [gap] }),
+    });
+    assert.ok(calls.includes('revise-spec#1'));
+    assert.equal(calls.filter(c => c === 'skeptic:spec-gap').length, 1, 'the carried gap paid a second skeptic');
+    assert.equal(prompts.implement.split('a spec-gap problem').length - 1, 1, 'the implementer was told the gap twice');
+  });
+
+  test('a misread criterion is still re-planned', async () => {
+    const { calls } = await run({ 'spec-audit:criteria': (n) => (n === 1 ? spec('criterion-unmet') : { covered: 'all', findings: [] }) });
+    assert.ok(calls.includes('revise-spec#1'));
+  });
+});
+
+describe('several tickets at once', () => {
+  const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
+  const agent = async () => { throw new Error('the batch itself runs no agent'); };
+
+  test('`/ship 64 65 66` runs one whole ship per ticket, in parallel, with the notes and size passed on', async () => {
+    const calls = [];
+    const workflow = async (name, a) => { calls.push([name, a]); return { outcome: 'shipped', issue: a.issue }; };
+    const result = await script('64, #65 and 66 keep it small --small', agent, parallel, () => {}, () => {}, workflow);
+    assert.equal(result.outcome, 'batch');
+    assert.deepEqual(calls.map(([n, a]) => [n, a.issue]), [['ship', 64], ['ship', 65], ['ship', 66]]);
+    assert.equal(calls[0][1].notes, 'keep it small');
+    assert.equal(calls[0][1].size, 'small');
+    assert.deepEqual(result.runs.map(r => r.outcome), ['shipped', 'shipped', 'shipped']);
+  });
+
+  test('one ticket that dies does not stop the others', async () => {
+    const workflow = async (name, a) => (a.issue === 65 ? null : { outcome: 'shipped', issue: a.issue });
+    const result = await script('64 65', agent, parallel, () => {}, () => {}, workflow);
+    assert.deepEqual(result.runs.map(r => r.outcome), ['shipped', 'error']);
+  });
+
+  test('a single number with notes that contain numbers is still one ticket', async () => {
+    const { prompts } = await run({}, '7 the total should read 12 hours');
+    assert.match(prompts['write-spec'] || prompts.setup, /the total should read 12 hours/);
+  });
+});
+
+describe('ship-rote', () => {
+  test('the rote steps ask for the lean agent type, and fall back to a plain agent where it is not loaded', async () => {
+    const seen = [];
+    const agent = async (prompt, opts) => {
+      seen.push([opts.label, opts.agentType]);
+      if (opts.agentType === 'ship-rote') throw new Error("agent({agentType}): agent type 'ship-rote' not found. Available agents: claude");
+      if (opts.label === 'setup') return SETUP;
+      if (opts.label.startsWith('verify')) return GREEN;
+      if (opts.label.includes('audit')) return { covered: 'all', findings: [] };
+      if (opts.label === 'write-spec') return { path: 'specs/7-hours.md', summary: 's' };
+      if (opts.label === 'open-pr') return { ok: true, summary: 'ok', url: 'u' };
+      return { ok: true, summary: 'done' };
+    };
+    const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
+    const result = await script(7, agent, parallel, () => {}, () => {});
+    assert.equal(result.outcome, 'shipped');
+    // Asked once: a session that has not loaded it will not load it mid-run,
+    // and every retry is a red ✗ in /workflows.
+    assert.equal(seen.filter(([, t]) => t === 'ship-rote').length, 1);
+    assert.ok(seen.some(([l, t]) => l === 'verify#1' && t === undefined));
+    assert.ok(seen.some(([l, t]) => l === 'open-pr' && t === undefined));
+  });
+});
+
+describe('ship', () => {
+  test('a clean ticket runs every phase once and ships', async () => {
+    const { result, calls } = await run();
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(result.pr, 'https://github.com/o/r/pull/9');
+    assert.deepEqual(result.rounds, [{
+      round: 1, gate: 'unit 178 passed · browser 155 passed', raised: 0, confirmed: 0,
+      covered: 'ran nothing: all · ran nothing: all · ran nothing: all',
+    }]);
+    assert.ok(!calls.some(c => c.startsWith('fix') || c.startsWith('revise-spec') || c === 'hand-back'));
+    // Nothing was caught, so there is nothing to learn and no agent is spent on it.
+    assert.ok(!calls.includes('learn'));
+  });
+
+  test('the PR step reads an empty post-gate file list as nothing changed, not as a failure', async () => {
+    // A green, audited branch was handed back because `git log <gate>..HEAD`
+    // printed nothing — which is the normal case: no commit after the gate.
+    const { prompts } = await run();
+    assert.match(prompts['open-pr'], /Empty is the normal case[^.]*carry on/);
+    assert.match(prompts['open-pr'], /Only if it lists a file outside docs\/, specs\/ or \*\.md[^.]*return ok=false/);
+  });
+
+  test('setup pins gh to origin, and stops if it still points elsewhere — #149', async () => {
+    // `gh` without a terminal prefers an `upstream` remote, which `gh repo
+    // clone` of a fork adds: unpinned, a laptop run worked on the upstream.
+    const { calls, prompts } = await run();
+    assert.equal(calls[0], 'setup');
+    assert.match(prompts.setup, /gh repo set-default "\$\(git remote get-url origin\)"/);
+    assert.match(prompts.setup, /gh repo set-default --view[^.]*origin[^.]*; if it does not, return proceed=false/);
+  });
+
+  test('setup refuses a checkout that would write to the workshop repo, before it claims anything', async () => {
+    const { prompts } = await run();
+    const at = prompts.setup.indexOf('node scripts/fork-guard.mjs');
+    assert.ok(at > -1, 'setup never runs the fork guard');
+    assert.ok(at < prompts.setup.indexOf('claim it'), 'the guard runs after the ticket is claimed');
+    assert.match(prompts.setup, /fork-guard\.mjs`: if it exits non-zero[^.]*proceed=false/);
+  });
+
+  test('the onboarding and the playbook pin gh before anything reads an issue — #149', () => {
+    const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
+    assert.match(read('ONBOARD_CLAUDE.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
+    assert.match(read('docs/harness/ship-playbook.md'), /gh repo set-default "\$\(git remote get-url origin\)"\ngh issue view/);
+  });
+
+  test('an unshippable ticket stops at setup and opens nothing', async () => {
+    const { result, calls } = await run({ setup: { proceed: false, reason: 'no Done when' } });
+    assert.deepEqual(result, { outcome: 'declined', issue: 7, reason: 'no Done when' });
+    assert.deepEqual(calls, ['setup']);
+  });
+
+  test('a confirmed code finding is fixed, re-verified and re-audited before the PR', async () => {
+    const { result, calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('off by one on the total')] : [] }),
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.deepEqual(result.rounds.map(r => r.confirmed), [1, 0]);
+    const order = ['verify#1', 'fix#1', 'verify#2', 'audit:rules#2', 'learn', 'open-pr'].map(l => calls.indexOf(l));
+    assert.deepEqual([...order].sort((a, b) => a - b), order, 'learn lands before the PR opens, so it is reviewed');
+  });
+
+  test('a finding the skeptic refutes never costs a fix round', async () => {
+    const { result, calls } = await run({
+      'audit:criteria': { covered: 'all', findings: [blocker('imagined')] },
+      skeptic: { refuted: true, why: 'the line does not say that' },
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.ok(!calls.some(c => c.startsWith('fix')));
+  });
+
+  test('minor findings never loop', async () => {
+    const { result } = await run({
+      'audit:rules': { covered: 'all', findings: [{ ...blocker('naming'), severity: 'minor' }] },
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(result.rounds.length, 1);
+  });
+
+  test('a red gate goes straight to a fix, without auditing red code', async () => {
+    const { result, calls } = await run({
+      verify: (n) => (n === 1 ? RED([{ test: '[desktop] home.spec.js:4 › x', error: 'x' }]) : GREEN),
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.ok(!calls.some(c => c.endsWith('#1') && c.startsWith('audit')));
+    assert.ok(calls.includes('fix#1'));
+  });
+
+  test('the run starts from a fetched base and merges today\'s base before every gate — #150', async () => {
+    // Two runs started together both opened PRs from the same main; once the
+    // first merged, the second was already conflicting.
+    const { prompts } = await run();
+    assert.match(prompts.setup, /git fetch origin`? first, then from origin\/main/);
+    assert.match(prompts['verify#1'], /git fetch origin main && git merge --no-edit origin\/main[\s\S]*gate\.mjs/);
+    assert.match(prompts['open-pr'], /git merge --no-edit origin\/main[\s\S]*git push -u origin HEAD/);
+    const playbook = readFileSync(new URL('../../docs/harness/ship-playbook.md', import.meta.url), 'utf8');
+    assert.match(playbook, /git fetch origin\ngit checkout -b issue-<n>/);
+    assert.match(playbook, /git fetch origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
+  });
+
+  test('a conflict with the base goes to the fixer without an audit, and the gate re-runs — #150', async () => {
+    const { result, calls, prompts } = await run({
+      verify: (n) => (n === 1 ? { json: '', sync: 'conflict', conflicts: ['src/a.jsx'] } : { ...GREEN, sync: 'merged' }),
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.ok(!calls.some(c => c.startsWith('audit') && c.endsWith('#1')));
+    assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx — conflicts with origin\/main/);
+    assert.ok(calls.includes('verify#2'));
+    assert.equal(result.rounds[0].gate, 'not run — conflicts with main');
+  });
+
+  test('a conflict is a conflict even if the verify agent also relays a green gate line — #153', async () => {
+    const { calls, prompts } = await run({
+      verify: (n) => (n === 1 ? { ...GREEN, sync: 'conflict', conflicts: ['src/a.jsx'] } : { ...GREEN, sync: 'merged' }),
+    });
+    assert.ok(!calls.some(c => c.startsWith('audit') && c.endsWith('#1')), 'a conflicted round was audited as green');
+    assert.match(prompts['fix#1'], /\[conflict\] src\/a\.jsx/);
+  });
+
+  test('a conflict when the PR is about to open hands back as a draft, naming the files — #150', async () => {
+    const { result } = await run({ 'open-pr': { ok: false, summary: 'conflicts with origin/main in src/a.jsx' } });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'PR');
+    assert.match(result.reason, /conflicts with origin\/main in src\/a\.jsx/);
+  });
+
+  test('the same finding surviving repeated fixes hands back early, as a draft', async () => {
+    const { result, calls } = await run({
+      'audit:rules': { covered: 'all', findings: [blocker('total ignores waitlist places')] },
+    });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'Code Audit');
+    assert.match(result.reason, /same finding/);
+    assert.equal(calls.filter(c => c.startsWith('verify')).length, 3);   // not all four rounds
+    assert.ok(!calls.includes('open-pr'));
+    assert.ok(calls.indexOf('learn') < calls.indexOf('hand-back'), 'learns before it pushes the draft');
+  });
+
+  test('different findings every round run out of rounds, then hand back', async () => {
+    const { result, calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: [{ ...blocker(`a new problem number ${n}`), line: n * 100 }] }),
+    });
+    assert.equal(result.outcome, 'needs-human');
+    assert.match(result.reason, /after 4 rounds/);
+    assert.equal(calls.filter(c => c.startsWith('fix')).length, 3);
+  });
+
+  test('a spec whose ticket is in question after every round stops before any code is written', async () => {
+    const { result, calls } = await run({
+      'spec-audit:fit': { covered: 'all', findings: [{ ...blocker('the ticket asks for two contradictory outcomes'), category: 'scope' }] },
+    });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'Spec Audit');
+    assert.ok(!calls.includes('implement'));
+    assert.equal(calls.filter(c => c.startsWith('revise-spec')).length, 2);
+  });
+
+  test('a technical spec problem still open after every round is decided and carried into the build — not handed back', async () => {
+    const { result, calls, prompts } = await run({
+      'spec-audit:fit': { covered: 'all', findings: [blocker('the gh call does not pin --repo')] },
+    });
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(calls.filter(c => c.startsWith('revise-spec')).length, 3);
+    assert.match(prompts['revise-spec#3'], /yours to decide/);
+    assert.match(prompts.implement, /the gh call does not pin --repo/);
+    assert.match(prompts['audit:criteria#1'], /left these for the build to resolve/);
+  });
+
+  test('an auditor that dies is retried, and one that dies twice hands back rather than passing', async () => {
+    const once = await run({ 'audit:rules': (n, p) => null });
+    assert.equal(once.result.outcome, 'needs-human');
+    assert.match(once.result.reason, /rules auditor could not finish/);
+    assert.ok(once.calls.includes('audit:rules-retry#1'));
+    assert.ok(!once.calls.includes('open-pr'));
+  });
+
+  test('a skeptic that dies refutes nothing — the finding still costs a fix', async () => {
+    const { calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('off by one')] : [] }),
+      skeptic: null,
+    });
+    assert.ok(calls.includes('fix#1'));
+  });
+
+  test('the skeptic judges in the branch, against the ticket and the spec', async () => {
+    const { prompts } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('off by one')] : [] }),
+    });
+    const p = prompts['skeptic:logic'];
+    assert.match(p, /Work in \/w on branch issue-7-hours/);
+    assert.match(p, /the agenda shows total hours/);
+    assert.match(p, /specs\/7-hours\.md/);
+  });
+
+  test('the same bug reworded every round is still recognised as stuck', async () => {
+    const { result } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: [blocker(`wording number ${n} of one bug`)] }),
+    });
+    assert.match(result.reason, /same finding/);
+  });
+
+  test('one finding raised by two lenses in one round is judged and counted once', async () => {
+    const same = { covered: 'all', findings: [blocker('total ignores waitlist places')] };
+    const { calls, result } = await run({
+      'audit:rules': (n) => (n === 1 ? same : { covered: 'all', findings: [] }),
+      'audit:criteria': (n) => (n === 1 ? same : { covered: 'all', findings: [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+    assert.equal(result.outcome, 'shipped');
+  });
+
+  test('one test failing on both viewports is two findings in one fix round, not an early stuck', async () => {
+    const pair = [{ test: '[desktop] home.spec.js:4 › x', error: 'x' }, { test: '[mobile] home.spec.js:4 › x', error: 'x' }];
+    const { result, calls, prompts } = await run({ verify: (n) => (n <= 2 ? RED(pair) : GREEN) });
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(calls.filter(c => c.startsWith('fix')).length, 2);
+    assert.match(prompts['fix#1'], /\[desktop\][\s\S]*\[mobile\]/);
+  });
+
+  test('two unmet criteria citing the same file with no line are both fixed', async () => {
+    const unmet = (claim) => ({ ...blocker(claim), category: 'criterion-unmet', file: 'specs/7-hours.md', line: undefined });
+    const { prompts } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [unmet('no test for the waitlist case'), unmet('done count includes waitlist')] : [] }),
+    });
+    assert.match(prompts['fix#1'], /no test for the waitlist case/);
+    assert.match(prompts['fix#1'], /done count includes waitlist/);
+  });
+
+  test('a gate run on uncommitted changes is not green', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? { json: JSON.stringify(gateResult({ dirty: true })) } : GREEN) });
+    assert.ok(calls.includes('fix#1'));
+    assert.ok(!calls.includes('audit:rules#1'));
+  });
+
+  test('gate JSON missing a field hands back instead of crashing', async () => {
+    const { result } = await run({ verify: { json: JSON.stringify({ ok: true, unit: {}, browser: {} }) } });
+    assert.equal(result.outcome, 'needs-human');
+  });
+
+  test('the docs move with the code: the implementer and fixer keep them true, the auditor checks, no context agent', async () => {
+    const { calls, prompts } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('x')] : [] }),
+    });
+    assert.ok(!calls.includes('context'));
+    assert.match(prompts.implement, /node scripts\/context\.mjs for <changed files>/);
+    assert.match(prompts['fix#1'], /docs\/context\/ doc/);
+  });
+
+  test('a PR agent that fails learns once, not twice', async () => {
+    const { calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('x')] : [] }),
+      'open-pr': { ok: false, summary: 'no permission' },
+    });
+    assert.equal(calls.filter(c => c === 'learn').length, 1);
+  });
+
+  test('a red gate that names no failing test hands back instead of burning rounds', async () => {
+    const { result, calls } = await run({ verify: RED([]) });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'Verify');
+    assert.ok(!calls.some(c => c.startsWith('fix')));
+  });
+
+  test('gate output that is not the script\'s JSON is red, never green', async () => {
+    const { result } = await run({ verify: { json: 'All tests passed! 🎉' } });
+    assert.equal(result.outcome, 'needs-human');
+  });
+
+  test('weakened tests reach the criteria auditor', async () => {
+    const tampered = ['tests/seats.spec.js: -    await expect(panel).toContainText(\'Waitlisted\');'];
+    const { prompts } = await run({ verify: { json: JSON.stringify(gateResult({ tampered })) } });
+    assert.match(prompts['audit:criteria#1'], /toContainText\('Waitlisted'\)/);
+    assert.doesNotMatch(prompts['audit:rules#1'], /Waitlisted/);
+  });
+
+  test('setup without Done-when criteria hands the claimed ticket back', async () => {
+    const { result, calls } = await run({ setup: { ...SETUP, doneWhen: [] } });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'Setup');
+    assert.ok(calls.includes('hand-back'));
+  });
+
+  test('a setup agent that dies still releases the ticket', async () => {
+    const { result, calls } = await run({ setup: null });
+    assert.equal(result.outcome, 'needs-human');
+    assert.ok(calls.includes('hand-back'));
+  });
+
+  test('the browser auditor runs after the readers, not beside them', async () => {
+    const { calls } = await run();
+    assert.ok(calls.indexOf('audit:browser#1') > calls.indexOf('audit:rules#1'));
+    assert.ok(calls.indexOf('audit:browser#1') > calls.indexOf('audit:criteria#1'));
+  });
+
+  test('a stacked ticket branches from, is judged against and targets its base', async () => {
+    const calls = [], prompts = {};
+    const agent = async (prompt, opts) => {
+      calls.push(opts.label); prompts[opts.label] = prompt;
+      if (opts.label === 'setup') return SETUP;
+      if (opts.label.startsWith('verify')) return GREEN;
+      if (opts.label.includes('audit')) return { covered: 'all', findings: [] };
+      if (opts.label === 'write-spec') return { path: 'specs/7-hours.md', summary: 's' };
+      if (opts.label === 'open-pr') return { ok: true, summary: 'ok', url: 'u' };
+      return { ok: true, summary: 'done' };
+    };
+    const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
+    const result = await script({ issue: 7, base: 'harness/ship-loop' }, agent, parallel, () => {}, () => {});
+    assert.equal(result.outcome, 'shipped');
+    assert.match(prompts.setup, /origin\/harness\/ship-loop/);
+    assert.match(prompts['verify#1'], /GATE_BASE=origin\/harness\/ship-loop/);
+    assert.match(prompts['audit:criteria#1'], /git diff origin\/harness\/ship-loop\.\.\.HEAD/);
+    assert.match(prompts['open-pr'], /gh pr create --base harness\/ship-loop/);
+    assert.doesNotMatch(Object.values(prompts).join('\n'), /origin\/main/);
+  });
+
+  test('a base with no harness is declined before anything is built', async () => {
+    const { result, calls } = await run({ setup: { ...SETUP, proceed: false, harnessOnBase: false, reason: 'x' } });
+    assert.equal(result.outcome, 'declined');
+    assert.match(result.reason, /has no harness/);
+    assert.deepEqual(calls, ['setup']);
+  });
+
+  test('a minor note the skeptic refutes never reaches the PR body', async () => {
+    const note = { ...blocker('the card flashes Nothing booked while loading'), severity: 'minor' };
+    const { prompts } = await run({
+      'audit:rules': { covered: 'all', findings: [note] },
+      skeptic: { refuted: true, why: 'the card is not rendered in that window' },
+    });
+    assert.doesNotMatch(prompts['open-pr'], /flashes Nothing booked/);
+  });
+
+  test('a minor note that survives the skeptic is offered to the reviewer', async () => {
+    const note = { ...blocker('the done count wording is singular-unaware'), severity: 'minor' };
+    const { prompts } = await run({ 'audit:rules': { covered: 'all', findings: [note] } });
+    assert.match(prompts['open-pr'], /singular-unaware/);
+  });
+
+  test('the failing check is committed red before the fix, so history proves it', async () => {
+    const { prompts } = await run();
+    assert.match(prompts.implement, /commit it on its own, red/);
+  });
+
+  test('what an auditor covered is cut to a table cell', async () => {
+    const long = 'I read the ticket, the spec and the full diff and checked every criterion against the code and the tests in detail';
+    const { result } = await run({ 'audit:rules': { covered: long, findings: [] } });
+    const cell = result.rounds[0].covered.split(' · ')[1];
+    assert.match(cell, /^ran nothing: /, 'what was run survives the cut — it is a field, not prose');
+    assert.ok(cell.replace('ran nothing: ', '').length <= 90, cell);
+    assert.match(cell, /…$/);
+  });
+
+  test('a spec round that confirmed something is in the PR table, not just the build rounds', async () => {
+    const { prompts } = await run({
+      'spec-audit:fit': (n) => ({ covered: 'all', findings: n === 1 ? [blocker('the lane books into the slot lanes')] : [] }),
+    });
+    assert.match(prompts['open-pr'], /\| spec 1 \| — \| 1 raised · 1 confirmed \|/);
+  });
+
+  test('a flaky test is named to the criteria auditor', async () => {
+    const g = gateResult({ browser: { passed: 155, failed: [], flaky: 1, flakyTests: ['[mobile] plan.spec.js:40 › one done'], skipped: 1 } });
+    const { prompts } = await run({ verify: { json: JSON.stringify(g) } });
+    assert.match(prompts['audit:criteria#1'], /plan\.spec\.js:40 › one done/);
+  });
+
+  test('on a laptop the PR agent releases the lane on its way out, and tells other agents not to', async () => {
+    const { calls, prompts } = await run({ setup: { ...SETUP, runner: false } });
+    // Only the issue's progress and spend are reported after it.
+    assert.equal(calls.filter(c => !/^(progress#|report$)/.test(c)).at(-1), 'open-pr');
+    assert.match(prompts['open-pr'], /node scripts\/lane\.mjs release 7/);
+    assert.doesNotMatch(prompts['open-pr'], /Never release the lane/, 'the PR agent is told both to release and not to');
+    assert.match(prompts.implement, /Never release the lane/);
+    assert.match(prompts.implement, /batch/);
+  });
+
+  test('the PR asks the reviewer to confirm its decisions, says what it did not verify, and flags test changes', async () => {
+    const g = gateResult({ tampered: ['tests/seats.spec.js: -    expect(count).toBe(3)'] });
+    const { prompts } = await run({
+      'write-spec': { path: 'specs/7-hours.md', summary: 's', decisions: ['Hide the badge before check-in opens — OK?'] },
+      verify: { json: JSON.stringify(g) },
+    });
+    assert.match(prompts['open-pr'], /## 🤔 Decisions for you\n- Hide the badge before check-in opens — OK\?/);
+    assert.match(prompts['open-pr'], /\*\*Not verified:\*\* no red-check ran/);
+    assert.match(prompts['open-pr'], /⚠️ \*\*This changes tests or CI config\*\* — look at these first: `tests\/seats\.spec\.js`/);
+    assert.match(prompts['open-pr'], /<sub>🤖 Built by ship · full ticket · Opus/);
+    assert.match(prompts['open-pr'], /never a test that is not in the diff/);
+  });
+
+  test('the PR leads with what changed and how to see it, from what the builder returned', async () => {
+    const { prompts } = await run({ implement: { ok: true, summary: 'done', ui: true,
+      tryIt: 'Open /schedule?at=2026-10-02T10:00 as Marcus', keyFiles: [{ file: 'src/lib/clock.js', why: 'the ended rule' }] } });
+    assert.match(prompts['open-pr'], /## 🧪 Try it\nOpen \/schedule\?at=2026-10-02T10:00 as Marcus/);
+    assert.match(prompts['open-pr'], /## 👀 Where to look\n- `src\/lib\/clock\.js` — the ended rule/);
+    assert.doesNotMatch(prompts['open-pr'], /fail without the change/, 'no red-check ran, so the PR does not claim one');
+  });
+
+  test('the PR agent is handed the body, re-verifies nothing, and a change nobody sees opens on the rote model', async () => {
+    const { prompts, models } = await run({ implement: { ok: true, summary: 'done', ui: false } });
+    assert.match(prompts['open-pr'], /do not run tests/);
+    assert.match(prompts['open-pr'], /<summary>Audit rounds<\/summary>/);
+    assert.match(prompts['open-pr'], /## What changes/);
+    assert.match(prompts["open-pr"], /## ✅ Done when\n<one line per criterion, each in a few words/);
+    assert.match(prompts['open-pr'], /## 🛡️ Checks\nAll tests pass — 178 unit · 155 browser/);
+    assert.doesNotMatch(prompts['open-pr'], /following §8/);
+    assert.match(prompts.implement, /shotForPR/);
+    assert.equal(models['open-pr'], 'haiku');
+  });
+
+  test('a comment that asked for the run reaches the spec writer and the auditors as notes', async () => {
+    const { result, prompts } = await run({}, '7 @claude I closed the first PR — do it again, and keep it to the card');
+    assert.equal(result.outcome, 'shipped');
+    assert.match(prompts['write-spec'], /The person who asked for this run wrote: "I closed the first PR — do it again, and keep it to the card"/);
+    assert.match(prompts['audit:criteria#1'], /keep it to the card/);
+    assert.doesNotMatch(prompts['write-spec'], /@claude/);
+    assert.match(prompts.setup, /closed pull request from an earlier attempt is not a reason to stop/);
+  });
+
+  test('a bare issue number carries no notes', async () => {
+    const { prompts } = await run({}, '7');
+    assert.doesNotMatch(prompts['write-spec'], /asked for this run/);
+  });
+
+  test('text that names no issue is refused before any agent runs', async () => {
+    const { result, calls } = await run({}, 'please build the waitlist thing');
+    assert.equal(result.outcome, 'error');
+    assert.deepEqual(calls, []);
+  });
+
+  describe('sized to the ticket', () => {
+    const SMALL = { ...SETUP, size: 'small' };
+
+    test('a small ticket gets no spec audit, one code auditor plus the browser, and Sonnet throughout', async () => {
+      const { result, calls, models } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: true } });
+      assert.equal(result.outcome, 'shipped');
+      assert.equal(result.size, 'small');
+      assert.deepEqual(calls.filter(c => c.startsWith('spec-audit')), []);
+      assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1', 'audit:browser#1']);
+      for (const l of ['write-spec', 'implement', 'audit:combined#1']) assert.equal(models[l], 'sonnet', l);
+      // Opening the PR is rote now — its body is given and its picture comes from the proving test.
+      assert.equal(models['open-pr'], 'haiku');
+    });
+
+    test('a red gate does not spend a small ticket\'s audit budget', async () => {
+      const { result, calls } = await run({
+        setup: SMALL,
+        verify: (n) => (n === 1 ? RED([{ test: '[mobile] plan.spec.js:40 › x', error: 'e' }]) : GREEN),
+        'audit:combined': (n) => ({ covered: 'all', findings: n === 2 ? [blocker('the lane collides')] : [] }),
+      });
+      assert.equal(result.outcome, 'shipped');
+      assert.deepEqual(calls.filter(c => c.startsWith('audit:combined')), ['audit:combined#2', 'audit:combined#3']);
+    });
+
+    test('a small ticket whose visible change already has a browser test leaves the browser to the gate and QA', async () => {
+      const { calls } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+      assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1']);
+    });
+
+    test('a full ticket keeps its browser audit, told not to re-run the suite or release the lane', async () => {
+      const { calls, prompts } = await run({ setup: { ...SETUP, runner: false }, implement: { ok: true, summary: 's', ui: true, browserTest: true } });
+      assert.ok(calls.includes('audit:browser#1'));
+      assert.match(prompts['audit:browser#1'], /do not run `npm test`/);
+      assert.match(prompts['audit:browser#1'], /never release the lane/);
+    });
+
+    test('a small ticket with nothing visible changed skips the browser pass', async () => {
+      const { calls } = await run({ setup: SMALL, implement: { ok: true, summary: 's', ui: false } });
+      assert.ok(!calls.some(c => c.startsWith('audit:browser')));
+    });
+
+    test('a small ticket whose ticket is in question goes to a person from the code audit, not a fix round', async () => {
+      const { result, calls } = await run({
+        setup: SMALL,
+        'audit:combined': { covered: 'all', ran: 'nothing', findings: [{ ...blocker('the ticket asks for two contradictory labels'), category: 'scope' }] },
+      });
+      assert.equal(result.outcome, 'needs-human');
+      assert.equal(result.stage, 'Code Audit');
+      assert.ok(!calls.some(c => c.startsWith('fix')));
+    });
+
+    test('a small ticket\'s spec is written by setup and checked by the code audit — two agents fewer', async () => {
+      const { result, calls, prompts } = await run({ setup: { ...SMALL, spec: { path: 'specs/7-hours.md', summary: 's' } } });
+      assert.equal(result.outcome, 'shipped');
+      assert.ok(!calls.includes('write-spec'));
+      assert.ok(!calls.some(c => c.startsWith('spec-audit')));
+      assert.match(prompts.setup, /If you proceed and the change touches no business rule, no stored data and not the harness/);
+      assert.match(prompts['audit:combined#1'], /nobody else has checked that it reads the ticket/);
+    });
+
+    test('a small ticket hands back after two build rounds, not four', async () => {
+      const { result } = await run({
+        setup: SMALL,
+        'audit:combined': (n) => ({ covered: 'all', ran: 'nothing', findings: [{ ...blocker(`problem ${n}`), line: n * 100 }] }),
+      });
+      assert.equal(result.outcome, 'needs-human');
+      assert.match(result.reason, /after 2 rounds/);
+    });
+
+    test('--full overrides a small sizing', async () => {
+      const { result, calls, models } = await run({ setup: SMALL }, '7 --full');
+      assert.equal(result.size, 'full');
+      assert.ok(calls.includes('spec-audit:criteria#1') && calls.includes('spec-audit:fit#1'));
+      assert.equal(models.implement, undefined, 'full inherits the session model');
+    });
+
+    test('--small overrides a full sizing, and the flag is not taken as notes', async () => {
+      const { result, prompts } = await run({}, '7 --small');
+      assert.equal(result.size, 'small');
+      assert.doesNotMatch(prompts['write-spec'], /asked for this run/);
+    });
+
+    test('on a small ticket, weakened and flaky tests reach the combined auditor', async () => {
+      const g = gateResult({
+        tampered: ['tests/seats.spec.js: -    await expect(seat).toHaveText("Taken")'],
+        browser: { passed: 155, failed: [], flaky: 1, flakyTests: ['[mobile] tests/a.spec.js:3 › t'], skipped: 1 },
+      });
+      const { prompts } = await run({ setup: SMALL, verify: { json: JSON.stringify(g) } });
+      assert.match(prompts['audit:combined#1'], /toHaveText\("Taken"\)/);
+      assert.match(prompts['audit:combined#1'], /tests\/a\.spec\.js:3/);
+    });
+
+    test('running a command and copying its output uses the cheapest model in every tier', async () => {
+      for (const setup of [SMALL, SETUP]) {
+        const { models } = await run({ setup });
+        assert.equal(models['verify#1'], 'haiku');
+      }
+    });
+  });
+
+  describe('the red check', () => {
+    // The verify agent runs red-check after a green gate and relays both lines.
+    const red = (v) => ({ ...GREEN, red: JSON.stringify(v) });
+
+    test('tests that pass without the change become a finding and cost a fix round', async () => {
+      const { calls, prompts } = await run({
+        verify: (n) => red(n === 1
+          ? { checked: true, failedOnBase: false, tests: ['tests/unit/format.test.js'], reverted: ['src/components/SeatPanel.jsx'] }
+          : { checked: true, failedOnBase: true, tests: [], reverted: [] }),
+      });
+      assert.ok(calls.includes('fix#1'));
+      assert.match(prompts['fix#1'], /pass with its app code reverted/);
+      assert.match(prompts['skeptic:test-proves-nothing'], /SeatPanel\.jsx/);
+    });
+
+    test('a skeptic can clear it — a refactor is meant to pass either way', async () => {
+      const { calls } = await run({
+        verify: red({ checked: true, failedOnBase: false, tests: ['tests/unit/a.test.js'], reverted: ['src/a.js'] }),
+        skeptic: { refuted: true, why: 'pure refactor; the ticket asked for no behaviour change' },
+      });
+      assert.ok(!calls.some(c => c.startsWith('fix')));
+    });
+
+    test('nothing to check, or unreadable or partial output, raises nothing and does not crash', async () => {
+      for (const v of [red({ checked: false, reason: 'no tests changed' }), { ...GREEN, red: 'oops' }, GREEN,
+        red({ checked: true, failedOnBase: false }), red({ checked: true, failedOnBase: false, tests: 'x', reverted: [] })]) {
+        const { calls } = await run({ verify: v });
+        assert.ok(!calls.some(c => c.startsWith('fix')));
+      }
+    });
+
+    test('the verify agent runs it after a green gate, on the cheapest model, with no agent of its own', async () => {
+      const { calls, models, prompts } = await run();
+      assert.equal(models['verify#1'], 'haiku');
+      assert.match(prompts['verify#1'], /only if that line contains "ok":true, then run `GATE_BASE=origin\/main node scripts\/red-check\.mjs`/i);
+      assert.ok(!calls.some(c => c.startsWith('red-check')));
+    });
+  });
+
+  test('one line flagged by two auditors under different categories costs one skeptic', async () => {
+    const f = (category) => ({ ...blocker('the total ignores waitlist places'), category });
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [f('criterion-unmet')] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [f('logic')] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+  });
+
+  test('two different findings a few lines apart in one file are both judged', async () => {
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [{ ...blocker('the total ignores waitlist places'), line: 12 }] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [{ ...blocker('the note renders for zero hours'), line: 15 }] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+  });
+
+  test('several findings sharing a stuck key count once per round, not once each', async () => {
+    const near = (line, claim) => ({ ...blocker(claim), line });
+    const { calls } = await run({
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [near(11, 'a'), near(13, 'b'), near(15, 'c')] : [] }),
+    });
+    assert.ok(calls.includes('fix#1'), 'a fix is attempted before anything is called stuck');
+  });
+
+  test('two findings with no line whose claims only share a beginning are both judged', async () => {
+    const long = 'the hours tile counts waitlisted sessions when the attendee has ';
+    const unmet = (claim, category) => ({ ...blocker(claim), category, file: 'specs/7-hours.md', line: undefined });
+    const { calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [unmet(long + 'more than three', 'criterion-unmet'), unmet(long + 'fewer than three', 'logic')] : [] }),
+    });
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 2);
+  });
+
+  test('a second reading of the same line goes to the skeptic with the first, never dropped', async () => {
+    const f = (category, claim) => ({ ...blocker(claim), category });
+    const { prompts, calls } = await run({
+      'audit:criteria': (n) => ({ covered: 'all', findings: n === 1 ? [f('criterion-unmet', 'criterion 2 has no test')] : [] }),
+      'audit:rules': (n) => ({ covered: 'all', findings: n === 1 ? [f('logic', 'the total counts waitlisted sessions')] : [] }),
+    });
+    const skeptic = prompts['skeptic:criterion-unmet'];
+    assert.match(skeptic, /criterion 2 has no test/);
+    assert.match(skeptic, /also, \[logic\]: the total counts waitlisted sessions/);
+    assert.match(skeptic, /refute only if EVERY reading is wrong/);
+    assert.match(prompts['fix#1'], /the total counts waitlisted sessions/);
+    assert.equal(calls.filter(c => c.startsWith('skeptic')).length, 1);
+  });
+
+  test('minor readings of one line reach the PR body together — grouping twice keeps them', async () => {
+    const minor = (category, claim) => ({ ...blocker(claim), category, line: 42, severity: 'minor' });
+    const { prompts } = await run({
+      'audit:criteria': { covered: 'all', findings: [minor('criterion-unmet', 'the note has no test')] },
+      'audit:rules': { covered: 'all', findings: [minor('logic', 'the note rounds down')] },
+    });
+    assert.match(prompts['open-pr'], /the note has no test/);
+    assert.match(prompts['open-pr'], /the note rounds down/);
+  });
+
+  test('a spec that needs .claude/ is handed back from a runner before anything is built', async () => {
+    const { result, calls } = await run({ 'write-spec': { path: 'specs/7-hours.md', summary: 's', editsHarness: true } });
+    assert.equal(result.outcome, 'needs-human');
+    assert.equal(result.stage, 'Spec');
+    assert.match(result.reason, /build it locally/);
+    assert.ok(!calls.some(c => c.startsWith('spec-audit') || c === 'implement'));
+  });
+
+  test('on a laptop a .claude/ plan is built as normal', async () => {
+    const { result } = await run({ setup: { ...SETUP, runner: false }, 'write-spec': { path: 'specs/7-hours.md', summary: 's', editsHarness: true } });
+    assert.equal(result.outcome, 'shipped');
+  });
+
+  test('a spec hand-back on scope also lists the technical findings still open', async () => {
+    const { prompts } = await run({
+      'spec-audit:fit': { covered: 'all', findings: [
+        { ...blocker('the ticket asks for two contradictory outcomes'), category: 'scope' },
+        { ...blocker('the gh call does not pin --repo'), line: 90 },
+      ] },
+    });
+    assert.match(prompts['hand-back'], /contradictory outcomes/);
+    assert.match(prompts['hand-back'], /Also still open[\s\S]*does not pin --repo/);
+  });
+});
+
+/**
+ * Where a run puts its worktrees. Both paths are strings in a prompt, so what
+ * the test can prove is what the agent is told to type — and the point of the
+ * ticket is exactly that: one git-ignored directory inside the checkout that
+ * `ls .claude/worktrees` accounts for.
+ */
+describe('worktree paths', () => {
+  test('the ticket workspace and the base probe are made inside the checkout', async () => {
+    const { prompts } = await run({
+      setup: { ...SETUP, runner: false },
+      implement: { ok: true, summary: 's', ui: true, browserTest: true },
+    });
+    assert.match(prompts.setup, /\.claude\/worktrees\/wt-7/);
+    // The whole expression, not just its tail: the probe agent's cwd is the
+    // ticket worktree, so a relative path would nest one inside the other.
+    assert.match(prompts['audit:browser#1'], /--git-common-dir[^\n]*\/\.claude\/worktrees\/main-7/);
+    assert.doesNotMatch(prompts.setup, /orbit-(wt|main|qa)-/);
+    assert.doesNotMatch(prompts['audit:browser#1'], /orbit-(wt|main|qa)-/);
+  });
+
+  test('nothing the harness or the docs tell an agent to make sits beside the checkout', () => {
+    const root = new URL('../../', import.meta.url);
+    // `git ls-files`, not a walk: a worktree under .claude/ holds another
+    // branch's copy of these same files, and a readdir would read those.
+    const files = execFileSync('git', ['ls-files', '.claude', 'docs'], { cwd: root, encoding: 'utf8' })
+      .split('\n').filter(Boolean);
+    const offenders = files.filter(f => /orbit-(wt|main|qa)-/.test(readFileSync(new URL(f, root), 'utf8')));
+    assert.deepEqual(offenders, []);
+  });
+});
+
+/**
+ * A laptop run has no Actions steps to post the progress comment or record the
+ * spend, so the script does both through rote agents. What the test can prove
+ * is what those agents are told to run, in what order, and that CI never runs them.
+ */
+describe('progress and spend on the issue, from a laptop', () => {
+  const LAPTOP = { ...SETUP, runner: false, workdir: '/w/.claude/worktrees/wt-7' };
+  const reported = (prompt) => JSON.parse(/<<'STATE'\n(.*)\nSTATE/s.exec(prompt)[1]);
+
+  test('in CI nothing is posted from the script — agent-ship.yml does it', async () => {
+    const { calls } = await run();
+    assert.deepEqual(calls.filter(c => /^(progress#|report$)/.test(c)), []);
+  });
+
+  test('the first update creates the comment, every later one edits it by the id it printed', async () => {
+    const { calls, prompts } = await run({ setup: LAPTOP, progress: { id: '555' } });
+    const updates = calls.filter(c => c.startsWith('progress#'));
+    assert.ok(updates.length >= 3, updates.join(', '));
+    assert.match(prompts[updates[0]], /cd \/w\/\.claude\/worktrees\/wt-7 && node scripts\/ship-progress\.mjs local 7 <<'STATE'/);
+    for (const u of updates.slice(1)) assert.match(prompts[u], /ship-progress\.mjs local 7 555 <<'STATE'/);
+    assert.equal(reported(prompts[updates[0]]).phases.find(p => p.title === 'Setup').status, 'done');
+  });
+
+  test('a shipped run settles the comment on the PR and records the spend on the issue and the PR', async () => {
+    const { calls, prompts } = await run({ setup: LAPTOP, progress: { id: '555' } });
+    assert.equal(calls.at(-1), 'report');
+    const state = reported(prompts.report);
+    assert.deepEqual(state.outcome, { outcome: 'shipped', pr: 'https://github.com/o/r/pull/9' });
+    assert.equal(state.ended, true);
+    assert.deepEqual(state.phases.filter(p => p.status === 'running'), []);
+    assert.equal(state.rounds[0].gate.ok, true);
+    assert.equal(state.rounds[0].gate.unit.passed, 178);
+    assert.match(prompts.report, /ai-cost\.mjs record --issue 7 --kind ship --transcripts auto --ticket 7 --pr 9/);
+  });
+
+  test('a round that needed a fix says so, and a hand-back settles as handed back with its draft', async () => {
+    const { calls, prompts } = await run({
+      setup: LAPTOP, progress: { id: '555' },
+      audit: (n) => ({ covered: 'all', findings: [blocker('wrong total')] }),
+      'hand-back': { ok: true, summary: 'back', url: 'https://github.com/o/r/pull/12' },
+    });
+    assert.equal(calls.at(-1), 'report');
+    const state = reported(prompts.report);
+    assert.equal(state.outcome.outcome, 'needs-human');
+    assert.equal(state.outcome.stage, 'Code Audit');
+    assert.ok(state.rounds.some(r => r.fixRan), JSON.stringify(state.rounds));
+    assert.match(prompts.report, /--ticket 7 --pr 12/);
+  });
+
+  test('a declined ticket posts nothing', async () => {
+    const { calls } = await run({ setup: { ...LAPTOP, proceed: false, reason: 'closed' } });
+    assert.deepEqual(calls, ['setup']);
+  });
+});
+
+/**
+ * `--fast` is for a ticket already known to work — the workshop's demo, where
+ * minutes matter. It keeps one independent audit and a skeptic, and says in
+ * the pull request what it skipped.
+ */
+describe('--fast', () => {
+  const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
+
+  test('one combined auditor, no spec audit, no browser explorer, the gate scoped to the branch', async () => {
+    const { result, calls, prompts } = await run({ implement: { ok: true, summary: 's', ui: true, browserTest: false }, verify: BRANCH_GATE }, '7 --fast');
+    assert.equal(result.outcome, 'shipped');
+    assert.equal(result.size, 'fast');
+    assert.deepEqual(calls.filter(c => /^(spec-audit|audit)/.test(c)), ['audit:combined#1']);
+    assert.match(prompts['verify#1'], /GATE_SCOPE=branch GATE_BASE=origin\/main node scripts\/gate\.mjs/);
+    assert.match(prompts['audit:combined#1'], /the branch's own browser specs \(tests\/schedule\.spec\.js\)/);
+  });
+
+  test('a confirmed finding is fixed and re-gated, not re-audited, and nothing is learnt', async () => {
+    const { result, calls, prompts } = await run({
+      audit: (n) => ({ covered: 'all', findings: n === 1 ? [blocker('deselect is not asserted')] : [] }),
+      verify: BRANCH_GATE,
+    }, '7 --fast');
+    assert.equal(result.outcome, 'shipped');
+    assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'audit:combined#1', 'fix#1', 'verify#2']);
+    assert.ok(!calls.includes('learn'), calls.join(', '));
+    assert.match(prompts['open-pr'], /re-gated, not re-audited/);
+    assert.match(prompts['open-pr'], /the pull request's CI runs it/);
+    assert.match(prompts['open-pr'], /6 browser in tests\/schedule\.spec\.js/);
+  });
+
+  test('it never escalates, whatever the diff touches', async () => {
+    const { calls } = await run({ verify: { ...BRANCH_GATE, facts: '--risky=yes --app-lines=900' } }, '7 --fast');
+    assert.deepEqual(calls.filter(c => c.startsWith('audit')), ['audit:combined#1']);
+  });
+
+  test('a red gate still goes to the fixer, then to the auditor once green', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? RED([{ test: 'schedule.spec.js:10', error: 'e' }]) : BRANCH_GATE) }, '7 --fast');
+    assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'fix#1', 'verify#2', 'audit:combined#2']);
+  });
+
+  test('without --fast the gate is the whole suite, as before', async () => {
+    const { prompts } = await run();
+    assert.match(prompts['verify#1'], /`GATE_BASE=origin\/main node scripts\/gate\.mjs`/);
+    assert.doesNotMatch(prompts['verify#1'], /GATE_SCOPE/);
+  });
+
+  test('its pull request is labelled ship:fast, so CI runs the same light check', async () => {
+    const { prompts } = await run({}, '7 --fast');
+    assert.match(prompts['open-pr'], /--label ship:fast/);
+    assert.doesNotMatch((await run()).prompts['open-pr'], /ship:fast/);
+  });
+
+  test('setup runs on Sonnet, since its sizing is never read — every other gear keeps the session model', async () => {
+    assert.equal((await run({}, '7 --fast')).models.setup, 'sonnet');
+    for (const a of [7, '7 --small', '7 --full']) assert.equal((await run({}, a)).models.setup, undefined, String(a));
+  });
+
+  test('the flag is not passed on as a note', async () => {
+    const { prompts } = await run({}, '7 --fast');
+    assert.doesNotMatch(prompts.setup, /--fast/);
+  });
+});

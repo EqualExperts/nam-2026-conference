@@ -116,18 +116,22 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
  * The one action: add this session to my agenda, which takes a seat.
  * `status` is null | 'confirmed' | 'waitlisted'.
  */
-export function SeatButton({ status, onClick, size = 'md', className, title }) {
+export function SeatButton({ status, onClick, size = 'md', className, title, ended = false }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
   const on = Boolean(status);
   const waiting = status === 'waitlisted';
+  // An ended session offers no seat; a seat already held can still be released.
+  const closed = ended && !on;
   const label = on
     ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
+    : closed ? 'Session ended'
     : (title ?? 'Add to my agenda');
 
   return (
     <button
       type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!closed) onClick(); }}
+      disabled={closed}
       aria-pressed={on}
       aria-label={label}
       title={label}
@@ -141,7 +145,9 @@ export function SeatButton({ status, onClick, size = 'md', className, title }) {
           ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
           : on
             ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-            : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
+            : closed
+              ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
+              : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
         className,
       )}
     >
@@ -215,15 +221,28 @@ export function ErrorState({ error, onRetry }) {
   );
 }
 
+/** For a 404 that can never succeed on retry — a link back, not a "Try again". */
+export function NotFoundState({ title, backTo, backLabel }) {
+  return (
+    <EmptyState
+      icon="search"
+      title={title}
+      action={<Button to={backTo} variant="primary" size="sm">{backLabel}</Button>}
+    />
+  );
+}
+
 /* ---------------------------------- Stat --------------------------------- */
-export function Stat({ value, label, accent: accentName = 'violet' }) {
+/** `note` is a second, quieter line under the label — a caveat on the number. */
+export function Stat({ value, label, accent: accentName = 'violet', testId, note = null }) {
   const a = accent(accentName);
   return (
     <div className="card px-4 py-3.5">
-      <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)}>
+      <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)} data-testid={testId}>
         {typeof value === 'number' ? <CountUp value={value} /> : value}
       </div>
       <div className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
+      {note && <div className="mt-1 text-[11px] font-medium text-amber-300">{note}</div>}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { SESSION_SELECT, hydrateSessions, toSession, toSpeaker } from '../lib/query.js';
 import { seatState } from '../lib/seats.js';
-import { sessionCalendar } from '../lib/ical.js';
+import { baseUrlFor, sessionCalendar } from '../lib/ical.js';
 
 export const sessionsRouter = Router();
 
@@ -76,7 +76,7 @@ sessionsRouter.get('/', (req, res) => {
 });
 
 sessionsRouter.get('/:id.ics', (req, res) => {
-  const ics = sessionCalendar(Number(req.params.id));
+  const ics = sessionCalendar(Number(req.params.id), baseUrlFor(req));
   if (!ics) return res.status(404).json({ error: 'Session not found' });
   res.type('text/calendar').set('Content-Disposition', `attachment; filename="orbit-${req.params.id}.ics"`).send(ics);
 });

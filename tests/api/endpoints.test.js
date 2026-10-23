@@ -123,6 +123,12 @@ describe('Every endpoint answers', () => {
     }
   });
 
+  test('the health check reports ok and the session count', async () => {
+    const res = await api.get('/health');
+    assert.equal(res.status, 200, `GET /health → ${res.status}`);
+    assert.deepEqual(res.body, { ok: true, sessions: (await api.json('/sessions')).length });
+  });
+
   test('the two calendar feeds are calendars, not JSON', async () => {
     for (const path of [`/sessions/${ids.session}.ics`, `/users/${ids.user}/agenda.ics`]) {
       const res = await api.get(path);

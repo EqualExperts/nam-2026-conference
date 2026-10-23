@@ -4,15 +4,14 @@
 ## rather than sharing one with the other.
 ##
 ## Both projects are Chromium, so that is the only browser we install.
-name: verify
+name: ✅ verify
 
 on:
+  # `push` covers landings on main; `pull_request` covers everything on its
+  # way there. Running both on every branch ran the whole suite twice for one
+  # commit, which is where the duplicate checks on a pull request came from.
   push:
-    branches: ['**']
-    # `pr-media` only ever holds screenshots for pull request bodies. Building
-    # and browser-testing the app because an image landed is a wasted runner,
-    # and the run it cancels is a real one.
-    branches-ignore: ['pr-media']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -26,7 +25,7 @@ jobs:
   # Playwright jobs, so it costs nothing in wall-clock and fails fast when the
   # rules break.
   test:
-    name: Unit + API
+    name: 🧩 Unit + API
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -48,7 +47,7 @@ jobs:
         run: node scripts/ci-summary-node.mjs >> "$GITHUB_STEP_SUMMARY"
 
   playwright:
-    name: Playwright · ${{ matrix.project }}
+    name: ${{ matrix.project == 'mobile' && '📱' || '🖥️' }} Playwright · ${{ matrix.project }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -59,6 +58,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # A ship:fast pull request diffs its merge commit against the base
+          # (HEAD^1), so it needs both parents; everything else needs one.
+          fetch-depth: ${{ contains(github.event.pull_request.labels.*.name, 'ship:fast') && 2 || 1 }}
 
       - uses: actions/setup-node@v7
         with:
@@ -66,6 +69,18 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # `/ship <n> --fast` labels its pull request ship:fast — a demo ticket
+      # already known to work. Its pull request runs the browser specs the
+      # branch changed, the scope ship's own gate used (gate.mjs branchSpecs),
+      # or the whole suite if it changed none; the push to main runs them all.
+      - name: Scope a ship:fast pull request
+        id: scope
+        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ship:fast') }}
+        run: |
+          specs=$(node -e "import('./scripts/gate.mjs').then(m => console.log(m.branchSpecs(require('node:child_process').execSync('git diff --name-only --diff-filter=d HEAD^1 HEAD -- tests/', { encoding: 'utf8' })).join(' ')))")
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
+          echo "**ship:fast** — ran ${specs:-the whole suite (the branch changed no browser spec)}; main runs the whole suite after merge." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build the web app
         run: npm run build
@@ -77,7 +92,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Chromium
+      - name: 🎭 Install Chromium
         if: steps.browsers.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
@@ -88,7 +103,7 @@ jobs:
       # `npm run verify` seeds the database, then Playwright starts the app
       # itself (API + Vite) and drives it.
       - name: Seed, start the app, run the ${{ matrix.project }} suite
-        run: npm run verify -- --project=${{ matrix.project }}
+        run: npm run verify -- --project=${{ matrix.project }} ${{ steps.scope.outputs.specs }}
 
       # Turn the run into a table on the Actions summary page, so a green run
       # still says how many tests ran and a red one names what failed.

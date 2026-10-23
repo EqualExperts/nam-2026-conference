@@ -1,0 +1,17 @@
+ORBIT '26 demo transcript for winnow
+
+A short, rough transcript of one small change to this app. It is here so you
+can try winnow without an idea or a meeting of your own. The text below the
+divider is verbatim, timestamps and transcription slips included: sorting
+those out is part of the practice.
+
+How to use it:  /winnow docs/demo/winnow-transcript.txt
+----------------------------------------------------------------------------
+0:02: So let's take a look at the website.
+0:06: Now, one of the things that I have noticed is that when I go to the search function, I can philtre by several components, one of them being the track.
+0:17: Now, for me, there is a bit of a limitation here because I can either say, show me all the tracks or the talks from all the tracks, or I can select an individual track.
+0:29: But I may want to check two different tracks.
+0:33: Maybe I'm interested in two different tracks, so I want to select those two.
+0:36: That's not something that I can do at the moment.
+0:38: So that's a change that I would like to do.
+0:40: I would like to be able to select multiple tracks and then see the talks on those tracks that I have selected.

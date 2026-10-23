@@ -9,14 +9,16 @@ import { SESSION_SELECT, hydrateSessions, toMinutes } from './query.js';
  *    gaps. Suggestions rank on what they have actually booked, because that is
  *    a truer signal than the interests they ticked at registration.
  *  - `schedule` — every seat and waitlist place, grouped by day, with the
- *    clashes and totals the agenda page renders.
+ *    clashes and totals an agenda page needs.
  *
+ * No page renders either yet: My Agenda is a placeholder that workshop teams
+ * build on these.
  * The clock comes from the client, because conference time is simulated.
  */
 
 const myReservations = db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?');
 const myCheckIns = db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?');
-const myRatings = db.prepare('SELECT session_id FROM ratings WHERE user_id = ?');
+const myRatings = db.prepare('SELECT session_id, stars FROM ratings WHERE user_id = ?');
 
 const reservedOnDay = db.prepare(`${SESSION_SELECT}
   JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
@@ -92,8 +94,17 @@ function suggestionsFor(userId, day, slot) {
 
 export function scheduleFor(userId) {
   const status = new Map(myReservations.all(userId).map((r) => [r.session_id, r.status]));
+  // Attendance on every day, not just today, so an agenda can ask about a
+  // Day 1 talk that is still unrated on Day 3.
+  const checkedIn = new Set(myCheckIns.all(userId).map((r) => r.session_id));
+  const stars = new Map(myRatings.all(userId).map((r) => [r.session_id, r.stars]));
   const sessions = hydrateSessions(reservedEver.all(userId))
-    .map((s) => ({ ...s, reservation: status.get(s.id) ?? null }));
+    .map((s) => ({
+      ...s,
+      reservation: status.get(s.id) ?? null,
+      checkedIn: checkedIn.has(s.id),
+      myStars: stars.get(s.id) ?? null,
+    }));
 
   const byDay = new Map();
   for (const s of sessions) {
@@ -105,10 +116,20 @@ export function scheduleFor(userId) {
     date,
     sessions: items,
     conflicts: clashesIn(items),
-    totalMinutes: items.reduce((n, s) => n + s.durationMins, 0),
+    totalMinutes: minutesHeld(items, 'confirmed'),
+    waitlistedMinutes: minutesHeld(items, 'waitlisted'),
     venuesVisited: [...new Set(items.map((s) => s.venue.shortName))],
   }));
 }
+
+/**
+ * Hours are hours you hold a chair for, so the two statuses are totalled
+ * apart. A waitlist place may never come good, and counting it as booked time
+ * told an attendee they had a fuller day than the room could give them.
+ */
+const minutesHeld = (items, status) => items
+  .filter((s) => s.reservation === status)
+  .reduce((n, s) => n + s.durationMins, 0);
 
 /**
  * Every overlapping pair on one day. The seat rules block two *confirmed*

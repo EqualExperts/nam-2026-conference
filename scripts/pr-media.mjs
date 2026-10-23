@@ -20,7 +20,7 @@
  * reader's session. `raw.githubusercontent.com` returns 404 to a browser and
  * the image silently breaks, so this prints the `/raw/` form.
  *
- * This exists as a script rather than a few lines in the build skill because
+ * This exists as a script rather than a few lines in the ship playbook because
  * an agent pays for every step it takes: one command that always works costs
  * less than four that have to be got right.
  */
@@ -104,7 +104,10 @@ if (total > MAX) {
 
 for (const file of files) {
   const label = basename(file, extname(file));
-  const name = `pr-${issue}-${label}${extname(file)}`;
+  // The stored name goes into a markdown link, where a space ends the URL and
+  // the image silently breaks (#94); the label stays readable as the alt text.
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'image';
+  const name = `pr-${issue}-${slug}${extname(file)}`;
 
   // Replacing an existing file needs its blob sha, so a re-run of the same
   // ticket updates the image rather than failing.

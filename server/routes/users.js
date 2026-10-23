@@ -4,7 +4,7 @@ import { SESSION_SELECT, toUser, toSpeaker, toSession } from '../lib/query.js';
 import { reserveSeat, releaseSeat, seatState } from '../lib/seats.js';
 import { attendanceState, checkIn, rateSession } from '../lib/attendance.js';
 import { todayFor, scheduleFor } from '../lib/agenda.js';
-import { agendaCalendar } from '../lib/ical.js';
+import { agendaCalendar, baseUrlFor } from '../lib/ical.js';
 
 export const usersRouter = Router();
 
@@ -49,7 +49,7 @@ usersRouter.get('/:id', (req, res) => {
 
 /** A subscribable feed of everything this attendee holds a seat for. */
 usersRouter.get('/:id/agenda.ics', (req, res) => {
-  const ics = agendaCalendar(Number(req.params.id));
+  const ics = agendaCalendar(Number(req.params.id), baseUrlFor(req));
   if (!ics) return res.status(404).json({ error: 'Attendee not found' });
   res.type('text/calendar').set('Content-Disposition', 'attachment; filename="orbit-agenda.ics"').send(ics);
 });
@@ -57,7 +57,7 @@ usersRouter.get('/:id/agenda.ics', (req, res) => {
 /**
  * GET /api/users/:id/today?day=&time=
  *
- * Everything the home page needs about *this* attendee at *this* moment:
+ * Everything a personal view needs about *this* attendee at *this* moment:
  * what they are in now, what is next, what they are waiting on, and — for the
  * slots they have left empty — a few suggestions drawn from what they have
  * actually been booking rather than what they once declared.
@@ -120,6 +120,11 @@ usersRouter.put('/:id/ratings/:sessionId', (req, res) => {
   if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
     return res.status(400).json({ error: 'stars must be an integer from 1 to 5' });
   }
+  const { comment } = req.body ?? {};
+  if (comment !== undefined && comment !== null && (typeof comment !== 'string' || comment.length > 1000)) {
+    return res.status(400).json({ error: 'comment must be a string of at most 1000 characters' });
+  }
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
   const state = rateSession(Number(req.params.id), Number(req.params.sessionId),
     { stars, comment: req.body?.comment }, { day: req.body?.day, time: req.body?.time });
   if (!state) return res.status(404).json({ error: 'Session not found' });

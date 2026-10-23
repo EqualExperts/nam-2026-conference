@@ -112,6 +112,62 @@ describe('Rating a session', () => {
   });
 });
 
+describe('Rating request validation', () => {
+  // A seeded, checked-in Day 1 morning session — no check-in or wait needed,
+  // so a malformed request reaches the same code the insert would.
+  let userId;
+  let session;
+
+  before(async () => {
+    for (const u of await api.json('/users')) {
+      const full = await api.json(`/users/${u.id}`);
+      if (full.checkIns.length) {
+        userId = u.id;
+        session = await api.json(`/sessions/${full.checkIns[0]}`);
+        break;
+      }
+    }
+    assert.ok(session, 'expected the seed to leave at least one attendee checked in');
+  });
+
+  const rateAs = (body) =>
+    api.put(`/users/${userId}/ratings/${session.id}`, {
+      stars: 4, day: session.day, time: shiftTime(session.endsAt, 30), ...body,
+    });
+
+  test('rejects an object comment with 400', async () => {
+    const res = await rateAs({ comment: {} });
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error);
+  });
+
+  test('rejects an array comment with 400', async () => {
+    assert.equal((await rateAs({ comment: [] })).status, 400);
+  });
+
+  test('rejects a boolean comment with 400', async () => {
+    assert.equal((await rateAs({ comment: true })).status, 400);
+  });
+
+  test('rejects a comment over 1000 characters with 400', async () => {
+    assert.equal((await rateAs({ comment: 'x'.repeat(1001) })).status, 400);
+  });
+
+  test('accepts a string comment, an empty string, and no comment at all', async () => {
+    assert.equal((await rateAs({ comment: 'Good session, ran a bit long.' })).status, 200);
+    assert.equal((await rateAs({ comment: '' })).status, 200);
+    assert.equal((await rateAs({})).status, 200);
+  });
+
+  test('returns 404 for an attendee that does not exist, not a 409', async () => {
+    const res = await api.put(`/users/999999/ratings/${session.id}`, {
+      stars: 4, day: session.day, time: shiftTime(session.endsAt, 30),
+    });
+    assert.equal(res.status, 404);
+    assert.deepEqual(res.body, { error: 'Attendee not found' });
+  });
+});
+
 describe('A rating rolls up', () => {
   test('onto the session it was left on, immediately', async () => {
     const session = await attend(nextSession());

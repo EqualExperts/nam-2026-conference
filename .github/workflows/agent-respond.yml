@@ -6,7 +6,7 @@
 ##
 ## No `prompt` input, so the action runs in interactive mode: it waits for the
 ## trigger phrase rather than being told what to do up front.
-name: Agent · respond
+name: 💬 Agent · respond
 
 on:
   issue_comment:
@@ -23,14 +23,74 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Without an ANTHROPIC_API_KEY secret — a workshop fork, whose agents run
+  # from Claude on the laptop — the agent job has nothing to run with. A job's
+  # `if` cannot read a secret, so this one reads it, carrying the trigger
+  # condition the agent job had, and the agent job needs it: skipped in
+  # seconds, instead of failing after minutes of npm install and a browser.
+  key:
+    if: |
+      (contains(github.event.comment.body, '@claude') ||
+       contains(github.event.review.body, '@claude')) &&
+      !contains(github.event.comment.body, 'Claude finished') &&
+      !contains(github.event.comment.body, '<!-- orbit-') &&
+      !contains(github.event.comment.body, '<!-- ship-progress') &&
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    outputs:
+      has: ${{ steps.key.outputs.has }}
+    steps:
+      - id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number || github.event.pull_request.number }}
+        run: |
+          echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          [ "$HAS_KEY" = "true" ] && exit 0
+          # Said where people look, not only in this log: why nothing ran, and the
+          # two ways to make it run. No mention in it, so no agent starts on it.
+          msg="$(cat <<EOF
+          ### 💬 Reply to comments: API key not configured
+
+          This repository has no \`ANTHROPIC_API_KEY\` secret, so this did not run on GitHub Actions.
+
+          **You can still run it locally** — in Claude Code or Claude Desktop, opened in your clone of this repository:
+
+          \`\`\`
+          Address the review comments on #${N}
+          \`\`\`
+
+          **Or configure the key** to run it here: \`gh secret set ANTHROPIC_API_KEY\` (or *Settings → Secrets and variables → Actions*), then comment again.
+
+          <!-- orbit-no-key -->
+          EOF
+          )"
+          echo "::notice::No ANTHROPIC_API_KEY secret, so the agent did not run. Run it locally from Claude in your clone, or add the secret."
+          printf '%s\n' "$msg" | sed 's/^          //' >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$N" ] && printf '%s\n' "$msg" | sed 's/^          //' | gh issue comment "$N" --body-file - || true
+
   respond:
     # A review carries its body on `review`, a comment on `comment`. The other
     # is null, and `contains(null, ...)` is false, so this covers both.
-    if: |
-      contains(github.event.comment.body, '@claude') ||
-      contains(github.event.review.body, '@claude')
+    # The second clause is the loop guard. With AGENT_GITHUB_TOKEN the agent
+    # comments as a person, so the action's own bot-actor protection does not
+    # apply — and a reply of its own that quoted `@claude` would trigger
+    # another reply. Its reports all carry this marker.
+    # On a plain issue `@claude` means "build this", which agent-ship.yml
+    # handles with the ship loop; this job answers on pull requests only.
+    needs: key
+    if: ${{ needs.key.outputs.has == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # On #41 it confirmed a review blocker, found a second bug, and died at
+    # 19 minutes before pushing either — out of turns. A fix plus the gate
+    # needs room.
+    timeout-minutes: 60
 
     permissions:
       contents: write
@@ -53,17 +113,36 @@ jobs:
 
       # A review comment usually asks for a behaviour change, so the agent needs
       # to be able to re-run the gate before it replies.
-      - name: Install Chromium
+      - name: 🎭 Install Chromium
         run: npx playwright install --with-deps chromium
 
       - uses: anthropics/claude-code-action@v1
+        id: claude
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Without a token here the action authenticates as the Claude GitHub
-          # App, which has to be installed on the repository. Supplying one
-          # skips that entirely. AGENT_GITHUB_TOKEN should be a PAT: GitHub
-          # does not trigger workflows on commits pushed with GITHUB_TOKEN, so
-          # on the fallback the agent's pull request shows no verify run of its
-          # own until someone pushes to it.
+          # This one pushes, so it takes the ship workflow's token: a push made with
+          # GITHUB_TOKEN triggers no workflow, and the change made in answer to
+          # a review would land with no CI run at all.
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          claude_args: "--model claude-opus-5 --max-turns 60"
+          # Interactive mode runs no skill, so it never picks up a skill's
+          # `allowed-tools` grant — without this the agent can read and edit
+          # files but cannot run a test, boot the app or touch the GitHub API. It answers review comments it has no way to verify.
+          claude_args: >-
+            --model claude-sonnet-5 --max-turns 150
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+            --append-system-prompt "You are answering a comment on a pull request in a repo with an engineering harness. Make the change asked for, and nothing else. Before you push, run node scripts/gate.mjs once and put its verdict in your reply: its ok field, and the unit and browser counts. If it is red, say what failed and do not claim the change works. If the comment asks you to build or redo a whole ticket, do not attempt it here: say that an @claude comment on the issue runs the ship workflow for that."
+
+      # The ticket's running AI spend gains this run's row (see agent-ship.yml).
+      - name: 🧾 Record the AI spend
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.issue.number || github.event.pull_request.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EXECUTION: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          [ -f "$EXECUTION" ] || exit 0
+          issue=$(gh pr view "$PR" --json closingIssuesReferences -q '.closingIssuesReferences[0].number' 2>/dev/null || true)
+          node scripts/ai-cost.mjs record ${issue:+--issue "$issue"} --kind respond --run "$RUN" --stream "$EXECUTION"

@@ -175,24 +175,25 @@ const seen = new Set();
 /**
  * Two of the seeded attendees are also presenting. Their speaker profiles are
  * written explicitly (not generated) so the app can link a signed-in attendee
- * to their own sessions and show them a speaker view.
+ * to their own sessions and show them a speaker view. They are listed in
+ * billing order — most senior first — which is the order /speakers leads with.
  */
 const SPEAKING_ATTENDEES = [
   {
-    name: 'Amara Diallo', pronouns: 'she/her', jobTitle: 'Director of Applied AI', company: 'Meridian Health AI',
-    bio: 'Amara leads the team putting clinical decision support in front of doctors who are, correctly, sceptical of it. Ten years in regulated ML, four of them spent learning that an audit trail is a product feature. Believes most AI governance is just engineering discipline with a lawyer in the room.',
-    city: 'Boston', country: 'United States', languages: 'English,French',
-    expertise: 'Governance,Compliance,Human-in-the-Loop,Hallucination',
-    yearsExp: 14, talksGiven: 23, accent: 'rose',
-    twitter: '@amaradiallo', github: 'amaradiallo', linkedin: 'in/amaradiallo', website: 'https://amaradiallo.dev',
+    name: 'Andy Vays', pronouns: 'he/him', jobTitle: 'Technical Principal', company: 'Equal Experts',
+    bio: 'Andy helps organisations change how software is planned, built and delivered, pairing strong engineering practice with AI agents. Nearly two decades of platform modernisation, cloud migrations and enterprise architecture before that. Thinks the hardest part of AI-native delivery is a people problem, and that the next one is the bill.',
+    city: 'New York', country: 'United States', languages: 'English,Hebrew',
+    expertise: 'Agent Design,Code Generation,Cost Optimization,Governance',
+    yearsExp: 17, talksGiven: 12, accent: 'rose',
+    twitter: null, github: null, linkedin: 'in/andy-vays', website: null,
   },
   {
-    name: 'Priya Venkatesan', pronouns: 'she/her', jobTitle: 'Founding Engineer', company: 'Waypoint Labs',
-    bio: 'Priya is six people into building an agent platform that large companies trust with their audit logs. Previously spent five years on infrastructure at a company that shall remain a logo on a slide. Ships on Fridays, and will defend it.',
-    city: 'Oakland', country: 'United States', languages: 'English,Tamil',
-    expertise: 'Multi-Agent,Memory Systems,Cost Optimization,Structured Output',
-    yearsExp: 11, talksGiven: 9, accent: 'cyan',
-    twitter: '@priyavenkat', github: 'priyavenkat', linkedin: 'in/priyavenkatesan', website: null,
+    name: 'Abraham Marín Pérez', pronouns: 'he/him', jobTitle: 'AI Software Engineer', company: 'Equal Experts',
+    bio: 'Abraham helps organisations bring AI into the software lifecycle without giving up safety or quality. Two decades of Java, from JPMorgan and Oracle to rebuilding the UK passport application system, which won a Civil Service Award. Co-author of Continuous Delivery in Java, author of Real-World Maintainable Software, helps run the London Java Community, and is studying physics on the way to becoming an astronaut.',
+    city: 'Los Angeles', country: 'United States', languages: 'English,Spanish,Catalan',
+    expertise: 'Code Generation,Agent Design,Context Engineering,Cost Optimization',
+    yearsExp: 20, talksGiven: 40, accent: 'cyan',
+    twitter: '@AbrahamMarin', github: 'quiram', linkedin: 'in/abraham-marin-perez-45b88422', website: 'https://www.abrahammarinperez.com',
   },
 ];
 SPEAKING_ATTENDEES.forEach((s) => {
@@ -482,26 +483,82 @@ const smelter = rooms.find((r) => r.name === 'The Smelter');
 /**
  * Assign the two speaking attendees to concrete sessions, replacing whichever
  * generated speaker was on them. Each gets a spread across days and venues.
+ * A pick with a `talk` also replaces the generated title, abstract, takeaways,
+ * prerequisites and tags, so the session reads like something that speaker
+ * would give; a `track` picks that track's room in the slot, since a room keeps
+ * one track all day. It runs after generation and draws nothing from the PRNG.
  */
 const assignSpeaker = (speakerName, picks) => {
   const sp = db.prepare('SELECT id FROM speakers WHERE name = ?').get(speakerName);
-  picks.forEach(({ day, startsAt, role = 'Speaker' }) => {
+  picks.forEach(({ day, startsAt, role = 'Speaker', track, talk }) => {
     const target = db.prepare(
-      'SELECT id FROM sessions WHERE day = ? AND starts_at = ? AND is_keynote = 0 ORDER BY capacity DESC LIMIT 1',
-    ).get(day, startsAt);
+      `SELECT id FROM sessions WHERE day = ? AND starts_at = ? AND is_keynote = 0
+         AND (? IS NULL OR track_id = ?) ORDER BY capacity DESC LIMIT 1`,
+    ).get(day, startsAt, track?.id ?? null, track?.id ?? null);
     if (!target) return;
     db.prepare('DELETE FROM session_speakers WHERE session_id = ?').run(target.id);
     ssStmt.run(target.id, sp.id, role);
+    if (!talk) return;
+    db.prepare('UPDATE sessions SET title = ?, subtitle = ?, abstract = ?, takeaways = ?, prerequisites = ? WHERE id = ?')
+      .run(talk.title, talk.subtitle, talk.abstract, talk.takeaways.join('|'), talk.prerequisites ?? null, target.id);
+    db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(target.id);
+    tagRows.filter((t) => talk.tags.includes(t.name)).forEach((t) => stStmt.run(target.id, t.id));
   });
 };
-assignSpeaker('Amara Diallo', [
-  { day: DAYS[1], startsAt: '10:15' },
-  { day: DAYS[1], startsAt: '16:00', role: 'Moderator' },
-  { day: DAYS[3], startsAt: '11:30' },
+assignSpeaker('Andy Vays', [
+  {
+    day: DAYS[1], startsAt: '10:15',
+    talk: {
+      title: 'The Artisan Engineer: Letting Go of the Keyboard',
+      subtitle: 'Why your best engineers find AI-native delivery hardest',
+      abstract: 'Some of the engineers struggling most with agents are the best ones you have. Years of craft taught them what good code looks like, so they babysit the agent, run by hand the steps that could be automated, and review every keystroke. This conversation is about what a senior engineer is for once agents write most of the code: time with stakeholders, the hard architectural calls, and validating what gets produced. For many people coding is part of who they are, which makes this as much a people problem as a technology one.',
+      takeaways: ['How to spot the habits that slow an expert down with an agent', 'Which steps to hand over first, and which to keep', 'How to talk about the change with engineers whose identity is the craft'],
+      tags: ['Agent Design', 'Code Generation', 'Human-in-the-Loop', 'Engineers', 'Engineering Leaders', 'Opinionated'],
+    },
+  },
+  {
+    day: DAYS[1], startsAt: '16:00', role: 'Moderator',
+    talk: {
+      title: 'The Impending AI Liquidity Crisis',
+      subtitle: 'Intelligence is becoming metered. Who pays the bill?',
+      abstract: 'For twenty years software pushed the marginal cost of work towards zero. Tokens push it the other way: every question, draft and agent run has a meter attached. Keep every employee and give each a variable compute bill, and the money still has to come from somewhere: the next 200 hires, the database migration pushed another year. Andy steers a discussion on forecasting AI spend, where the budget comes from, and whether productivity can outrun consumption.',
+      takeaways: ['A way to forecast usage-based AI cost per team', 'Where AI spend quietly displaces other investment', 'Questions to ask before an agent runs longer and wider'],
+      tags: ['Cost Optimization', 'Governance', 'Observability', 'Engineering Leaders', 'Enterprise', 'Opinionated'],
+    },
+  },
+  {
+    day: DAYS[3], startsAt: '11:30',
+    talk: {
+      title: 'Changing the Wheels While the Car Is Driving',
+      subtitle: 'Modernising business-critical platforms, now with agents',
+      abstract: 'Lead-to-cash, case management, finance systems: the platforms a company cannot switch off are the ones most in need of a rebuild. Drawing on cloud migrations and a Salesforce, Zuora and NetSuite overhaul for a business of 600 users and 10,000 clients, Andy covers the big-bang-then-iterate rollout, why results took five months to show in the dashboards, and how planning, building and delivering that work changes when agents take on the implementation.',
+      takeaways: ['When a big-bang cutover beats a gradual one', 'How to measure a modernisation before the dashboards catch up', 'Where agents help most in enterprise systems work, and where they do not'],
+      tags: ['Agent Design', 'Code Generation', 'Data Quality', 'Enterprise', 'Platform Teams', 'Case Study'],
+    },
+  },
 ]);
-assignSpeaker('Priya Venkatesan', [
-  { day: DAYS[0], startsAt: '14:45' },
-  { day: DAYS[2], startsAt: '09:00' },
+assignSpeaker('Abraham Marín Pérez', [
+  {
+    day: DAYS[0], startsAt: '14:45',
+    talk: {
+      title: 'The Mythical Well-Defined Project',
+      subtitle: 'Feeding agents from the meetings you already have',
+      abstract: 'Autonomous agents are sold on a project defined so well up front that the code writes itself. Real projects are not like that, and a PRD heavy enough to satisfy an agent is essentially Waterfall 2.0. Abraham shows Winnow, an agent-agnostic set of skills that turns brainstorms and meeting transcripts into durable project knowledge and tracker-ready tasks, agreed with a person before anything permanent changes, and installs the same way in Claude Code, Copilot, Cursor or Codex.',
+      prerequisites: 'Bring a laptop with a coding agent installed if you want to try Winnow alongside the demo.',
+      takeaways: ['Why up-front specs fail agents the way they failed people', 'A loop from meeting transcript to reviewed tasks and project context', 'How to package skills so they work in any coding harness'],
+      tags: ['Agent Design', 'Context Engineering', 'Tool Calling', 'Engineers', 'Product Managers', 'Live Demo'],
+    },
+  },
+  {
+    day: DAYS[2], startsAt: '09:00', track: trackBy['AI Product & Strategy'],
+    talk: {
+      title: "Software's Plastic Moment: AI and the New Economics of Quality",
+      subtitle: 'When average code is free, what is good code worth?',
+      abstract: 'Software has been held to a high standard because building it was expensive. AI changes the sums: it produces average code almost for nothing, while high-quality code costs what it always did, so quality becomes comparatively dearer. Abraham argues quality will not disappear but retreat to where liability demands it, that liability and trust are about narratives rather than controls, and that, like every industry before it, software is about to become a victim of its own success.',
+      takeaways: ['Why AI shifts the break-even point between patching and rebuilding', 'Where quality will still be paid for, and why', 'How to make the case for quality to people who read cost sheets'],
+      tags: ['Code Generation', 'Cost Optimization', 'Governance', 'Engineering Leaders', 'Enterprise', 'Opinionated'],
+    },
+  },
 ]);
 
 /*
@@ -533,12 +590,12 @@ const sessions = db.prepare('SELECT id, day, room_id FROM sessions').all();
 
 /* ============================== USERS ============================== */
 const USERS = [
-  ['Jonas Claesson', 'jonas@orbitconf.dev', 'Principal Engineer', 'Provision', 'he/him', 'Stockholm', 'Europe/Stockholm', 'VIP', 'Runs the platform group. Here for the agent tooling, the eval talks, and the brisket.', 'Agent Design,Evaluation,Code Generation,Observability'],
-  ['Amara Diallo', 'amara@orbitconf.dev', 'Director of Applied AI', 'Meridian Health AI', 'she/her', 'Boston', 'America/New_York', 'Speaker', 'Building clinical decision support that clinicians actually trust. Speaking three times this week.', 'Governance,Compliance,Human-in-the-Loop,Hallucination'],
+  ['Jonas Claesson', 'jonas@orbitconf.dev', 'AI Software Engineer', 'Equal Experts', 'he/him', 'Stockholm', 'Europe/Stockholm', 'VIP', 'Runs the platform group. Here for the agent tooling, the eval talks, and the brisket.', 'Agent Design,Evaluation,Code Generation,Observability'],
+  ['Andy Vays', 'andy@orbitconf.dev', 'Technical Principal', 'Equal Experts', 'he/him', 'New York', 'America/New_York', 'Speaker', 'Modernising how software gets built, with agents doing more of the building. Speaking three times this week.', 'Agent Design,Code Generation,Cost Optimization,Governance'],
   ['Kenji Nakamura', 'kenji@orbitconf.dev', 'Staff ML Engineer', 'Volta Motors', 'he/him', 'Tokyo', 'Asia/Tokyo', 'Standard', 'Perception stack, edge inference, and far too many accelerators. First ORBIT.', 'Quantization,Computer Vision,Edge,Latency'],
   ['Sofia Almeida', 'sofia@orbitconf.dev', 'Head of Developer Experience', 'Cobalt Studio', 'she/her', 'Lisbon', 'Europe/Lisbon', 'VIP', 'Obsessed with the inner loop. Will demo her terminal setup unprompted.', 'Code Generation,Tool Calling,Agent Design,Observability'],
   ['Marcus Whitfield', 'marcus@orbitconf.dev', 'VP of Engineering', 'Arcadia Bank', 'he/him', 'Chicago', 'America/Chicago', 'Standard', 'Getting a regulated bank to ship AI without ending up in the news. Mostly succeeding.', 'Governance,Compliance,Red Teaming,Guardrails'],
-  ['Priya Venkatesan', 'priya@orbitconf.dev', 'Founding Engineer', 'Waypoint Labs', 'she/her', 'Oakland', 'America/Los_Angeles', 'Speaker', 'Six people, one agent platform, zero sleep. Speaking twice, regrets one.', 'Multi-Agent,Memory Systems,Cost Optimization,Structured Output'],
+  ['Abraham Marín Pérez', 'abraham@orbitconf.dev', 'AI Software Engineer', 'Equal Experts', 'he/him', 'Los Angeles', 'America/Los_Angeles', 'Speaker', 'Bringing AI into the SDLC without losing safety or quality. Speaking twice, then back to the physics homework.', 'Code Generation,Agent Design,Context Engineering,Cost Optimization'],
 ];
 const uStmt = prep('INSERT INTO users (name,email,job_title,company,initials,accent,image_url,bio,pronouns,home_city,timezone,ticket_tier,interests,speaker_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
 const speakerIdFor = (name) => db.prepare('SELECT id FROM speakers WHERE name = ?').get(name)?.id ?? null;
@@ -593,11 +650,11 @@ const keynoteOn = db.prepare('SELECT id FROM sessions WHERE day = ? AND is_keyno
 // bothering with that morning's keynote
 const PLAN_SHAPE = [
   { days: 4, perDay: [2, 3], keynote: 0.85 }, // Jonas — here for the whole thing
-  { days: 3, perDay: [1, 2], keynote: 0.70 }, // Amara — speaking, so less time
+  { days: 3, perDay: [1, 2], keynote: 0.70 }, // Andy — speaking, so less time
   { days: 2, perDay: [2, 3], keynote: 1.00 }, // Kenji — first ORBIT, does not miss a keynote
   { days: 4, perDay: [2, 4], keynote: 0.90 }, // Sofia — wants to see everything
   { days: 2, perDay: [2, 3], keynote: 0.50 }, // Marcus — flew in for a couple of specific talks
-  { days: 3, perDay: [2, 3], keynote: 0.60 }, // Priya — speaking twice
+  { days: 3, perDay: [2, 3], keynote: 0.60 }, // Abraham — speaking twice
 ];
 
 /*
@@ -739,7 +796,7 @@ const ciStmt = prep('INSERT OR IGNORE INTO check_ins (user_id,session_id,checked
  * "This morning" is a fixed cutoff, not the wall clock, so the seed stays
  * deterministic. The same rules as the API apply: you held a confirmed seat,
  * you checked in, and only then do you get to rate it. Not everyone gets round
- * to rating, which leaves the home page something to ask about.
+ * to rating, which leaves an agenda something to ask about.
  */
 const MORNING_ENDS = '12:15';
 

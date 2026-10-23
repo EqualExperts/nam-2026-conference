@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, ATTENDEES } from './helpers.js';
+import { API, visit, ATTENDEES, shotForPR, conferenceDays } from './helpers.js';
 
 
 test.describe('Speakers', () => {
@@ -99,6 +99,23 @@ test.describe('Speakers', () => {
       [...byName.map((n) => n.split('\n')[0])].sort((a, b) => a.localeCompare(b)),
     );
   });
+
+  test('an unknown speaker id shows a real not-found page, not a retry prompt', async ({ page }) => {
+    await visit(page, '/speakers/999999');
+    await expect(page.getByRole('heading', { name: 'Speaker not found' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try again' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'All speakers' })).toBeVisible();
+    await expect(page).toHaveTitle("Not found · ORBIT '26");
+    await shotForPR(page, 'speaker-not-found');
+  });
+
+  test('a genuine failure loading a speaker still offers a retry', async ({ page }) => {
+    await page.route('**/api/speakers/1**', (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+    await visit(page, '/speakers/1');
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
 });
 
 test.describe('Headliner spotlight', () => {
@@ -134,5 +151,32 @@ test.describe('Headliner spotlight', () => {
     }
     // the programme size is not the point — that every one of them is consistent is
     expect(speakers.length).toBeGreaterThan(50);
+  });
+
+  test('an empty search names what was searched for', async ({ page }) => {
+    await visit(page, '/speakers?q=zzqx');
+    await expect(page.getByRole('heading', { name: 'No speakers match “zzqx”', exact: true })).toBeVisible();
+    await shotForPR(page, 'the empty state naming the search');
+  });
+
+  test('filters without a search keep the plain heading, and following is unchanged', async ({ page, request }) => {
+    const days = await conferenceDays();
+    const { tracks } = await (await request.get(`${API}/bootstrap`)).json();
+    let pick = null;
+    for (const day of days) {
+      for (const t of tracks) {
+        const found = await (await request.get(`${API}/speakers?day=${day}&trackSlug=${t.slug}`)).json();
+        const list = Array.isArray(found) ? found : found.speakers;
+        if (list.length === 0) { pick = { day, slug: t.slug }; break; }
+      }
+      if (pick) break;
+    }
+    if (pick) {
+      await visit(page, `/speakers?day=${pick.day}&track=${pick.slug}`);
+      await expect(page.getByRole('heading', { name: 'No speakers match', exact: true })).toBeVisible();
+    }
+    // the following view keeps its own message even with a search that finds nobody
+    await visit(page, '/speakers?show=following&q=zzqx');
+    await expect(page.getByRole('heading', { name: 'You are not following anyone yet', exact: true })).toBeVisible();
   });
 });

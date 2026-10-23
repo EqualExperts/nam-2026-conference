@@ -15,6 +15,8 @@ import { ExpoPage } from './pages/ExpoPage.jsx';
 import { CodeOfConductPage } from './pages/CodeOfConductPage.jsx';
 import { AccessibilityPage } from './pages/AccessibilityPage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
+import { PresentationPage } from './pages/PresentationPage.jsx';
+import { ProductPresentationPage } from './pages/ProductPresentationPage.jsx';
 
 export function App() {
   const { ready, error } = useConference();
@@ -30,6 +32,9 @@ export function App() {
 
   return (
     <Routes>
+      {/* full screen, so outside the app chrome — two talks, the first handing over to the second */}
+      <Route path="product-presentation" element={<ProductPresentationPage />} />
+      <Route path="engineering-presentation" element={<PresentationPage />} />
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="schedule" element={<SchedulePage />} />

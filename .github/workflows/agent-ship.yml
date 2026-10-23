@@ -1,0 +1,375 @@
+## Label an issue `ready-for-ai` and it becomes a verified pull request.
+## Nobody opens a terminal.
+##
+## The job runs one thing: the `ship` workflow (`.claude/workflows/ship.js`).
+## That is a deterministic script, not a prompt — spec, spec audit, implement,
+## then verify → independent code audit → fix, round after round, until a
+## round comes back clean. Only then does it open the pull request and write
+## up what the audits caught. A loop that will not converge hands the
+## ticket to a person as a draft pull request instead.
+##
+## The runner is the isolation — it is a fresh machine per run, so there are no
+## ports to allocate and no worktree to make. `scripts/lane.mjs` is for a laptop
+## running several agents at once; here the agent has the whole machine.
+##
+## Needs an ANTHROPIC_API_KEY repository secret; `Set up the harness` says
+## what else, and none of it is the Claude GitHub App.
+name: 🚢 Agent · ship
+
+on:
+  issues:
+    types: [labeled]
+  # `@claude` on an issue — "do this again", "build this" — is a request to
+  # ship the ticket, so it runs the same loop as the label, with the comment
+  # passed along as notes. `@claude` on a pull request is a request to change
+  # that diff, and stays with agent-respond.yml.
+  issue_comment:
+    types: [created]
+
+# One agent per ticket. Relabelling while a run is in flight must not start a
+# second agent on the same issue.
+# Keyed by label as well as issue. The agent claims its ticket by swapping
+# `ready-for-ai` for `ai-working`, and with a PAT it does that as a person —
+# so that swap fires `issues: labeled` too. The job's `if` skips it in a
+# second, but a shared group would leave it queued behind the real ship run for
+# the whole run, looking like a duplicate.
+# A comment shares the label's group, so a comment and a label on the same
+# ticket queue behind each other rather than shipping it twice at once. Only an
+# `@claude` comment, though: ship's own comments on the issue (the spec link,
+# progress) would otherwise sit "pending" behind the run that posted them for
+# its whole length, reading as a second ship, before the `if` skips them.
+concurrency:
+  group: agent-ship-${{ github.event.issue.number }}-${{ (github.event_name == 'issue_comment' && !contains(github.event.comment.body, '@claude')) && format('comment-{0}', github.run_id) || github.event.label.name || 'ready-for-ai' }}
+  cancel-in-progress: false
+
+jobs:
+  # Without an ANTHROPIC_API_KEY secret — a workshop fork, whose agents run
+  # from Claude on the laptop — the agent job has nothing to run with. A job's
+  # `if` cannot read a secret, so this one reads it, carrying the trigger
+  # condition the agent job had, and the agent job needs it: skipped in
+  # seconds, instead of failing after minutes of npm install and a browser.
+  key:
+    if: |
+      github.event.label.name == 'ready-for-ai' ||
+      (github.event_name == 'issue_comment' &&
+       !github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude') &&
+       !contains(github.event.comment.body, 'Claude finished') &&
+       !contains(github.event.comment.body, '<!-- orbit-') &&
+       !contains(github.event.comment.body, '<!-- ship-progress') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    outputs:
+      has: ${{ steps.key.outputs.has }}
+    steps:
+      - id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+        run: |
+          echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          [ "$HAS_KEY" = "true" ] && exit 0
+          # Said where people look, not only in this log: why nothing ran, and the
+          # two ways to make it run. No mention in it, so no agent starts on it.
+          msg="$(cat <<EOF
+          ### 🚢 Ship: API key not configured
+
+          This repository has no \`ANTHROPIC_API_KEY\` secret, so this did not run on GitHub Actions.
+
+          **You can still run it locally** — in Claude Code or Claude Desktop, opened in your clone of this repository:
+
+          \`\`\`
+          /ship ${N}
+          \`\`\`
+
+          **Or configure the key** to run it here: \`gh secret set ANTHROPIC_API_KEY\` (or *Settings → Secrets and variables → Actions*), then add the \`ready-for-ai\` label again.
+
+          <!-- orbit-no-key -->
+          EOF
+          )"
+          echo "::notice::No ANTHROPIC_API_KEY secret, so the agent did not run. Run it locally from Claude in your clone, or add the secret."
+          printf '%s\n' "$msg" | sed 's/^          //' >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$N" ] && printf '%s\n' "$msg" | sed 's/^          //' | gh issue comment "$N" --body-file - || true
+          [ -n "$N" ] && gh issue edit "$N" --remove-label ready-for-ai || true
+
+  ship:
+    # `labeled` fires for every label, so the filter is what makes this a
+    # dispatch rather than a nuisance. A comment counts only on an issue (not
+    # a pull request), only from someone with write access — it becomes part
+    # of the agent's instructions — and never from the agent's own replies.
+    # Nor from the harness's own comments (markers <!-- orbit-… / ship-progress):
+    # the AI-spend ledger once said "@claude" in its footer and started five ships.
+    needs: key
+    if: ${{ needs.key.outputs.has == 'true' }}
+    runs-on: ubuntu-latest
+    # A clean ticket takes one audit round; a hard one takes four. Past this
+    # it is not converging.
+    timeout-minutes: 120
+
+    permissions:
+      contents: write        # push the branch
+      pull-requests: write   # open the PR
+      issues: write          # move the label, comment progress
+      id-token: write        # the action's GitHub App authentication
+      actions: read          # read CI results, so a red run can be understood
+
+    steps:
+      # The comment exists before anything else does — before checkout, npm
+      # ci, Chromium or Claude Code install — which is what makes "within
+      # about a minute" true no matter how long setup takes: this post does
+      # not wait on any of it. Plain `gh`, already on the runner image, so it
+      # needs nothing checkout would provide. `SHIP_PROGRESS_STARTED` (the
+      # run's own start, from the Actions API — never the CLI's) and
+      # `SHIP_PROGRESS_COMMENT_ID` travel to every later step through
+      # $GITHUB_ENV, which is written once and survives whatever happens to
+      # the step below. See docs/context/harness.md.
+      - name: 📣 Post the starting comment
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Every gh call and every $GITHUB_ENV append is guarded: a rate
+          # limit or a network blip here must never fail the step or hold up
+          # checkout. It just leaves the two variables unset, which every
+          # later step already falls back around.
+          started=$(gh api "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at) || true
+          body="🚢 Ship · starting… · 0m elapsed · [Run]($RUN)
+
+          <!-- ship-progress run=$GITHUB_RUN_ID -->"
+          id=$(gh api "repos/$GH_REPO/issues/$N/comments" -f body="$body" --jq .id) || true
+          [ -n "$started" ] && echo "SHIP_PROGRESS_STARTED=$started" >> "$GITHUB_ENV"
+          [ -n "$id" ] && echo "SHIP_PROGRESS_COMMENT_ID=$id" >> "$GITHUB_ENV"
+          true
+
+      - uses: actions/checkout@v7
+        with:
+          # The agent branches off origin/main, so it needs more than a
+          # single-commit checkout.
+          fetch-depth: 0
+          # The push token is set on the remote in the Run /ship step; a
+          # persisted GITHUB_TOKEN header would silently win over it.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # `/ship` gates itself on `scripts/gate.mjs`, which drives a real
+      # browser — and so does the re-check after it. Without this nothing can
+      # be proved and every round is red.
+      - name: 🎭 Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # claude-code-action drives the Agent SDK, which stops at the first
+      # result — and a saved workflow's first result is its launcher saying
+      # "running in the background". The action ended there and the workflow
+      # died unstarted, reporting success. The CLI waits; see agent-run.sh.
+      - name: 📦 Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      # The claim is the job's, not an agent's: #52 and #53 were never
+      # labelled ai-working because Setup only removed ready-for-ai — and the
+      # safety net below finds a run that died by that label. Setup's own
+      # claim is then a no-op.
+      - name: 🏷️ Claim the ticket
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+        run: gh issue edit "$N" --add-label ai-working --remove-label ready-for-ai --remove-label needs-human --remove-label ready-for-human
+
+      - name: 🚢 Run /ship
+        timeout-minutes: 100
+        env:
+          # `claude -p` stops waiting for a background workflow after 600s and
+          # kills it — /ship on #34 died that way, ten minutes in. The step's
+          # timeout-minutes is the bound instead.
+          CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # With AGENT_GITHUB_TOKEN the pull request is authored by a person,
+          # so its checks run without an Approve click; see github.md.
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          N: ${{ github.event.issue.number }}
+          # From an @claude comment, what the person wrote rides along as
+          # notes. An environment variable, never interpolated into the
+          # script, so the comment cannot become shell.
+          NOTES: ${{ github.event.comment.body }}
+          # None of these three travel through $GITHUB_ENV — they are not
+          # values the pre-checkout step computed, so it is not the one to
+          # carry them. Without them agent-run.sh's own gate on starting the
+          # follower ("only when SHIP_PROGRESS_ISSUE or SHIP_PROGRESS_PR is
+          # set") is false on every real run, and the comment would sit at
+          # "starting…" until the finish step patched it once at the end.
+          SHIP_PROGRESS_ISSUE: ${{ github.event.issue.number }}
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          git config user.name "claude[bot]"
+          git config user.email "noreply@anthropic.com"
+          # Pushes use the same token as gh.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          scripts/agent-run.sh "/ship $N $NOTES" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
+
+      # What the run cost, on the ticket and on the pull request it opened: one
+      # comment on the issue keeps every run's row and the total, so the
+      # ticket says what AI spent on it. Never fails the job.
+      - name: 🧾 Record the AI spend
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          pr=$(jq -r '.pr // empty' "$RUNNER_TEMP/workflow-result.json" 2>/dev/null | grep -o '[0-9]*$' || true)
+          node scripts/ai-cost.mjs record --issue "$N" --kind ship --run "$RUN" --stream "$RUNNER_TEMP/claude-run.jsonl" ${pr:+--pr "$pr"} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # The transcript is the only record of what the agent did. Without it a
+      # run that dies mid-way (#61: exit 1 after 18 minutes, nothing in the
+      # log) cannot be diagnosed, and the job summary is not readable from
+      # the API. Kept two weeks, uploaded whatever happened.
+      - name: 🗂️ Keep the transcript
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: transcript-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/claude-run.jsonl
+            ${{ runner.temp }}/workflow-result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # A step's timeout or cancellation kills the whole process tree above —
+      # the follower with it — so the comment's last word cannot be that
+      # step's to write. This runs after it is gone, reads whatever
+      # transcript is left, and settles shipped / handed back / died. In a
+      # healthy run the follower already wrote the right thing, so this reads
+      # one file and patches nothing.
+      - name: 🏁 Finish the progress comment
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHIP_PROGRESS_ISSUE: ${{ github.event.issue.number }}
+          SHIP_PROGRESS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ship-progress.mjs finish
+
+      # What the run left behind is read from the issue, not from how the
+      # step exited: the agent step succeeds even when ship returned an error,
+      # and a timeout or crash leaves the ticket on `ai-working`. So this runs
+      # always, and acts on the label.
+      #
+      # When ship says it shipped, the gate is run once more here, by the
+      # runner, on the pull request's head. ship already ran it — this is the
+      # difference between an agent reporting green and a machine seeing it.
+      - name: 🧹 Check what the run left behind
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          labels=$(gh issue view "$N" --json labels --jq '.labels[].name')
+          branch=$(git ls-remote --heads origin "issue-$N-*" | awk '{print $2}' | sed 's#refs/heads/##' | head -1)
+          # An API refusal (a spend limit, an outage) reads exactly like a
+          # crash from outside. #61 was handed back as "did not finish" when
+          # the key had hit its usage limit; quote the API instead.
+          apierr=$(grep -ho 'API Error: [^"]*' "$RUNNER_TEMP/claude-run.jsonl" 2>/dev/null | tail -1 || true)
+          why=${apierr:+
+
+          > $apierr}
+
+          # Still `ready-for-ai`: the run never claimed the ticket, so it never
+          # started. The first Actions runs did exactly this and reported
+          # success; say so instead.
+          if printf '%s\n' "$labels" | grep -qx ready-for-ai; then
+            gh issue edit "$N" --add-label needs-human --remove-label ready-for-ai || true
+            gh issue comment "$N" --body "The ship run ended without starting — the ticket was never claimed. The job summary has the transcript.$why
+
+          [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
+            echo "### Ship never started — handed back" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if printf '%s\n' "$labels" | grep -qx ai-working; then
+            gh issue edit "$N" --add-label needs-human --remove-label ai-working || true
+            gh issue comment "$N" --body "The ship run did not finish — it timed out, was cancelled, or stopped without handing back.${branch:+ Its work so far is on \`$branch\`.}$why
+
+          [Run]($RUN) · relabel \`ready-for-ai\` to try again." || true
+            echo "### Ship did not finish — handed back" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          pr=$(gh pr list --state open --head "$branch" --json number,isDraft --jq '.[] | select(.isDraft | not) | .number' | head -1)
+          if [ -z "$branch" ] || [ -z "$pr" ]; then
+            echo "### No ready pull request — nothing to re-check" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # A fresh worktree of the pushed branch, with its own ports and
+          # database. The first version re-ran the gate in the workspace ship
+          # had just used: whatever it left running held the ports, Playwright
+          # died on startup, and a green PR (#41) was sent back to draft nine
+          # seconds later as "red".
+          git fetch -q origin "$branch" main
+          dir="$RUNNER_TEMP/recheck"
+          git worktree add -q --detach "$dir" FETCH_HEAD 2>/dev/null || git worktree add -q --detach "$dir" "origin/$branch"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$dir/node_modules"
+          cd "$dir"
+          # The gate and the config that decides what it runs come from main,
+          # not from the branch being judged — a fixer told to make the gate
+          # green could otherwise have edited the gate. GATE_PINNED tells the
+          # gate those differences are ours, not the branch's uncommitted work.
+          # (This limits what the branch can change about the gate, not what
+          # its code can reach: credentials are still on disk.)
+          pinned=""
+          for f in scripts/gate.mjs playwright.config.js; do
+            if git cat-file -e "origin/main:$f" 2>/dev/null; then
+              git show "origin/main:$f" > "$f" && pinned="$pinned,$f"
+            fi
+          done
+          if env -u GH_TOKEN GATE_PINNED="$pinned" PORT=4460 WEB_PORT=4461 ORBIT_LANE=recheck \
+               ORBIT_DB="$RUNNER_TEMP/recheck.db" node scripts/gate.mjs > "$RUNNER_TEMP/gate.out" 2>&1; then
+            verdict=green
+          else
+            verdict=red
+          fi
+          report="$dir/test-results/gate.json"
+          # In the log as well as the summary: the summary is not reachable
+          # through the API, and the last red could not be diagnosed from it.
+          echo "gate re-run: $verdict"; cat "$report" 2>/dev/null || tail -c 3000 "$RUNNER_TEMP/gate.out"
+          {
+            echo "### Gate re-run on #$pr: $verdict"
+            echo
+            echo '```json'
+            cat "$report" 2>/dev/null || tail -c 2000 "$RUNNER_TEMP/gate.out"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cd "$GITHUB_WORKSPACE"
+
+          if [ "$verdict" = red ]; then
+            # `|| true`: the step runs under bash -e, and a gate that crashed
+            # before writing its report must still put the PR back to draft.
+            why=$(jq -r '[(.browser.failed // [])[].test, (if (.unit.failed // 0) > 0 then "npm test" else empty end), (if .dirty then "uncommitted changes" else empty end)] | map("- " + .) | join("\n")' "$report" 2>/dev/null || true)
+            gh pr ready "$pr" --undo || true
+            gh issue edit "$N" --add-label needs-human --remove-label ready-for-human || true
+            gh pr comment "$pr" --body "> [!CAUTION]
+          > ### The gate is red on this branch
+          > ship reported it green, but the runner's own re-run of \`node scripts/gate.mjs\` failed, so this is back to draft. [Run]($RUN)
+
+          ${why:-The gate did not report which test failed — see the run log.}" || true
+          fi

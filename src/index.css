@@ -163,6 +163,206 @@ body::before {
 }
 @utility animate-marquee { animation: marquee 48s linear infinite; }
 
+/* ---------------------------------------------------------------- *
+ * /engineering-presentation
+ * Springs and layers are Motion's (motion/react); these are the
+ * keyframes inside one beat. Every one ends on its final frame, so
+ * with motion off each beat still shows everything it should.
+ * ---------------------------------------------------------------- */
+/* An SVG path drawn on: give it pathLength="1". */
+@utility pz-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+  &[data-on="true"] { stroke-dashoffset: 0; }
+}
+
+/* The same, as a keyframe — for a path that is drawn as its scene enters. */
+@keyframes pz-draw-in { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@utility pz-draw-in { stroke-dasharray: 1; animation: pz-draw-in 1.1s cubic-bezier(0.65, 0, 0.35, 1) both; }
+
+/* Dashes running along a path — the work moving. */
+@keyframes pz-flow { to { stroke-dashoffset: -0.06; } }
+@utility pz-flow { stroke-dasharray: 0.02 0.04; animation: pz-flow 1.4s linear infinite; }
+
+@keyframes pz-type { from { width: 0; } }
+@keyframes pz-blink { 50% { opacity: 0; } }
+@utility pz-caret { animation: pz-blink 1s steps(1) infinite; }
+
+@keyframes pz-spin { to { transform: rotate(360deg); } }
+@utility pz-spin { animation: pz-spin 40s linear infinite; }
+@utility pz-spin-fast { animation: pz-spin 1.1s linear infinite; }
+
+@keyframes pz-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@utility pz-float { animation: pz-float 5s ease-in-out infinite; }
+
+@keyframes pz-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.0), 0 0 40px -8px rgba(139, 92, 246, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.12), 0 0 64px -4px rgba(139, 92, 246, 0.75); }
+}
+@utility pz-glow { animation: pz-glow 2.4s ease-in-out infinite; }
+
+/* An indeterminate runner bar. */
+@keyframes pz-scan {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(260%); }
+}
+@utility pz-scan { animation: pz-scan 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+
+/* A bar that fills once; duration and delay are set inline. */
+@keyframes pz-fill { from { transform: scaleX(0); } }
+@utility pz-fill { transform-origin: left; animation: pz-fill both cubic-bezier(0.65, 0, 0.35, 1); }
+
+@keyframes pz-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  70%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@utility pz-pop { animation: pz-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Something arriving from outside the frame — the ticket landing. */
+@keyframes pz-arrive {
+  from { opacity: 0; transform: translateY(-160px) rotate(-4deg) scale(0.9); filter: blur(8px); }
+}
+@utility pz-arrive { animation: pz-arrive 1.1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Revealed after a delay inside one beat — e.g. a test going red, then green. */
+@keyframes pz-appear { from { opacity: 0; transform: translateY(8px); } }
+@utility pz-appear { animation: pz-appear 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A ring that leaves a station as the ticket is stamped there. Ends gone. */
+@keyframes pz-ping {
+  from { opacity: 0.9; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.35); }
+}
+@utility pz-ping { animation: pz-ping 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* The skeptic striking a finding out: a line drawn through it, then it dims. */
+@keyframes pz-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pz-dim { to { opacity: 0.4; } }
+@utility pz-strike {
+  position: relative;
+  animation: pz-dim 0.5s both;
+  &::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 52%;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transform-origin: left;
+    animation: pz-strike 0.45s cubic-bezier(0.65, 0, 0.35, 1) both;
+    animation-delay: inherit;
+  }
+}
+
+/* A rubber stamp slammed down — a verdict landing. */
+@keyframes pz-stamp {
+  0%   { opacity: 0; transform: scale(2.2) rotate(-14deg); }
+  60%  { opacity: 1; transform: scale(0.94) rotate(-7deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+@utility pz-stamp { animation: pz-stamp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A sheet of light sweeping across a panel once; ends off its right edge. */
+@keyframes pz-sweep {
+  from { transform: translateX(-40%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  to   { transform: translateX(1500px); opacity: 0; }
+}
+@utility pz-sweep { animation: pz-sweep 2.2s cubic-bezier(0.65, 0, 0.35, 1) both; }
+
+/* Light moving across gradient text: the gradient is symmetric, so a 200%
+ * tile scrolls without a seam. Pair with bg-clip-text text-transparent. */
+@keyframes pz-shine { to { background-position: 200% center; } }
+@utility pz-shine {
+  background-image: linear-gradient(90deg, #c4b5fd, #f0abfc, #67e8f9, #f0abfc, #c4b5fd);
+  background-size: 200% auto;
+  animation: pz-shine 7s linear infinite;
+}
+
+/* ---------------------------------------------------------------- *
+ * /product-presentation — the same rules: every keyframe ends on its
+ * final frame, so with motion off a beat still shows everything.
+ * ---------------------------------------------------------------- */
+/* A waveform bar breathing between a quarter and full height; ends tall. */
+@keyframes pz-wave { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
+@utility pz-wave { transform-origin: center; animation: pz-wave 0.8s ease-in-out infinite alternate; }
+
+/* Words said in a room, fading as the meeting ends — ends as a ghost, still readable. */
+@keyframes pz-evaporate {
+  to { opacity: 0.18; transform: translateY(-26px); filter: blur(1.5px); }
+}
+@utility pz-evaporate { animation: pz-evaporate 1.6s cubic-bezier(0.65, 0, 0.35, 1) both; }
+
+/* A ring leaving the microphone while it listens — decorative, ends gone. */
+@keyframes pz-radar {
+  from { opacity: 0.7; transform: scale(0.6); }
+  to   { opacity: 0; transform: scale(1.8); }
+}
+@utility pz-radar { animation: pz-radar 2.2s ease-out infinite; }
+
+/* A chunk file landing in the session directory. */
+@keyframes pz-drop {
+  from { opacity: 0; transform: translateY(-22px) scale(1.15); }
+  60%  { opacity: 1; transform: translateY(2px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@utility pz-drop { animation: pz-drop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A flag being raised: a short shake as it lands, then still. */
+@keyframes pz-raise {
+  0%   { opacity: 0; transform: translateX(-16px) rotate(-3deg); }
+  55%  { opacity: 1; transform: translateX(6px) rotate(1.5deg); }
+  80%  { transform: translateX(-2px) rotate(-0.5deg); }
+  100% { opacity: 1; transform: none; }
+}
+@utility pz-raise { animation: pz-raise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Someone typing: three dots that show, then give way to the message. Ends gone. */
+@keyframes pz-dots {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@utility pz-dots { animation: pz-dots 0.8s ease-in-out both; }
+
+/* A line being read: dim until the reader reaches it, then its own colours. */
+@keyframes pz-lit { from { color: var(--color-faint); border-color: transparent; background-color: transparent; } }
+@utility pz-lit { animation: pz-lit 0.35s ease-out backwards; }
+
+/* A waveform coming alive while someone speaks; duration and delay inline. Ends dim, still there. */
+@keyframes pz-speak {
+  0%   { opacity: 0.3; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+@utility pz-speak { opacity: 0.3; animation: pz-speak ease-in-out both; }
+
+/* A reader's scan line sweeping down a panel once; ends gone. */
+@keyframes pz-scan-down {
+  from { transform: translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  to   { transform: translateY(var(--scan, 220px)); opacity: 0; }
+}
+@utility pz-scan-down { animation: pz-scan-down 1.6s linear both; }
+
+/* The hand-off button, ready to go: a cyan pulse rather than the violet glow. */
+@keyframes pz-launch {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(103, 232, 249, 0), 0 0 40px -6px rgba(139, 92, 246, 0.6); }
+  50%      { box-shadow: 0 0 0 10px rgba(103, 232, 249, 0.12), 0 0 80px -2px rgba(139, 92, 246, 0.85); }
+}
+@utility pz-launch { animation: pz-launch 1.8s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

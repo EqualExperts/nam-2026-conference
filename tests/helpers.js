@@ -15,11 +15,11 @@ export const API = `http://localhost:${process.env.PORT ?? 3001}/api`;
 
 export const ATTENDEES = {
   jonas: 1,      // VIP, big plan, has cross-town clashes
-  amara: 2,      // Speaker — presenting 3 sessions
+  andy: 2,      // Speaker — presenting 3 sessions
   kenji: 3,      // Standard, small plan
   sofia: 4,      // VIP, biggest plan
   marcus: 5,     // Standard, smallest plan
-  priya: 6,      // Speaker — presenting 2 sessions
+  abraham: 6,      // Speaker — presenting 2 sessions
 };
 
 /**
@@ -42,7 +42,6 @@ export async function momentOn(dayIndex, time) {
 }
 
 export const MID_SESSION_TIME = '10:30';   // inside the 10:15 slot
-export const BETWEEN_SLOTS_TIME = '11:10'; // the gap before 11:30
 
 /** Open a route as a given attendee, optionally with the clock pinned. */
 export async function visit(page, path = '/', { as = ATTENDEES.jonas, at = null } = {}) {
@@ -95,27 +94,61 @@ export async function clearAgendaFor(request, userId, day) {
  * guard is per attendee, so that is what keeps one test's booking from turning
  * another's click into a conflict dialog.
  *
- * Lanes with a `slot` also count seats exactly, so on top of that they own a
- * whole time slot on day 3 — no other lane books anything on day 3.
+ * Lanes with a `slot` and an exact seat-count assertion own that whole slot on
+ * day 3 — nothing else may book the six slots `seats.count`/`seats.reload`/
+ * `seats.twice` use there. A lane that only needs a clean day (no count
+ * assertion) may take day 3's one remaining slot instead, same as any other day.
  *
- * Read-only fixtures to leave alone: Jonas on day 1 (home page), Jonas and
- * Kenji on day 2 (the promotion fixture), Marcus on day 4 (must stay empty).
+ * Read-only fixture to leave alone: Jonas and Kenji on day 2 (the promotion
+ * fixture).
  * Lanes marked `clean` are days the seed leaves empty for that attendee, so the
  * test may clear the whole day; everywhere else, release only what you booked.
  */
-const { jonas, amara, kenji, sofia, marcus, priya } = ATTENDEES;
-const LANES = {
-  'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: amara, day: 2, slot: '11:30' } },
-  'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: priya, day: 2, slot: '10:15' } },
-  'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: amara, day: 2, slot: '16:00' } },
+const { jonas, andy, kenji, sofia, marcus, abraham } = ATTENDEES;
+export const LANES = {
+  'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: andy, day: 2, slot: '11:30' } },
+  'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: abraham, day: 2, slot: '10:15' } },
+  'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: andy, day: 2, slot: '16:00' } },
+  // Fails a reserve and a release on purpose. Each pane shares its attendee and day 0 only
+  // with lanes that pin other slots, and the seed leaves that slot free for that attendee.
+  'seats.failure-toast': { desktop: { user: marcus, day: 0, slot: '10:15' }, mobile: { user: abraham, day: 0, slot: '13:30' } },
   'seats.waitlist':   { desktop: { user: kenji, day: 0 },                 mobile: { user: sofia, day: 3 } },
-  'seats.queue':      { desktop: { user: marcus, day: 0 },                mobile: { user: priya, day: 0 } },
-  'conflict.ui':      { desktop: { user: kenji, day: 3, clean: true },    mobile: { user: amara, day: 3, clean: true } },
-  'conflict.api':     { desktop: { user: priya, day: 3 },                 mobile: { user: jonas, day: 3 } },
+  // Slots pinned only so 'attendance.rating-toast' below can share this
+  // attendee and day (a real seat lane, so it never sets its own slot
+  // otherwise) — this test's own pick is dynamic and ignores them.
+  'seats.queue':      { desktop: { user: marcus, day: 0, slot: '13:30' }, mobile: { user: abraham, day: 0, slot: '10:15' } },
+  'conflict.ui':      { desktop: { user: kenji, day: 3, clean: true },    mobile: { user: andy, day: 3, clean: true } },
+  'conflict.api':     { desktop: { user: abraham, day: 3 },                 mobile: { user: jonas, day: 3 } },
   'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
-  'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
-  'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
+  // read-only: it books nothing, and needs a day the seed sells sessions out on
+  'schedule.seats':   { desktop: { user: kenji, day: 1, readOnly: true }, mobile: { user: marcus, day: 0, readOnly: true } },
+  'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: andy, day: 0 } },
+  // marcus/day 3 desktop and jonas/day 0 mobile are each used by no other lane,
+  // so concurrent tests cannot collide on these attendee+day pairs.
+  'switcher.live-count': { desktop: { user: marcus, day: 3 }, mobile: { user: jonas, day: 0, clean: true } },
+  // Check-ins and ratings only — no seat is booked, so agenda: false lets these
+  // share a day with booking lanes (see lanes.test.js). The slot is the one
+  // unattendedFor() picks its session from.
+  'attendance.checkin-toast': { desktop: { user: kenji, day: 2, slot: '09:00', agenda: false },  mobile: { user: andy, day: 2, slot: '09:00', agenda: false } },
+  // Rates for real, so it must land on day index 0 — `today` — per
+  // smoke.spec.js's "no session in the future carries a rating".
+  'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: abraham, day: 0, slot: '09:00', agenda: false } },
 };
+
+/**
+ * The picture a pull request shows, taken by the test that proves the change —
+ * it already drives the app to exactly the state worth seeing. A no-op unless
+ * PR_SHOTS is set, so the suite and the gate never write files; ship's PR step
+ * re-runs the one test with PR_SHOTS=1 and uploads what lands in
+ * `.screenshots/pr/`. On #64 the PR agent spent 20 turns rebuilding that state
+ * with a script of its own.
+ */
+export async function shotForPR(page, name) {
+  if (!process.env.PR_SHOTS) return;
+  // A file name with spaces breaks the PR's markdown image link (#94).
+  const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  await page.screenshot({ path: `.screenshots/pr/${slug}-${page.viewportSize()?.width ?? 0}w.png` });
+}
 
 /** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */
 export async function laneFor(name, testInfo) {

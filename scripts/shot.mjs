@@ -4,7 +4,7 @@
  *
  *   npm run shot                     # every main route, desktop
  *   npm run shot -- /schedule        # one route
- *   npm run shot -- /my-agenda --mobile --user=2
+ *   npm run shot -- /speakers/1 --mobile --user=2
  *   npm run shot -- / --at=2026-10-13T14:30   # pin the conference clock
  *   npm run shot -- / --full         # full-page instead of viewport
  *

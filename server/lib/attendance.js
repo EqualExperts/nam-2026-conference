@@ -16,6 +16,7 @@ export const CHECK_IN_OPENS_MINS = 15;
 const getSession = db.prepare('SELECT id, day, starts_at, ends_at FROM sessions WHERE id = ?');
 const getCheckIn = db.prepare('SELECT checked_in_at FROM check_ins WHERE user_id = ? AND session_id = ?');
 const getRating = db.prepare('SELECT stars, comment FROM ratings WHERE user_id = ? AND session_id = ?');
+const insertCheckIn = db.prepare('INSERT OR IGNORE INTO check_ins (user_id, session_id, checked_in_at) VALUES (?, ?, ?)');
 
 /** Where a session sits relative to a given moment. */
 export function attendanceWindow(session, now) {
@@ -60,8 +61,7 @@ export const checkIn = db.transaction((userId, sessionId, now) => {
   const window = attendanceWindow(session, now);
   if (!window.canCheckIn) return { ...attendanceState(sessionId, userId, now), rejected: window.phase };
 
-  db.prepare('INSERT OR IGNORE INTO check_ins (user_id, session_id, checked_in_at) VALUES (?, ?, ?)')
-    .run(userId, sessionId, new Date().toISOString());
+  insertCheckIn.run(userId, sessionId, new Date().toISOString());
   return attendanceState(sessionId, userId, now);
 });
 
@@ -80,18 +80,20 @@ const recomputeSpeakers = db.prepare(`
     WHERE ss.speaker_id = speakers.id), 0)
   WHERE id IN (SELECT speaker_id FROM session_speakers WHERE session_id = ?)`);
 
+const upsertRating = db.prepare(`
+  INSERT INTO ratings (user_id, session_id, stars, comment, created_at)
+  VALUES (@userId, @sessionId, @stars, @comment, @at)
+  ON CONFLICT(user_id, session_id)
+  DO UPDATE SET stars = @stars, comment = @comment, created_at = @at
+`);
+
 export const rateSession = db.transaction((userId, sessionId, { stars, comment }, now) => {
   const state = attendanceState(sessionId, userId, now);
   if (!state) return null;
   if (!state.checkedIn) return { ...state, rejected: 'not-checked-in' };
   if (state.phase !== 'past') return { ...state, rejected: 'too-early' };
 
-  db.prepare(`
-    INSERT INTO ratings (user_id, session_id, stars, comment, created_at)
-    VALUES (@userId, @sessionId, @stars, @comment, @at)
-    ON CONFLICT(user_id, session_id)
-    DO UPDATE SET stars = @stars, comment = @comment, created_at = @at
-  `).run({ userId, sessionId, stars, comment: comment || null, at: new Date().toISOString() });
+  upsertRating.run({ userId, sessionId, stars, comment: comment || null, at: new Date().toISOString() });
 
   recompute.run(sessionId, sessionId, sessionId);
   recomputeSpeakers.run(sessionId);

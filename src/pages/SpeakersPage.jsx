@@ -203,7 +203,7 @@ export function SpeakersPage() {
       {!loading && !error && all.length === 0 && (
         <EmptyState
           icon="users"
-          title={view === 'following' ? 'You are not following anyone yet' : 'No speakers match'}
+          title={view === 'following' ? 'You are not following anyone yet' : (q ? `No speakers match “${q}”` : 'No speakers match')}
           description={view === 'following'
             ? 'Follow a speaker from their profile and they collect here, with everything they are presenting.'
             : 'Try a different search, day or track.'}

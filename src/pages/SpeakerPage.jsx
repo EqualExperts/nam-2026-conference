@@ -4,7 +4,7 @@ import * as api from '../lib/api.js';
 import { plural } from '../lib/format.js';
 import { dayLabel } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
-import { Avatar, Button, Chip, EmptyState, ErrorState, Skeleton, cx } from '../components/ui.jsx';
+import { Avatar, Button, Chip, ErrorState, NotFoundState, Skeleton, cx } from '../components/ui.jsx';
 import { Icon, BrandIcon } from '../components/Icon.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
@@ -26,17 +26,21 @@ const handleOf = (key, value) =>
 
 export function SpeakerPage() {
   const { id } = useParams();
-  const { isFollowing, toggleFollow } = useConference();
+  const { currentUser, isFollowing, toggleFollow } = useConference();
   const following = isFollowing(Number(id));
   // followerCount already includes you if you follow, so refetch when that
   // changes rather than adding one on the client and counting you twice.
   const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id, following]);
-  useDocumentTitle(speaker?.name);
+  const notFound = error?.status === 404;
+  useDocumentTitle(notFound ? 'Not found' : speaker?.name);
 
   if (loading && !speaker) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-64" /></div>;
+  if (notFound) return <NotFoundState title="Speaker not found" backTo="/speakers" backLabel="All speakers" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
-  if (!speaker) return <EmptyState title="Speaker not found" />;
+  if (!speaker) return <NotFoundState title="Speaker not found" backTo="/speakers" backLabel="All speakers" />;
 
+  // A plain marker, not a speaker dashboard: the account menu links here.
+  const isYou = currentUser?.speakerId === speaker.id;
   const byDay = speaker.sessions.reduce((acc, s) => {
     (acc[s.day] ??= []).push(s);
     return acc;
@@ -60,6 +64,7 @@ export function SpeakerPage() {
             imageUrl={speaker.imageUrl} size="xl" className="-mt-16 ring-4 ring-surface sm:-mt-24" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
+              {isYou && <Chip accent="cyan" data-testid="speaker-is-you">This is you</Chip>}
               {speaker.keynoteCount > 0
                 ? <Chip accent="violet">Keynote speaker</Chip>
                 : speaker.featured && <Chip accent="violet">Featured speaker</Chip>}

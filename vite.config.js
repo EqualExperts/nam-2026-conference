@@ -11,7 +11,17 @@ export default defineConfig({
     strictPort: true,
     open: !process.env.CI && !process.env.NO_OPEN,
     proxy: {
-      '/api': { target: `http://localhost:${process.env.PORT ?? 3001}`, changeOrigin: true },
+      // `changeOrigin` rewrites Host to the API's own, so the API cannot see
+      // the address the attendee used. Pass it on — calendar exports build
+      // their links from it (see baseUrlFor in server/lib/ical.js).
+      '/api': {
+        target: `http://localhost:${process.env.PORT ?? 3001}`,
+        changeOrigin: true,
+        configure: (proxy) => proxy.on('proxyReq', (proxyReq, req) => {
+          if (!req.headers['x-forwarded-host']) proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
+          if (!req.headers['x-forwarded-proto']) proxyReq.setHeader('X-Forwarded-Proto', req.socket.encrypted ? 'https' : 'http');
+        }),
+      },
     },
   },
 });

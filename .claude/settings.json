@@ -1,0 +1,18 @@
+{
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL": "5m"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/fork-guard.mjs\" --hook"
+          }
+        ]
+      }
+    ]
+  }
+}

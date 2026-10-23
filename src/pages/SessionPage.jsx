@@ -8,9 +8,10 @@ import { SessionCard } from '../components/SessionCard.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SeatPanel } from '../components/SeatPanel.jsx';
 import { AttendancePanel } from '../components/AttendancePanel.jsx';
-import { Avatar, Button, Chip, EmptyState, ErrorState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
+import { Avatar, Button, Chip, ErrorState, NotFoundState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
+import { hasEnded } from '../lib/clock.js';
 
 function TravelNotice({ session }) {
   const { venues, travel } = useConference();
@@ -46,7 +47,8 @@ export function SessionPage() {
   const { id } = useParams();
   const { currentUserId, reservationFor, toggleSeat, seatsFor, clock } = useConference();
   const { data: session, loading, error, reload } = useFetch(() => api.getSession(id, currentUserId), [id, currentUserId]);
-  useDocumentTitle(session?.title);
+  const notFound = error?.status === 404;
+  useDocumentTitle(notFound ? 'Not found' : session?.title);
 
   if (loading) {
     return (
@@ -57,11 +59,15 @@ export function SessionPage() {
       </div>
     );
   }
+  if (notFound) return <NotFoundState title="Session not found" backTo="/schedule" backLabel="Browse the schedule" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
-  if (!session) return <EmptyState title="Session not found" />;
+  if (!session) return <NotFoundState title="Session not found" backTo="/schedule" backLabel="Browse the schedule" />;
 
   const a = accent(session.track.color);
   const reservation = reservationFor(session.id);
+  // Over: nothing to add. A seat already held stays, and can still be released.
+  const ended = hasEnded(session, clock);
+  const closed = ended && !reservation;
   const live = seatsFor(session.id);
   const seatsLeft = live?.seatsLeft ?? session.seats?.seatsLeft ?? session.seatsLeft;
   const waiting = live?.waitlistCount ?? session.seats?.waitlistCount ?? 0;
@@ -114,20 +120,22 @@ export function SessionPage() {
               </Chip>
             ) : (
               <Chip accent={seatsLeft <= 10 ? 'amber' : 'emerald'} data-testid="header-seats">
-                {seatsLeft.toLocaleString()} seats left
+                {plural(seatsLeft, 'seat')} left
               </Chip>
             )}
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Button
-              variant={reservation ? 'ghost' : 'primary'}
-              onClick={() => toggleSeat(session.id)}
+              variant={reservation || closed ? 'ghost' : 'primary'}
+              onClick={() => { if (!closed) toggleSeat(session.id, session); }}
+              disabled={closed}
               data-testid="save-session"
             >
-              <Icon name={reservation === 'waitlisted' ? 'clock' : reservation ? 'check' : 'ticket'} className="size-4" />
+              <Icon name={reservation === 'waitlisted' || closed ? 'clock' : reservation ? 'check' : 'ticket'} className="size-4" />
               {reservation === 'waitlisted' ? 'On the waitlist'
                 : reservation ? 'On my agenda'
+                : closed ? 'Session ended'
                 : isFull ? 'Join the waitlist'
                 : 'Add to my agenda'}
             </Button>
@@ -136,6 +144,9 @@ export function SessionPage() {
             </Button>
             <Rating value={session.avgRating} count={session.ratingCount} className="ml-auto !text-xs" />
           </div>
+          {ended && (
+            <p className="mt-3 text-[13px] text-muted" data-testid="session-ended">This session has ended.</p>
+          )}
         </div>
       </header>
 

@@ -1,6 +1,29 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES, failOnPageErrors, shotForPR } from './helpers.js';
 
+/**
+ * A non-keynote, non-Social session on `day` this attendee has not checked
+ * into, starting at `slot` — the lane's pin, so a concurrently running seats
+ * lane on the same attendee and day never lands on the same session.
+ */
+async function unattendedFor(request, userId, day, slot) {
+  const me = await (await request.get(`${API}/users/${userId}`)).json();
+  const been = new Set(me.checkIns ?? []);
+  const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
+  return all
+    .filter((s) => !s.isKeynote && s.format !== 'Social' && !been.has(s.id) && s.startsAt === slot)
+    .sort((a, b) => a.id - b.id)[0];
+}
+
+/**
+ * `failOnPageErrors`'s console listener also catches Chromium's own "Failed
+ * to load resource: the server responded with a status of 409" log line,
+ * which the browser prints for any non-2xx fetch regardless of whether the
+ * app handles it. The two tests below force a 409 on purpose, so that line
+ * is expected noise, not the "unhandled promise rejection" the assertion is
+ * actually checking for; a `pageerror` (the real thing) is still fatal.
+ */
+const unexpected = (errors) => errors.filter((e) => !e.startsWith('Failed to load resource:'));
 
 /** The first slot where this attendee can book at least two sessions with seats. */
 async function busySlot(request, userId, day) {
@@ -90,7 +113,7 @@ test.describe('Check in and rate', () => {
     // the future would leave the database asserting a thing that has not
     // happened, which a smoke test now forbids.
     const mobile = testInfo.project.name === 'mobile';
-    const user = mobile ? ATTENDEES.priya : ATTENDEES.sofia;
+    const user = mobile ? ATTENDEES.abraham : ATTENDEES.sofia;
     const day = days[0];
 
     // Check-ins persist between runs and there is deliberately no way to undo
@@ -174,6 +197,64 @@ test.describe('Check in and rate', () => {
     });
     expect(res.status()).toBe(400);
   });
+
+  test('checking in toasts a confirmation, and a rejected check-in toasts instead of throwing', async ({ page, request }, testInfo) => {
+    const { user, day, slot } = await laneFor('attendance.checkin-toast', testInfo);
+    const target = await unattendedFor(request, user, day, slot);
+    test.skip(!target, 'no un-attended session left on this day');
+
+    const errors = failOnPageErrors(page);
+    await visit(page, `/sessions/${target.id}`, { as: user, at: `${day}T${target.startsAt}` });
+
+    // Fulfilled once, so the click after it hits the real route and succeeds.
+    await page.route(`**/api/users/${user}/checkins/${target.id}`, (route) =>
+      route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ rejected: 'future' }) }),
+    { times: 1 });
+
+    await page.getByTestId('check-in').click();
+    await expect(page.getByTestId('toaster')).toContainText('Check-in has not opened yet');
+    await expect(page.getByTestId('check-in')).toHaveText('Check in');
+
+    await page.getByTestId('check-in').click();
+    await expect(page.getByTestId('toaster')).toContainText('Checked in');
+    await expect(page.getByTestId('checked-in')).toBeVisible();
+    await shotForPR(page, 'check-in-toast');
+
+    expect(unexpected(errors)).toEqual([]);
+  });
+
+  test('rating toasts Rating saved, then Rating updated, and a rejection toasts too', async ({ page, request }, testInfo) => {
+    const { user, day, slot } = await laneFor('attendance.rating-toast', testInfo);
+    const target = await unattendedFor(request, user, day, slot);
+    test.skip(!target, 'no un-attended session left on this day');
+
+    await request.put(`${API}/users/${user}/checkins/${target.id}`, {
+      data: { day, time: target.startsAt },
+    });
+
+    const errors = failOnPageErrors(page);
+    await visit(page, `/sessions/${target.id}`, { as: user, at: `${day}T23:59` });
+
+    const star = (n) => page.getByTestId('rating-form')
+      .getByRole('radio', { name: `${n} star${n > 1 ? 's' : ''}`, exact: true });
+
+    await star(4).click();
+    await page.getByTestId('submit-rating').click();
+    await expect(page.getByTestId('toaster')).toContainText('Rating saved');
+
+    await star(2).click();
+    await page.getByTestId('submit-rating').click();
+    await expect(page.getByTestId('toaster')).toContainText('Rating updated');
+
+    await page.route(`**/api/users/${user}/ratings/${target.id}`, (route) =>
+      route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ rejected: 'not-checked-in' }) }),
+    { times: 1 });
+    await page.getByTestId('submit-rating').click();
+    await expect(page.getByTestId('toaster')).toContainText('You need to check in before you can rate this');
+    await expect(page.getByTestId('submit-rating')).toHaveText('Update rating');
+
+    expect(unexpected(errors)).toEqual([]);
+  });
 });
 
 test.describe('Calendar export', () => {
@@ -193,6 +274,14 @@ test.describe('Calendar export', () => {
     for (const line of ics.split('\r\n')) {
       expect(Buffer.byteLength(line, 'utf8')).toBeLessThanOrEqual(75);
     }
+  });
+
+  // Through the dev server, as a browser fetches it: the proxy rewrites Host,
+  // so without forwarding it the link named the API's own localhost port.
+  test('an exported link points at the address the attendee used', async ({ request, baseURL }) => {
+    const res = await request.get('/api/sessions/1.ics');
+    expect(res.ok()).toBeTruthy();
+    expect(await res.text()).toContain(`URL:${baseURL}/sessions/1\r\n`);
   });
 
   test('a single session downloads too', async ({ request }) => {

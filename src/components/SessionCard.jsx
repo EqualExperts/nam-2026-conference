@@ -1,12 +1,55 @@
 import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
-import { timeRange } from '../lib/format.js';
+import { plural, timeRange } from '../lib/format.js';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, Chip, SeatButton, Rating, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 import { GeneratedCover } from './GeneratedCover.jsx';
-import { LiveBadge } from './LiveNow.jsx';
-import { progressOf, toMinutes } from '../lib/clock.js';
+import { LiveBadge } from './LiveBadge.jsx';
+import { hasEnded, progressOf, toMinutes } from '../lib/clock.js';
+
+/**
+ * Where a held seat stands once the doors have opened: rated, checked in (with
+ * a way to rate it once it is over), or missed. Upcoming sessions and waitlist
+ * places say nothing — the caller passes `attendance` only for confirmed seats.
+ */
+function AttendanceStatus({ session, attendance }) {
+  const { clock } = useConference();
+  if (!attendance) return null;
+  // Nothing may claim to be true before it can be: the seed records Day 1's
+  // morning as attended and rated, so at 08:00 a 09:00 talk would read
+  // "Rated ★5". Status starts when check-in opens, 15 minutes before.
+  const open = clock.day > session.day ||
+    (clock.day === session.day && toMinutes(clock.time) >= toMinutes(session.startsAt) - 15);
+  if (!open) return null;
+  const { ended, checkedIn, myStars } = attendance;
+  let body;
+  if (myStars != null) {
+    body = <span className="font-semibold text-violet-200">Rated ★{myStars}</span>;
+  } else if (checkedIn) {
+    body = (
+      <>
+        <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+          <Icon name="check" className="size-3" /> Checked in
+        </span>
+        {ended && (
+          // above the card's full-cover link, so it is its own target
+          <Link to={`/sessions/${session.id}`} aria-label={`Rate ${session.title}`}
+            className="relative z-10 font-semibold text-violet-300 underline-offset-2 hover:text-violet-200 hover:underline">
+            Rate it
+          </Link>
+        )}
+      </>
+    );
+  } else if (ended) {
+    body = <span className="text-faint">Missed</span>;
+  } else {
+    return null;
+  }
+  return (
+    <span data-testid="attendance-status" className="inline-flex items-center gap-2">{body}</span>
+  );
+}
 
 /**
  * The workhorse card, in two layouts:
@@ -17,7 +60,7 @@ import { progressOf, toMinutes } from '../lib/clock.js';
  * the body, then a footer strip. The bands are what let you scan a wall of
  * these without every card melting into the next.
  */
-export function SessionCard({ session, variant = 'grid', showDay = false }) {
+export function SessionCard({ session, variant = 'grid', showDay = false, attendance = null }) {
   const { toggleSeat, clock, reservationFor, seatsFor } = useConference();
   const reservation = reservationFor(session.id);
   const onAgenda = Boolean(reservation);
@@ -26,7 +69,8 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
   const onToday = clock?.day === session.day;
   const nowMins = clock ? toMinutes(clock.time) : -1;
   const isLive = onToday && nowMins >= toMinutes(session.startsAt) && nowMins < toMinutes(session.endsAt);
-  const isDone = onToday && nowMins >= toMinutes(session.endsAt);
+  // Done on any earlier day too, not just once today's end time has passed.
+  const isDone = hasEnded(session, clock);
   const a = accent(session.track.color);
   const v = accent(session.venue.accent);
   // Live counts win over the payload the list was fetched with.
@@ -38,7 +82,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
 
   if (variant === 'row') {
     return (
-      <div className={cx(
+      <div data-testid="session-card" data-done={isDone ? 'true' : 'false'} className={cx(
         'group relative flex scroll-mt-28 items-stretch gap-0 overflow-hidden rounded-xl border bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay',
         isLive ? 'border-rose-400/45' : onAgenda ? 'border-emerald-400/30' : 'border-hairline',
@@ -72,6 +116,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
                   <Icon name="car" className="size-3" /> {session.venue.shortName}
                 </span>
               )}
+              <AttendanceStatus session={session} attendance={attendance} />
               {reservation === 'waitlisted' && (
                 <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
                   <Icon name="clock" className="size-3" /> Waitlisted
@@ -79,7 +124,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
               )}
             </div>
           </div>
-          <SeatButton size="sm" status={reservation} onClick={() => toggleSeat(session.id)} />
+          <SeatButton size="sm" status={reservation} ended={isDone} onClick={() => toggleSeat(session.id, session)} />
         </div>
       </div>
     );
@@ -92,6 +137,8 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
 
   return (
     <article
+      data-testid="session-card"
+      data-done={isDone ? 'true' : 'false'}
       className={cx(
         'group relative flex scroll-mt-28 flex-col overflow-hidden rounded-xl border bg-raised transition-colors duration-150',
         'hover:border-white/20 hover:bg-overlay/70',
@@ -134,7 +181,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isLive && <LiveBadge />}
-          <SeatButton status={reservation} onClick={() => toggleSeat(session.id)} />
+          <SeatButton status={reservation} ended={isDone} onClick={() => toggleSeat(session.id, session)} />
         </div>
       </div>
 
@@ -193,13 +240,22 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
         <span className="text-overlay">·</span>
         <span className="text-faint">{session.level}</span>
         <div className="ml-auto flex items-center gap-2.5">
-          {isFull ? (
-            <span className="font-bold text-rose-300">
-              Full{waiting > 0 && ` · ${waiting} waiting`}
-            </span>
-          ) : seatsLeft <= 10 ? (
-            <span className="font-bold text-amber-300">{seatsLeft} seats left</span>
-          ) : null}
+          {/* How full it is, so the list answers "can I still get in?" without a
+              click. Keynotes say it on their cover strip already, and a session
+              with no capacity says nothing rather than reading as sold out. */}
+          {!feature && session.capacity > 0 && (
+            isFull ? (
+              <span data-testid="card-seats"
+                className="rounded-full bg-rose-500/15 px-2 py-0.5 font-bold text-rose-200">
+                Full{waiting > 0 && ` · ${waiting} waiting`}
+              </span>
+            ) : (
+              <span data-testid="card-seats"
+                className={cx('font-semibold', seatsLeft <= 10 ? 'text-amber-300' : 'text-faint')}>
+                {plural(seatsLeft, 'seat')} left
+              </span>
+            )
+          )}
           {session.isRecorded && <Icon name="play" className="size-3 text-faint" />}
           <Rating value={session.avgRating} count={session.ratingCount} />
         </div>

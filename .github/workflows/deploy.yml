@@ -1,0 +1,87 @@
+## Deploys main to Railway once `verify` has passed on it. A separate workflow
+## rather than a job in verify.yml, because verify also runs on pull requests
+## and a deploy gate there would put a skipped job on every one.
+name: 🚀 deploy
+
+on:
+  workflow_run:
+    workflows: ["✅ verify"]
+    types: [completed]
+    branches: [main]
+
+# Deploys land in the order the commits did; a newer one waits, never cancels.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # A red verify never deploys, and `event == 'push'` keeps a fork's pull
+    # request from a branch called main out.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Secrets cannot be used in `if:`, so read it here and gate on the output.
+      - name: Check for a Railway token
+        id: check
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -n "$RAILWAY_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::RAILWAY_TOKEN is not set, skipping the deploy"
+          fi
+
+      - if: steps.check.outputs.has_token == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # `--ci` streams the build logs only and exits when the build ends, so it
+      # cannot tell a deployment that boots from one that fails its healthcheck.
+      # The ids already there are recorded first so the next step can tell which
+      # deployment this upload made, without comparing runner and Railway clocks.
+      # Railway builds the app itself, so there is no npm ci or build here.
+      - name: Deploy to Railway
+        id: up
+        if: steps.check.outputs.has_token == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+        run: |
+          svc=(); [ -n "$RAILWAY_SERVICE" ] && svc=(--service "$RAILWAY_SERVICE")
+          npx --yes @railway/cli deployment list "${svc[@]}" --json | jq -c '[.[].id]' > before.json
+          npx --yes @railway/cli up --ci "${svc[@]}"
+
+      # The deployment is live only when Railway says SUCCESS, which for this
+      # service means its healthcheck passed. Anything else ends the run red.
+      - name: Wait for the deployment to go live
+        if: steps.check.outputs.has_token == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+        run: |
+          svc=(); [ -n "$RAILWAY_SERVICE" ] && svc=(--service "$RAILWAY_SERVICE")
+          for i in $(seq 1 60); do
+            row=$(npx --yes @railway/cli deployment list "${svc[@]}" --json \
+              | jq -c --slurpfile before before.json \
+                '[.[] | select(.id as $id | $before[0] | index($id) | not)] | sort_by(.createdAt) | last // empty')
+            status=$(jq -r '.status // empty' <<< "$row")
+            echo "attempt $i: ${status:-no new deployment yet}"
+            case "$status" in
+              SUCCESS) echo "Deployment $(jq -r .id <<< "$row") is live"; exit 0 ;;
+              FAILED|CRASHED|REMOVED|SKIPPED) echo "::error::Deployment ended as $status"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::Deployment did not go live within 15 minutes"
+          exit 1
