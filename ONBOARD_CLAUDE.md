@@ -66,10 +66,11 @@ click** on GitHub, and you will say exactly when. (Count it as one click:
 signing in or making a GitHub account only applies when those aren't already
 done.)
 
-> **🛰️ ORBIT '26 — launch checklist** · 3 of 11 done
+> **🛰️ ORBIT '26 — launch checklist** · 4 of 12 done
 >
 > ✅ Ready to set up
 > ✅ GitHub account
+> ✅ Claude can run workflows
 > ⏭️ Your computer — macOS, Apple Silicon
 > 🔄 Install the tools
 > ⬜ Sign in to GitHub
@@ -83,17 +84,20 @@ done.)
 > *Tools next — this is the longest step, a few minutes at most.*
 
 - ✅ done in this run · ⏭️ already done · 🔄 in progress ·
-  🙋 waiting on the person · ❌ failed — fixing it with them · ⬜ to do. Rows map
-  one-to-one to Steps 0–9. After a dash, give the step's one useful fact in
-  plain words, as the computer line does: the GitHub account, the link to
-  their copy, the folder it's in, how many checks passed.
+  🙋 waiting on the person · ❌ failed — fixing it with them · ⚠️ can't be
+  fixed from here, setup carries on, and the hand-off says what to do · ⬜ to
+  do. Rows map one-to-one to Steps 0–9 (0, 0b, 0c, then 1–9). After a dash,
+  give the step's one useful fact in plain words, as the computer line does:
+  the GitHub account, the link to their copy, the folder it's in, how many
+  checks passed.
 - Under the board, one short line in italics: what is next and roughly how long
   it takes. At a 🙋, the **👉 Your turn** block (below) replaces it. Light and friendly is
   good; a joke per step is not. Never more than one line.
 - Step 10 (*loading the workshop commands*) is not on the board: it is the
   hand-off. When the last row is ✅, show the board one final time with the
-  header **🚀 ORBIT '26 — ready for launch** · 11 of 11, then the *Done*
-  summary.
+  header **🚀 ORBIT '26 — ready for launch** · 12 of 12, then the *Done*
+  summary. If a row is still ⚠️, the header is **🚀 ORBIT '26 — almost ready**
+  · 11 of 12 instead (count only ✅ and ⏭️).
 
 **Ask at most two questions:** whether they have a GitHub account (Step 0b),
 and only when `gh` is not signed in already; and **where to fork the
@@ -193,6 +197,57 @@ have an account: mark the row ✅ with the account name and go on. (A missing
 
 Never create the account for them, and never ask for, or accept, anyone's
 password (rule 4).
+
+## Step 0c — Can Claude run workflows?
+
+`/ship`, `/code-review` and `/qa` are saved workflows (`.claude/workflows/`).
+They only run when Claude Code's **dynamic workflows** are on. When they're off,
+those commands don't exist at all. Find out now, but don't stop for it:
+`/winnow`, `/create-tasks` and the rest of setup don't need workflows.
+
+**Check:** look at your own tools. Is there a **Workflow** tool, or a
+`/workflows` command? That needs no command and no question. Yes → ✅
+*Claude can run workflows* and go on.
+
+**If not:** mark the row ⚠️ and find the likely cause:
+
+```bash
+# Checking why Claude can't run workflows
+claude --version 2>/dev/null || echo "claude version: unknown"
+echo "env switch: ${CLAUDE_CODE_DISABLE_WORKFLOWS:-not set}"
+grep -h '"disableWorkflows"' ~/.claude/settings.json 2>/dev/null || echo "user setting: none"
+for f in "/Library/Application Support/ClaudeCode/managed-settings.json" \
+         /etc/claude-code/managed-settings.json \
+         "/c/Program Files/ClaudeCode/managed-settings.json"; do
+  grep -H '"disableWorkflows"' "$f" 2>/dev/null
+done; true
+```
+
+Take the first cause that fits. Keep the fix for the *Done* hand-off. Here,
+just say in one line that `/ship` won't be available yet, that you'll explain
+the fix at the end, and that setup carries on.
+
+1. **The env switch is set, or `~/.claude/settings.json` has
+   `"disableWorkflows": true`.** The person turned it off themselves. Fix:
+   remove that line or variable, then restart Claude. Don't edit it for them.
+2. **A managed-settings file has `"disableWorkflows": true`.** Their
+   organisation turned workflows off. Fix: ask their IT admin, or pair with
+   someone whose Claude has workflows. Your organisation can also turn them off
+   from its admin console, where you can't see it. So when nothing above
+   matches on a work machine, mention this as the likely cause too.
+3. **An old Claude Code.** Workflows are recent, and their features need recent
+   versions; the docs name minimums such as v2.1.219. If `claude --version` is
+   older than that, the fix is to update: `claude update` in a terminal, or
+   update the Claude Desktop app. Then restart Claude.
+4. **Otherwise, it's the plan.** Workflows come with paid plans (Max, Team,
+   Enterprise) and with API, Bedrock, Vertex or Foundry access. Fixes:
+   - **On Pro:** turn on the **Dynamic workflows** row in `/config`, then
+     restart Claude.
+   - **On the Free plan:** the docs don't list workflows, so pair with someone
+     whose Claude has them.
+
+You can't see their plan, so give the Pro and Free lines together. Don't ask
+which plan they're on.
 
 ## Step 1 — Identify the operating system and shell
 
@@ -467,8 +522,18 @@ be on.
 
 Clone into the folder this session was started in, so you can read and run
 the clone from here without a restart (Step 10). Do not ask where — tell the
-person where it went at the end. Call that absolute path `<clone>`, and take
-the first rule that fits:
+person where it went at the end. Call that absolute path `<clone>`.
+
+**Temporary session folder first.** In the Code tab of Claude Desktop, a session
+started without a project folder runs in a temporary workspace, for example
+under `~/Library/Application Support/Claude/scratch-workspaces/`. Any session
+folder whose path contains `scratch-workspaces` counts. That workspace is
+deleted with the session, and the clone would go with it. So in that case
+`<clone>` is `~/nam-2026-conference`, and the rules below don't apply. The
+*Do* rules' `-fork` / `-2` collision handling still applies. The workshop
+commands then load only after Step 10's restart, in that folder.
+
+Otherwise, take the first rule that fits:
 
 1. The session folder already is a clone whose `origin` is the fork → `<clone>`
    is the session folder; there is nothing to clone. Probe it with
@@ -479,7 +544,7 @@ the first rule that fits:
 3. Anything else, the home folder included → `<clone>` is
    `<session folder>/nam-2026-conference`.
 
-If the session folder cannot be written to (`/`, a system folder), use
+If the session folder cannot be written to (`/`, a system folder), also use
 `~/nam-2026-conference`. Shell state does not carry between commands, so write
 `<clone>` out in full in every command below.
 
@@ -638,7 +703,10 @@ folder (Step 5) is often picked up by the running session without a restart —
 but not always, so test it rather than assume either way.
 
 **Check — commands:** is `ship` among the commands (skills) you can run, and
-`ship-rote` among the agent types you can start? You can see both lists.
+`ship-rote` among the agent types you can start? You can see both lists. If
+Step 0c is ⚠️, `ship` can't appear, whatever you do. Check `winnow` instead,
+and don't count a missing `ship` as a reason to restart: the hand-off gives the
+workflow fix.
 
 **Check — hook:** run, from `<clone>`:
 
@@ -657,27 +725,32 @@ block something: a block shows the person a red error.
 session, and to run `/setup-winnow` (audio is optional, and recommended).
 
 **Only `ship-rote` is missing** (`ship` is listed and the guard is live): do
-not ask for a restart. `/ship` works from this session. Its first rote step
-shows one red ✗ (*agent type 'ship-rote' not found*), and the rest run as plain
-agents, which is a bit slower. Mention it only as the 💡 tip in the *Done*
-hand-off, without naming the agent type.
+not ask for a restart, and don't treat it as final. The agent type often shows
+up later in the same session on its own. Look again at the *Done* step, and add
+the 💡 tip to the hand-off only if it is still missing then. If it never loads,
+`/ship` still works from this session: its first rote step shows one red ✗
+(*agent type 'ship-rote' not found*), and the rest run as plain agents, which
+is a bit slower. Never name the agent type to the person.
 
 **`ship` is missing or the guard is not loaded — Do:** a restart loads them. If `<clone>` is the session folder
 (rule 2 of Step 5), tell the person: type `/exit`, then `claude --continue` in
 the same terminal — it picks this conversation back up with the commands
-loaded. Otherwise tell them exactly:
+loaded. Otherwise tell them exactly (this always applies when Step 5 used a
+temporary workspace, with `<clone>` being `~/nam-2026-conference` or its
+`-fork` / `-2` variant):
 
-> Setup is done. To load the workshop's commands, quit Claude and start it
-> again in the project folder: in a terminal, `cd <clone> && claude` (or in
-> Claude Desktop, open the folder `<clone>`). In the new session, run
+> Setup is done. To load the workshop's commands, start Claude again in the
+> project folder: in Claude Desktop, start a new session and choose the folder
+> `<clone>`; in a terminal, `cd <clone> && claude`. In the new session, run
 > `/setup-winnow` (audio is optional, and recommended).
 
 Without the agent type, `/ship`'s first rote step fails with *agent type
 'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
 runs as a plain agent: slower, and heavier on context.
 
-**Only if they want `/ship` before restarting:** it does run from this session,
-because Step 5 put `<clone>` inside the session folder — use the Workflow tool
+**Only if they want `/ship` before restarting** (not after a temporary
+workspace, where `<clone>` is outside the session folder): it does run from
+this session, because Step 5 put `<clone>` inside the session folder — use the Workflow tool
 with `scriptPath` `<clone>/.claude/workflows/ship.js` and args
 `{ "issue": <n>, "notes": "The checkout is <clone>; cd there first." }`. Tell
 the person first that one *'ship-rote' not found* failure, followed by a
@@ -708,7 +781,8 @@ gh label list --json name --jq '.[].name' | grep -c -x -E 'ai-working|ready-for-
 npm test 2>&1 | grep -E '^# fail'          # # fail 0
 ```
 
-Then show the final board (**🚀 ORBIT '26 — ready for launch** · 11 of 11)
+Then show the final board (**🚀 ORBIT '26 — ready for launch** · 12 of 12,
+or *almost ready* with a ⚠️ row — see the board rules)
 and, under it, a short hand-off in exactly this shape, with the real values
 filled in:
 
@@ -721,6 +795,10 @@ filled in:
 > now rather than on the day. Then
 > `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
 > tickets, and `/ship <ticket number>` to build one.
+>
+> *Heads-up: `/ship` is heavy. One small ticket can take a million or so
+> tokens, so on a Pro plan you may hit your usage limit during the day. That's
+> expected, and it resets.*
 
 Then offer to start the app with one yes/no question, using the question tool
 if you have one: *Want me to start the app and open it in your browser?*
@@ -738,7 +816,11 @@ Rules for the hand-off:
 - If Step 10's command or hook check failed, the restart comes first, in Step
   10's exact words, before **First:**. Do not offer to start the app in that
   case: the restart would stop it.
-- If Step 10 found only `ship-rote` missing, add one line at the end:
+- If Step 0c is ⚠️, replace the `/ship` part of **First:** with the fix for
+  its cause (Step 0c's list), in one or two plain sentences. Keep the rest.
+  Leave out the heads-up line too, since `/ship` isn't available yet.
+- If `ship-rote` is still missing now (look again; it often loads by itself),
+  add one line at the end:
   *💡 For the fastest `/ship`, type `/exit` and then `claude --continue`.*
 - Nothing else. Don't list the commands that now work, mention the fork guard,
   or say that you reran the checks. The board already says so.
