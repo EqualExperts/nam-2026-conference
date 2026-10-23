@@ -57,7 +57,8 @@ moments:
 - at the end
 
 Print it in your own reply text, in full. A task or to-do list does not count:
-the person may never see it. Saying that you set up a checklist does not
+the person may never see it. If you keep one anyway, give **Turn on GitHub
+Actions** its own item, and never tick an item that the board shows as 🙋. Saying that you set up a checklist does not
 count either: they need to see the board itself.
 
 With the first board, add one line: setup is automatic except for **one
@@ -96,8 +97,8 @@ done.)
 
 **Ask at most two questions:** whether they have a GitHub account (Step 0b),
 and only when `gh` is not signed in already; and **where to fork the
-repository to** (Step 4). The yes/no offer to start the app at the end
-doesn't count toward that limit. Decide
+repository to** (Step 4). The Actions click confirmation (Step 7) and the
+yes/no offer to start the app at the end don't count toward that limit. Decide
 everything else yourself with the defaults given here. The person is otherwise
 only interrupted for things no agent can do for them — typing a password,
 approving an administrator prompt, logging in in a browser, or clicking a
@@ -540,19 +541,33 @@ them.
 gh api repos/<you>/nam-2026-conference/actions/workflows --jq .total_count   # passing: greater than 0
 ```
 
-**Do:** ask the person to open
-`https://github.com/<you>/nam-2026-conference/actions` in their browser and click
-the green button **I understand my workflows, go ahead and enable them**. This is
-the one click. Ask for it once, in the **👉 Your turn** block, ending with
-*(I'll keep going meanwhile.)* Do not ask them to tell you when they're done, and do not repeat
-the request.
+**Do:** this is the one click, and it comes **right after Step 6**, not at
+the end. Text you write between commands scrolls by unnoticed, so stop and
+ask properly:
 
-Do not wait for a reply. Step 9 does not need Actions, so run it now: mark this
-row 🙋 and that one 🔄. When Step 9 finishes, run this step's check yourself.
-If it passes, mark the step ✅ and go on to Step 8 without saying anything
-about it. Only if it still fails, show the 🙋 row again with the
-**👉 Your turn** block. (`total_count` can take a few seconds to update after
-the click; retry once or twice before you ask again.)
+1. **Start Step 9 first, in the background.** It doesn't need Actions. Use
+   your tool's background option if it has one; otherwise run Step 9 after the
+   click. Mark this row 🙋 and Step 9's row 🔄.
+2. **Show the board,** then end the message with the **👉 Your turn** block:
+   open `https://github.com/<you>/nam-2026-conference/actions` and click the
+   green **I understand my workflows, go ahead and enable them**.
+3. **Ask with the question tool** if you have one (it shows as a prompt they
+   can't miss), with exactly these two options:
+   - **Done, I clicked it**
+   - **I don't see that button**
+
+   Without a question tool, end the message after the block and wait for their
+   reply.
+4. **Then run the check.** `total_count` can take a few seconds to update
+   after the click, so retry once or twice.
+   - *Still 0:* show the block again.
+   - *"I don't see that button":* if the page shows a list of workflows
+     instead, Actions is already on, so run the check. If it shows a sign-in or
+     404 page, the browser is signed in to GitHub as someone other than
+     `<you>`. Ask them to sign in as `<you>` and try again.
+
+Ask only once per attempt, and don't nag. This confirmation doesn't count
+toward the two-question limit.
 
 ## Step 8 — Set up the harness (creates the labels)
 
