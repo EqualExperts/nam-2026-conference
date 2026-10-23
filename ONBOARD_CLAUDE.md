@@ -96,7 +96,8 @@ done.)
 
 **Ask at most two questions:** whether they have a GitHub account (Step 0b),
 and only when `gh` is not signed in already; and **where to fork the
-repository to** (Step 4). Decide
+repository to** (Step 4). The yes/no offer to start the app at the end
+doesn't count toward that limit. Decide
 everything else yourself with the defaults given here. The person is otherwise
 only interrupted for things no agent can do for them — typing a password,
 approving an administrator prompt, logging in in a browser, or clicking a
@@ -611,8 +612,7 @@ npm test
   failing test's name and first error lines in the final summary — say plainly
   that setup finished with a failing test rather than declaring success.
 
-Do not start `npm run dev` as part of setup. Mention at the end that it starts
-the app at http://localhost:5173.
+Do not start `npm run dev` as part of setup. The *Done* hand-off offers to.
 
 ## Step 10 — Working in the clone
 
@@ -694,34 +694,33 @@ npm test 2>&1 | grep -E '^# fail'          # # fail 0
 ```
 
 Then show the final board (**🚀 ORBIT '26 — ready for launch** · 11 of 11)
-and, under it, a short, warm hand-off in this shape. Fill in the real values.
-Leave out a line that doesn't apply.
+and, under it, a short hand-off in exactly this shape, with the real values
+filled in:
 
-> 🎉 **You're ready for launch!** Everything is set up and checked.
+> 🎉 **You're ready!** Your project is in `<clone>`, and your copy on GitHub is
+> https://github.com/<you>/nam-2026-conference.
 >
-> - 📁 **Your project:** `<clone>`
-> - 🌐 **Your copy on GitHub:** https://github.com/<you>/nam-2026-conference.
->   Everything you make today goes here, and nothing goes to the shared repo.
-> - ▶️ **See the app:** run `npm run dev` in that folder, then open
->   http://localhost:5173
->
-> **Your first move:** type `/setup-winnow` and answer **no** when it asks
-> about audio. After that:
->
-> 1. `/winnow docs/demo/winnow-transcript.txt` turns a sample conversation
->    into tickets. Or try `/create-tasks <one line describing a feature>`.
-> 2. `/ship <ticket number>` builds one of them for you, all the way to a pull
->    request.
->
-> 📖 New to this? `docs/harness/quickstart.md` walks you through it.
->
-> 💡 *Tip: for the fastest `/ship`, type `/exit` and then `claude --continue`.
-> It reloads this conversation with everything in place.*
+> **First:** run `/setup-winnow` (answer **no** to audio). Then
+> `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
+> tickets, and `/ship <ticket number>` to build one.
 
-- Include the 💡 tip only when Step 10 found just `ship-rote` missing. Don't
-  name the agent type or describe the red ✗.
-- When Step 10's command or hook check failed, the restart isn't optional.
-  Replace **Your first move** with that restart, using Step 10's exact words,
-  and put `/setup-winnow` after it.
-- Don't list the commands that now work, mention the fork guard, or say that
-  you reran the checks. The board already says so.
+Then offer to start the app with one yes/no question, using the question tool
+if you have one: *Want me to start the app and open it in your browser?*
+
+- **Yes:** in `<clone>`, run `npm run dev` in the background, wait until
+  http://localhost:5173 answers (`curl -s -o /dev/null -w '%{http_code}'`),
+  then open it with `open` (macOS), `xdg-open` (Linux) or `start ""` (Git Bash).
+  On WSL, give them the link to open themselves. Then say in one line that it's
+  running there and how to stop it: press Ctrl+C, or ask you to stop it.
+- **No:** one line, saying `npm run dev` in that folder starts it whenever
+  they want.
+
+Rules for the hand-off:
+
+- If Step 10's command or hook check failed, the restart comes first, in Step
+  10's exact words, before **First:**. Do not offer to start the app in that
+  case: the restart would stop it.
+- If Step 10 found only `ship-rote` missing, add one line at the end:
+  *💡 For the fastest `/ship`, type `/exit` and then `claude --continue`.*
+- Nothing else. Don't list the commands that now work, mention the fork guard,
+  or say that you reran the checks. The board already says so.
