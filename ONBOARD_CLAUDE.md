@@ -700,7 +700,8 @@ filled in:
 > 🎉 **You're ready!** Your project is in `<clone>`, and your copy on GitHub is
 > https://github.com/<you>/nam-2026-conference.
 >
-> **First:** run `/setup-winnow` (answer **no** to audio). Then
+> **First:** run `/setup-winnow`, and answer **no** to audio: today's
+> conversations are text, and audio is a large download. Then
 > `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
 > tickets, and `/ship <ticket number>` to build one.
 
