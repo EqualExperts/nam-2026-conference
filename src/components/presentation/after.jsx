@@ -525,10 +525,38 @@ function Bubble({ me, delay, children }) {
   );
 }
 
-function LabScene({ step }) {
+/** The turn from talk to lab: the room's cue to open their laptops. */
+function YourTurn() {
+  return (
+    <div className="flex size-full flex-col items-center justify-center text-center">
+      <Kicker className="pz-appear">That was the theory</Kicker>
+      <div className="pz-appear mt-5 font-display text-[110px] leading-none text-ink" style={later(200)}>
+        Now it’s <span className="pz-shine bg-clip-text text-transparent">your turn</span>
+      </div>
+      <div className="pz-appear mt-6 max-w-[980px] text-[26px] leading-snug text-muted" style={later(600)}>
+        One ticket from your fork, all the way to a pull request — in GitHub and Claude Desktop. About twenty minutes, and we are here to help.
+      </div>
+      <div className="mt-12 flex gap-5">
+        {LAB_STEPS.map(([icon, title, sub], i) => (
+          <div key={title} className="pz-appear w-[370px] rounded-2xl border border-hairline bg-surface px-6 py-5 text-left" style={later(1100 + i * 250)}>
+            <div className="font-mono text-[14px] text-emerald-300">step {i + 1}</div>
+            <div className="mt-1 text-[22px] font-semibold text-ink">{icon} {title}</div>
+            <div className="text-[16px] text-muted">{sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LabScene({ step: beat }) {
+  // beat 0 is the turn to the room; the three steps follow it
+  const step = beat - 1;
   return (
     <>
-      <div style={at(80, 80, 440, 520)} className="flex flex-col gap-4">
+      <Show on={beat === 0} from="scale" style={at(80, 60, 1440, 780)}><YourTurn /></Show>
+
+      <Show on={beat > 0} from="left" style={at(80, 80, 440, 520)} className="flex flex-col gap-4">
         {LAB_STEPS.map(([icon, title, sub], i) => (
           <div key={title} className={`flex items-center gap-4 rounded-2xl border px-5 py-5 transition-all duration-500
             ${i === step ? 'pz-glow border-emerald-400/60 bg-raised' : 'border-hairline bg-surface'} ${i > step ? 'opacity-45' : ''}`}>
@@ -539,7 +567,7 @@ function LabScene({ step }) {
             </div>
           </div>
         ))}
-      </div>
+      </Show>
 
       {/* 1 · the fork's Issues tab, then the ticket itself */}
       <Replay on={step === 0} from="right" style={at(570, 80, 950, 520)}>
@@ -644,6 +672,7 @@ function LabScene({ step }) {
 }
 
 const LAB_BEATS = [
+  null,
   {
     kicker: '9 · Now you · step 1',
     title: 'Pick a ticket from your fork',
