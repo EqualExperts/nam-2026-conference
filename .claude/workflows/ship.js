@@ -52,7 +52,7 @@ const TIERS = {
   },
   // A ticket someone has already seen work — the workshop's demo — where the
   // minutes matter more than the last check. Small's audit, minus what costs
-  // the time: the gate runs the branch's own browser specs (the pull request's
+  // the time: the gate runs only the browser specs the change reaches (the pull request's
   // CI runs the whole suite), one combined auditor and no browser explorer,
   // and a fix is re-gated but not re-audited. A one-component ticket took 16
   // minutes as small: two 4-minute full gates and three auditors, twice.
@@ -902,7 +902,7 @@ for (let round = 1; ; round++) {
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
     `Then run \`${T.gateScope === 'branch' ? 'GATE_SCOPE=branch ' : ''}GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
-    `It runs npm test and ${T.gateScope === 'branch' ? "the branch's own Playwright specs" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
+    `It runs npm test and ${T.gateScope === 'branch' ? "the Playwright specs the change reaches" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
     `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
     `return the line it prints, verbatim, as facts. Change nothing and interpret nothing.`,
@@ -958,7 +958,7 @@ for (let round = 1; ; round++) {
           `read the branch's own tests only to aim your probes past them. Write every probe into one file and run it ` +
           `once for both viewports (\`npx playwright test tests/qa-probe.spec.js\` runs both projects)` +
           `${setup.runner ? '' : `, behind \`eval "$(node scripts/lane.mjs claim ${issue})" &&\`; never release the lane — it belongs to the run`}.\n\n`
-        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the branch's own browser specs (${(gate.specs || []).join(', ')})` : `the whole suite${gate.excluded ? ` but ${gate.excluded.join(', ')} (the decks; the branch does not touch them)` : ''}`} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the browser specs the change reaches (${(gate.specs || []).join(', ') || 'none — no page renders it'})` : `the whole suite${gate.excluded ? ` but ${gate.excluded.join(', ')} (the decks; the branch does not touch them)` : ''}`} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
           `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
@@ -1111,7 +1111,7 @@ const notVerified = [
   ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
   ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
   ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
-  ...(gate.scope === 'branch' ? ["the whole browser suite did not run here, only this branch's specs — the pull request's CI runs it"] : []),
+  ...(gate.scope === 'branch' ? ["the whole browser suite did not run here, only the specs the change reaches — the pull request's CI runs it"] : []),
   ...(T.reaudit === false && rounds.some(r => r.confirmed) ? ['the fix for what the audit found was re-gated, not re-audited'] : []),
 ]
 const checksLine = [

@@ -209,7 +209,8 @@ and triggers: `docs/harness/github.md`.
    a size flag, first ask which run with AskUserQuestion — four options, in
    this order, each with its benefit:
    - *Fast — for the workshop* (`--fast`): the quickest; one audit, and only
-     the branch's own browser tests (the pull request's CI runs the rest).
+     the browser tests for the pages the change reaches (the pull request's CI
+     runs the rest).
    - *Sized — let ship decide* (`--sized`): reads the ticket and picks small
      or full, adding the checks what it touches needs.
    - *Small* (`--small`): Sonnet, one combined audit and the whole suite.

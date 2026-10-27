@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -198,5 +198,64 @@ describe('a failure that may only be load', () => {
     assert.match(settled.flakyTests[1], /presentation\.spec\.js:40 .* passed run alone/);
 
     assert.equal(settleAlone(browser, rerun('unexpected')).failed.length, 1);
+  });
+});
+
+describe('the specs a change reaches (fast)', () => {
+  const app = `import { HomePage } from './pages/HomePage.jsx';
+import { SchedulePage } from './pages/SchedulePage.jsx';
+import { SessionPage } from './pages/SessionPage.jsx';
+import { Layout } from './components/Layout.jsx';
+      <Route element={<Layout />}>
+        <Route index element={<HomePage />} />
+        <Route path="schedule" element={<SchedulePage />} />
+        <Route path="sessions/:id" element={<SessionPage />} />
+        <Route path="*" element={<NotFoundPage />} />`;
+  const repo = {
+    graph: new Map([
+      ['src/App.jsx', ['src/pages/HomePage.jsx', 'src/pages/SchedulePage.jsx', 'src/pages/SessionPage.jsx', 'src/components/Layout.jsx']],
+      ['src/pages/SchedulePage.jsx', ['src/components/FilterBar.jsx', 'src/components/SessionCard.jsx']],
+      ['src/pages/HomePage.jsx', ['src/components/SessionCard.jsx']],
+      ['src/pages/SessionPage.jsx', []],
+      ['src/components/Layout.jsx', ['src/components/UserSwitcher.jsx']],
+    ]),
+    routes: routesOf(app),
+    specs: new Map([
+      ['tests/schedule.spec.js', `await visit(page, '/schedule?day=1');`],
+      ['tests/session.spec.js', 'await visit(page, `/sessions/${id}`); // links back to /schedule'],
+      ['tests/home.spec.js', `await visit(page); expect(link).toHaveAttribute('href', '/schedule');`],
+      ['tests/smoke.spec.js', `for (const r of ROUTES) await visit(page, r.path);`],
+      ['tests/presentation.spec.js', `await page.goto('/schedule');`],
+    ]),
+  };
+
+  test('routes come from App.jsx, with the param dropped and the catch-all left out', () => {
+    assert.deepEqual([...repo.routes], [['src/pages/HomePage.jsx', '/'], ['src/pages/SchedulePage.jsx', '/schedule'], ['src/pages/SessionPage.jsx', '/sessions/']]);
+  });
+
+  test('a spec visits what it navigates to, not what it only mentions', () => {
+    assert.deepEqual(pathsIn(repo.specs.get('tests/session.spec.js')), ['/sessions/']);
+    assert.deepEqual(pathsIn(repo.specs.get('tests/home.spec.js')), ['/']);
+    assert.deepEqual(pathsIn(repo.specs.get('tests/smoke.spec.js')), ['*']);
+  });
+
+  test('a component reaches the pages that import it, and their specs — never the decks', () => {
+    assert.deepEqual(affectedSpecs(['src/components/FilterBar.jsx'], repo), ['tests/schedule.spec.js', 'tests/smoke.spec.js']);
+    assert.deepEqual(affectedSpecs(['src/components/SessionCard.jsx'], repo), ['tests/home.spec.js', 'tests/schedule.spec.js', 'tests/smoke.spec.js']);
+  });
+
+  test("the branch's own spec always runs; a change no page renders runs nothing else", () => {
+    assert.deepEqual(affectedSpecs(['tests/session.spec.js', 'docs/context/ui.md', 'server/routes/users.js'], repo), ['tests/session.spec.js']);
+  });
+
+  test('the shell, the rules or the config could break any page: the whole suite', () => {
+    for (const f of ['src/components/UserSwitcher.jsx', 'src/App.jsx', 'server/lib/seats.js', 'tests/helpers.js', 'vite.config.js', 'Makefile']) {
+      assert.equal(affectedSpecs([f], repo), null, f);
+    }
+  });
+
+  test('imports resolve relative to the file', () => {
+    assert.deepEqual(importsOf('src/pages/SchedulePage.jsx', `import { a } from '../components/FilterBar.jsx';\nimport x from 'react';\nconst L = lazy(() => import('./Other.jsx'));`),
+      ['src/components/FilterBar.jsx', 'src/pages/Other.jsx']);
   });
 });

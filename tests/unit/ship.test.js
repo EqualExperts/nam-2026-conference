@@ -1007,7 +1007,7 @@ describe('--fast', () => {
     assert.equal(result.size, 'fast');
     assert.deepEqual(calls.filter(c => /^(spec-audit|audit)/.test(c)), ['audit:combined#1']);
     assert.match(prompts['verify#1'], /GATE_SCOPE=branch GATE_BASE=origin\/main node scripts\/gate\.mjs/);
-    assert.match(prompts['audit:combined#1'], /the branch's own browser specs \(tests\/schedule\.spec\.js\)/);
+    assert.match(prompts['audit:combined#1'], /the browser specs the change reaches \(tests\/schedule\.spec\.js\)/);
   });
 
   test('a confirmed finding is fixed and re-gated, not re-audited, and nothing is learnt', async () => {

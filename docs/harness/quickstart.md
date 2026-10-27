@@ -38,7 +38,7 @@ to a pull request.
    just created works.
 2. **Ship it:** ask Claude to ship issue 42, and pick a run. **Fast** — the
    default, for the workshop — plans, writes a failing test and the code, runs
-   the branch's own browser tests and takes one audit; the pull request's CI
+   only the browser tests for the pages it changed and takes one audit; the pull request's CI
    runs the rest. **Full** (`/ship 42 --full`) runs every test on desktop and
    mobile and audits until the work is clean, which takes far longer. You can
    watch the progress on the issue.

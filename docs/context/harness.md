@@ -84,9 +84,14 @@ the browser pass always, four probes. `--full` / `--small` pick a preset.
 the issue is labelled `ship:full`; CI passes `--sized` for the sizing above.
 `--fast` is a third preset, never chosen by sizing — for a ticket already
 known to work, like a demo: no spec audit, one combined auditor
-and no browser explorer; the gate runs `GATE_SCOPE=branch` (`npm test` and only
-the `tests/*.spec.js` the branch changed — the whole suite when it changed
-none, and the pull request's CI always); a confirmed finding is fixed and
+and no browser explorer; the gate runs `GATE_SCOPE=branch` — all of `npm test` (four seconds), and only
+the browser specs the change reaches (`affectedSpecs`): from each changed file
+up the `src/` import graph to the pages it ends on, their routes in `App.jsx`,
+and the specs that open those routes with `visit(page, …)` or `goto(…)` (a
+computed path counts as every page), plus the branch's own specs. Anything the
+app shell renders, `src/lib/store.jsx`, `server/lib/`, the schema, the seed or
+the config → the whole suite; docs and `server/routes/` (which the API tests
+cover) → none. The pull request's CI always runs the whole suite; a confirmed finding is fixed and
 re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
 The PR's *Not verified* says what it skipped.
 Its pull request is labelled `ship:fast`, and `verify.yml`'s Playwright jobs
