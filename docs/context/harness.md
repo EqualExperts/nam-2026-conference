@@ -206,7 +206,9 @@ docs-only change (unless `thorough` or bugs need rechecking) and `thorough`
 turns its triage off. No facts — a local run — means full, as before.
 
 **After the PR.** `agent-code-review.yml` and `agent-qa.yml` fire on
-`pull_request` `opened | reopened | ready_for_review`, skip drafts, run the
+`pull_request` `opened | reopened | ready_for_review`, skip drafts (and QA
+skips a `ship:fast` pull request, reading the label from the live pull request
+since `gh pr create --label` can land it after `opened`), run the
 `code-review` and `qa` **workflows**, and turn the verdict file into a check
 run. Both are built like ship's audit, and neither lets a model shape its own
 verdict — the script composes the comment and the verdict line from what
