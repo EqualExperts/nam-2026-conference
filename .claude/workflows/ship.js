@@ -583,7 +583,8 @@ setup = await agent(
   `and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch --prune origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch has an open draft pull request ` +
   `from an earlier attempt, continue on it rather than making a new one, and say so in reason. One with no open draft — closed, or never ` +
-  `opened — is scrapped: remove its worktree and local branch and start from origin/${BASE}. First of all, check the base ` +
+  `opened — is scrapped: remove its worktree and local branch and start from origin/${BASE} — under a new name (add -2, -3…) if origin still has that one, ` +
+  `or the pull request's push is refused. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
   `later phase would run commands that do not exist in the worktree. ${PIN} Then \`gh repo set-default --view\` ` +
@@ -1118,7 +1119,7 @@ const notVerified = [
 ]
 const checksLine = [
   gate.scope === 'branch'
-    ? `Tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser in ${(gate.specs || []).join(', ')}, desktop and mobile`
+    ? `Tests pass — ${gate.unit.passed} unit · ${(gate.specs || []).length ? `${gate.browser.passed} browser in ${gate.specs.join(', ')}, desktop and mobile` : 'no browser spec reaches this change'}`
     : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser${gate.excluded ? ' (all but the decks)' : ''}, desktop and mobile`,
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,

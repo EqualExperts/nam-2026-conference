@@ -78,8 +78,14 @@ jobs:
       - name: Scope the pull request
         id: scope
         if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.pull_request.number }}
         run: |
-          specs=$(node scripts/gate.mjs --specs HEAD^1 ${{ contains(github.event.pull_request.labels.*.name, 'ship:fast') && '--fast' || '' }})
+          # The label from the pull request, not the event: `gh pr create
+          # --label` can add it just after `opened` fires (as agent-qa.yml).
+          fast=$(gh pr view "$N" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' | grep -qx 'ship:fast' && echo --fast || true)
+          specs=$(node scripts/gate.mjs --specs HEAD^1 $fast)
           echo "specs=$specs" >> "$GITHUB_OUTPUT"
           echo "Ran ${specs:-the whole suite}; main runs the whole suite after merge." >> "$GITHUB_STEP_SUMMARY"
 

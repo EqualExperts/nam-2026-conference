@@ -88,7 +88,10 @@ and no browser explorer; the gate runs `GATE_SCOPE=branch` — all of `npm test`
 the browser specs the change reaches (`affectedSpecs`): from each changed file
 up the `src/` import graph to the pages it ends on, their routes in `App.jsx`,
 and the specs that open those routes with `visit(page, …)` or `goto(…)` (a
-computed path counts as every page), plus the branch's own specs. Anything the
+computed path counts as every page; a redirect in `App.jsx` counts as where it
+lands), or that name a static `data-testid` the changed file or its page
+renders — how a spec that clicks its way there checks it — plus the branch's
+own specs. Anything the
 app shell renders, `src/lib/store.jsx`, `server/lib/`, the schema, the seed or
 the config → the whole suite; docs and `server/routes/` (which the API tests
 cover) → none. The pull request's CI repeats the same choice (below); the

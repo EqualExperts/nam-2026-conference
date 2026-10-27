@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable, redirectsOf, testIdsIn } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -299,5 +299,42 @@ describe('the line the verify agent copies back', () => {
     const r = result(1);
     const p = printable(r);
     assert.deepEqual({ ...p, browser: { ...p.browser, failed: [] } }, { ...r, browser: { ...r.browser, failed: [] } });
+  });
+});
+
+describe('a spec that reaches a page without opening its route — #220', () => {
+  const app = `import { HomePage } from './pages/HomePage.jsx';
+import { MyAgendaPage } from './pages/MyAgendaPage.jsx';
+        <Route index element={<HomePage />} />
+        <Route path="my-agenda" element={<MyAgendaPage />} />
+        <Route path="my-plan" element={<Navigate to="/my-agenda" replace />} />`;
+  const repo = (specs) => ({
+    graph: new Map([['src/App.jsx', ['src/pages/HomePage.jsx', 'src/pages/MyAgendaPage.jsx']], ['src/pages/MyAgendaPage.jsx', ['src/components/AgendaList.jsx']]]),
+    routes: routesOf(app),
+    redirects: redirectsOf(app),
+    sources: new Map([
+      ['src/pages/MyAgendaPage.jsx', `<p data-testid="agenda-coming-soon">Soon</p><div data-testid={\`row-\${id}\`} />`],
+      ['src/components/AgendaList.jsx', `<ul data-testid={'agenda-list'} />`],
+    ]),
+    specs: new Map(specs),
+  });
+
+  test('redirects and static test ids are read; a computed id is not', () => {
+    assert.deepEqual([...redirectsOf(app)], [['/my-plan', '/my-agenda']]);
+    assert.deepEqual(testIdsIn(repo([]).sources.get('src/pages/MyAgendaPage.jsx')), ['agenda-coming-soon']);
+    assert.deepEqual(testIdsIn(`<ul data-testid={'agenda-list'} />`), ['agenda-list']);
+  });
+
+  test('opening a path that redirects to the page counts as opening the page', () => {
+    assert.deepEqual(affectedSpecs(['src/pages/MyAgendaPage.jsx'], repo([['tests/plan.spec.js', `await visit(page, '/my-plan');`]])), ['tests/plan.spec.js']);
+  });
+
+  test("clicking through to the page and checking its test id counts too", () => {
+    const home = ['tests/home.spec.js', `await visit(page); await click('My Agenda'); await expect(page.getByTestId('agenda-coming-soon')).toBeVisible();`];
+    const other = ['tests/other.spec.js', `await visit(page); await expect(page.getByTestId('hero')).toBeVisible();`];
+    assert.deepEqual(affectedSpecs(['src/pages/MyAgendaPage.jsx'], repo([home, other])), ['tests/home.spec.js']);
+    // A component's own test id, through the page that renders it.
+    const list = ['tests/list.spec.js', `await expect(page.getByTestId("agenda-list")).toHaveCount(1);`];
+    assert.deepEqual(affectedSpecs(['src/components/AgendaList.jsx'], repo([list, other])), ['tests/list.spec.js']);
   });
 });

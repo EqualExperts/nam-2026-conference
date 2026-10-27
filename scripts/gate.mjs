@@ -175,6 +175,17 @@ export function routesOf(appSource) {
   return routes;
 }
 
+/** App.jsx → redirect path → where it lands: '/my-plan' → '/my-agenda'. */
+export function redirectsOf(appSource) {
+  return new Map([...appSource.matchAll(/<Route\s+path="([^"]+)"\s+element=\{<Navigate\s+to="([^"]+)"/g)]
+    .map(m => [`/${m[1]}`, m[2]]));
+}
+
+/** A src file → the static test ids it renders: data-testid="x". */
+export function testIdsIn(source) {
+  return [...source.matchAll(/data-testid=(?:"([^"]+)"|\{\s*['"]([^'"`]+)['"]\s*\})/g)].map(m => m[1] ?? m[2]);
+}
+
 /**
  * A spec's source → the app paths it opens: `visit(page, '/x')` (bare, '/'),
  * or `goto('/x')`. A path it only mentions — a link it checks — is not a visit.
@@ -199,8 +210,13 @@ const EVERY_PAGE = [/^src\/(App|main)\.jsx$/, /^src\/index\.css$/, /^server\/(li
 /**
  * `changed`: repo paths. `graph`: src file → its imports. `routes`: page file →
  * path. `specs`: spec file → its source. → the specs to run, or null for all.
+ * A spec reaches a page by opening its route — directly or through a redirect
+ * — or by looking up a test id the changed file or its page renders: that is
+ * how a spec that clicks its way there checks it (#220: home.spec.js checks
+ * My Agenda after a click, opening only '/' and '/my-plan').
+ * `redirects` and `sources` (src file → its text) are optional.
  */
-export function affectedSpecs(changed, { graph, routes, specs }) {
+export function affectedSpecs(changed, { graph, routes, specs, redirects = new Map(), sources = new Map() }) {
   const importers = new Map();
   for (const [file, deps] of graph) for (const d of deps) importers.set(d, [...(importers.get(d) || []), file]);
   const pages = new Set();
@@ -222,8 +238,11 @@ export function affectedSpecs(changed, { graph, routes, specs }) {
       for (const u of up) if (!seen.has(u)) { seen.add(u); todo.push(u); }
     }
   }
-  for (const page of pages) {
-    for (const [spec, source] of specs) if (visits(pathsIn(source), routes.get(page))) out.add(spec);
+  const ids = [...new Set([...changed, ...pages].flatMap(f => testIdsIn(sources.get(f) || '')))];
+  const mentions = (text) => ids.some(id => ["'", '"', '`'].some(q => text.includes(`${q}${id}${q}`)));
+  for (const [spec, text] of specs) {
+    const paths = pathsIn(text).map(p => redirects.get(p) ?? p);
+    if ([...pages].some(page => visits(paths, routes.get(page))) || mentions(text)) out.add(spec);
   }
   // The decks' spec opens app pages too; it still only runs for a deck change.
   return (deckTouched(changed.join('\n')) ? [...out] : withoutDeck([...out])).sort();
@@ -232,18 +251,24 @@ export function affectedSpecs(changed, { graph, routes, specs }) {
 /** The repo, read for affectedSpecs. */
 function readRepo() {
   const graph = new Map();
+  const sources = new Map();
   const walk = (dir) => {
     for (const e of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
       const rel = `${dir}/${e.name}`;
       if (e.isDirectory()) walk(rel);
-      else if (/\.(jsx?|mjs)$/.test(e.name)) graph.set(rel, importsOf(rel, readFileSync(join(ROOT, rel), 'utf8')));
+      else if (/\.(jsx?|mjs)$/.test(e.name)) {
+        sources.set(rel, readFileSync(join(ROOT, rel), 'utf8'));
+        graph.set(rel, importsOf(rel, sources.get(rel)));
+      }
     }
   };
   walk('src');
-  const routes = routesOf(readFileSync(join(ROOT, 'src/App.jsx'), 'utf8'));
+  const app = readFileSync(join(ROOT, 'src/App.jsx'), 'utf8');
+  const routes = routesOf(app);
+  const redirects = redirectsOf(app);
   const specs = new Map(readdirSync(join(ROOT, 'tests')).filter(f => f.endsWith('.spec.js') && f !== 'qa-probe.spec.js')
     .map(f => [`tests/${f}`, readFileSync(join(ROOT, 'tests', f), 'utf8')]));
-  return { graph, routes, specs };
+  return { graph, routes, specs, redirects, sources };
 }
 
 /**
@@ -464,6 +489,16 @@ function printSpecs() {
   console.log(ciSpecs(changed, readRepo(), process.argv.includes('--fast')).join(' '));
 }
 
+const USAGE = `node scripts/gate.mjs                          npm test, then the Playwright suite; one JSON line
+GATE_SCOPE=branch node scripts/gate.mjs        …only the browser specs the change reaches
+node scripts/gate.mjs --specs <base> [--fast]  the specs CI runs for this diff`;
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const flags = process.argv.slice(2).filter(a => a.startsWith('-'));
+  // An unknown flag used to run the whole gate: a reviewer's `--help` sat
+  // through npm test and Playwright until its tool timed out (#220).
+  if (flags.includes('--help') || flags.includes('-h')) { console.log(USAGE); process.exit(0); }
+  const unknown = flags.filter(f => f !== '--specs' && f !== '--fast');
+  if (unknown.length) { console.error(`gate: unknown ${unknown.join(' ')}\n${USAGE}`); process.exit(2); }
   if (process.argv.includes('--specs')) printSpecs(); else main();
 }
