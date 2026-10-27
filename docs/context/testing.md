@@ -9,12 +9,14 @@ files:
   - tests/unit/sandbox-db.js
   - scripts/lane.mjs
   - scripts/shot.mjs
+  - scripts/show.mjs
   - scripts/ci-summary.mjs
   - scripts/ci-summary-node.mjs
   - .github/workflows/verify.yml
 tests:
   - tests/unit/lane.test.js
   - tests/unit/lanes.test.js
+  - tests/unit/show.test.js
   - tests/unit/gitignore.test.js
   - tests/smoke.spec.js
   - tests/api/static.test.js
