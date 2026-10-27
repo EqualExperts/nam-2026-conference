@@ -36,7 +36,9 @@ Why the cheapest layer wins: CLAUDE.md § Verifying a change. Which layer a test
 Commands: `npm test` (unit + API, under a second), `npm run verify` (reseed, then
 Playwright headless; `npm run verify -- --ui` or `npm run verify:ui` for the interactive
 runner), `npm run shot -- /schedule --mobile --user=2`, `npm run db:reset` (delete the
-database file and reseed). Two different things are called a **lane** here: a *port lane*
+database file and reseed), `npm run show -- 219 schedule` (serve issue 219's worktree —
+or a PR's or a named branch's, making the worktree if none has it — on its own lane and
+open `/schedule`; `scripts/show.mjs`, `pick()` decides which). Two different things are called a **lane** here: a *port lane*
 (`scripts/lane.mjs`, one per worktree) and a *data lane* (`LANES` in `tests/helpers.js`,
 one per Playwright test per project).
 

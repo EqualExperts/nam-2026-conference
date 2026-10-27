@@ -32,6 +32,12 @@ npm run verify   # reseed + Playwright, desktop and mobile — before "done"
 
 Every other command and flag: `docs/context/testing.md`.
 
+**Asked to open, try or show a feature in the browser**, run
+`npm run show -- <issue | PR | branch>` — never a bare `npm run dev` or
+`localhost:5173`, which serve whichever checkout started last, not the
+branch being worked on. It finds that branch's worktree (or makes one),
+starts the app on its lane and opens the page.
+
 ## Stack
 
 Node 22 · Express · better-sqlite3 · React 18 · Vite 6 · React Router 6 ·
