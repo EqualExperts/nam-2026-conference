@@ -1008,6 +1008,15 @@ describe('a run with no size flag', () => {
 });
 
 describe('--fast', () => {
+  test('the builder is told the cheapest layer, and on fast the fewest browser tests — #219', async () => {
+    const fast = (await run({}, '7 --fast')).prompts.implement;
+    assert.match(fast, /cheapest layer that can/);
+    assert.match(fast, /never `mode: 'serial'`/);
+    assert.match(fast, /unit and API tests first/);
+    assert.match(fast, /at most one browser test/);
+    assert.doesNotMatch((await run({}, '7 --sized')).prompts.implement, /at most one browser test/);
+  });
+
   const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
 
   test('one combined auditor, no spec audit, no browser explorer, the gate scoped to the branch', async () => {

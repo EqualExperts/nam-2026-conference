@@ -100,7 +100,7 @@ Before changing any code, write `specs/<n>-<short-slug>.md` and push it as the
 branch's **first commit**, so a reviewer reads what you intend before the diff.
 Headings: *What this changes* (in terms of what an attendee sees), *Where*
 (file by file — the function or line to change, the test file, and the lane or
-helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer), and only
+helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer — the cheapest that can; §5), and only
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
@@ -176,6 +176,23 @@ Derive a check from **Done when:**, at the cheapest layer that can prove it —
 `CLAUDE.md` says which. Run it and confirm it is red for the reason §3b made
 you predict.
 
+**Cheapest first, and few browser tests.** A rule, a payload, a 400 or what is
+stored is a unit or API test — they run in seconds. A browser test is for what
+only a page can show — that it opens, what is on screen, a keyboard or click
+path, that it fits a phone — and one test covers a criterion's variants
+(close by Cancel, then Escape, then a click outside, in one test). Never a
+browser test for a rule an API test already proves, and never
+`test.describe.configure({ mode: 'serial' })`: it runs a file's tests one at
+a time and one failure skips the rest. Each browser test runs on two projects,
+on every try, at the gate and in CI; #219 wrote seven for seven criteria where
+three, beside its API tests, proved them all.
+
+**A fast run leans on unit and API tests** — every rule, payload, validation
+and stored value, and any logic that can be lifted into a pure function and
+tested there — and writes **at most one browser test**: a single walk through
+the change that checks each page-only criterion as it goes, and runs on the
+mobile project too, so a fit check rides along.
+
 - **Never edit an existing test to make it pass.** A failing test means your
   change is wrong, unless the ticket explicitly changes that behaviour.
 - **Never delete, skip or `.only` a test.**
@@ -188,9 +205,21 @@ you predict.
 
 ## 6. Implement
 
-`npm test` after every edit — 160-odd tests in under a second. Match the
+`npm test` after every edit — the whole unit and API suite in a few seconds. Match the
 surrounding code, and commit in the Conventional Commits style `CLAUDE.md`
 describes.
+
+While a browser spec is red, run only it, on one project, failing fast:
+
+```bash
+npx playwright test tests/<your>.spec.js -g "<the test>" --project=desktop --max-failures=1 --timeout=10000
+```
+
+A plain `npx playwright test <file>` runs both projects at the 30-second
+timeout, so every failing try waits out the full timeout twice — on #219 six tries
+of that were five of the implementer's eight minutes. Run it once on
+`--project=mobile` when it is green on desktop; the gate runs both, at full
+timeouts, whatever you ran.
 
 ## 7. Prove it
 
