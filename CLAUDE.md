@@ -206,10 +206,17 @@ and triggers: `docs/harness/github.md`.
 
 1. **Ship** — `ready-for-ai` (or `@claude` on an issue) runs `/ship`, where
    every phase is a fresh agent. **Asked in a chat to ship an issue** without
-   `--fast` or `--full`, first ask which run with AskUserQuestion — two
-   options, in this order: *Full workflow — best quality* (`--full`) and
-   *Fast — for the workshop* (`--fast`) — then start it with that flag. A run
-   with no flag is fast. Setup sizes the ticket: most are **small**
+   a size flag, first ask which run with AskUserQuestion — four options, in
+   this order, each with its benefit:
+   - *Fast — for the workshop* (`--fast`): the quickest; one audit, and only
+     the branch's own browser tests (the pull request's CI runs the rest).
+   - *Sized — let ship decide* (`--sized`): reads the ticket and picks small
+     or full, adding the checks what it touches needs.
+   - *Small* (`--small`): Sonnet, one combined audit and the whole suite.
+   - *Full — best quality* (`--full`): Opus, spec audits, three code
+     auditors, up to four rounds; the slowest.
+
+   Then start it with that flag. A run with no flag is fast. Setup sizes the ticket: most are **small**
    (one auditor per stage, two rounds, Sonnet); `ship:full` gets the whole
    loop on Opus. No pull request until the gate is green and no
    auditor blocker survives a skeptic; one that will not converge goes to a

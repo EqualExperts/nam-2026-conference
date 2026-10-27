@@ -64,8 +64,8 @@ a pull request is `agent-respond.yml`'s: a change to that diff, not a ship run. 
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
 rest — `/ship <n> --sized`, since a run with no size flag is fast. On a laptop
-it is `/ship <n>`, and asked from a chat the session first asks which run
-(CLAUDE.md). There is no `/build`: the
+it is `/ship <n>`, and asked from a chat the session first asks which of the
+four runs (CLAUDE.md). There is no `/build`: the
 step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 

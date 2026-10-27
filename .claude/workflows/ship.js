@@ -1,7 +1,7 @@
 export const meta = {
   name: 'ship',
   description: 'Issue → spec → spec audit loop → implement → verify + code audit loop → context → learn → PR',
-  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label. Asked from a chat without --fast or --full, first ask which run they want (CLAUDE.md, What happens to a ticket).',
+  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label. Asked from a chat with no size flag, first ask which of fast, sized, small or full they want (CLAUDE.md, What happens to a ticket).',
   phases: [
     { title: 'Setup', detail: 'read the ticket, gate it, claim it, branch' },
     { title: 'Spec', detail: 'write specs/<n>-<slug>.md' },
