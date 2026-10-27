@@ -248,8 +248,12 @@ export function affectedSpecs(changed, { graph, routes, specs, redirects = new M
   return (deckTouched(changed.join('\n')) ? [...out] : withoutDeck([...out])).sort();
 }
 
-/** What decides how tests run: a change here could break any spec. */
-const RUNS_TESTS = [/^tests\/helpers\.js$/, /^playwright\.config\.js$/, /^package(-lock)?\.json$/, /^vite\.config\.js$/,
+/**
+ * What decides how tests run: a change here could break any spec. Not
+ * tests/helpers.js — every new browser test adds its data lane there, and on
+ * #219 that one added line sent the fast gate to the whole suite.
+ */
+const RUNS_TESTS = [/^playwright\.config\.js$/, /^package(-lock)?\.json$/, /^vite\.config\.js$/,
   /^index\.html$/, /^scripts\/gate\.mjs$/];
 
 /**

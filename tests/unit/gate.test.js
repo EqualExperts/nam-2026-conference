@@ -365,7 +365,11 @@ describe("fast's answer when the change could reach any page", () => {
   });
 
   test('a change to what runs the tests still gets the whole suite', () => {
-    for (const f of ['tests/helpers.js', 'playwright.config.js', 'package.json', 'vite.config.js', 'Makefile']) assert.equal(fastFallback([f]), null, f);
+    for (const f of ['playwright.config.js', 'package.json', 'vite.config.js', 'Makefile']) assert.equal(fastFallback([f]), null, f);
+  });
+
+  test("a new test's data lane in tests/helpers.js is not a reason to run everything — #219", () => {
+    assert.deepEqual(fastFallback(['src/components/UserSwitcher.jsx', 'tests/helpers.js', 'tests/switcher.spec.js']), ['tests/smoke.spec.js', 'tests/switcher.spec.js']);
   });
 
   test('CI makes the same choice for a fast pull request', () => {
