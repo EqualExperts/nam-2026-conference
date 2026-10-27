@@ -225,6 +225,14 @@ and triggers: `docs/harness/github.md`.
    - *Full — best quality* (`--full`): Opus, spec audits, three code
      auditors, up to four rounds; the slowest.
 
+   **While ship runs**, the chat that started it stays with the person: the
+   run is in the background, and only `/workflows` shows its steps. Straight
+   after starting it, start a monitor (the Monitor tool) on
+   `node scripts/ship-progress.mjs watch <n>`. It prints one plain line per
+   step — the plan ready, the tests running, the review, the pull request —
+   and exits after the last. Post each line as its own short message, as it
+   is: no agent names, no rounds, nothing added.
+
    **When ship finishes**, the chat that asked for it gets the hand-off, not
    a log. Lead with the pull request link (`pr`), then one line with how long
    it took (the workflow's completion notice gives its duration) and what it

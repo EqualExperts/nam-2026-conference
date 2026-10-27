@@ -8,6 +8,8 @@
  *   node scripts/ship-progress.mjs finish    # one-shot, after the CLI is gone
  *   node scripts/ship-progress.mjs local <issue> [<comment id>] < state.json
  *                                            # a laptop run: ship.js hands its own state
+ *   node scripts/ship-progress.mjs watch <issue>
+ *                                            # the chat's feed: one friendly line per step
  *
  * A laptop run has no stream to tail and no step to post the first comment —
  * but ship.js knows every phase and round as it happens, so it sends the state
@@ -25,8 +27,8 @@
  * with no network and no CLI.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // ── Reading the stream ───────────────────────────────────────────────────────
@@ -467,6 +469,99 @@ export async function local({ issue, commentId = null, state, gh, now = () => Da
   return gh.create(body);
 }
 
+// ── The chat's feed ──────────────────────────────────────────────────────────
+//
+// In Claude Desktop the chat that started ship sits idle until the run ends:
+// the workflow runs in the background, and only /workflows shows its steps.
+// Each `local` update also appends what changed, as a line a person would
+// say, to a log every worktree can reach; `watch` streams that log, and the
+// chat relays each line (CLAUDE.md, When ship runs from a chat).
+
+/** Where a ticket's feed lives: the git common dir, which every worktree shares. */
+export function feedPaths(commonDir, issue) {
+  const dir = join(commonDir, 'orbit-ship');
+  return { dir, log: join(dir, `${issue}.log`), state: join(dir, `${issue}.state.json`) };
+}
+
+/** The last line of every run, so `watch` knows when to stop. */
+export const FEED_END = /^(🎉|🙋|⏹)/u;
+
+/**
+ * Two states ship sent, one after the other → what a person would want to
+ * hear about the change between them. Pure: one line per step, never one per
+ * agent, and nothing for the bookkeeping steps (Setup, Spec, Learn).
+ */
+export function chatLines(prev, next) {
+  if (!next) return [];
+  const out = [];
+  const fresh = !prev || prev.ended;
+  if (fresh) out.push(`🚢 On it — a ${next.tier || 'ship'} run. You'll get a line here at each step.`);
+  const before = fresh ? { phases: [], rounds: [] } : prev;
+  const was = (title) => (before.phases || []).find(p => p.title === title)?.status;
+  const started = (title) => (next.phases || []).some(p => p.title === title && p.status === 'running') && was(title) !== 'running';
+  const rounds = next.rounds || [];
+  const last = rounds[rounds.length - 1];
+  const lastBefore = (before.rounds || [])[rounds.length - 1];
+
+  if (started('Spec Audit')) out.push('🔍 Checking the plan before anything is built…');
+  if (started('Implement')) out.push('🔨 The plan is ready — writing the code and its tests…');
+  // Verify starts before its round is recorded: the round about to run is the next one.
+  if (started('Verify')) out.push(rounds.length ? '🧪 Fixed — running the tests again…' : '🧪 Built — running the tests on what it touched…');
+  // A round appears once its gate has run.
+  if (last && !lastBefore && last.gate && last.gate.ok === false) out.push('🔧 A test failed — fixing it, then testing again…');
+  if (started('Code Audit')) out.push('👀 Tests pass — a second agent is reviewing the change…');
+  if (last && lastBefore && !lastBefore.fixRan && last.fixRan && last.gate && last.gate.ok) out.push('🔧 The review found something to fix — fixing it, then testing again…');
+  if (started('PR')) out.push('📬 Opening the pull request…');
+
+  if (next.ended && !(prev && prev.ended)) {
+    const o = next.outcome || {};
+    if (o.outcome === 'shipped') out.push('🎉 Done — the pull request is open.');
+    else if (o.outcome === 'needs-human') out.push('🙋 It got stuck, so it handed the ticket back as a draft pull request for a person to look at.');
+    else out.push('⏹ The run stopped before it finished.');
+  }
+  return out;
+}
+
+/** Append what changed to the feed. A new run starts the log over. */
+export function recordFeed(paths, state, fs = { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync }) {
+  fs.mkdirSync(paths.dir, { recursive: true });
+  let prev = null;
+  try { prev = fs.existsSync(paths.state) ? JSON.parse(fs.readFileSync(paths.state, 'utf8')) : null; } catch { prev = null; }
+  const lines = chatLines(prev, state);
+  if (!prev || prev.ended) fs.writeFileSync(paths.log, '');
+  if (lines.length) fs.appendFileSync(paths.log, lines.map(l => `${l}\n`).join(''));
+  fs.writeFileSync(paths.state, JSON.stringify(state));
+  return lines;
+}
+
+const commonDir = () => resolve(execFileSync('git', ['rev-parse', '--git-common-dir'], { encoding: 'utf8' }).trim());
+
+/**
+ * Stream the feed: every line from here on, until the run's last line or an
+ * hour. A log left by an earlier run is not replayed — reading starts at its
+ * end, and a new run starting it over (it shrinks) is read from the top.
+ */
+async function watch(issue, { sleep = (ms) => new Promise(r => setTimeout(r, ms)), limit = 60 * 60 * 1000, every = 2000 } = {}) {
+  const { log } = feedPaths(commonDir(), issue);
+  let offset = existsSync(log) ? statSync(log).size : 0;
+  for (let waited = 0; waited < limit; waited += every) {
+    if (existsSync(log)) {
+      const size = statSync(log).size;
+      if (size < offset) offset = 0;
+      if (size > offset) {
+        // Bytes, not characters: the size is in bytes, and every line opens with an emoji.
+        const text = readFileSync(log).subarray(offset).toString('utf8');
+        offset = size;
+        for (const line of text.split('\n').filter(Boolean)) {
+          console.log(line);
+          if (FEED_END.test(line)) return;
+        }
+      }
+    }
+    await sleep(every);
+  }
+}
+
 // ── CLI entry ────────────────────────────────────────────────────────────────
 // Never lets a failure here slow or fail the run it is reporting on.
 async function main() {
@@ -483,9 +578,12 @@ async function main() {
       repo,
       async createdAt(id) { return ghApi(['api', `repos/${repo}/issues/comments/${id}`, '--jq', '.created_at']).trim(); },
     };
+    // The chat's feed first: a slow or failed `gh` must not hold back the line.
+    try { recordFeed(feedPaths(commonDir(), issue), state); } catch { /* the feed is a courtesy */ }
     console.log(await local({ issue, commentId: commentId || null, state, gh }));
     return;
   }
+  if (mode === 'watch') { await watch(process.argv[3]); return; }
   const runnerTemp = process.env.RUNNER_TEMP || '/tmp';
   const transcript = process.env.SHIP_PROGRESS_TRANSCRIPT || `${runnerTemp}/claude-run.jsonl`;
   let seen = 0;

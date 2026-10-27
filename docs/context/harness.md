@@ -345,6 +345,14 @@ cannot start another round.
 
 ## Invariants
 
+- **The chat hears each step.** A laptop run's `ship-progress.mjs local`
+  calls also append a person-sized line per step (`chatLines`: the plan
+  ready, the tests running, a fix coming, the review, the pull request, done
+  or stuck) to `<git common dir>/orbit-ship/<n>.log`, started over by each new
+  run; `ship-progress.mjs watch <n>` streams it from its current end and exits
+  on the last line. The chat that started ship runs it under a monitor and
+  relays each line (CLAUDE.md) — in Claude Desktop the workflow is otherwise
+  silent until it ends.
 - **A laptop run never waits on a permission prompt.** `.claude/settings.json`
   allows the commands ship's agents run — `git` up to `push`, the `gh issue|pr`
   verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the

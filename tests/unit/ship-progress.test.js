@@ -1,8 +1,11 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   readPreview, readStream, render, prLine, follow, finish, makeGh, local,
+  chatLines, recordFeed, feedPaths, FEED_END,
 } from '../../scripts/ship-progress.mjs';
 
 /**
@@ -596,5 +599,46 @@ describe('local() — a laptop run, where ship.js sends its own state', () => {
     await local({ issue: 7, commentId: '42', gh, now: () => NOW,
       state: { ...STATE, ended: true, outcome: { outcome: 'shipped', pr: 'https://github.com/o/r/pull/9' } } });
     assert.match(gh.calls[0][2], /\*\*Shipped\*\* — \[pull request\]\(https:\/\/github\.com\/o\/r\/pull\/9\)/);
+  });
+});
+
+describe("the chat's feed", () => {
+  const phases = (running, done = []) => ['Setup', 'Spec', 'Spec Audit', 'Implement', 'Verify', 'Code Audit', 'Learn', 'PR']
+    .map(title => ({ title, status: title === running ? 'running' : done.includes(title) ? 'done' : 'not-started' }));
+  const S = (running, done, rounds = [], extra = {}) => ({ tier: 'fast', phases: phases(running, done), rounds, ended: false, outcome: null, ...extra });
+
+  test('a clean fast run reads as one line per step a person cares about', () => {
+    const steps = [
+      S('Implement', ['Setup', 'Spec']),
+      S('Verify', ['Setup', 'Spec', 'Implement']),
+      S('Verify', ['Setup', 'Spec', 'Implement'], [{ n: 1, gate: { ok: true }, audits: 0, fixRan: false }]),
+      S('Code Audit', ['Setup', 'Spec', 'Implement', 'Verify'], [{ n: 1, gate: { ok: true }, audits: 0, fixRan: false }]),
+      S('PR', ['Setup', 'Spec', 'Implement', 'Verify', 'Code Audit'], [{ n: 1, gate: { ok: true }, audits: 1, fixRan: false }]),
+      S(null, ['Setup', 'Spec', 'Implement', 'Verify', 'Code Audit', 'PR'], [{ n: 1, gate: { ok: true }, audits: 1, fixRan: false }], { ended: true, outcome: { outcome: 'shipped', pr: 'u' } }),
+    ];
+    const lines = steps.flatMap((s, i) => chatLines(steps[i - 1] || null, s));
+    assert.deepEqual(lines.map(l => l.split(' ')[0]), ['🚢', '🔨', '🧪', '👀', '📬', '🎉']);
+    assert.ok(lines.every(l => !/agent \d|round|gate|lens/i.test(l)), lines.join(' | '));
+  });
+
+  test('a red gate and a review finding each say a fix is coming; a draft says it got stuck', () => {
+    const r1 = [{ n: 1, gate: { ok: false }, audits: 0, fixRan: false }];
+    assert.match(chatLines(S('Verify', ['Implement']), S('Verify', ['Implement'], r1)).join(), /A test failed — fixing it/);
+    const ok = [{ n: 1, gate: { ok: true }, audits: 1, fixRan: false }];
+    assert.match(chatLines(S('Code Audit', ['Verify'], ok), S('Code Audit', ['Verify'], [{ ...ok[0], fixRan: true }])).join(), /review found something to fix/);
+    assert.match(chatLines(S('Code Audit', ['Verify'], ok), S(null, ['Verify'], ok, { ended: true, outcome: { outcome: 'needs-human', stage: 'Code Audit' } })).join(), /^🙋/);
+  });
+
+  test("the feed log starts over for a new run, and holds only this run's lines", () => {
+    const dir = mkdtempSync(join(tmpdir(), 'feed-'));
+    const paths = feedPaths(dir, 7);
+    recordFeed(paths, S('Implement', ['Setup']));
+    recordFeed(paths, S(null, [], [], { ended: true, outcome: { outcome: 'shipped', pr: 'u' } }));
+    assert.match(readFileSync(paths.log, 'utf8'), /🎉 Done/);
+    recordFeed(paths, S('Implement', ['Setup']));
+    const log = readFileSync(paths.log, 'utf8');
+    assert.doesNotMatch(log, /🎉/);
+    assert.match(log, /^🚢 On it/);
+    assert.ok(FEED_END.test('🎉 Done — the pull request is open.'));
   });
 });
