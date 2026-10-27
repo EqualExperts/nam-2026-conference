@@ -229,9 +229,9 @@ and triggers: `docs/harness/github.md`.
    a log. Lead with the pull request link (`pr`), then one line with how long
    it took (`minutes`) and what it cost (`spend`), then what to try (`tryIt`).
    Then offer to open it — *"Want me to open it in your browser?"* — and on a
-   yes run the returned `show` command (`npm run show -- <PR>`) in the
-   background: it serves **that pull request's branch** from its own worktree
-   and opens the page, never `main` or whatever this checkout is on. Never
+   yes run the returned `show` command (`npm run show -- <the run's branch>`)
+   in the background: it serves **that branch** from ship's own worktree and
+   opens the page, never `main` or whatever this checkout is on. Never
    check the branch out to do this — ship's own worktree already has it, and a
    checkout here would move the person's main folder off `main`. Leave out
    the rounds and lessons unless asked. A draft (`needs-human`) gets its link and

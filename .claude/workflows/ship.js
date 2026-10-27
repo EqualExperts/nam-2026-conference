@@ -1221,7 +1221,6 @@ if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
 // The PR agent released the lane on its way out.
 const spent = await settle({ outcome: 'shipped', pr: pr.url })
-const prNumber = (/\/pull\/(\d+)/.exec(pr.url || '') || [])[1]
 const spend = spent && /tokens/.test(spent.summary || '') ? spent.summary : null
 return {
   outcome: 'shipped',
@@ -1236,5 +1235,7 @@ return {
   minutes: Math.max(1, Math.round((Date.now() - STARTED) / 60000)),
   ...(spend ? { spend } : {}),
   ...(built.tryIt ? { tryIt: built.tryIt } : {}),
-  ...(prNumber && !setup.runner ? { show: `npm run show -- ${prNumber}` } : {}),
+  // By branch, not number: a bare number is read as a ticket first, and
+  // issue #2's branch would win over pull request #2's.
+  ...(setup.branch && !setup.runner ? { show: `npm run show -- ${setup.branch}` } : {}),
 }

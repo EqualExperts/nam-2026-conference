@@ -1020,7 +1020,7 @@ describe('the hand-off to the chat that asked', () => {
     assert.ok(Number.isInteger(result.minutes) && result.minutes >= 1);
     assert.match(result.spend, /~\$2\.45/);
     assert.equal(result.tryIt, 'Open /schedule as Jonas');
-    assert.equal(result.show, 'npm run show -- 9');
+    assert.equal(result.show, 'npm run show -- issue-7-hours');
   });
 
   test('a report that printed no spend line adds no spend', async () => {
