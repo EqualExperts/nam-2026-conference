@@ -158,6 +158,13 @@ question text itself, never only in the message above it.
    `|| echo "<what that means>"`, and end any batch of probes run together
    with `true`. The checks below are already written this way. Keep that shape
    when you combine or adapt them. Save real errors for real failures.
+8. **Never change what was already there.** People run this more than once —
+   a second laptop session, a retry after a failure, a fresh start the day after
+   a practice run. Whatever an earlier attempt left — a folder, a clone with
+   work in it, branches, worktrees, issues or pull requests on the fork — stays
+   exactly as it is: no delete, move, reset, pull, checkout, stash or cleanup,
+   even to be helpful. A new attempt works in a **new folder** (Step 5), and the
+   person decides what to do with the old one.
 
 ---
 
@@ -563,10 +570,15 @@ commands then load only after Step 10's restart, in that folder.
 
 Otherwise, take the first rule that fits:
 
-1. The session folder already is a clone whose `origin` is the fork → `<clone>`
-   is the session folder; there is nothing to clone. Probe it with
+1. The session folder already is a clone whose `origin` is the fork, **and it
+   is untouched** (the probe below) → `<clone>` is the session folder; there is
+   nothing to clone. Probe it with
    `git remote get-url origin 2>/dev/null || echo "not a clone"`, not with a
-   bare `git` command that fails with *fatal: not a git repository*.
+   bare `git` command that fails with *fatal: not a git repository*. A clone of
+   the fork that is **not** untouched — left by an earlier attempt, with work in
+   it — is never reused: `<clone>` is `<its parent folder>/nam-2026-conference-2`
+   (the collision rules below), and the workshop commands load after Step 10's
+   restart in that folder.
 2. The session folder is empty (`ls -A` prints nothing) and not inside a git
    repository (rule 3's probe) → `<clone>` is the session folder itself.
 3. The session folder is inside some other git repository, for example a
@@ -586,10 +598,27 @@ If the session folder cannot be written to (`/`, a system folder), also use
 **Check:**
 
 ```bash
+# Checking for an earlier copy of the workshop
 git -C <clone> remote get-url origin 2>/dev/null || echo "not cloned yet"
 ```
 
-Passing: a URL ending in `<you>/nam-2026-conference.git` (or without `.git`).
+Passing: a URL ending in `<you>/nam-2026-conference.git` (or without `.git`)
+**and** the copy is untouched:
+
+```bash
+# Checking whether that copy is still fresh
+git -C <clone> status --porcelain --untracked-files=no 2>/dev/null | head -3
+git -C <clone> rev-parse --abbrev-ref HEAD 2>/dev/null
+git -C <clone> worktree list 2>/dev/null | wc -l
+git -C <clone> for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null
+true
+```
+
+Untouched means: no changed files listed, on `main`, one worktree, and `main`
+the only local branch. That is what Step 5 leaves, so a run restarted part-way
+through reuses its own clone. Anything else — a feature branch, edits, a
+worktree from an earlier ship run — is an earlier attempt's work: leave it
+exactly as it is (rule 8) and clone fresh beside it, below.
 
 **Do** (only if `<clone>` does not exist, or is the empty session folder):
 
@@ -602,7 +631,14 @@ gh repo clone <you>/nam-2026-conference <clone>
   untouched and clone the fork to `<clone>-fork` instead; if that is taken too,
   add `-2`, `-3`… That folder is `<clone>` from here on; tell the person at the
   end why their existing folder was not used.
-- Never delete, move or modify an existing folder.
+- *If it is a clone of the fork but not untouched*, leave it exactly as it is
+  and clone to `<clone>-2`; if that exists, take the first of `-2`, `-3`… that
+  either does not exist or is an untouched clone of the fork (reuse that one).
+  That folder is `<clone>` from here on. At the end, say in one sentence that
+  their earlier copy, with its work, is still in the old folder and was not
+  touched, and that this one is the folder to open.
+- Never delete, move or modify an existing folder — not to clean it, not to
+  update it, not to switch its branch.
 
 From here on, **run every command inside the clone folder**
 (`cd <clone>` first, or `git -C`).
@@ -793,13 +829,24 @@ temporary workspace or rule 3 (another repository), with `<clone>` being
 > `<clone>`; in a terminal, `cd <clone> && claude`. In the new session, run
 > `/setup-winnow` (audio is optional, and recommended).
 
+End that message with a **👉 Your turn** block naming the folder in full. When
+`<clone>` is outside this session's folder — a temporary workspace, Step 5's
+rule 3, a `-fork` / `-2` / `-3` folder, the home folder — **nothing from the
+workshop runs from this session**, and no later request changes that: asked
+to ship a ticket, say again that it runs from a session opened in `<clone>`.
+The Workflow tool cannot load a script from a folder the session cannot read
+(it refuses: *scriptPath must be a script path this tool returned, or a file
+you can already read*), and do not take its suggestion to pass the script
+inline either — the run would start in the wrong folder.
+
 Without the agent type, `/ship`'s first rote step fails with *agent type
 'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
 runs as a plain agent: slower, and heavier on context.
 
-**Only if they want `/ship` before restarting** (not after a temporary
-workspace or Step 5's rule 3, where `<clone>` is outside the session folder): it does run from
-this session, because Step 5 put `<clone>` inside the session folder — use the Workflow tool
+**Only if they want `/ship` before restarting, and only when `<clone>` is
+inside this session's folder** (Step 5's rule 2 or 4 — never a temporary
+workspace, rule 3, or a `-fork` / `-2` folder beside an earlier copy): it does
+run from this session, because `<clone>` is in a folder it can read — use the Workflow tool
 with `scriptPath` `<clone>/.claude/workflows/ship.js` and args
 `{ "issue": <n>, "notes": "The checkout is <clone>; cd there first." }`. Tell
 the person first that one *'ship-rote' not found* failure, followed by a
