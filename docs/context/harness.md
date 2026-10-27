@@ -28,12 +28,14 @@ files:
   - scripts/ai-cost.mjs
   - scripts/fork-guard.mjs
   - .claude/settings.json
+  - scripts/sync-fork.mjs
   - ONBOARD_CLAUDE.md
   - docs/context/README.md
   - specs/README.md
 tests:
   - tests/unit/ship.test.js
   - tests/unit/fork-guard.test.js
+  - tests/unit/sync-fork.test.js
   - tests/unit/review-workflows.test.js
   - tests/unit/deploy-workflow.test.js
   - tests/unit/winnow-pin.test.js
@@ -345,6 +347,13 @@ cannot start another round.
 
 ## Invariants
 
+- **A run starts from the workshop repo's latest.** On a laptop, setup runs
+  `scripts/sync-fork.mjs` before it fetches: GitHub's *Sync fork*
+  (`merge-upstream`) brings the fork's `main` up to date with the repo it was
+  forked from — a fast-forward, or a merge when the attendee merged their own
+  pull requests into it, never a force. On a conflict it changes nothing and
+  the run carries on, its line in setup's reason. Not a fork, or CI: nothing.
+  The onboarding runs it too when it reuses an existing fork.
 - **A laptop run never waits on a permission prompt.** `.claude/settings.json`
   allows the commands ship's agents run — `git` up to `push`, the `gh issue|pr`
   verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the

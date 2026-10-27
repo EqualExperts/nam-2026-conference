@@ -544,7 +544,13 @@ gh api repos/<you>/nam-2026-conference --jq .permissions.admin       # → true:
 A fork starts with **Issues off**; the attendee's tickets go there, so it must
 be on.
 
-- *If the fork already exists*, `gh repo fork` says so — fine, continue.
+- *If the fork already exists*, `gh repo fork` says so — fine, continue. An
+  existing fork can be days behind the workshop repo, so once Step 5 has a
+  clone, run `node scripts/sync-fork.mjs` in it (then `git -C <clone> pull
+  --ff-only` if the clone was made before the sync). It is GitHub's *Sync
+  fork* — a fast-forward or a merge, never a force — and on a conflict it
+  changes nothing: tell the person in one sentence, with the line it printed,
+  and carry on.
 - *If `<you>/nam-2026-conference` exists but is not a fork* (`fork=false`), it is
   an unrelated repository with the same name. Do not touch it: fork under another
   name with `gh repo fork EqualExperts/nam-2026-conference --clone=false
@@ -893,9 +899,9 @@ filled in:
 > `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
 > tickets, and `/ship <ticket number>` to build one.
 >
-> *Heads-up: `/ship` is heavy. One small ticket can take a million or so
-> tokens, so on a Pro plan you may hit your usage limit during the day. That's
-> expected, and it resets.*
+> *Heads-up: `/ship` runs a dozen agents. A fast run of a small ticket takes
+> about six minutes and 3–4 million tokens, nearly all of them cached reads —
+> roughly $2.50–3 at API prices; each pull request shows what its run spent.*
 
 Then offer to start the app with one yes/no question, using the question tool
 if you have one: *Want me to start the app and open it in your browser?*
