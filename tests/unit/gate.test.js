@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -275,5 +275,29 @@ describe('what CI runs for a pull request', () => {
   test('a ship:fast one: the same specs the local gate chose', () => {
     assert.deepEqual(ciSpecs(['src/pages/SchedulePage.jsx'], repo, true), ['tests/schedule.spec.js']);
     assert.deepEqual(ciSpecs(['docs/context/ui.md'], repo, true), ['tests/smoke.spec.js']);
+  });
+});
+
+describe('the line the verify agent copies back', () => {
+  const failure = (i) => ({ test: `[desktop] a.spec.js:${i} › t${i}`, error: `line 1\nline 2\nline 3\nline 4\n${'x'.repeat(500)}`, at: `a.spec.js:${i}` });
+  const result = (n) => ({ ok: false, sha: 'abc', unit: { passed: 1, failed: 0 }, browser: { passed: 0, failed: Array.from({ length: n }, (_, i) => failure(i)), flaky: 0, skipped: 0 }, tampered: [] });
+
+  test('keeps three lines of each error, at most 300 characters', () => {
+    const [f] = printable(result(1)).browser.failed;
+    assert.equal(f.error, 'line 1\nline 2\nline 3');
+    assert.equal(f.test, '[desktop] a.spec.js:0 › t0');
+  });
+
+  test('names at most ten failures and says how many more gate.json has', () => {
+    const b = printable(result(13)).browser;
+    assert.equal(b.failed.length, 10);
+    assert.match(b.more, /^3 more failed/);
+    assert.equal(printable(result(2)).browser.more, undefined);
+  });
+
+  test('changes nothing but the failures — the rest is what readGate checks', () => {
+    const r = result(1);
+    const p = printable(r);
+    assert.deepEqual({ ...p, browser: { ...p.browser, failed: [] } }, { ...r, browser: { ...r.browser, failed: [] } });
   });
 });

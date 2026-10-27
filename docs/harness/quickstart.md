@@ -38,8 +38,9 @@ to a pull request.
    just created works.
 2. **Ship it:** ask Claude to ship issue 42, and pick a run. **Fast** — the
    default, for the workshop — plans, writes a failing test and the code, runs
-   only the browser tests for the pages it changed and takes one audit; the pull request's CI
-   runs the rest. **Full** (`/ship 42 --full`) runs every test on desktop and
+   only the browser tests for the pages it changed and takes one audit. The
+   pull request's CI repeats those tests on a clean machine; the rest run on
+   main after you merge, so a break elsewhere shows up there. **Full** (`/ship 42 --full`) runs every test on desktop and
    mobile and audits until the work is clean, which takes far longer. You can
    watch the progress on the issue.
 3. **Review the pull request** like any other. It has the plan, the test

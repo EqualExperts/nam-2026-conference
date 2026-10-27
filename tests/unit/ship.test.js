@@ -326,12 +326,12 @@ describe('ship', () => {
     // Two runs started together both opened PRs from the same main; once the
     // first merged, the second was already conflicting.
     const { prompts } = await run();
-    assert.match(prompts.setup, /git fetch origin`? first, then from origin\/main/);
+    assert.match(prompts.setup, /git fetch --prune origin`? first, then from origin\/main/);
     assert.match(prompts['verify#1'], /git fetch origin main && git merge --no-edit origin\/main[\s\S]*gate\.mjs/);
     assert.match(prompts['open-pr'], /git merge --no-edit origin\/main[\s\S]*git push -u origin HEAD/);
     const playbook = readFileSync(new URL('../../docs/harness/ship-playbook.md', import.meta.url), 'utf8');
-    assert.match(playbook, /git fetch origin\ngit checkout -b issue-<n>/);
-    assert.match(playbook, /git fetch origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
+    assert.match(playbook, /git fetch --prune origin\ngit checkout -b issue-<n>/);
+    assert.match(playbook, /git fetch --prune origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
   });
 
   test('a conflict with the base goes to the fixer without an audit, and the gate re-runs — #150', async () => {
@@ -648,6 +648,15 @@ describe('ship', () => {
     assert.match(prompts['audit:criteria#1'], /keep it to the card/);
     assert.doesNotMatch(prompts['write-spec'], /@claude/);
     assert.match(prompts.setup, /closed pull request from an earlier attempt is not a reason to stop/);
+  });
+
+  test('only an open draft is an attempt to continue; a scrapped branch is started over — #219', async () => {
+    // Closed, branch deleted on GitHub: without --prune its origin/ ref lingered,
+    // and the rerun built on the scrapped commits and called the ticket done.
+    const { prompts } = await run();
+    assert.match(prompts.setup, /git fetch --prune origin/);
+    assert.match(prompts.setup, /branch has an open draft pull request[\s\S]*continue on it/);
+    assert.match(prompts.setup, /no open draft[\s\S]*is scrapped: remove its worktree and local branch and start from origin\/main/);
   });
 
   test('a bare issue number carries no notes', async () => {
@@ -1019,7 +1028,7 @@ describe('--fast', () => {
     assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'audit:combined#1', 'fix#1', 'verify#2']);
     assert.ok(!calls.includes('learn'), calls.join(', '));
     assert.match(prompts['open-pr'], /re-gated, not re-audited/);
-    assert.match(prompts['open-pr'], /the pull request's CI runs it/);
+    assert.match(prompts['open-pr'], /main runs it after merge/);
     assert.match(prompts['open-pr'], /6 browser in tests\/schedule\.spec\.js/);
   });
 

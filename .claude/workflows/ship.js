@@ -53,7 +53,7 @@ const TIERS = {
   // A ticket someone has already seen work — the workshop's demo — where the
   // minutes matter more than the last check. Small's audit, minus what costs
   // the time: the gate runs only the browser specs the change reaches (the pull request's
-  // CI runs the whole suite), one combined auditor and no browser explorer,
+  // CI repeats that choice; main runs the whole suite after merge), one combined auditor and no browser explorer,
   // and a fix is re-gated but not re-audited. A one-component ticket took 16
   // minutes as small: two 4-minute full gates and three auditors, twice.
   // The PR body says what it skipped. Never chosen by sizing — only `--fast`.
@@ -581,8 +581,9 @@ setup = await agent(
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
-  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
-  `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
+  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch --prune origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch has an open draft pull request ` +
+  `from an earlier attempt, continue on it rather than making a new one, and say so in reason. One with no open draft — closed, or never ` +
+  `opened — is scrapped: remove its worktree and local branch and start from origin/${BASE}. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
   `later phase would run commands that do not exist in the worktree. ${PIN} Then \`gh repo set-default --view\` ` +
@@ -1111,13 +1112,14 @@ const notVerified = [
   ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
   ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
   ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
-  ...(gate.scope === 'branch' ? ["the whole browser suite did not run here, only the specs the change reaches — the pull request's CI runs it"] : []),
+  ...(gate.scope === 'branch' ? ["the whole browser suite did not run, here or on this pull request — only the specs the change reaches; main runs it after merge"] : []),
+  ...(gate.excluded ? [`${gate.excluded.join(', ')} did not run — the decks, which this branch does not touch`] : []),
   ...(T.reaudit === false && rounds.some(r => r.confirmed) ? ['the fix for what the audit found was re-gated, not re-audited'] : []),
 ]
 const checksLine = [
   gate.scope === 'branch'
     ? `Tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser in ${(gate.specs || []).join(', ')}, desktop and mobile`
-    : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
+    : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser${gate.excluded ? ' (all but the decks)' : ''}, desktop and mobile`,
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
 ].join(' · ')

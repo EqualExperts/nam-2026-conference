@@ -91,7 +91,8 @@ and the specs that open those routes with `visit(page, …)` or `goto(…)` (a
 computed path counts as every page), plus the branch's own specs. Anything the
 app shell renders, `src/lib/store.jsx`, `server/lib/`, the schema, the seed or
 the config → the whole suite; docs and `server/routes/` (which the API tests
-cover) → none. The pull request's CI always runs the whole suite; a confirmed finding is fixed and
+cover) → none. The pull request's CI repeats the same choice (below); the
+whole suite runs on the push to main, after merge; a confirmed finding is fixed and
 re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
 The PR's *Not verified* says what it skipped.
 Its pull request is labelled `ship:fast`. `verify.yml`'s Playwright jobs ask
