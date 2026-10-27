@@ -216,6 +216,14 @@ While a browser spec is red, run only it, on one project, failing fast:
 npx playwright test tests/<your>.spec.js -g "<the test>" --project=desktop --max-failures=1 --timeout=10000
 ```
 
+**Edit files with the Edit and Write tools**, not the shell. A laptop is
+macOS: `sed -i 's/…/'` is a syntax error there (BSD `sed` wants `-i ''`), and
+on #219 three such edits in one build each cost a turn before the fallback. A
+heredoc or `>` that writes a file also asks the person for permission, which
+nobody may be watching — one sat eleven minutes. The shell is zsh: quote a glob
+(`--include='*.js'`), or it fails with "no matches found". And run `git` and
+`gh` as their own commands, so each matches the repo's allow-list.
+
 A plain `npx playwright test <file>` runs both projects at the 30-second
 timeout, so every failing try waits out the full timeout twice — on #219 six tries
 of that were five of the implementer's eight minutes. Run it once on

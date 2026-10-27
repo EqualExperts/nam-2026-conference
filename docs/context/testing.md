@@ -140,6 +140,32 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - `lane 0` must still set `ORBIT_LANE` truthy (`'0'` as a string) — `lane.test.js` pins it.
 - A lane never exports `ORBIT_DB`; each worktree seeds its own `data/orbit.db`.
 
+## Testing a dialog
+
+One browser test walks the closes and the save; what is stored is the API
+test's job.
+
+```js
+const dialog = page.getByRole('dialog', { name: 'Your interests' });
+const open = async () => {
+  await page.getByRole('button', { name: /Switch attendee/ }).click();
+  await page.getByRole('button', { name: 'Your interests' }).click();
+  await expect(dialog).toBeVisible();
+};
+
+await open(); await dialog.getByRole('button', { name: 'Cancel' }).click(); await expect(dialog).toBeHidden();
+await open(); await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
+// Outside: the backdrop button itself, at its top-left — never page.mouse at a
+// guessed coordinate, which on a phone lands on the sheet.
+await open(); await dialog.getByRole('button', { name: 'Close' }).click({ position: { x: 8, y: 8 } }); await expect(dialog).toBeHidden();
+```
+
+If the backdrop click times out with "element intercepts pointer events", the
+panel covers that corner: the sheet is too tall — cap it (`docs/context/ui.md`
+§ Dialogs), do not move the click. While iterating, run it on
+`--project=desktop --max-failures=1 --timeout=10000` (ship playbook §6), then
+once on mobile.
+
 ## Gotchas
 
 - **Pin the clock at every boundary the change depends on**, not only mid-morning:
