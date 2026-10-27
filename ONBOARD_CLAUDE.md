@@ -829,13 +829,24 @@ temporary workspace or rule 3 (another repository), with `<clone>` being
 > `<clone>`; in a terminal, `cd <clone> && claude`. In the new session, run
 > `/setup-winnow` (audio is optional, and recommended).
 
+End that message with a **👉 Your turn** block naming the folder in full. When
+`<clone>` is outside this session's folder — a temporary workspace, Step 5's
+rule 3, a `-fork` / `-2` / `-3` folder, the home folder — **nothing from the
+workshop runs from this session**, and no later request changes that: asked
+to ship a ticket, say again that it runs from a session opened in `<clone>`.
+The Workflow tool cannot load a script from a folder the session cannot read
+(it refuses: *scriptPath must be a script path this tool returned, or a file
+you can already read*), and do not take its suggestion to pass the script
+inline either — the run would start in the wrong folder.
+
 Without the agent type, `/ship`'s first rote step fails with *agent type
 'ship-rote' not found* — a red ✗ in `/workflows` — and every rote step after it
 runs as a plain agent: slower, and heavier on context.
 
-**Only if they want `/ship` before restarting** (not after a temporary
-workspace or Step 5's rule 3, where `<clone>` is outside the session folder): it does run from
-this session, because Step 5 put `<clone>` inside the session folder — use the Workflow tool
+**Only if they want `/ship` before restarting, and only when `<clone>` is
+inside this session's folder** (Step 5's rule 2 or 4 — never a temporary
+workspace, rule 3, or a `-fork` / `-2` folder beside an earlier copy): it does
+run from this session, because `<clone>` is in a folder it can read — use the Workflow tool
 with `scriptPath` `<clone>/.claude/workflows/ship.js` and args
 `{ "issue": <n>, "notes": "The checkout is <clone>; cd there first." }`. Tell
 the person first that one *'ship-rote' not found* failure, followed by a
