@@ -19,6 +19,7 @@ files:
   - src/components/GeneratedCover.jsx
   - src/components/HeroMedia.jsx
   - src/components/UserSwitcher.jsx
+  - src/components/InterestsDialog.jsx
   - src/components/RouteChange.jsx
   - src/pages/HomePage.jsx
   - src/pages/NotFoundPage.jsx
@@ -32,6 +33,7 @@ tests:
   - tests/smoke.spec.js
   - tests/home.spec.js
   - tests/switcher.spec.js
+  - tests/interests.spec.js
   - tests/presentation.spec.js
 related: [architecture, speakers, venues, schedule, testing]
 ---
@@ -215,6 +217,13 @@ chapter fly-through, the camera zoom. Inside a beat, sequences are the `pz-*`
 keyframes in `index.css`. The page wraps itself in `<MotionConfig
 reducedMotion="user">`, and every `pz-*` keyframe ends on its final frame, so
 with reduced motion each beat still shows everything it should.
+
+`UserSwitcher`'s menu also has a "Your interests" button (closes the menu, opens
+`InterestsDialog`, rendered outside the menu's `ref`). The dialog lists
+`useConference().tags` with `kind === 'topic'` as `aria-pressed` toggles, starts
+from `api.getUser` (bootstrap is stale after a save), and only Save calls
+`api.saveInterests`; Cancel, Escape and the backdrop discard. Test lane
+`interests.dialog`.
 
 ### Dialogs
 

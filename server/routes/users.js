@@ -22,6 +22,8 @@ const presenting = db.prepare(`${SESSION_SELECT}
 const myReservations = db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?');
 const myCheckIns = db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?');
 const myRatings = db.prepare('SELECT session_id, stars FROM ratings WHERE user_id = ?');
+const topicNames = db.prepare("SELECT name FROM tags WHERE kind = 'topic'");
+const setInterests = db.prepare('UPDATE users SET interests = ? WHERE id = ?');
 const follow = db.prepare('INSERT OR IGNORE INTO speaker_follows (user_id, speaker_id) VALUES (?, ?)');
 const unfollow = db.prepare('DELETE FROM speaker_follows WHERE user_id = ? AND speaker_id = ?');
 
@@ -45,6 +47,18 @@ usersRouter.get('/:id', (req, res) => {
     checkIns: myCheckIns.all(row.id).map((c) => c.session_id),
     ratings: myRatings.all(row.id).map((r) => ({ sessionId: r.session_id, stars: r.stars })),
   }));
+});
+
+/** Replace the attendee's interests with a selection of topic tag names. */
+usersRouter.put('/:id/interests', (req, res) => {
+  if (!getUser.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  const { interests } = req.body ?? {};
+  const known = new Set(topicNames.all().map((t) => t.name));
+  if (!Array.isArray(interests) || !interests.every((i) => typeof i === 'string' && known.has(i))) {
+    return res.status(400).json({ error: 'interests must be an array of topic tag names' });
+  }
+  setInterests.run([...new Set(interests)].join(','), req.params.id);
+  res.json(toUser(getUser.get(req.params.id)));
 });
 
 /** A subscribable feed of everything this attendee holds a seat for. */

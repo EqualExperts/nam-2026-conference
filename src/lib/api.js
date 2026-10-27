@@ -41,6 +41,8 @@ export const getVendors = (filters) => api(`/vendors${qs(filters)}`);
 export const getSponsors = () => api('/sponsors');
 export const getAnnouncements = () => api('/announcements');
 export const getUser = (id) => api(`/users/${id}`);
+export const saveInterests = (userId, interests) =>
+  api(`/users/${userId}/interests`, { method: 'PUT', body: JSON.stringify({ interests }) });
 export const getSchedule = (userId) => api(`/users/${userId}/schedule`);
 export const getToday = (userId, { day, time }) => api(`/users/${userId}/today${qs({ day, time })}`);
 

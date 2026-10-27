@@ -10,6 +10,7 @@ tests:
   - tests/home.spec.js
   - tests/api/agenda.test.js
   - tests/api/calendar.test.js
+  - tests/api/interests.test.js
   - tests/unit/ical.test.js
 related: [seats, attendance, clock, venues, schedule, speakers, ui]
 ---
@@ -77,6 +78,11 @@ status). Candidates are `openInSlot`: same day and start, `is_keynote = 0`,
 `format != 'Social'`, `seats_taken < capacity`. Each gets `affinity` = number of
 its topic tags in that set; sort `affinity` desc then `avgRating` desc; top
 `SUGGESTION_COUNT` (3). `users.interests` is never read here.
+
+**Interests.** `PUT /api/users/:id/interests` with `{ interests: string[] }`
+(`users.js`): 404 unknown attendee, 400 unless every name is a `kind = 'topic'`
+tag (nothing written), else de-duplicates, stores comma-joined and returns
+`toUser`. Client: `api.saveInterests`. Nothing reads interests yet.
 
 **Speaker data.** `GET /api/users/:id` adds `speaker` and `speakingSessions`
 (`users.js:speakingSessions`, via `presenting` + plain `toSession`, so no
