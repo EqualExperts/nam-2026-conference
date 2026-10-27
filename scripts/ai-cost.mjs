@@ -78,8 +78,12 @@ export function fromTranscripts(dir, phase = null, ticket = null) {
     // child run's are tagged with its phase group (▸ ship, ▸ ship #2, …).
     if (phase && meta.workflowPhase !== phase) continue;
     const lines = readFileSync(join(dir, f), 'utf8').split('\n').filter(Boolean);
-    // The first line is the agent's prompt.
-    if (ours && !ours.test(lines[0] || '')) continue;
+    // Its prompt is among the lines before its first reply — not always the
+    // first: Claude Code now opens each transcript with a relay of the
+    // request that started the workflow, and a first-line check matched no
+    // agent, so every laptop run recorded nothing.
+    const lead = lines.slice(0, Math.max(1, lines.findIndex((l) => /"type":"assistant"/.test(l))));
+    if (ours && !lead.some((l) => ours.test(l))) continue;
     const byMessage = new Map();
     for (const line of lines) {
       let e; try { e = JSON.parse(line); } catch { continue; }
