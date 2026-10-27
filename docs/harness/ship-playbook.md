@@ -63,7 +63,11 @@ git checkout -b issue-<n>-<short-slug> origin/main
 ```
 
 On a laptop, other agents may hold other tickets, so take a worktree and a
-lane, or you will eventually test another branch's code and pass:
+lane, or you will eventually test another branch's code and pass. **The
+checkout is the folder you started in** (`git rev-parse --show-toplevel`,
+before any `cd`) — never a folder you find by the repository's name: a person
+who ran the onboarding twice has `nam-2026-conference`, `-2` and `-3`, and the
+oldest can be days behind. Ship stops if the worktree lands outside it.
 
 ```bash
 git fetch --prune origin   # a laptop's origin/main can be days old, and a deleted branch lingers

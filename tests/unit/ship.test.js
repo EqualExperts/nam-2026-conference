@@ -1015,6 +1015,29 @@ test('ship never reads the clock — a workflow that does fails before its first
   assert.doesNotMatch(code, /\bDate\.now\s*\(|\bnew\s+Date\b|\bDate\s*\(/);
 });
 
+describe('setup works in the checkout it started in', () => {
+  const LAPTOP_AT = (workdir) => ({ ...SETUP, runner: false, checkout: '/Users/a/nam-2026-conference-3', workdir });
+
+  test('setup is told to use the directory it starts in, never another clone', async () => {
+    const { prompts } = await run();
+    assert.match(prompts.setup, /The checkout is the directory you start in/);
+    assert.match(prompts.setup, /git rev-parse --show-toplevel/);
+    assert.match(prompts.setup, /Never cd to any other folder/);
+  });
+
+  test('a worktree outside that checkout stops the run before anything is built — #1 in a fork', async () => {
+    const { result, calls } = await run({ setup: LAPTOP_AT('/Users/a/nam-2026-conference/.claude/worktrees/wt-7') });
+    assert.equal(result.outcome, 'declined');
+    assert.match(result.reason, /outside the checkout it started in/);
+    assert.ok(!calls.includes('implement'), calls.join(', '));
+  });
+
+  test('one inside it goes ahead', async () => {
+    const { calls } = await run({ setup: LAPTOP_AT('/Users/a/nam-2026-conference-3/.claude/worktrees/wt-7') });
+    assert.ok(calls.includes('implement'), calls.join(', '));
+  });
+});
+
 describe('the hand-off to the chat that asked', () => {
   const LAPTOP_RUN = { ...SETUP, runner: false, workdir: '/w/.claude/worktrees/wt-7' };
 
