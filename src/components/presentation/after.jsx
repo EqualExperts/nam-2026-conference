@@ -502,13 +502,42 @@ const LAB_STEPS = [
   ['👀', 'Review what comes back', 'the pull request — or the question'],
 ];
 
-/** A browser window, as on the attendee's own laptop. */
-function Browser({ url, children, className = '' }) {
+/*
+ * GitHub, drawn light the way the room sees it: the repo header and its tabs,
+ * then a page. Close enough to recognise, not a copy.
+ */
+const GH = {
+  ink: 'text-[#1f2328]', muted: 'text-[#59636e]', line: 'border-[#d1d9e0]',
+  open: 'text-[#1a7f37]', green: 'bg-[#1f883d]', link: 'text-[#0969da]',
+};
+
+function GhOpenIcon({ className = 'size-4' }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40 ${className}`}>
-      <div className="flex items-center gap-2 border-b border-hairline bg-raised px-4 py-2.5">
-        <span className="size-3 rounded-full bg-overlay" /><span className="size-3 rounded-full bg-overlay" /><span className="size-3 rounded-full bg-overlay" />
-        <span className="ml-3 flex-1 rounded-md bg-ground/60 px-3 py-1 font-mono text-[13px] text-faint">{url}</span>
+    <svg viewBox="0 0 16 16" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" /><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" />
+    </svg>
+  );
+}
+
+const GH_TABS = [['‹›', 'Code'], ['◉', 'Issues', 2], ['⇅', 'Pull requests', 1], ['▷', 'Actions']];
+
+function GitHub({ tab, children, className = '' }) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border border-black/10 bg-white ${GH.ink} shadow-2xl shadow-black/50 ${className}`}>
+      <div className={`border-b ${GH.line} bg-[#f6f8fa] px-5 pt-3`}>
+        <div className="flex items-center gap-3 text-[16px]">
+          <span className="size-7 rounded-full bg-[#1f2328]" aria-hidden="true" />
+          <span className={GH.muted}>you</span><span className={GH.muted}>/</span><span className="font-semibold">nam-2026-conference</span>
+          <span className={`ml-auto rounded-md border ${GH.line} bg-white px-3 py-1 text-[13px] ${GH.muted}`}>Type / to search</span>
+        </div>
+        <div className="mt-2 flex gap-6 text-[14px]">
+          {GH_TABS.map(([icon, name, n]) => (
+            <span key={name} className={`flex items-center gap-1.5 border-b-2 pb-2 ${name === tab ? 'border-[#fd8c73] font-semibold' : `border-transparent ${GH.muted}`}`}>
+              <span className="text-[12px] opacity-70">{icon}</span>{name}
+              {n && <span className="rounded-full bg-black/[0.07] px-1.5 text-[12px]">{n}</span>}
+            </span>
+          ))}
+        </div>
       </div>
       {children}
     </div>
@@ -630,36 +659,63 @@ function LabScene({ step: beat }) {
         ))}
       </Show>
 
-      {/* 1 · the fork's Issues tab, then the ticket itself */}
+      {/* 1 · the fork's Issues list, then the issue itself opening over it */}
       <Replay on={step === 0} from="right" style={at(570, 80, 950, 520)}>
-        <Browser url="github.com/you/nam-2026-conference/issues" className="h-full">
-          <div className="flex gap-6 border-b border-hairline px-6 pt-3 text-[15px] text-muted">
-            <span>Code</span><span className="border-b-2 border-[#fd8c73] pb-2 font-semibold text-ink">Issues 2</span><span>Pull requests</span><span>Actions</span>
-          </div>
-          <div className="px-6 py-3">
-            {[
-              ['Pick more than one track on the schedule', true],
-              ['Name the search when nothing matches', false],
-            ].map(([t, pick], i) => (
-              <div key={t} className={`pz-appear flex items-center gap-3 rounded-lg px-3 py-2.5 text-[18px] ${pick ? 'bg-emerald-500/10 ring-1 ring-emerald-400/50' : ''}`} style={later(200 + i * 150)}>
-                <IssueIcon className="size-5 text-emerald-400" />
-                <span className="text-ink">{t}</span>
-                <span className="text-faint">#{42 + i}</span>
-                {pick && <span className="pz-pop ml-auto rounded-full bg-emerald-500/20 px-3 py-0.5 text-[13px] font-semibold text-emerald-200" style={later(900)}>👈 this one</span>}
+        <GitHub tab="Issues" className="relative h-full">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[22px] font-semibold">Issues</span>
+              <span className={`rounded-md ${GH.green} px-3 py-1 text-[14px] font-semibold text-white`}>New issue</span>
+            </div>
+            <div className={`mt-3 overflow-hidden rounded-md border ${GH.line}`}>
+              <div className={`flex gap-4 border-b ${GH.line} bg-[#f6f8fa] px-4 py-2 text-[14px]`}>
+                <span className="font-semibold">Open <span className="rounded-full bg-black/[0.07] px-1.5">2</span></span>
+                <span className={GH.muted}>Closed</span>
               </div>
-            ))}
-          </div>
-          <div className="pz-appear mx-6 rounded-xl border border-hairline bg-raised px-5 py-4" style={later(1300)}>
-            <div className="font-display text-[22px] text-ink">Pick more than one track on the schedule <span className="font-sans text-faint">#42</span></div>
-            <div className="mt-3 font-display text-[18px] text-ink">Done when</div>
-            <ul className="mt-1 space-y-1 text-[16px] text-muted">
-              {['the schedule’s track filter takes more than one track', 'it shows sessions in any of the tracks picked'].map((d, i) => (
-                <li key={d} className="pz-appear flex gap-2" style={later(1700 + i * 200)}><span className="text-violet-300">☐</span>{d}</li>
+              {[
+                ['Pick more than one track on the schedule', 42, 'just now', true],
+                ['Name the search when nothing matches', 43, '2 days ago', false],
+              ].map(([t, n, when, pick], i) => (
+                <div key={n} className={`pz-appear flex gap-3 border-b ${GH.line} px-4 py-2.5 last:border-b-0 ${pick ? 'bg-[#ddf4ff]/60' : ''}`} style={later(200 + i * 150)}>
+                  <GhOpenIcon className={`mt-1 size-4 shrink-0 ${GH.open}`} />
+                  <div>
+                    <div className="text-[16px] font-semibold">{t}</div>
+                    <div className={`text-[13px] ${GH.muted}`}>#{n} · opened {when}</div>
+                  </div>
+                </div>
               ))}
-            </ul>
-            <div className="pz-appear mt-2 text-[15px] text-faint" style={later(2200)}><b className="text-muted">Out of scope:</b> the speakers page</div>
+            </div>
           </div>
-        </Browser>
+
+          {/* the click: the issue page slides up over the list */}
+          <div className="pz-appear absolute inset-x-0 bottom-0 top-[86px] bg-white px-6 py-4" style={later(1400)}>
+            <div className="text-[24px] leading-tight">Pick more than one track on the schedule <span className="text-[#59636e]">#42</span></div>
+            <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full ${GH.green} px-3 py-1 text-[14px] font-semibold text-white`}><GhOpenIcon /> Open</span>
+            <div className="mt-3 grid grid-cols-[1fr_180px] gap-5">
+              <div className={`overflow-hidden rounded-md border border-[#54aeff]/60`}>
+                <div className="flex items-center gap-2 border-b border-[#54aeff]/40 bg-[#ddf4ff] px-4 py-2 text-[14px]">
+                  <span className="size-5 rounded-full bg-violet-300" aria-hidden="true" />
+                  <b>you</b><span className={GH.muted}>opened just now</span>
+                </div>
+                <div className="px-4 py-3">
+                  <div className={`border-b ${GH.line} pb-1 text-[18px] font-semibold`}>Acceptance criteria</div>
+                  <ul className="mt-2 space-y-1.5 text-[15px]">
+                    {['The schedule’s track filter takes more than one track', 'It shows sessions in any of the tracks picked'].map((d, i) => (
+                      <li key={d} className="pz-appear flex items-center gap-2" style={later(1900 + i * 200)}>
+                        <span className={`size-4 shrink-0 rounded border ${GH.line}`} />{d}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className={`pz-appear mt-3 text-[15px] ${GH.muted}`} style={later(2400)}><b className={GH.ink}>Out of scope:</b> the speakers page</div>
+                </div>
+              </div>
+              <div className="space-y-3 text-[14px]">
+                <div className={`border-b ${GH.line} pb-2`}><div className={`font-semibold ${GH.muted}`}>Assignees</div><div className={GH.muted}>No one</div></div>
+                <div className={`border-b ${GH.line} pb-2`}><div className={`font-semibold ${GH.muted}`}>Labels</div><span className="mt-1 inline-block rounded-full bg-[#a2eeef] px-2 text-[12px] font-semibold">enhancement</span></div>
+              </div>
+            </div>
+          </div>
+        </GitHub>
       </Replay>
 
       {/* 2 · Claude Desktop, Code tab, opened on the fork's folder — drawn light, as the app looks */}
@@ -679,21 +735,38 @@ function LabScene({ step: beat }) {
 
       {/* 3 · the pull request on GitHub, or the question */}
       <Replay on={step === 2} from="right" style={at(570, 80, 950, 520)} className="flex flex-col gap-4">
-        <Browser url="github.com/you/nam-2026-conference/pull/44">
+        <GitHub tab="Pull requests">
           <div className="px-6 py-4">
-            <div className="font-display text-[24px] text-ink">Pick more than one track on the schedule <span className="font-sans text-faint">#44</span></div>
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white"><PrIcon /> Open</span>
-            <div className="mt-3 flex gap-3">
-              <Verdict pass level="high" title="Code review" className="text-left" />
-              <Verdict pass level="high" title="QA" className="text-left" />
+            <div className="text-[22px] leading-tight">Pick more than one track on the schedule <span className="text-[#59636e]">#44</span></div>
+            <div className="mt-2 flex items-center gap-2 text-[14px]">
+              <span className={`inline-flex items-center gap-1.5 rounded-full ${GH.green} px-3 py-1 font-semibold text-white`}><PrIcon /> Open</span>
+              <span className={GH.muted}>wants to merge into <span className="rounded bg-[#ddf4ff] px-1 font-mono text-[13px] text-[#0969da]">main</span> · Closes #42</span>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-3 text-[15px]">
-              {['🤔 Decisions for you', '🧪 Try it', '📄 Files changed — the code'].map((t, i) => (
-                <div key={t} className="pz-appear rounded-lg border border-hairline bg-raised px-3 py-2 text-ink" style={later(500 + i * 200)}>{t}</div>
+            <div className={`mt-2 flex gap-5 border-b ${GH.line} text-[14px]`}>
+              {['Conversation', 'Commits', 'Checks', 'Files changed'].map((t, i) => (
+                <span key={t} className={`border-b-2 pb-1.5 ${i === 0 ? 'border-[#fd8c73] font-semibold' : `border-transparent ${GH.muted}`} ${t === 'Files changed' ? 'font-semibold text-[#1f2328]' : ''}`}>
+                  {t}{t === 'Files changed' && <span className="ml-1 rounded-full bg-[#ffebe9] px-1.5 text-[12px] text-[#cf222e]">read me</span>}
+                </span>
+              ))}
+            </div>
+            {/* in a fork no runner reviews it: you ask, from the same Claude Desktop chat */}
+            <div className="pz-appear mt-2.5 flex items-center gap-3" style={later(200)}>
+              <span className="text-[13px] leading-tight text-[#59636e]">Normally GitHub Actions runs these.<br />Your fork has no API key, so ask:</span>
+              <span className="rounded-2xl bg-[#f0eee6] px-3 py-1.5 text-[14px]">Can you review and QA pull request #44?</span>
+            </div>
+            <div className="mt-2 space-y-2">
+              {[['🔍', 'Code review', 'Every criterion traced to the code.'], ['🧪', 'QA', 'Two tracks picked on desktop and phone — both show.']].map(([icon, who, what], i) => (
+                <div key={who} className={`pz-appear overflow-hidden rounded-md border ${GH.line}`} style={later(1100 + i * 400)}>
+                  <div className={`flex items-center gap-2 border-b ${GH.line} bg-[#f6f8fa] px-3 py-1 text-[13px]`}>
+                    <span>{icon}</span><b>{who}</b><span className={GH.muted}>commented</span>
+                    <span className="ml-auto rounded-full bg-[#dafbe1] px-2 font-semibold text-[#1a7f37]">high confidence ●●●</span>
+                  </div>
+                  <div className="px-3 py-1 text-[14px]">{what}</div>
+                </div>
               ))}
             </div>
           </div>
-        </Browser>
+        </GitHub>
         <div className="pz-appear grid grid-cols-[1fr_1fr] gap-4" style={later(1200)}>
           <div className="rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10 px-5 py-3">
             <Label name="needs-human" />
@@ -724,7 +797,7 @@ const LAB_BEATS = [
   {
     kicker: '9 · Now you · step 3',
     title: 'Review what comes back — and read the code',
-    body: 'A pull request: check its confidence and its decisions, open Files changed and read the code, then merge it. A needs-human: answer the question and ship it again. Either way, you decide.',
+    body: 'In a fork there is no Actions key, so ask Claude to review and QA the pull request — each posts a comment with a confidence. Then open Files changed, read the code and merge.',
   },
 ];
 
