@@ -132,6 +132,8 @@ export const LANES = {
   'attendance.checkin-toast': { desktop: { user: kenji, day: 2, slot: '09:00', agenda: false },  mobile: { user: andy, day: 2, slot: '09:00', agenda: false } },
   // Rates for real, so it must land on day index 0 — `today` — per
   // smoke.spec.js's "no session in the future carries a rating".
+  // Writes only the attendee's interests, and restores them; no seat, so agenda: false.
+  'interests.save':   { desktop: { user: sofia, day: 0, agenda: false }, mobile: { user: andy, day: 0, agenda: false } },
   'attendance.rating-toast':  { desktop: { user: marcus, day: 0, slot: '09:00', agenda: false }, mobile: { user: abraham, day: 0, slot: '09:00', agenda: false } },
 };
 
