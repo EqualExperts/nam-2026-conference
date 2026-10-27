@@ -58,7 +58,7 @@ handed back, and a ticket that ships should not still say it is stuck.
 In a runner (`$GITHUB_ACTIONS` set) the machine is yours — just branch:
 
 ```bash
-git fetch origin
+git fetch --prune origin
 git checkout -b issue-<n>-<short-slug> origin/main
 ```
 
@@ -66,7 +66,7 @@ On a laptop, other agents may hold other tickets, so take a worktree and a
 lane, or you will eventually test another branch's code and pass:
 
 ```bash
-git fetch origin   # a laptop's origin/main can be days old
+git fetch --prune origin   # a laptop's origin/main can be days old, and a deleted branch lingers
 wt="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/wt-<n>"
 git worktree add -b issue-<n>-<short-slug> "$wt" origin/main   # or, continuing: git worktree add "$wt" issue-<n>-…
 cd "$wt" && npm install
@@ -78,6 +78,14 @@ Always that path — `.claude/worktrees/wt-<n>` inside the main checkout, which
 start in. A relative `../` landed runs in three different places, and a
 worktree nobody can find is one nobody cleans up. If it already exists from an
 earlier attempt, reuse it.
+
+**Continue an old branch only for an open draft** (§1). An `issue-<n>-*`
+branch with no open draft — its pull request closed, or never opened — is a
+scrapped attempt: start from the base, and if the name is taken, remove that
+worktree and branch first (`git worktree remove --force "$wt"; git branch -D
+issue-<n>-…`). Without `--prune`, a branch someone deleted on GitHub still
+shows as `origin/issue-<n>-…`, and a rerun of #219 built on the scrapped
+attempt's commits and called the ticket already done.
 
 The branch keeps up with its base from here on: every gate first runs
 `git fetch origin main && git merge --no-edit origin/main`, and the pull request
