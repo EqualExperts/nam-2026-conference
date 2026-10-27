@@ -152,6 +152,24 @@ usersRouter.put('/:id/follows/:speakerId', (req, res) => {
   res.json({ following: true, speakerId: Number(req.params.speakerId) });
 });
 
+const topicNames = db.prepare("SELECT name FROM tags WHERE kind = 'topic'");
+const setInterests = db.prepare('UPDATE users SET interests = ? WHERE id = ?');
+
+/** Body `{ interests: string[] }` of topic tag names; replaces the whole list. */
+usersRouter.put('/:id/interests', (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  const { interests } = req.body ?? {};
+  if (!Array.isArray(interests) || !interests.every((i) => typeof i === 'string')) {
+    return res.status(400).json({ error: 'interests must be an array of topic names' });
+  }
+  const known = new Set(topicNames.all().map((t) => t.name));
+  const unknown = interests.find((i) => !known.has(i));
+  if (unknown !== undefined) return res.status(400).json({ error: `Not a topic: ${unknown}` });
+
+  setInterests.run([...new Set(interests)].join(','), req.params.id);
+  res.json({ interests: toUser(getUser.get(req.params.id)).interests });
+});
+
 usersRouter.delete('/:id/follows/:speakerId', (req, res) => {
   unfollow.run(req.params.id, req.params.speakerId);
   res.json({ following: false, speakerId: Number(req.params.speakerId) });

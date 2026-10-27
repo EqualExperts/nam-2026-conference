@@ -61,4 +61,6 @@ export const agendaCalendarUrl = (userId) => `/api/users/${userId}/agenda.ics`;
 export const sessionCalendarUrl = (sessionId) => `/api/sessions/${sessionId}.ics`;
 
 export const followSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'PUT' });
+export const saveInterests = (userId, interests) =>
+  api(`/users/${userId}/interests`, { method: 'PUT', body: JSON.stringify({ interests }) });
 export const unfollowSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'DELETE' });

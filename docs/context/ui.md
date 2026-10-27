@@ -19,6 +19,7 @@ files:
   - src/components/GeneratedCover.jsx
   - src/components/HeroMedia.jsx
   - src/components/UserSwitcher.jsx
+  - src/components/InterestsDialog.jsx
   - src/components/RouteChange.jsx
   - src/pages/HomePage.jsx
   - src/pages/NotFoundPage.jsx
@@ -32,6 +33,7 @@ tests:
   - tests/smoke.spec.js
   - tests/home.spec.js
   - tests/switcher.spec.js
+  - tests/interests.spec.js
   - tests/presentation.spec.js
 related: [architecture, speakers, venues, schedule, testing]
 ---
@@ -139,7 +141,7 @@ sticky `glass` header, `<main id="main">`, and the footer.
   Andy, Abraham), plus the selected attendee if it is someone else (tests pick
   Kenji, Sofia or Marcus through localStorage, and they must be able to switch
   back). `/bootstrap` still returns all six. Calls `setCurrentUserId`; closes on outside pointer
-  or Escape. Under the list, "Workshop talks" (`data-testid="talk-links"`, the
+  or Escape. Between the list and the talks, a `Your interests` button closes the menu and opens `InterestsDialog` (rendered beside the menu, so closing it does not unmount the dialog): a portalled bottom sheet of every `kind === 'topic'` tag as an `aria-pressed` chip, preselected from `currentUser.interests`; Save calls `useConference().saveInterests(names)` (api `saveInterests` → `PUT /api/users/:id/interests`, then patches `data.users`), Cancel, Escape and the backdrop save nothing, a failed save toasts and stays open. Under the list, "Workshop talks" (`data-testid="talk-links"`, the
   `TALKS` array) links to both decks, so they are one click from every page
   without taking header space. Each row shows "N on agenda"; every row but the signed-in
   attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but

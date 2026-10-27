@@ -9,6 +9,7 @@ files:
 tests:
   - tests/home.spec.js
   - tests/api/agenda.test.js
+  - tests/api/interests.test.js
   - tests/api/calendar.test.js
   - tests/unit/ical.test.js
 related: [seats, attendance, clock, venues, schedule, speakers, ui]
@@ -77,6 +78,8 @@ status). Candidates are `openInSlot`: same day and start, `is_keynote = 0`,
 `format != 'Social'`, `seats_taken < capacity`. Each gets `affinity` = number of
 its topic tags in that set; sort `affinity` desc then `avgRating` desc; top
 `SUGGESTION_COUNT` (3). `users.interests` is never read here.
+
+**`PUT /api/users/:id/interests`** — body `{ interests: string[] }` of topic tag names (`tags.kind = 'topic'`); replaces the list, dedupes, stores comma-joined, returns `{ interests }`. 404 unknown attendee; 400 if not an array of strings or any name is not a topic tag. Written by `InterestsDialog`; nothing reads it yet. Test: `tests/api/interests.test.js`.
 
 **Speaker data.** `GET /api/users/:id` adds `speaker` and `speakingSessions`
 (`users.js:speakingSessions`, via `presenting` + plain `toSession`, so no
