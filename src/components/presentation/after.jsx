@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { animate, motion } from 'motion/react';
-import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, Terminal, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
+import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
 import { Orbits } from './intro.jsx';
 
 const box = 'rounded-2xl border border-hairline bg-surface';
@@ -491,19 +491,44 @@ const ROLE_BEATS = [
 ];
 
 /* ------------------------------------------------------------------ *
- * Now you — the lab: ship a ticket of your own, in your fork.
+ * Now you — the lab: ship a ticket of your own, in your fork. Drawn as
+ * the room will see it: GitHub in a browser and the Code tab of Claude
+ * Desktop — no terminal, which is not where most of the room works.
  * ------------------------------------------------------------------ */
 
 const LAB_STEPS = [
-  ['🎫', 'Pick a ticket', 'one with a Done when — the product harness just raised it'],
-  ['🚢', 'Ship it', '/ship <n> in Claude Code, in your fork’s folder'],
+  ['🎫', 'Pick a ticket', 'on GitHub, in your fork’s Issues'],
+  ['🚢', 'Ship it', 'ask Claude Desktop, in the Code tab'],
   ['👀', 'Review what comes back', 'the pull request — or the question'],
 ];
+
+/** A browser window, as on the attendee's own laptop. */
+function Browser({ url, children, className = '' }) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40 ${className}`}>
+      <div className="flex items-center gap-2 border-b border-hairline bg-raised px-4 py-2.5">
+        <span className="size-3 rounded-full bg-overlay" /><span className="size-3 rounded-full bg-overlay" /><span className="size-3 rounded-full bg-overlay" />
+        <span className="ml-3 flex-1 rounded-md bg-ground/60 px-3 py-1 font-mono text-[13px] text-faint">{url}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** One message in the Claude Desktop chat. */
+function Bubble({ me, delay, children }) {
+  return (
+    <div className={`pz-appear flex gap-3 ${me ? 'justify-end' : ''}`} style={later(delay)}>
+      {!me && <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#d97757]/25 text-[15px]">✳️</span>}
+      <div className={`max-w-[560px] rounded-2xl px-4 py-3 text-[17px] ${me ? 'bg-violet-500/25 text-ink' : 'bg-raised text-muted'}`}>{children}</div>
+    </div>
+  );
+}
 
 function LabScene({ step }) {
   return (
     <>
-      <div style={at(80, 80, 470, 520)} className="flex flex-col gap-4">
+      <div style={at(80, 80, 440, 520)} className="flex flex-col gap-4">
         {LAB_STEPS.map(([icon, title, sub], i) => (
           <div key={title} className={`flex items-center gap-4 rounded-2xl border px-5 py-5 transition-all duration-500
             ${i === step ? 'pz-glow border-emerald-400/60 bg-raised' : 'border-hairline bg-surface'} ${i > step ? 'opacity-45' : ''}`}>
@@ -516,68 +541,102 @@ function LabScene({ step }) {
         ))}
       </div>
 
-      <Replay on={step === 0} from="right" style={at(600, 80, 920, 520)}>
-        <Terminal
-          title="~/nam-2026-conference — claude"
-          bodyClass="min-h-[440px]"
-          lines={[
-            { t: 'gh issue list', tone: 'cmd', delay: 200 },
-            { t: '#42  Show my seats on My Agenda          feature', delay: 1300 },
-            { t: '#43  Name the search when nothing matches', tone: 'dim', delay: 1450 },
-            { t: 'gh issue view 42', tone: 'cmd', delay: 2000 },
-            { t: 'Done when', tone: 'hi', delay: 3100 },
-            { t: '  ☐ My Agenda lists every seat I hold, by day', delay: 3300 },
-            { t: '  ☐ a waitlisted session says so', delay: 3500 },
-            { t: 'Out of scope: suggestions', tone: 'dim', delay: 3700 },
-          ]}
-        />
+      {/* 1 · the fork's Issues tab, then the ticket itself */}
+      <Replay on={step === 0} from="right" style={at(570, 80, 950, 520)}>
+        <Browser url="github.com/you/nam-2026-conference/issues" className="h-full">
+          <div className="flex gap-6 border-b border-hairline px-6 pt-3 text-[15px] text-muted">
+            <span>Code</span><span className="border-b-2 border-[#fd8c73] pb-2 font-semibold text-ink">Issues 2</span><span>Pull requests</span><span>Actions</span>
+          </div>
+          <div className="px-6 py-3">
+            {[
+              ['Show my seats on My Agenda', true],
+              ['Name the search when nothing matches', false],
+            ].map(([t, pick], i) => (
+              <div key={t} className={`pz-appear flex items-center gap-3 rounded-lg px-3 py-2.5 text-[18px] ${pick ? 'bg-emerald-500/10 ring-1 ring-emerald-400/50' : ''}`} style={later(200 + i * 150)}>
+                <IssueIcon className="size-5 text-emerald-400" />
+                <span className="text-ink">{t}</span>
+                <span className="text-faint">#{42 + i}</span>
+                {pick && <span className="pz-pop ml-auto rounded-full bg-emerald-500/20 px-3 py-0.5 text-[13px] font-semibold text-emerald-200" style={later(900)}>👈 this one</span>}
+              </div>
+            ))}
+          </div>
+          <div className="pz-appear mx-6 rounded-xl border border-hairline bg-raised px-5 py-4" style={later(1300)}>
+            <div className="font-display text-[22px] text-ink">Show my seats on My Agenda <span className="font-sans text-faint">#42</span></div>
+            <div className="mt-3 font-display text-[18px] text-ink">Done when</div>
+            <ul className="mt-1 space-y-1 text-[16px] text-muted">
+              {['My Agenda lists every seat I hold, by day', 'a waitlisted session says so'].map((d, i) => (
+                <li key={d} className="pz-appear flex gap-2" style={later(1700 + i * 200)}><span className="text-violet-300">☐</span>{d}</li>
+              ))}
+            </ul>
+            <div className="pz-appear mt-2 text-[15px] text-faint" style={later(2200)}><b className="text-muted">Out of scope:</b> suggestions</div>
+          </div>
+        </Browser>
       </Replay>
 
-      <Replay on={step === 1} from="right" style={at(600, 80, 920, 520)} className="flex flex-col gap-5">
-        <Terminal
-          title="~/nam-2026-conference — claude"
-          lines={[
-            { t: '/ship 42', tone: 'cmd', delay: 200 },
-            { t: 'setup · reading #42 and the code it touches', delay: 1000 },
-            { t: 'small ticket · worktree wt-42 · lane 1', delay: 1400 },
-            { t: '#42 → ai-working · progress posted on the issue', tone: 'ok', delay: 1800 },
-          ]}
-        />
-        <div className="pz-appear grid grid-cols-2 gap-5" style={later(2300)}>
-          <div className={`${box} p-5`}>
+      {/* 2 · Claude Desktop, Code tab, opened on the fork's folder */}
+      <Replay on={step === 1} from="right" style={at(570, 80, 950, 520)} className="flex flex-col gap-4">
+        <div className="flex h-[370px] overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40">
+          <div className="w-[190px] shrink-0 border-r border-hairline bg-raised p-4">
+            <div className="flex rounded-lg bg-ground/60 p-1 text-[14px]">
+              <span className="flex-1 rounded-md py-1 text-center text-faint">Chat</span>
+              <span className="flex-1 rounded-md bg-overlay py-1 text-center font-semibold text-ink">Code</span>
+            </div>
+            <div className="mt-4 text-[12px] uppercase tracking-wider text-faint">Folder</div>
+            <div className="mt-1 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[14px] text-ink">📁 nam-2026-conference</div>
+          </div>
+          <div className="flex flex-1 flex-col">
+            <div className="flex-1 space-y-3 p-5">
+              <Bubble me delay={300}>Hey, can you ship GitHub issue #42?</Bubble>
+              <Bubble delay={1200}>
+                On it. I’ll post every step on issue #42, so you can follow it there.
+                <div className="mt-2 space-y-1 text-[15px]">
+                  {['Read the ticket — it can be built', 'A small one: about 15 minutes', 'Writing the plan…'].map((l, i) => (
+                    <div key={l} className="pz-appear flex gap-2" style={later(1700 + i * 450)}><span className={i < 2 ? 'text-emerald-300' : 'text-amber-300'}>{i < 2 ? '✓' : '●'}</span>{l}</div>
+                  ))}
+                </div>
+              </Bubble>
+            </div>
+            <div className="m-4 mt-0 rounded-xl border border-hairline bg-ground/50 px-4 py-2.5 text-[15px] text-faint">Reply to Claude…</div>
+          </div>
+        </div>
+        <div className="pz-appear grid grid-cols-2 gap-4" style={later(3000)}>
+          <div className={`${box} px-5 py-3`}>
             <Kicker>While it runs</Kicker>
-            <div className="mt-2 text-[18px] text-muted">Watch the issue, not the terminal: each step posts there. The spec lands first — read it.</div>
+            <div className="mt-1 text-[17px] text-muted">Watch the issue on GitHub. The plan lands first — read it.</div>
           </div>
-          <div className={`${box} p-5`}>
-            <Kicker>About 10–20 minutes</Kicker>
-            <div className="mt-2 text-[18px] text-muted">Got another ticket? <Code>/ship 43 44</Code> runs them side by side.</div>
+          <div className={`${box} px-5 py-3`}>
+            <Kicker>Another ticket?</Kicker>
+            <div className="mt-1 text-[17px] text-muted">Ask in the same chat: “ship #43 too”.</div>
           </div>
         </div>
       </Replay>
 
-      <Replay on={step === 2} from="right" style={at(600, 80, 920, 520)} className="flex flex-col gap-5">
-        <div className="grid grid-cols-2 gap-5">
-          <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/[0.06] p-5">
-            <div className="flex items-center gap-2 text-[20px] font-semibold text-emerald-300"><PrIcon className="size-5" /> A pull request</div>
-            <ul className="mt-3 space-y-1.5 text-[17px] text-muted">
-              <li>• read <b className="text-ink">Decisions for you</b></li>
-              <li>• <b className="text-ink">open the diff — read the code</b></li>
-              <li>• try it: <Code>npm run dev</Code></li>
-              <li>• merge it, or comment <Code>@claude …</Code></li>
-            </ul>
+      {/* 3 · the pull request on GitHub, or the question */}
+      <Replay on={step === 2} from="right" style={at(570, 80, 950, 520)} className="flex flex-col gap-4">
+        <Browser url="github.com/you/nam-2026-conference/pull/44">
+          <div className="px-6 py-4">
+            <div className="font-display text-[24px] text-ink">Show my seats on My Agenda <span className="font-sans text-faint">#44</span></div>
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white"><PrIcon /> Open</span>
+            <div className="mt-3 flex gap-3">
+              <Verdict pass level="high" title="Code review" className="text-left" />
+              <Verdict pass level="high" title="QA" className="text-left" />
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-3 text-[15px]">
+              {['🤔 Decisions for you', '🧪 Try it', '📄 Files changed — the code'].map((t, i) => (
+                <div key={t} className="pz-appear rounded-lg border border-hairline bg-raised px-3 py-2 text-ink" style={later(500 + i * 200)}>{t}</div>
+              ))}
+            </div>
           </div>
-          <div className="rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10 p-5">
-            <div className="flex items-center gap-2"><Label name="needs-human" /></div>
-            <ul className="mt-3 space-y-1.5 text-[17px] text-muted">
-              <li>• read what is still open</li>
-              <li>• answer it on the issue</li>
-              <li>• <Code>/ship 42</Code> again</li>
-            </ul>
+        </Browser>
+        <div className="pz-appear grid grid-cols-[1fr_1fr] gap-4" style={later(1200)}>
+          <div className="rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10 px-5 py-3">
+            <Label name="needs-human" />
+            <div className="mt-1 text-[16px] text-muted">Read its question, answer it on the issue, then ask Claude to ship it again.</div>
           </div>
-        </div>
-        <div className="pz-appear flex items-center gap-5 rounded-2xl border border-violet-400/40 bg-raised px-7 py-6" style={later(900)}>
-          <span className="text-[40px]">🙋</span>
-          <span className="text-[22px] text-ink">Stuck? Put your hand up — we are walking the room.</span>
+          <div className="flex items-center gap-4 rounded-2xl border border-violet-400/40 bg-raised px-5">
+            <span className="text-[34px]">🙋</span>
+            <span className="text-[18px] text-ink">Stuck? Put your hand up — we are walking the room.</span>
+          </div>
         </div>
       </Replay>
     </>
@@ -588,17 +647,17 @@ const LAB_BEATS = [
   {
     kicker: '9 · Now you · step 1',
     title: 'Pick a ticket from your fork',
-    body: 'Use one the product harness just raised, or any issue with a Done when list. Read it first: what it asks for, and what it says is out of scope.',
+    body: 'On GitHub, open your fork’s Issues tab. Use the one the product harness just raised, or any issue with a Done when list — and read it first: what it asks for, and what it leaves out.',
   },
   {
     kicker: '9 · Now you · step 2',
-    title: '/ship it — then let it run',
-    body: 'In Claude Code, in your fork’s folder. Don’t watch the terminal: follow the issue, read the spec when it lands, and start a second ticket if you have one.',
+    title: 'Ask Claude to ship it — then let it run',
+    body: 'In Claude Desktop, open the Code tab on your nam-2026-conference folder and ask in plain words: “can you ship issue #42?” Then follow the issue on GitHub, not the chat.',
   },
   {
     kicker: '9 · Now you · step 3',
     title: 'Review what comes back — and read the code',
-    body: 'A pull request: check its decisions, read the diff, try it, merge it. A needs-human: answer the question and ship it again. Either way, you decide.',
+    body: 'A pull request: check its confidence and its decisions, open Files changed and read the code, then merge it. A needs-human: answer the question and ship it again. Either way, you decide.',
   },
 ];
 
