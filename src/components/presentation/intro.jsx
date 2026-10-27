@@ -59,6 +59,9 @@ function TitleScene() {
         <p className="pz-appear mt-7 max-w-[760px] text-[27px] leading-snug text-muted" style={later(260)}>
           From a GitHub issue to a reviewed pull request — and every agent in between.
         </p>
+        <p className="pz-appear mt-3 max-w-[760px] text-[21px] leading-snug text-faint" style={later(600)}>
+          This one is a reference. Like Agile, what lasts is the way of working, not the tool.
+        </p>
         <div className="pz-appear mt-9 space-y-1.5 whitespace-nowrap text-[19px] text-faint" style={later(900)}>
           <div>🎙️ Product harness: a conversation → a ticket <span className="ml-2 text-emerald-300">✓</span></div>
           <div className="text-muted"><span className="mr-3 text-violet-300">↳</span>🚢 <b className="text-ink">Engineering harness</b>: the ticket → a reviewed pull request</div>
@@ -375,7 +378,7 @@ export const INTRO = [
       {
         kicker: '3 · The whole flow',
         title: 'Issue → ship → pull request → review and QA → you',
-        body: 'Ship turns the ticket into a pull request; two more agents review it and try to break it; a person merges. Every step is a fresh agent — and a ticket that will not come together comes back as needs-human.',
+        body: 'Ship turns the ticket into a pull request; two more agents review it and try to break it; a person merges. Every step is a fresh agent, and the loops are a script, not a prompt.',
       },
       {
         kicker: '3 · Zooming in',

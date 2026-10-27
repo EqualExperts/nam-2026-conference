@@ -105,12 +105,11 @@ function SetupDetail() {
         <Row icon="🏷️" title="Claim it" sub={<>label <Label name="ai-working" className="ml-1 text-[12px]" /></>} delay={650} />
         <Row icon="🌳" title="Its own worktree" sub=".claude/worktrees/wt-140 — from origin/main" delay={1000} />
         <Row icon="🔌" title="Its own lane" sub="api :4306 · web :4307 — boots the app beside yours" delay={1350} />
-        <Row icon="⚖️" title="Size it" sub="reads the ticket and the code it would change" delay={1700} />
       </div>
-      <div className={`${box} flex flex-col justify-center p-6`}>
-        <Model m="opus" className="self-start text-[16px]">Setup runs on Opus</Model>
-        <div className="mt-4 font-display text-[28px] leading-tight text-ink">The strongest model makes the first call</div>
-        <div className="mt-3 text-[17px] text-muted">Every later step is sized by it — so this is where frontier reasoning pays for itself.</div>
+      <div className="pz-appear flex flex-col justify-center rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10 p-6" style={later(1800)}>
+        <Label name="needs-human" className="self-start" />
+        <div className="mt-4 font-display text-[28px] leading-tight text-ink">Not enough to build? It stops here</div>
+        <div className="mt-3 text-[17px] text-muted">No Done when, or a question only a person can answer — it goes back before a line of code, not after an hour of guessing.</div>
       </div>
     </div>
   );
@@ -183,44 +182,9 @@ function ImplementDetail() {
   );
 }
 
-/* One wave of green runs left to right across all three panels: a cell lights
- * by its column across the whole stage, not by which panel it is in. */
-const WAVE_MS = 48;
-function Cells({ n, panel, label, sub }) {
-  return (
-    <div className={`${box} p-5`}>
-      <div className="flex items-baseline justify-between">
-        <div className="text-[19px] font-semibold text-ink">{label}</div>
-        <div className="font-mono text-[13px] text-faint">{sub}</div>
-      </div>
-      <div className="mt-4 grid grid-cols-12 gap-1.5">
-        {Array.from({ length: n }, (_, i) => (
-          <span key={i} className="pz-pop h-5 rounded bg-emerald-400/70 shadow-[0_0_10px_rgba(52,211,153,0.35)]" style={later(200 + (panel * 12 + (i % 12)) * WAVE_MS + Math.floor(i / 12) * 30)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function GateDetail() {
-  return (
-    <div className="relative grid h-full grid-cols-3 gap-6">
-      <Cells n={36} panel={0} label="npm test" sub="unit + API · under a second" />
-      <Cells n={60} panel={1} label="Playwright · desktop" sub="1440 × 900" />
-      <Cells n={60} panel={2} label="Playwright · mobile" sub="Pixel 7" />
-      {/* the light that runs ahead of the wave */}
-      <div className="pz-sweep pointer-events-none absolute inset-y-0 left-0 w-[240px] bg-gradient-to-r from-transparent via-emerald-300/15 to-transparent" style={later(150)} aria-hidden="true" />
-      <div className="pz-appear col-span-3 flex items-center gap-5 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-6 py-4" style={later(2300)}>
-        <Code className="text-[16px]">scripts/gate.mjs</Code>
-        <span className="font-mono text-[18px] text-emerald-300">{'{ "ok": true }'}</span>
-        <span className="ml-auto text-[17px] text-muted">Red if any test fails — <b className="text-ink">or if a test the branch added skipped everywhere</b> and so never ran.</span>
-      </div>
-    </div>
-  );
-}
-
-/* The same test, run twice: with the change, then with the old code put back.
- * The code card turns over to origin/main and the green result flips red. */
+/* The gate, then the same test run twice: with the change, then with the old
+ * code put back. The code card turns over to origin/main and the green result
+ * flips red. */
 function Run({ file, tone, children }) {
   return (
     <div className={`flex h-full flex-col justify-center rounded-xl border px-5 py-4 ${tone}`}>
@@ -247,7 +211,7 @@ function RedCheckDetail() {
         <Kicker>1 · With the change</Kicker>
         <div className="mt-3 h-[96px]"><Run file="SchedulePage.jsx" tone="border-emerald-400/40 bg-emerald-500/[0.06]"><span className="text-emerald-300">+ grid grid-cols-2 gap-2 lg:block</span></Run></div>
         <div className="pz-appear mt-4 h-[64px]" style={later(300)}><Result ok label="first session stays in view — passes" /></div>
-        <div className="pz-appear mt-3 text-[18px] text-muted" style={later(700)}>Green — as the gate just said. Green alone proves little.</div>
+        <div className="pz-appear mt-3 text-[18px] text-muted" style={later(700)}>Green, across the whole gate. Green alone proves little.</div>
       </div>
       <div className={`${box} flex flex-col p-6`}>
         <Kicker>2 · The old code put back</Kicker>
@@ -266,7 +230,7 @@ function RedCheckDetail() {
         <div className="pz-appear mt-3 text-[18px] text-emerald-300" style={later(FLIP + 1200)}>… which is the point: the test can tell the two apart.</div>
       </div>
       <div className="pz-appear col-span-2 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(FLIP + 1700)}>
-        <Code>scripts/red-check.mjs</Code> runs inside the gate step. <b className="text-ink">A test that still passes without the fix proves nothing</b> — and the run says so instead of shipping it.
+        <Code>scripts/gate.mjs</Code> runs every unit, API and browser test, desktop and mobile — an exit code no agent can argue with. Then <Code>scripts/red-check.mjs</Code>: <b className="text-ink">a test that still passes without the fix proves nothing</b>.
       </div>
     </div>
   );
@@ -317,9 +281,30 @@ function AuditDetail() {
           </div>
         );
       })}
+      {/* the Swiss cheese: every layer has holes, but they do not line up */}
+      <div className="pz-appear mt-auto flex items-center gap-3 rounded-xl border border-hairline bg-raised px-5 py-3" style={later(3400)}>
+        <span className="text-[26px]">🧀</span>
+        {SLICES.map(([name, ai, holes]) => (
+          <span key={name} className={`relative flex h-11 flex-1 items-center justify-center overflow-hidden rounded-lg text-[14px] font-semibold ${ai ? 'bg-amber-400/20 text-amber-100' : 'bg-emerald-400/20 text-emerald-100'}`}>
+            {holes.map(([x, y]) => <span key={`${x}-${y}`} className="absolute size-3 rounded-full bg-ground/70" style={{ left: `${x}%`, top: `${y}%` }} />)}
+            <span className="relative">{name}</span>
+          </span>
+        ))}
+        <span className="ml-2 text-[15px] text-muted">no hole goes all the way through</span>
+      </div>
     </div>
   );
 }
+
+// [layer, is it an agent, where its holes are] — the gate and red-check are scripts
+const SLICES = [
+  ['criteria', true, [[8, 15], [70, 55]]],
+  ['rules', true, [[30, 60], [85, 10]]],
+  ['browser', true, [[55, 20], [12, 62]]],
+  ['skeptic', true, [[78, 58], [40, 8]]],
+  ['gate', false, [[20, 30]]],
+  ['red-check', false, [[88, 40]]],
+];
 
 function LoopDetail() {
   const nodes = [
@@ -401,16 +386,28 @@ function PrDetail() {
   );
 }
 
-// By station. Spec audit and Learn have no stop of their own: the ticket ticks
-// them off on its way past, and their story rides in the neighbouring captions.
-const DETAILS = [SetupDetail, SpecDetail, null, ImplementDetail, GateDetail, RedCheckDetail, AuditDetail, LoopDetail, null, PrDetail];
-/** Which station each beat stops at — eight stops over ten stations. */
-const STOPS = [-1, 0, 1, 3, 4, 5, 6, 7, 9];
+// One entry per beat: the station the ticket stops at, and what it shows there.
+// Setup takes two beats — the claim, then the sizing. Spec audit, Gate and Learn
+// have no stop of their own: the ticket ticks them off on its way past, and
+// their story rides in the neighbouring captions.
+const STOPS = [
+  { at: -1 },
+  { at: 0, Detail: SetupDetail },
+  { at: 0, Detail: SizeDetail },
+  { at: 1, Detail: SpecDetail },
+  { at: 3, Detail: ImplementDetail },
+  { at: 5, Detail: RedCheckDetail },
+  { at: 6, Detail: AuditDetail },
+  { at: 7, Detail: LoopDetail },
+  { at: 9, Detail: PrDetail },
+];
+/** Where the needs-human chapter breaks in: after the loop, before the pull request. */
+const PR_BEAT = 8;
 
 const LOOP_BACK = `M${center(7)} 160 C ${center(7)} 204, ${center(3)} 204, ${center(3)} 160`;
 
 function ShipScene({ step }) {
-  const active = STOPS[step] ?? -1;
+  const active = STOPS[step]?.at ?? -1;
   return (
     <>
       <Stations active={active} />
@@ -434,8 +431,8 @@ function ShipScene({ step }) {
         ))}
       </Show>
 
-      {DETAILS.map((Detail, i) => Detail && (
-        <Replay key={i} on={active === i} from="up" style={at(80, 210, 1440, 400)}>
+      {STOPS.map(({ Detail }, i) => Detail && (
+        <Replay key={i} on={step === i} from="up" style={at(80, 210, 1440, 400)}>
           <Detail />
         </Replay>
       ))}
@@ -451,48 +448,49 @@ const SHIP_BEATS = [
   },
   {
     kicker: '4.1 · Setup',
-    title: 'Read it, gate it, claim it, give it a workspace — and size it',
-    body: 'Setup checks the ticket can be built at all, claims it so no second run picks it up, and makes an isolated worktree on its own ports. Then it reads the code the ticket would change and reports the facts every later step is sized by.',
+    title: 'Read it, gate it, claim it, give it a workspace',
+    body: 'Setup checks the ticket can be built at all and hands it straight back if not. Then it claims it so no second run picks it up, and makes an isolated worktree on its own ports — which is what lets ten run side by side.',
   },
   {
-    kicker: '4.2 · Spec, then a spec audit',
+    kicker: '4.2 · Size it',
+    title: 'Spend the frontier model where the decision is',
+    body: 'Setup runs on Opus because every later step is sized by its call: Sonnet and Haiku for mechanical work, Opus for the hard tickets. A diff that grows risky escalates itself — or force it with /ship 42 --full.',
+  },
+  {
+    kicker: '4.3 · Spec, then a spec audit',
     title: 'A plan before any code, judged while a mistake is still cheap',
     body: 'specs/<n>-<slug>.md is the first commit and maps each Done when line to its check. On full tickets, auditors that never saw it written judge it against the ticket — a misreading caught here costs a revision, not a rebuild.',
   },
   {
-    kicker: '4.3 · Implement',
+    kicker: '4.4 · Implement',
     title: 'The failing test first — then the change',
     body: 'The check is committed while it still fails, so the history proves it failed. Every state the change adds gets its own assertion, including the moment just before a time-dependent rule applies.',
   },
   {
-    kicker: '4.4 · The gate',
-    title: 'A gate agents cannot argue with',
-    body: 'Every unit, API and browser test, on desktop and on mobile. It is a script with an exit code — an agent cannot talk its way past it.',
-  },
-  {
-    kicker: '4.5 · Red-check',
-    title: 'Prove the test can fail',
-    body: 'The old code goes back and the new tests run again. If they still pass, they never tested the change — and that is a red gate, not a green one.',
+    kicker: '4.5 · The gate and the red-check',
+    title: 'A gate agents cannot argue with — and proof the test can fail',
+    body: 'Every unit, API and browser test, on desktop and on mobile: a script with an exit code. Then the old code goes back and the new tests run again — if they still pass, they never tested the change.',
   },
   {
     kicker: '4.6 · Code audit',
     title: 'Independent auditors, and a skeptic for every blocker',
-    body: 'Each auditor has one lens: the ticket’s criteria, the repo’s rules, or a real browser. Every blocker they raise must survive a skeptic that tries to refute it before it costs a fix.',
+    body: 'One lens each: the ticket’s criteria, the repo’s rules, a real browser. No layer is trusted alone — like slices of Swiss cheese, each has holes, but not in the same places, and the gate and red-check are not AI at all.',
   },
   {
     kicker: '4.7 · Fix and loop',
     title: 'Fix, gate, audit — until a round comes back clean',
-    body: 'Round limits are code. When the same finding survives two fixes, more rounds will not help: ship stops and hands the ticket to a person, with everything still open written down.',
+    body: 'Round limits are code, not a prompt’s good intentions: two rounds for a small ticket, four for a full one. Nothing spins all night on your token bill.',
   },
   {
-    kicker: '4.8 · Learn, then the pull request',
+    kicker: '4.9 · Learn, then the pull request',
     title: 'A pull request you can actually review',
     body: 'What the audits caught becomes context the next agent reads. Then the pull request opens — spec, proof, every audit round, the decisions for you to confirm, and the cost. Never before the gate is green.',
   },
 ];
 
 /* ------------------------------------------------------------------ *
- * The right model for the job.
+ * Sizing — the second beat at Setup.
+
  * ------------------------------------------------------------------ */
 
 const FACTS = [
@@ -526,62 +524,24 @@ function Lane({ title, tone, steps, foot, glow }) {
 
 const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' };
 
-function ModelsScene({ step }) {
+function SizeDetail() {
   return (
-    <>
-      <div style={at(80, 70, 420, 540)} className={`${box} p-6`}>
-        <Model m="opus" className="text-[16px]">Setup · Opus</Model>
-        <div className="mt-3 font-display text-[26px] leading-tight text-ink">Reports facts, not a verdict</div>
-        <div className="mt-4 space-y-1.5">
-          {FACTS.map(([k, v], i) => (
-            <div key={k} className="pz-appear flex justify-between border-b border-hairline/60 pb-1.5 text-[16px]" style={later(300 + i * 110)}>
+    <div className="grid h-full grid-cols-[400px_1fr] gap-6">
+      <div className={`${box} p-5`}>
+        <Model m="opus" className="text-[15px]">Setup · Opus</Model>
+        <div className="mt-2 font-display text-[22px] leading-tight text-ink">Reports facts, not a verdict</div>
+        <div className="mt-3 space-y-1">
+          {FACTS.slice(0, 6).map(([k, v], i) => (
+            <div key={k} className="pz-appear flex justify-between border-b border-hairline/60 pb-1 text-[15px]" style={later(200 + i * 90)}>
               <span className="text-muted">{k}</span><span className="font-mono text-ink">{v}</span>
             </div>
           ))}
         </div>
-        <div className="pz-appear mt-4 text-[15px] text-faint" style={later(1400)}>The script composes the run from these. An agent never picks its own budget.</div>
-      </div>
-
-      <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
-        {['M500 340 C 540 340, 530 200, 570 200', 'M500 340 C 540 340, 530 470, 570 470'].map((d, i) => (
-          <g key={d}>
-            <path d={d} pathLength="1" data-on={step >= 1} className="pz-draw" fill="none" stroke={i ? '#701a75' : '#047857'} strokeWidth="3" />
-            {step === 1 && i === 0 && <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#6ee7b7" strokeWidth="3" />}
-          </g>
-        ))}
-        {/* what setup reads flows into the facts panel */}
-        {step === 0 && ['M1010 240 C 760 240, 760 340, 500 340', 'M1010 340 L500 340', 'M1010 440 C 760 440, 760 340, 500 340'].map((d, i) => (
-          <g key={d}>
-            <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#4c3d7a" strokeWidth="2.5" style={later(500 + i * 200)} />
-            <g className="pz-appear" style={later(1400 + i * 200)}>
-              <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="2.5" />
-            </g>
-          </g>
-        ))}
-      </svg>
-
-      {/* beat 1: the inputs — the ticket and the code it would change — read by Opus */}
-      <Replay on={step === 0} from="right" style={at(1010, 70, 510, 540)} className="flex flex-col justify-center gap-4">
-        <Kicker className="pz-appear">What setup reads</Kicker>
-        {[
-          [<Token key="t" className="relative" />, 'the ticket', 'why, and the Done when list', 0],
-          [<Code key="c" className="text-[14px]">src/pages/SchedulePage.jsx</Code>, 'the code it would change', 'one file, one area — and the tests beside it', 1],
-          [<Code key="d" className="text-[14px]">docs/context/schedule.md</Code>, 'the context for that area', 'where it lives, how it is proved', 2],
-        ].map(([head, title, sub, i]) => (
-          <div key={title} className={`${box} pz-appear flex items-center justify-between gap-5 px-5 py-4`} style={later(200 + i * 220)}>
-            <div>
-              <div className="text-[18px] font-semibold text-ink">{title}</div>
-              <div className="text-[15px] text-muted">{sub}</div>
-            </div>
-            <div className="shrink-0">{head}</div>
-          </div>
-        ))}
-        <div className="pz-appear mt-2 text-[17px] text-muted" style={later(1600)}>
-          Facts in, a run out: the <b className="text-ink">script</b> composes the steps from the facts — the agent never picks its own budget.
+        <div className="pz-appear mt-3 text-[15px] text-faint" style={later(900)}>
+          The <b className="text-ink">script</b> composes the run from these — an agent never picks its own budget.
         </div>
-      </Replay>
-
-      <Replay on={step === 1} from="right" style={at(570, 70, 950, 540)} className="flex flex-col gap-5">
+      </div>
+      <div className="flex flex-col gap-4">
         <Lane
           glow
           title="🟢 Small — most tickets"
@@ -595,30 +555,21 @@ function ModelsScene({ step }) {
           foot="4 rounds · ~$6.50"
           steps={[['setup', 'opus'], ['plan writer', 'opus'], ['plan audit', 'opus', 2], ['implement', 'opus'], ['gate', 'haiku'], ['auditors', 'opus', 3], ['fix', 'opus'], ['PR', 'haiku']]}
         />
-        <div className="pz-appear rounded-xl border border-hairline bg-raised px-5 py-3 text-[17px] text-muted" style={later(1400)}>
-          The gate and the PR are rote, so they run on <Model m="haiku">ship-rote · Haiku</Model> with no CLAUDE.md — about a quarter less context.
-        </div>
-      </Replay>
-
-    </>
+      </div>
+    </div>
   );
 }
 
-const MODEL_BEATS = [
-  {
-    kicker: '5 · The right model for the job',
-    title: 'Spend the frontier model where the decision is',
-    body: 'Setup runs on Opus because every later step is sized by its call. It reads the ticket and the code and reports facts — areas, files, whether it touches a business rule, stored data, the API or the harness. The script composes the run from those.',
-  },
-  {
-    kicker: '5 · Small or full — and the evidence can escalate it',
-    title: 'Sonnet and Haiku for mechanical work, Opus for the hard tickets',
-    body: 'Each risk adds the check that catches it, so a one-line fix does not pay what a feature does. Setup’s guess is then checked against the real diff — grow risky and the full auditors come in on Opus. Or force it: /ship 42 --full.',
-  },
-];
+/** Ship's last stop, reached again after the needs-human chapter breaks in. */
+function PrScene({ step }) {
+  return <ShipScene step={PR_BEAT + step} />;
+}
 
 export const SHIP = [
   // `enter: 'cut'` — the map chapter has already unpacked the stations into place, so this one lands on them
-  { id: 'ship', name: 'Inside ship', accent: 'text-violet-300', tone: 'violet', enter: 'cut', beats: SHIP_BEATS, Scene: ShipScene },
-  { id: 'models', name: 'The right model', accent: 'text-fuchsia-300', tone: 'fuchsia', beats: MODEL_BEATS, Scene: ModelsScene },
+  { id: 'ship', name: 'Inside ship', accent: 'text-violet-300', tone: 'violet', enter: 'cut', beats: SHIP_BEATS.slice(0, PR_BEAT), Scene: ShipScene },
+];
+
+export const SHIP_PR = [
+  { id: 'pr', name: 'The pull request', accent: 'text-violet-300', tone: 'violet', beats: SHIP_BEATS.slice(PR_BEAT), Scene: PrScene },
 ];
