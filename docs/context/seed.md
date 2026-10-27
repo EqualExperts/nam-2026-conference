@@ -8,6 +8,7 @@ files:
   - scripts/fetch-avatars.mjs
   - public/avatars/
 tests:
+  - tests/api/seed.test.js
   - tests/smoke.spec.js
   - tests/seats.spec.js
 related: [architecture, testing, seats, attendance, schedule, speakers, venues]
@@ -96,6 +97,10 @@ pins it. Only dates change between machines; the PRNG output does not.
 - Seeded seats obey the API's rules: one seat per slot per attendee, nobody queues while
   seats are free, nobody queues in a slot they hold a seat in.
 - The grid needs each day's five rooms to run all day — keep `todaysRooms` fixed per day.
+- **An attendee's `interests` are topic tags** (`TAGS.topic`), never a tech,
+  audience or vibe tag: what an attendee chooses from is the topic list, and a
+  stored value it cannot show is one a save drops. Kenji's `Edge` (a tech tag)
+  did exactly that on #219. `tests/api/seed.test.js` holds every attendee to it.
 
 ## Gotchas
 
