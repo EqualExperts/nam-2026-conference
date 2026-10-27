@@ -650,6 +650,11 @@ describe('ship', () => {
     assert.match(prompts.setup, /closed pull request from an earlier attempt is not a reason to stop/);
   });
 
+  test('setup brings a fork up to date with the workshop repo before it fetches', async () => {
+    const { prompts } = await run();
+    assert.match(prompts.setup, /node scripts\/sync-fork\.mjs[\s\S]*before the fetch/);
+  });
+
   test('only an open draft is an attempt to continue; a scrapped branch is started over — #219', async () => {
     // Closed, branch deleted on GitHub: without --prune its origin/ ref lingered,
     // and the rerun built on the scrapped commits and called the ticket done.

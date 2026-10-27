@@ -604,7 +604,8 @@ setup = await agent(
   `or the pull request's push is refused. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
-  `later phase would run commands that do not exist in the worktree. ${PIN} Then \`gh repo set-default --view\` ` +
+  `later phase would run commands that do not exist in the worktree. ${PIN} Then \`node scripts/sync-fork.mjs\` (§1) — before the ` +
+  `fetch, so the worktree starts from the fork as GitHub now has it — and put the line it prints in reason. Then \`gh repo set-default --view\` ` +
   `must name the repository origin points at; if it does not, return proceed=false saying so. \`gh\` works there ` +
   `as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
   `switch\`/\`login\`, never guess another repository, never change git or gh configuration outside the ` +

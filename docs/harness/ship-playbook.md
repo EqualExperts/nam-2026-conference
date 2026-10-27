@@ -30,9 +30,16 @@ remote named `upstream`, and `gh repo clone` of a fork adds one, so an unpinned
 run reads the upstream's #<n> and opens its PR there. In CI `GH_REPO` already
 pins it.
 
+Then bring the fork up to date with the workshop repo, so the run builds on
+today's harness and app rather than whatever the fork had when it was made —
+a fork two commits behind ran without the latest rules. It is GitHub's own
+*Sync fork*: a fast-forward or a merge, never a force; on a conflict it
+changes nothing and says so, and the run carries on. Report its line.
+
 ```bash
 [ -n "$GITHUB_ACTIONS" ] || gh repo set-default "$(git remote get-url origin)"
 gh issue view <n> --json number,title,body,labels,state
+node scripts/sync-fork.mjs        # not a fork, or CI: does nothing
 gh pr list --state open --json number,headRefName,isDraft \
   --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
 ```
