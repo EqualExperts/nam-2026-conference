@@ -441,4 +441,29 @@ function main() {
   process.exit(result.ok ? 0 : 1);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+/**
+ * `node scripts/gate.mjs --specs <base> [--fast]` — the browser specs CI should
+ * run for this diff, space-separated; nothing printed means the whole suite.
+ * The same choice the local gate makes, so CI repeats it rather than trusting
+ * a record of what ran: the decks' spec only for a deck change, and for a
+ * fast pull request only the specs the change reaches.
+ */
+export function ciSpecs(changed, repo, fast) {
+  if (fast) {
+    const reached = affectedSpecs(changed, repo);
+    // Nothing reached: nothing to run beyond the API tests — yet a CI job that
+    // runs no spec reads as broken, so the smoke spec stands in.
+    if (reached) return reached.length ? reached : ['tests/smoke.spec.js'];
+  }
+  return deckTouched(changed.join('\n')) ? [] : withoutDeck([...repo.specs.keys()]).sort();
+}
+
+function printSpecs() {
+  const [base] = process.argv.slice(process.argv.indexOf('--specs') + 1);
+  const changed = git('diff', '--name-only', '--diff-filter=d', base, 'HEAD').split('\n').filter(Boolean);
+  console.log(ciSpecs(changed, readRepo(), process.argv.includes('--fast')).join(' '));
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes('--specs')) printSpecs(); else main();
+}

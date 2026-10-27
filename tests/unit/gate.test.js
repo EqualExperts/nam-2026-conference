@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -257,5 +257,23 @@ import { Layout } from './components/Layout.jsx';
   test('imports resolve relative to the file', () => {
     assert.deepEqual(importsOf('src/pages/SchedulePage.jsx', `import { a } from '../components/FilterBar.jsx';\nimport x from 'react';\nconst L = lazy(() => import('./Other.jsx'));`),
       ['src/components/FilterBar.jsx', 'src/pages/Other.jsx']);
+  });
+});
+
+describe('what CI runs for a pull request', () => {
+  const repo = {
+    graph: new Map([['src/App.jsx', ['src/pages/SchedulePage.jsx']], ['src/pages/SchedulePage.jsx', []]]),
+    routes: new Map([['src/pages/SchedulePage.jsx', '/schedule']]),
+    specs: new Map([['tests/schedule.spec.js', `visit(page, '/schedule')`], ['tests/smoke.spec.js', `visit(page, '/')`], ['tests/presentation.spec.js', `page.goto('/x')`]]),
+  };
+
+  test('any pull request: the whole suite but the decks, unless it touches one', () => {
+    assert.deepEqual(ciSpecs(['server/lib/seats.js'], repo, false), ['tests/schedule.spec.js', 'tests/smoke.spec.js']);
+    assert.deepEqual(ciSpecs(['src/components/presentation/ship.jsx'], repo, false), []);
+  });
+
+  test('a ship:fast one: the same specs the local gate chose', () => {
+    assert.deepEqual(ciSpecs(['src/pages/SchedulePage.jsx'], repo, true), ['tests/schedule.spec.js']);
+    assert.deepEqual(ciSpecs(['docs/context/ui.md'], repo, true), ['tests/smoke.spec.js']);
   });
 });

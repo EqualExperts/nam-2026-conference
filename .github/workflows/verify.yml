@@ -59,9 +59,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # A ship:fast pull request diffs its merge commit against the base
-          # (HEAD^1), so it needs both parents; everything else needs one.
-          fetch-depth: ${{ contains(github.event.pull_request.labels.*.name, 'ship:fast') && 2 || 1 }}
+          # A pull request diffs its merge commit against the base (HEAD^1),
+          # so it needs both parents; the push to main needs one.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
 
       - uses: actions/setup-node@v7
         with:
@@ -70,17 +70,18 @@ jobs:
 
       - run: npm ci
 
-      # `/ship <n> --fast` labels its pull request ship:fast — a demo ticket
-      # already known to work. Its pull request runs the browser specs the
-      # branch changed, the scope ship's own gate used (gate.mjs branchSpecs),
-      # or the whole suite if it changed none; the push to main runs them all.
-      - name: Scope a ship:fast pull request
+      # A pull request runs what ship's own gate would (gate.mjs ciSpecs):
+      # the decks' spec only when it touches a deck, and a ship:fast one only
+      # the specs its change reaches. CI works that out from the diff itself
+      # rather than trusting a record of what the laptop ran. The push to main
+      # runs the whole suite.
+      - name: Scope the pull request
         id: scope
-        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ship:fast') }}
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
-          specs=$(node -e "import('./scripts/gate.mjs').then(m => console.log(m.branchSpecs(require('node:child_process').execSync('git diff --name-only --diff-filter=d HEAD^1 HEAD -- tests/', { encoding: 'utf8' })).join(' ')))")
+          specs=$(node scripts/gate.mjs --specs HEAD^1 ${{ contains(github.event.pull_request.labels.*.name, 'ship:fast') && '--fast' || '' }})
           echo "specs=$specs" >> "$GITHUB_OUTPUT"
-          echo "**ship:fast** — ran ${specs:-the whole suite (the branch changed no browser spec)}; main runs the whole suite after merge." >> "$GITHUB_STEP_SUMMARY"
+          echo "Ran ${specs:-the whole suite}; main runs the whole suite after merge." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build the web app
         run: npm run build
@@ -96,9 +97,13 @@ jobs:
         if: steps.browsers.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
+      # The runner image ships Chrome, so its libraries are usually there
+      # already; installing them anyway cost 43–141s of apt on every run.
       - name: Install Chromium system dependencies
         if: steps.browsers.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: |
+          node -e "require('@playwright/test').chromium.launch().then(b => b.close())" \
+            || npx playwright install-deps chromium
 
       # `npm run verify` seeds the database, then Playwright starts the app
       # itself (API + Vite) and drives it.

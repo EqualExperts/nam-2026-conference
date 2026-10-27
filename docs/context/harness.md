@@ -94,10 +94,14 @@ the config → the whole suite; docs and `server/routes/` (which the API tests
 cover) → none. The pull request's CI always runs the whole suite; a confirmed finding is fixed and
 re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
 The PR's *Not verified* says what it skipped.
-Its pull request is labelled `ship:fast`, and `verify.yml`'s Playwright jobs
-read the label: they run only the specs the merge commit changed against its
-base (`HEAD^1`, `branchSpecs`), or the whole suite if none; the push to main
-runs the whole suite as always.
+Its pull request is labelled `ship:fast`. `verify.yml`'s Playwright jobs ask
+`node scripts/gate.mjs --specs HEAD^1 [--fast]` (`ciSpecs`) what to run: on
+any pull request the whole suite but the decks' spec, unless it touches a deck;
+on a `ship:fast` one only the specs the change reaches, as the local gate chose
+— recomputed from the diff, never read from a record of what the laptop ran,
+so commits pushed after ship are covered too. The push to main runs the whole
+suite. Chromium's system libraries install only if Chromium will not launch
+without them.
 After a green gate, `verify#n` also relays `qa-facts.mjs`: a small run whose
 diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
 on the session model); a gate red twice running moves the fixer to the session
