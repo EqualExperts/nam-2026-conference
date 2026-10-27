@@ -96,8 +96,9 @@ app shell renders, `src/lib/store.jsx`, `server/lib/`, the schema, the seed or
 the config → the whole suite; docs and `server/routes/` (which the API tests
 cover) → none. Where it cannot tell, fast falls back to the branch's own
 specs and `tests/smoke.spec.js` (`fastFallback`), which opens every page;
-only a change to what runs the tests (`tests/helpers.js`, the Playwright or
-Vite config, `package.json`, `gate.mjs`) gets the whole suite. Fast's red-check
+only a change to what runs the tests (the Playwright or Vite config,
+`package.json`, `gate.mjs`) gets the whole suite — not `tests/helpers.js`,
+where every new browser test adds its data lane. Fast's red-check
 runs with `RED_SCOPE=unit`: the branch's unit and API tests alone, the browser
 spec only when there are none. The pull request's CI repeats the same choice (below); the
 whole suite runs on the push to main, after merge; a confirmed finding is fixed and
