@@ -577,7 +577,7 @@ function LabScene({ step: beat }) {
           </div>
           <div className="px-6 py-3">
             {[
-              ['Show my seats on My Agenda', true],
+              ['Pick more than one track on the schedule', true],
               ['Name the search when nothing matches', false],
             ].map(([t, pick], i) => (
               <div key={t} className={`pz-appear flex items-center gap-3 rounded-lg px-3 py-2.5 text-[18px] ${pick ? 'bg-emerald-500/10 ring-1 ring-emerald-400/50' : ''}`} style={later(200 + i * 150)}>
@@ -589,14 +589,14 @@ function LabScene({ step: beat }) {
             ))}
           </div>
           <div className="pz-appear mx-6 rounded-xl border border-hairline bg-raised px-5 py-4" style={later(1300)}>
-            <div className="font-display text-[22px] text-ink">Show my seats on My Agenda <span className="font-sans text-faint">#42</span></div>
+            <div className="font-display text-[22px] text-ink">Pick more than one track on the schedule <span className="font-sans text-faint">#42</span></div>
             <div className="mt-3 font-display text-[18px] text-ink">Done when</div>
             <ul className="mt-1 space-y-1 text-[16px] text-muted">
-              {['My Agenda lists every seat I hold, by day', 'a waitlisted session says so'].map((d, i) => (
+              {['the schedule’s track filter takes more than one track', 'it shows sessions in any of the tracks picked'].map((d, i) => (
                 <li key={d} className="pz-appear flex gap-2" style={later(1700 + i * 200)}><span className="text-violet-300">☐</span>{d}</li>
               ))}
             </ul>
-            <div className="pz-appear mt-2 text-[15px] text-faint" style={later(2200)}><b className="text-muted">Out of scope:</b> suggestions</div>
+            <div className="pz-appear mt-2 text-[15px] text-faint" style={later(2200)}><b className="text-muted">Out of scope:</b> the speakers page</div>
           </div>
         </Browser>
       </Replay>
@@ -643,7 +643,7 @@ function LabScene({ step: beat }) {
       <Replay on={step === 2} from="right" style={at(570, 80, 950, 520)} className="flex flex-col gap-4">
         <Browser url="github.com/you/nam-2026-conference/pull/44">
           <div className="px-6 py-4">
-            <div className="font-display text-[24px] text-ink">Show my seats on My Agenda <span className="font-sans text-faint">#44</span></div>
+            <div className="font-display text-[24px] text-ink">Pick more than one track on the schedule <span className="font-sans text-faint">#44</span></div>
             <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white"><PrIcon /> Open</span>
             <div className="mt-3 flex gap-3">
               <Verdict pass level="high" title="Code review" className="text-left" />
