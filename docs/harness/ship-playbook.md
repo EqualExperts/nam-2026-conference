@@ -100,7 +100,7 @@ Before changing any code, write `specs/<n>-<short-slug>.md` and push it as the
 branch's **first commit**, so a reviewer reads what you intend before the diff.
 Headings: *What this changes* (in terms of what an attendee sees), *Where*
 (file by file — the function or line to change, the test file, and the lane or
-helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer), and only
+helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer — the cheapest that can; §5), and only
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
@@ -175,6 +175,17 @@ not. A change contradicting a stated decision is wrong even when it is green.
 Derive a check from **Done when:**, at the cheapest layer that can prove it —
 `CLAUDE.md` says which. Run it and confirm it is red for the reason §3b made
 you predict.
+
+**Cheapest first, and few browser tests.** A rule, a payload, a 400 or what is
+stored is a unit or API test — they run in seconds. A browser test is for what
+only a page can show — that it opens, what is on screen, a keyboard or click
+path, that it fits a phone — and one test covers a criterion's variants
+(close by Cancel, then Escape, then a click outside, in one test). Never a
+browser test for a rule an API test already proves, and never
+`test.describe.configure({ mode: 'serial' })`: it runs a file's tests one at
+a time and one failure skips the rest. Each browser test runs on two projects,
+on every try, at the gate and in CI; #219 wrote seven for seven criteria where
+three, beside its API tests, proved them all. A fast run keeps to the fewest.
 
 - **Never edit an existing test to make it pass.** A failing test means your
   change is wrong, unless the ticket explicitly changes that behaviour.

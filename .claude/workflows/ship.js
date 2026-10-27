@@ -803,6 +803,11 @@ const built = await agent(
   `Every state the change adds gets its own assertion — each branch of a status or label, the empty case, and, ` +
   `when a state depends on the clock, a moment before it applies (Day 1 08:00: the seed's morning is already ` +
   `attended and rated). On #70 an untested branch became a follow-up and an unpinned early morning an escape. ` +
+  `An assertion is not a test: prove each criterion at the cheapest layer that can (playbook §5) — a rule, a ` +
+  `payload or a 400 in a unit or API test, which run in seconds; a browser test only for what only a page shows, ` +
+  `the variants of one criterion in one test, never \`mode: 'serial'\`.` +
+  (SIZE === 'fast' ? ` This is a fast run, where a person is waiting: as few browser tests as the criteria allow — ` +
+    `on #219 three covered all seven criteria, where thirteen runs of seven tests were written. ` : ' ') +
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
   `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
   `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset. Set browserTest=true if you ` +
