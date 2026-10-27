@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plan, verdict, unitAllPassed, browserAllPassed } from '../../scripts/red-check.mjs';
+import { plan, verdict, unitAllPassed, browserAllPassed, browserFallback } from '../../scripts/red-check.mjs';
 
 /**
  * The shape of #41 is the case that matters: app code changed, a test was
@@ -89,4 +89,13 @@ test('fast (RED_SCOPE=unit): the unit and API tests alone when there are any; th
   assert.deepEqual(plan('M\tsrc/pages/SchedulePage.jsx\nM\ttests/schedule.spec.js', 'unit').browser, ['tests/schedule.spec.js']);
   // Without the scope, both run as before.
   assert.deepEqual(plan(both).browser, ['tests/interests.spec.js']);
+});
+
+test('fast: when no unit test fails on the base, the skipped browser spec runs after all', () => {
+  // A UI change that also tidies an unrelated unit test: that test passes
+  // either way, which proves nothing about the change.
+  const p = plan('M\tsrc/components/X.jsx\nM\ttests/unit/fixtures.test.js\nA\ttests/x.spec.js', 'unit');
+  assert.deepEqual(browserFallback(p, [{ kind: 'unit', failed: false }]).browser, ['tests/x.spec.js']);
+  // One that does fail is proof enough: the browser spec stays skipped.
+  assert.deepEqual(browserFallback(p, [{ kind: 'unit', failed: true }]).browser, []);
 });
