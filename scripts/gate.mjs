@@ -248,6 +248,22 @@ export function affectedSpecs(changed, { graph, routes, specs, redirects = new M
   return (deckTouched(changed.join('\n')) ? [...out] : withoutDeck([...out])).sort();
 }
 
+/** What decides how tests run: a change here could break any spec. */
+const RUNS_TESTS = [/^tests\/helpers\.js$/, /^playwright\.config\.js$/, /^package(-lock)?\.json$/, /^vite\.config\.js$/,
+  /^index\.html$/, /^scripts\/gate\.mjs$/];
+
+/**
+ * Fast's answer when affectedSpecs cannot tell (the shell, the store, the
+ * rules): the branch's own specs and the smoke spec, which opens every page
+ * and fails on any that breaks or throws — what a change to the shell most
+ * likely does. The whole suite runs on main after merge. A change to what
+ * runs the tests gets the whole suite here too (null).
+ */
+export function fastFallback(changed) {
+  if (changed.some(f => RUNS_TESTS.some(r => r.test(f)) || !/^(src|server|tests|docs|specs|\.claude|\.github)\/|\.md$/.test(f))) return null;
+  return [...new Set([...branchSpecs(changed.join('\n')), 'tests/smoke.spec.js'])].sort();
+}
+
 /** The repo, read for affectedSpecs. */
 function readRepo() {
   const graph = new Map();
@@ -400,7 +416,8 @@ function main() {
   // runs no browser spec at all.
   let scope = 'full';
   if (process.env.GATE_SCOPE === 'branch') {
-    const reached = affectedSpecs(changed.split('\n').filter(Boolean), readRepo());
+    const files = changed.split('\n').filter(Boolean);
+    const reached = affectedSpecs(files, readRepo()) || fastFallback(files);
     if (reached) { scope = 'branch'; specs = reached; }
   }
   // The whole suite, less the decks' spec unless the branch is a deck change.
@@ -475,7 +492,7 @@ function main() {
  */
 export function ciSpecs(changed, repo, fast) {
   if (fast) {
-    const reached = affectedSpecs(changed, repo);
+    const reached = affectedSpecs(changed, repo) || fastFallback(changed);
     // Nothing reached: nothing to run beyond the API tests — yet a CI job that
     // runs no spec reads as broken, so the smoke spec stands in.
     if (reached) return reached.length ? reached : ['tests/smoke.spec.js'];

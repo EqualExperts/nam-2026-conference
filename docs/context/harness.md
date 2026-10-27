@@ -94,7 +94,12 @@ renders — how a spec that clicks its way there checks it — plus the branch's
 own specs. Anything the
 app shell renders, `src/lib/store.jsx`, `server/lib/`, the schema, the seed or
 the config → the whole suite; docs and `server/routes/` (which the API tests
-cover) → none. The pull request's CI repeats the same choice (below); the
+cover) → none. Where it cannot tell, fast falls back to the branch's own
+specs and `tests/smoke.spec.js` (`fastFallback`), which opens every page;
+only a change to what runs the tests (`tests/helpers.js`, the Playwright or
+Vite config, `package.json`, `gate.mjs`) gets the whole suite. Fast's red-check
+runs with `RED_SCOPE=unit`: the branch's unit and API tests alone, the browser
+spec only when there are none. The pull request's CI repeats the same choice (below); the
 whole suite runs on the push to main, after merge; a confirmed finding is fixed and
 re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
 The PR's *Not verified* says what it skipped.
@@ -342,7 +347,10 @@ cannot start another round.
   verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the
   `GATE_*` and lane prefixes. A run that stopped to ask sat 27 minutes on one
   `git push` until someone looked. The hook below still runs before each of them,
-  and `gh api` stays out of the list.
+  and `gh api` stays out of the list. In Actions the log reads *Ignoring 39
+  permissions.allow entries … this workspace has not been trusted*: harmless and
+  intended — each job passes its own `--allowedTools`, and trusting the runner's
+  checkout would hand a reviewer ship's `git push`.
 
 - **Attendee work stays on their fork.** `scripts/fork-guard.mjs --hook` runs
   from `.claude/settings.json` before every `Bash` and `mcp__*` call; it only

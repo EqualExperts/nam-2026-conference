@@ -808,7 +808,7 @@ const built = await agent(
   `the variants of one criterion in one test, never \`mode: 'serial'\`.` +
   (SIZE === 'fast' ? ` This is a fast run, where a person is waiting. Put the proof in unit and API tests first — ` +
     `every rule, payload, validation and stored value, and any logic you can lift into a pure function to test ` +
-    `there. Then at most one browser test: one walk through the change that checks, as it goes, each criterion ` +
+    `there. Then at most one browser test — none when nothing an attendee sees changes: one walk through the change that checks, as it goes, each criterion ` +
     `only a page can show (it runs on the mobile project too, so a fit check rides along). On #219 seven browser ` +
     `tests ran thirteen times on every try where one would have done. ` : ' ') +
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
@@ -913,7 +913,7 @@ for (let round = 1; ; round++) {
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
     `Then run \`${T.gateScope === 'branch' ? 'GATE_SCOPE=branch ' : ''}GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
     `It runs npm test and ${T.gateScope === 'branch' ? "the Playwright specs the change reaches" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
-    `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
+    `install. Only if that line contains "ok":true, then run \`${T.gateScope === 'branch' ? 'RED_SCOPE=unit ' : ''}GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
     `return the line it prints, verbatim, as facts. Change nothing and interpret nothing.`,
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },

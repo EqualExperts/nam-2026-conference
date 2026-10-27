@@ -1014,6 +1014,7 @@ describe('--fast', () => {
     assert.match(fast, /never `mode: 'serial'`/);
     assert.match(fast, /unit and API tests first/);
     assert.match(fast, /at most one browser test/);
+    assert.match(fast, /none when nothing an attendee sees changes/);
     assert.doesNotMatch((await run({}, '7 --sized')).prompts.implement, /at most one browser test/);
   });
 
@@ -1025,6 +1026,7 @@ describe('--fast', () => {
     assert.equal(result.size, 'fast');
     assert.deepEqual(calls.filter(c => /^(spec-audit|audit)/.test(c)), ['audit:combined#1']);
     assert.match(prompts['verify#1'], /GATE_SCOPE=branch GATE_BASE=origin\/main node scripts\/gate\.mjs/);
+    assert.match(prompts['verify#1'], /RED_SCOPE=unit GATE_BASE=origin\/main node scripts\/red-check\.mjs/);
     assert.match(prompts['audit:combined#1'], /the browser specs the change reaches \(tests\/schedule\.spec\.js\)/);
   });
 

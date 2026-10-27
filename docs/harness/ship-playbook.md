@@ -189,7 +189,8 @@ three, beside its API tests, proved them all.
 
 **A fast run leans on unit and API tests** — every rule, payload, validation
 and stored value, and any logic that can be lifted into a pure function and
-tested there — and writes **at most one browser test**: a single walk through
+tested there — and writes **at most one browser test**, none when nothing an
+attendee sees changes: a single walk through
 the change that checks each page-only criterion as it goes, and runs on the
 mobile project too, so a fit check rides along.
 

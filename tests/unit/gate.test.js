@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable, redirectsOf, testIdsIn } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable, redirectsOf, testIdsIn, fastFallback } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -355,5 +355,22 @@ describe('the gate as a command', () => {
     const r = gate('--bogus');
     assert.equal(r.status, 2);
     assert.match(r.stderr, /gate: unknown --bogus/);
+  });
+});
+
+describe("fast's answer when the change could reach any page", () => {
+  test('a shared app file runs the branch specs and the smoke spec, not the whole suite', () => {
+    assert.deepEqual(fastFallback(['src/components/UserSwitcher.jsx', 'src/lib/store.jsx', 'tests/interests.spec.js']), ['tests/interests.spec.js', 'tests/smoke.spec.js']);
+    assert.deepEqual(fastFallback(['server/lib/seats.js']), ['tests/smoke.spec.js']);
+  });
+
+  test('a change to what runs the tests still gets the whole suite', () => {
+    for (const f of ['tests/helpers.js', 'playwright.config.js', 'package.json', 'vite.config.js', 'Makefile']) assert.equal(fastFallback([f]), null, f);
+  });
+
+  test('CI makes the same choice for a fast pull request', () => {
+    const repo = { graph: new Map([['src/App.jsx', ['src/components/Layout.jsx']]]), routes: new Map(), specs: new Map([['tests/smoke.spec.js', ''], ['tests/seats.spec.js', '']]) };
+    assert.deepEqual(ciSpecs(['src/components/Layout.jsx'], repo, true), ['tests/smoke.spec.js']);
+    assert.deepEqual(ciSpecs(['src/components/Layout.jsx'], repo, false), ['tests/seats.spec.js', 'tests/smoke.spec.js']);
   });
 });
