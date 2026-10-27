@@ -63,7 +63,9 @@ the spec writer and every auditor as notes that amend the ticket. `@claude` on
 a pull request is `agent-respond.yml`'s: a change to that diff, not a ship run. Its one step runs `claude-code-action` with the prompt
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
-rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
+rest — `/ship <n> --sized`, since a run with no size flag is fast. On a laptop
+it is `/ship <n>`, and asked from a chat the session first asks which run
+(CLAUDE.md). There is no `/build`: the
 step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
@@ -78,6 +80,8 @@ reports `ui` without a browser test, two build rounds, Sonnet), plus: the API
 or breadth (≥ 3 areas, ~7 app files) → `criteria` + `rules` auditors and three
 rounds; ≥ 2 open questions → one `spec-audit:combined`; `uiInteraction` →
 the browser pass always, four probes. `--full` / `--small` pick a preset.
+**No flag at all is `--fast`** — a laptop run, where a person waits — unless
+the issue is labelled `ship:full`; CI passes `--sized` for the sizing above.
 `--fast` is a third preset, never chosen by sizing — for a ticket already
 known to work, like a demo: no spec audit, one combined auditor
 and no browser explorer; the gate runs `GATE_SCOPE=branch` (`npm test` and only
@@ -121,7 +125,14 @@ A lens that dies is re-run once (`<lens>-retry#n`); twice, and the ticket is
 handed back. **The gate is a command, not an opinion**: the verify agent runs
 `node scripts/gate.mjs` and returns its JSON, and `readGate()` decides from
 that — anything unparseable is red. `gate.mjs` retries a failing browser test
-once (a pass on retry is `flaky`, not a failure) and lists removed assertions
+once (a pass on retry is `flaky`, not a failure); one that fails twice in a
+spec the branch did not change is run again alone, on one worker
+(`untouchedFailures`, `settleAlone`) — passing alone, it is `flaky` too. It
+leaves `tests/presentation.spec.js` out (`excluded`) unless the branch touches
+`src/components/presentation/` or that spec: the decks ride along in the fork,
+they are not the app. Its printed line keeps three lines of each error and ten
+failures (`printable`) so the verify agent can copy it; `test-results/gate.json`
+has the rest. It lists removed assertions
 or added skips in `tests/` as `tampered`, which only the lens that traces the criteria sees (`criteria`, or `combined` on a small ticket).
 
 **The red check.** After a green gate, `red-check#n` (Haiku) runs
@@ -310,6 +321,13 @@ merges the lesson or not. Its own PR is on a `learn/…` branch, so its reviews
 cannot start another round.
 
 ## Invariants
+
+- **A laptop run never waits on a permission prompt.** `.claude/settings.json`
+  allows the commands ship's agents run — `git` up to `push`, the `gh issue|pr`
+  verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the
+  `GATE_*` and lane prefixes. A run that stopped to ask sat 27 minutes on one
+  `git push` until someone looked. The hook below still runs before each of them,
+  and `gh api` stays out of the list.
 
 - **Attendee work stays on their fork.** `scripts/fork-guard.mjs --hook` runs
   from `.claude/settings.json` before every `Bash` and `mcp__*` call; it only

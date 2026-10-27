@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs } from '../../scripts/gate.mjs';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -162,5 +162,41 @@ describe('branchSpecs — what GATE_SCOPE=branch runs', () => {
   test('a branch that changed no browser spec gets an empty list — the gate then runs the whole suite', () => {
     assert.deepEqual(branchSpecs('tests/unit/ship.test.js\n'), []);
     assert.deepEqual(branchSpecs(''), []);
+  });
+});
+
+describe('the decks', () => {
+  test('a branch that touches a deck or its spec runs the deck spec', () => {
+    assert.equal(deckTouched('src/components/presentation/ship.jsx\nsrc/App.jsx'), true);
+    assert.equal(deckTouched('tests/presentation.spec.js'), true);
+  });
+
+  test('an app branch leaves the deck spec out of the suite', () => {
+    assert.equal(deckTouched('server/routes/users.js\nsrc/components/Layout.jsx\ntests/unit/presentation.test.js'), false);
+    assert.deepEqual(withoutDeck(['tests/agenda.spec.js', 'tests/presentation.spec.js']), ['tests/agenda.spec.js']);
+  });
+});
+
+describe('a failure that may only be load', () => {
+  const failed = [
+    { test: '[desktop] presentation.spec.js:40 › steps through every beat', error: 'Test timeout of 30000ms exceeded.', at: 'presentation.spec.js:40' },
+    { test: '[mobile] interests.spec.js:12 › saves the selection', error: 'Expected: true', at: 'interests.spec.js:12' },
+    { test: 'tests/x.spec.js:3', error: 'SyntaxError' },
+  ];
+
+  test('only a failure in a spec the branch did not change is rerun alone', () => {
+    assert.deepEqual(untouchedFailures(failed, 'tests/interests.spec.js\nsrc/App.jsx').map(f => f.at), ['presentation.spec.js:40']);
+  });
+
+  test('passing alone makes it flaky, not failed; failing alone keeps it failed', () => {
+    const browser = { passed: 200, failed: failed.slice(0, 1), flaky: 1, flakyTests: ['[mobile] a.spec.js:1 › a'], skipped: 0 };
+    const rerun = (status) => ({ suites: [{ file: 'presentation.spec.js', specs: [{ title: 'steps through every beat', file: 'presentation.spec.js', line: 40, tests: [{ projectName: 'desktop', status }] }] }] });
+
+    const settled = settleAlone(browser, rerun('expected'));
+    assert.deepEqual(settled.failed, []);
+    assert.equal(settled.flaky, 2);
+    assert.match(settled.flakyTests[1], /presentation\.spec\.js:40 .* passed run alone/);
+
+    assert.equal(settleAlone(browser, rerun('unexpected')).failed.length, 1);
   });
 });

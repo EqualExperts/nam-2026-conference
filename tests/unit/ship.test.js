@@ -37,7 +37,10 @@ const blocker = (claim) => ({
  * of the round number (the `#n` suffix). Returns the result and every label
  * that ran, in order.
  */
-async function run(answers = {}, args = 7) {
+// A bare number is CI's `/ship N --sized`: most of this file is about sizing.
+// `bare: true` runs it as typed on a laptop, with no flag.
+async function run(answers = {}, args = 7, { bare = false } = {}) {
+  if (!bare && typeof args !== 'object' && !/--(full|small|fast|sized)\b/.test(String(args))) args = `${args} --sized`;
   const calls = [];
   const prompts = {};
   const models = {};
@@ -537,7 +540,7 @@ describe('ship', () => {
       return { ok: true, summary: 'done' };
     };
     const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
-    const result = await script({ issue: 7, base: 'harness/ship-loop' }, agent, parallel, () => {}, () => {});
+    const result = await script({ issue: 7, base: 'harness/ship-loop', size: 'sized' }, agent, parallel, () => {}, () => {});
     assert.equal(result.outcome, 'shipped');
     assert.match(prompts.setup, /origin\/harness\/ship-loop/);
     assert.match(prompts['verify#1'], /GATE_BASE=origin\/harness\/ship-loop/);
@@ -971,6 +974,30 @@ describe('progress and spend on the issue, from a laptop', () => {
  * minutes matter. It keeps one independent audit and a skeptic, and says in
  * the pull request what it skipped.
  */
+/**
+ * With no flag a run is on a laptop — CI always passes `--sized` — and on a
+ * laptop it is the workshop, where a person sits waiting for it.
+ */
+describe('a run with no size flag', () => {
+  const sizing = { areas: ['ui', 'server-routes', 'tests'], files: 4, changesApi: true, changesRule: false,
+    changesData: false, openQuestions: 4, labelledFull: false, uiInteraction: true, layoutFit: true, why: 'a modal and a route' };
+
+  test('is fast, whatever sizing would have chosen', async () => {
+    const { result } = await run({ setup: { ...SETUP, sizing } }, '7', { bare: true });
+    assert.equal(result.size, 'fast');
+  });
+
+  test('--sized sizes it, --full runs it all', async () => {
+    assert.equal((await run({ setup: { ...SETUP, sizing } }, '7 --sized', { bare: true })).result.size, 'small');
+    assert.equal((await run({ setup: { ...SETUP, sizing } }, '7 --full', { bare: true })).result.size, 'full');
+  });
+
+  test('a ship:full label outranks the default', async () => {
+    const { result } = await run({ setup: { ...SETUP, sizing: { ...sizing, labelledFull: true } } }, '7', { bare: true });
+    assert.equal(result.size, 'full');
+  });
+});
+
 describe('--fast', () => {
   const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
 

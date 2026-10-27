@@ -4,6 +4,11 @@
  *   node scripts/gate.mjs        # npm test, then the Playwright suite; prints one JSON line
  *   GATE_SCOPE=branch node scripts/gate.mjs   # …only the browser specs the branch changed (ship --fast)
  *
+ * The decks' spec (`tests/presentation.spec.js`) runs only when the branch
+ * touches a deck: the presentations ride along in the fork so attendees can
+ * open them, but they are not the app, and on a loaded laptop their slow
+ * specs timed out and sent an unrelated ticket round the fix loop twice.
+ *
  * The ship loop used to ask an agent whether the suite was green and branch on
  * its answer. That is an agent marking its own homework. This runs the suites,
  * reads Playwright's JSON reporter rather than its prose, and prints the
@@ -15,14 +20,18 @@
  *  - **A failing browser test is retried once.** One that passes on retry is
  *    reported as `flaky`, not failed. A flake in a spec the branch never
  *    touched used to cost a whole fix round, and the fixer would "fix"
- *    unrelated code to make it go away.
+ *    unrelated code to make it go away. One that fails twice, in a spec the
+ *    branch never touched, is run again on its own: on a laptop running
+ *    several agents a slow spec times out under load and passes alone, and
+ *    that is flaky too. One that fails alone as well is a real failure —
+ *    the branch can break a spec it did not edit.
  *  - **It reads the branch's diff of `tests/`.** A removed `test(` or
  *    `expect(`, or an added `.skip` / `.only` / `.fixme`, is listed under
  *    `tampered`. That is not always wrong — a ticket can change behaviour —
  *    so it does not fail the gate. It goes to the auditor whose job is to ask.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,6 +39,9 @@ const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 /** What `tampered` reads: the tests, and everything that decides which run. */
 export const WATCHED = ['tests/', 'playwright.config.js', 'package.json', 'scripts/gate.mjs'];
 const OUT = join(ROOT, 'test-results');
+/** The presentations: in the repo so a fork can show them, not part of the app. */
+const DECK_SPEC = 'tests/presentation.spec.js';
+const DECK = [DECK_SPEC, 'src/components/presentation/'];
 
 /** Playwright's JSON report → counts and the tests that failed. */
 export function summarise(report) {
@@ -48,7 +60,7 @@ export function summarise(report) {
         if (t.status !== 'unexpected') continue;
         const last = (t.results || []).at(-1) || {};
         const error = (last.error?.message || '').replace(/\u001b\[[0-9;]*m/g, '').split('\n').slice(0, 6).join('\n');
-        failed.push({ test: `[${t.projectName}] ${spec.file || file}:${spec.line} › ${spec.title}`, error });
+        failed.push({ test: `[${t.projectName}] ${spec.file || file}:${spec.line} › ${spec.title}`, error, at: `${spec.file || file}:${spec.line}` });
       }
     }
     for (const s of suite.suites || []) walk(s, s.file || file);
@@ -138,6 +150,68 @@ export function isDirty(porcelain, pinned = []) {
     .some(l => !l.startsWith('??') || l.slice(3).startsWith('tests/'));
 }
 
+/**
+ * `git diff --name-only` of the branch → whether to run the decks' spec, and
+ * the spec files to run when it should not (`all`: every `tests/*.spec.js`).
+ */
+export function deckTouched(nameOnly) {
+  return nameOnly.split('\n').some(f => DECK.some(d => f.trim().startsWith(d)));
+}
+export function withoutDeck(all) {
+  return all.filter(f => f !== DECK_SPEC);
+}
+
+/**
+ * The failures worth a second run on their own: in a spec the branch did not
+ * change. A failure in one it did change is the branch's to fix, load or not.
+ */
+export function untouchedFailures(failed, nameOnly) {
+  const changed = new Set(nameOnly.split('\n').map(f => f.trim()));
+  return failed.filter(f => f.at && !changed.has(`tests/${f.at.replace(/:\d+$/, '')}`));
+}
+
+/**
+ * Fold the lone rerun's report back in: a failure that passed alone moves to
+ * flaky, named as such, and stops failing the gate.
+ */
+export function settleAlone(browser, rerun) {
+  const fine = new Set();
+  const walk = (suite, file) => {
+    for (const spec of suite.specs || []) {
+      for (const t of spec.tests || []) {
+        if (t.status === 'expected' || t.status === 'flaky') fine.add(`[${t.projectName}] ${spec.file || file}:${spec.line} › ${spec.title}`);
+      }
+    }
+    for (const s of suite.suites || []) walk(s, s.file || file);
+  };
+  for (const s of rerun.suites || []) walk(s, s.file);
+  const passedAlone = browser.failed.filter(f => fine.has(f.test));
+  return {
+    ...browser,
+    failed: browser.failed.filter(f => !fine.has(f.test)),
+    flaky: browser.flaky + passedAlone.length,
+    flakyTests: [...(browser.flakyTests || []), ...passedAlone.map(f => `${f.test} (failed under load, passed run alone)`)],
+  };
+}
+
+/**
+ * The line ship's verify agent copies back, verbatim. On a laptop run with
+ * five timeouts and their stacks it came back mangled, the loop read
+ * "unreadable gate output", and two fix rounds aimed at nothing. Short enough
+ * to copy: errors to three lines, at most ten failures; gate.json keeps it all.
+ */
+export function printable(result) {
+  const failed = result.browser.failed;
+  return {
+    ...result,
+    browser: {
+      ...result.browser,
+      failed: failed.slice(0, 10).map(f => ({ ...f, error: f.error.split('\n').slice(0, 3).join('\n').slice(0, 300) })),
+      ...(failed.length > 10 ? { more: `${failed.length - 10} more failed — test-results/gate.json lists them` } : {}),
+    },
+  };
+}
+
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 
 /**
@@ -188,8 +262,16 @@ function main() {
   // A branch that changed no browser spec has nothing narrower to run: the
   // whole suite, as without the scope.
   let specs = [];
+  let changed = '';
+  try { changed = git('diff', '--name-only', `${base}...HEAD`); } catch { /* no base */ }
   if (process.env.GATE_SCOPE === 'branch') {
     try { specs = branchSpecs(git('diff', '--name-only', '--diff-filter=d', `${base}...HEAD`, '--', 'tests/')); } catch { /* no base */ }
+  }
+  const scope = specs.length ? 'branch' : 'full';
+  // The whole suite, less the decks' spec unless the branch is a deck change.
+  const excluded = scope === 'full' && !deckTouched(changed) ? [DECK_SPEC] : [];
+  if (excluded.length) {
+    specs = withoutDeck(readdirSync(join(ROOT, 'tests')).filter(f => f.endsWith('.spec.js')).map(f => `tests/${f}`));
   }
 
   spawnSync('npm', ['run', 'db:seed', '--silent'], { cwd: ROOT, stdio: 'ignore' });
@@ -203,6 +285,20 @@ function main() {
   try { browser = summarise(JSON.parse(readFileSync(json, 'utf8'))); }
   catch { browser = { passed: 0, failed: [{ test: 'playwright', error: (pw.stderr || 'no report written').slice(-600) }], flaky: 0, skipped: 0 }; }
 
+  // Failed twice in a spec the branch never touched: once more, alone, on one
+  // worker and a fresh seed — whatever else the machine is doing.
+  const alone = untouchedFailures(browser.failed, changed);
+  if (alone.length) {
+    const rerunJson = join(OUT, 'gate-alone.json');
+    rmSync(rerunJson, { force: true });
+    spawnSync('npm', ['run', 'db:seed', '--silent'], { cwd: ROOT, stdio: 'ignore' });
+    spawnSync('npx', ['playwright', 'test', ...new Set(alone.map(f => `tests/${f.at}`)), '--workers=1', '--retries=0', '--reporter=json'], {
+      cwd: ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
+      env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: rerunJson, PLAYWRIGHT_JSON_OUTPUT_FILE: rerunJson },
+    });
+    try { browser = settleAlone(browser, JSON.parse(readFileSync(rerunJson, 'utf8'))); } catch { /* no report: they stay failed */ }
+  }
+
   let diff = '';
   try { diff = git('diff', `${base}...HEAD`, '--', ...WATCHED); } catch { /* no base to compare with */ }
 
@@ -212,7 +308,8 @@ function main() {
 
   const unitFailed = unit.status !== 0;
   const result = {
-    ok: !unitFailed && pw.status === 0 && browser.failed.length === 0 && !dirty,
+    // A run whose only failures then passed alone still exited non-zero.
+    ok: !unitFailed && (pw.status === 0 || alone.length > 0) && browser.failed.length === 0 && !dirty,
     sha,
     dirty,
     unit: unitFailed
@@ -222,12 +319,13 @@ function main() {
       : { passed: Number(unitCounts[1] || 0), failed: 0 },
     browser,
     // What the browser count covers: `full`, or the branch's own specs.
-    scope: specs.length ? 'branch' : 'full',
-    ...(specs.length ? { specs } : {}),
+    scope,
+    ...(scope === 'branch' ? { specs } : {}),
+    ...(excluded.length ? { excluded } : {}),
     tampered: tampered(diff),
   };
   writeFileSync(join(OUT, 'gate.json'), JSON.stringify(result, null, 2));
-  console.log(JSON.stringify(result));
+  console.log(JSON.stringify(printable(result)));
   process.exit(result.ok ? 0 : 1);
 }
 

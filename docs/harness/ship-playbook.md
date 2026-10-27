@@ -193,8 +193,10 @@ npm run shot -- /the-route    # only if something visual moved
 
 The Verify phase runs this and returns its last line verbatim — nothing
 else. It is `npm test` plus the whole Playwright suite, with the verdict read
-from Playwright's JSON report, one retry for a flaky browser test, and a list
-of any assertions the branch removed. Run it once; in a runner Chromium is
+from Playwright's JSON report, one retry for a flaky browser test (and one
+more run alone for a failure in a spec the branch did not touch), and a list
+of any assertions the branch removed. The decks' spec only runs when the
+branch changes a deck. Run it once; in a runner Chromium is
 already installed — never run `playwright install`.
 
 **Do not interpret a red result or try to fix it.** Return the line. The loop

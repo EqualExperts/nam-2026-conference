@@ -209,5 +209,6 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   what the test writes (`attendance.checkin-toast`/`attendance.rating-toast` do this).
 - New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex — unless it renders
   outside `<Layout>`, as the two presentations do: smoke expects a header and footer, so a
-  full-screen route gets its own spec (`tests/presentation.spec.js`).
+  full-screen route gets its own spec (`tests/presentation.spec.js`), which the
+  ship gate skips unless the branch touches a deck.
 - New endpoint: `tests/api/endpoints.test.js` (see architecture).

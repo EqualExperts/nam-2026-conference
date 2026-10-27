@@ -1,7 +1,7 @@
 export const meta = {
   name: 'ship',
   description: 'Issue → spec → spec audit loop → implement → verify + code audit loop → context → learn → PR',
-  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label.',
+  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label. Asked from a chat without --fast or --full, first ask which run they want (CLAUDE.md, What happens to a ticket).',
   phases: [
     { title: 'Setup', detail: 'read the ticket, gate it, claim it, branch' },
     { title: 'Spec', detail: 'write specs/<n>-<slug>.md' },
@@ -25,7 +25,10 @@ let MAX_BUILD_ROUNDS = 4
 // script composes the loop from it (profileFor, below): small is the base, a
 // risk adds the check that catches it, and only a rule, stored data or the
 // harness buys the full Opus loop. `ship:full` on the issue, or `--full` /
-// `--small` / `--fast` after the number, picks a preset outright. A three-line copy fix
+// `--small` / `--fast` after the number, picks a preset outright. With no
+// flag at all a run is fast: that is a laptop, and on a laptop it is the
+// workshop, where a person waits on the result. CI passes `--sized`, which is
+// this sizing. A three-line copy fix
 // does not need two spec auditors, three code auditors and Opus throughout —
 // that shape took a medium ticket 57 minutes. Small keeps what makes the
 // loop trustworthy — an independent audit, a skeptic, the machine gate — and
@@ -98,9 +101,12 @@ const argText = typeof args === 'object' && args ? '' : String(args ?? '').trim(
 const LEAD = (/^#?\d+(?:(?:\s*,\s*|\s+and\s+|\s+)#?\d+)*/.exec(argText) || [''])[0]
 const ISSUES = [...new Set((LEAD.match(/\d+/g) || []).map(Number))]
 const issue = Number(typeof args === 'object' && args ? args.issue : ISSUES[0])
-const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small|fast)\b/.exec(argText) || [])[1]
+const FLAG = typeof args === 'object' && args ? args.size : (/--(full|small|fast|sized)\b/.exec(argText) || [])[1]
+// No flag: fast, unless the issue carries ship:full (see PRESET).
+const DEFAULTED = !FLAG
+const FORCED = FLAG === 'sized' ? undefined : FLAG || 'fast'
 const NOTES = String((typeof args === 'object' && args ? args.notes : argText.slice(LEAD.length)) || '')
-  .replace(/@claude\b/gi, '').replace(/--(full|small|fast)\b/g, '').trim()
+  .replace(/@claude\b/gi, '').replace(/--(full|small|fast|sized)\b/g, '').trim()
 
 // Several tickets: one whole ship per ticket, all at once. Each gets its own
 // worktree and lane, so they build, boot the app and run the suite side by
@@ -112,7 +118,7 @@ if (ISSUES.length > 1 && !(typeof args === 'object' && args)) {
   }
   log(`shipping ${ISSUES.length} tickets in parallel: ${ISSUES.map(n => `#${n}`).join(', ')}`)
   const runs = await parallel(ISSUES.map(n => () =>
-    workflow('ship', { issue: n, notes: NOTES, ...(FORCED ? { size: FORCED } : {}) })))
+    workflow('ship', { issue: n, notes: NOTES, ...(FLAG ? { size: FLAG } : {}) })))
   return {
     outcome: 'batch',
     runs: runs.map((r, i) => r || { outcome: 'error', issue: ISSUES[i], reason: 'the run died' }),
@@ -649,7 +655,10 @@ function profileFor(f) {
   }
   return { ...p, why: [f.why || 'a contained change', ...added].join('; ') }
 }
-const PRESET = FORCED && { ...TIERS[FORCED], size: FORCED, why: 'forced' }
+// A ship:full label outranks the laptop default; only a flag outranks the label.
+const LABELLED_FULL = DEFAULTED && setup.sizing && setup.sizing.labelledFull
+const PRESET = LABELLED_FULL ? { ...TIERS.full, size: 'full', why: 'labelled ship:full' }
+  : FORCED && { ...TIERS[FORCED], size: FORCED, why: DEFAULTED ? 'fast, the default with no --full' : 'forced' }
 if (!FORCED && !setup.sizing) log(`#${issue}: setup reported no sizing facts — the full loop by default`)
 T = PRESET || (setup.sizing ? profileFor(setup.sizing)
   : setup.size === 'small' ? { ...TIERS.small, size: 'small', why: 'setup said small' }
@@ -657,7 +666,7 @@ T = PRESET || (setup.sizing ? profileFor(setup.sizing)
 const SIZE = T.size
 MAX_SPEC_ROUNDS = T.specRounds
 MAX_BUILD_ROUNDS = T.buildRounds
-log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ` — ${T.why}`}`)
+log(`#${issue} sized ${SIZE}${FORCED && !DEFAULTED ? ' (forced)' : ` — ${T.why}`}`)
 const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
 if (missingSetup.length) {
   const partial = setup
@@ -949,7 +958,7 @@ for (let round = 1; ; round++) {
           `read the branch's own tests only to aim your probes past them. Write every probe into one file and run it ` +
           `once for both viewports (\`npx playwright test tests/qa-probe.spec.js\` runs both projects)` +
           `${setup.runner ? '' : `, behind \`eval "$(node scripts/lane.mjs claim ${issue})" &&\`; never release the lane — it belongs to the run`}.\n\n`
-        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the branch's own browser specs (${(gate.specs || []).join(', ')})` : 'the whole suite'} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the branch's own browser specs (${(gate.specs || []).join(', ')})` : `the whole suite${gate.excluded ? ` but ${gate.excluded.join(', ')} (the decks; the branch does not touch them)` : ''}`} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
           `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`

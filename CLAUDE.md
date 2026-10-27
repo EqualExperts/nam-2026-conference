@@ -205,7 +205,11 @@ and triggers: `docs/harness/github.md`.
 ## What happens to a ticket
 
 1. **Ship** — `ready-for-ai` (or `@claude` on an issue) runs `/ship`, where
-   every phase is a fresh agent. Setup sizes the ticket: most are **small**
+   every phase is a fresh agent. **Asked in a chat to ship an issue** without
+   `--fast` or `--full`, first ask which run with AskUserQuestion — two
+   options, in this order: *Full workflow — best quality* (`--full`) and
+   *Fast — for the workshop* (`--fast`) — then start it with that flag. A run
+   with no flag is fast. Setup sizes the ticket: most are **small**
    (one auditor per stage, two rounds, Sonnet); `ship:full` gets the whole
    loop on Opus. No pull request until the gate is green and no
    auditor blocker survives a skeptic; one that will not converge goes to a
