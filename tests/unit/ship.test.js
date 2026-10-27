@@ -1007,6 +1007,14 @@ describe('a run with no size flag', () => {
   });
 });
 
+test('ship never reads the clock — a workflow that does fails before its first agent', () => {
+  // Date.now() and new Date() throw in workflow scripts (they would break
+  // resume). These unit tests run the script in plain Node, where both work,
+  // so #242's Date.now() passed here and failed every real run.
+  const code = source.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(code, /\bDate\.now\s*\(|\bnew\s+Date\b|\bDate\s*\(/);
+});
+
 describe('the hand-off to the chat that asked', () => {
   const LAPTOP_RUN = { ...SETUP, runner: false, workdir: '/w/.claude/worktrees/wt-7' };
 
@@ -1017,7 +1025,6 @@ describe('the hand-off to the chat that asked', () => {
       report: { ok: true, summary: '3.3M tokens (2.9M cached reads · 300k cache writes · 30k output) · ~$2.45 — sonnet ~$2.00, haiku ~$0.45' },
     }, '7 --fast');
     assert.equal(result.pr, 'https://github.com/o/r/pull/9');
-    assert.ok(Number.isInteger(result.minutes) && result.minutes >= 1);
     assert.match(result.spend, /~\$2\.45/);
     assert.equal(result.tryIt, 'Open /schedule as Jonas');
     assert.equal(result.show, 'npm run show -- issue-7-hours');

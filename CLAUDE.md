@@ -227,7 +227,8 @@ and triggers: `docs/harness/github.md`.
 
    **When ship finishes**, the chat that asked for it gets the hand-off, not
    a log. Lead with the pull request link (`pr`), then one line with how long
-   it took (`minutes`) and what it cost (`spend`), then what to try (`tryIt`).
+   it took (the workflow's completion notice gives its duration) and what it
+   cost (`spend`), then what to try (`tryIt`).
    Then offer to open it — *"Want me to open it in your browser?"* — and on a
    yes run the returned `show` command (`npm run show -- <the run's branch>`)
    in the background: it serves **that branch** from ship's own worktree and
