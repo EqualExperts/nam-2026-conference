@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { visit, momentOn, laneFor, bookableFor, shotForPR, ATTENDEES } from './helpers.js';
 
 test.describe('Attendee switcher', () => {
   test('the switcher counts what is on an agenda, not what was "saved"', async ({ page }) => {
@@ -101,5 +101,68 @@ test.describe('Your speaker profile', () => {
     await visit(page, '/', { as: ATTENDEES.kenji });
     await page.getByRole('button', { name: /Switch attendee/ }).click();
     await expect(page.getByTestId('own-speaker-profile')).toHaveCount(0);
+  });
+});
+
+test.describe('Your interests', () => {
+  test('the menu opens a topic picker; it saves, survives a reload, and closing saves nothing', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('switcher.interests', testInfo);
+    const api = async (path, init) => (await request.fetch(`/api${path}`, init)).json();
+    const original = (await api(`/users/${lane.user}`)).interests;
+    const topics = (await api('/meta/bootstrap')).tags.filter((t) => t.kind === 'topic').map((t) => t.name);
+
+    await visit(page, '/', { as: lane.user, at: await momentOn(0, '10:30') });
+    const dialog = page.getByRole('dialog', { name: 'Your interests' });
+    const open = async () => {
+      await page.getByRole('button', { name: /Switch attendee/ }).click();
+      await page.getByRole('button', { name: 'Your interests' }).click();
+      await expect(dialog).toBeVisible();
+    };
+    const chip = (name) => dialog.getByRole('button', { name, exact: true });
+
+    try {
+      await open();
+      // every topic is a toggle, the attendee's own already pressed
+      await expect(dialog.locator('button[aria-pressed]')).toHaveCount(topics.length);
+      for (const t of topics) {
+        await expect(chip(t)).toHaveAttribute('aria-pressed', original.includes(t) ? 'true' : 'false');
+      }
+      await shotForPR(page, 'Your interests dialog');
+
+      // fits the phone: Save on screen, last topic reachable, no sideways scroll
+      await chip(topics.at(-1)).scrollIntoViewIfNeeded();
+      await expect(dialog.getByRole('button', { name: 'Save' })).toBeInViewport();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+      // three ways out, none of which saves
+      const flip = topics.find((t) => !original.includes(t));
+      await chip(flip).click();
+      await expect(chip(flip)).toHaveAttribute('aria-pressed', 'true');
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
+      await open();
+      await expect(chip(flip)).toHaveAttribute('aria-pressed', 'false');
+      await chip(flip).click();
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+      await open();
+      await expect(chip(flip)).toHaveAttribute('aria-pressed', 'false');
+      await chip(flip).click();
+      await dialog.getByRole('button', { name: 'Close' }).click({ position: { x: 8, y: 8 } });
+      await expect(dialog).toBeHidden();
+      expect((await api(`/users/${lane.user}`)).interests).toEqual(original);
+
+      // save one more topic, then reload
+      await open();
+      await chip(flip).click();
+      await dialog.getByRole('button', { name: 'Save' }).click();
+      await expect(dialog).toBeHidden();
+      expect((await api(`/users/${lane.user}`)).interests).toContain(flip);
+      await page.reload();
+      await open();
+      await expect(chip(flip)).toHaveAttribute('aria-pressed', 'true');
+    } finally {
+      await request.put(`/api/users/${lane.user}/interests`, { data: { interests: original } });
+    }
   });
 });
