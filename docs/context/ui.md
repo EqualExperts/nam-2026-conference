@@ -19,6 +19,7 @@ files:
   - src/components/GeneratedCover.jsx
   - src/components/HeroMedia.jsx
   - src/components/UserSwitcher.jsx
+  - src/components/InterestsDialog.jsx
   - src/components/RouteChange.jsx
   - src/pages/HomePage.jsx
   - src/pages/NotFoundPage.jsx
@@ -150,7 +151,13 @@ sticky `glass` header, `<main id="main">`, and the footer.
   When `currentUser.isSpeaker`, a `Your speaker profile` link
   (`own-speaker-profile`) sits between the list and the talk links and opens
   `/speakers/<currentUser.speakerId>`, which marks itself "This is you"
-  (speakers doc). `tests/switcher.spec.js` covers the switcher and that link.
+  (speakers doc). A `Your interests` button (always shown) closes the menu and
+  opens `InterestsDialog` (rendered by `UserSwitcher`, modelled on `ConflictDialog`):
+  one `aria-pressed` chip per `kind === 'topic'` tag, a local draft seeded from
+  `currentUser.interests`, Save through `useConference().saveInterests` (PUT, then
+  the user's row in the bootstrap payload is replaced, toast either way, stays open
+  on failure); Cancel, Escape and the backdrop discard. `tests/switcher.spec.js`
+  covers the switcher, that link and the dialog.
 
 **`HomePage`** (`/`) — static: nothing on it is about the signed-in attendee or
 what is live. It stacks `HeroBar` (`hero`: name, `conference.dates · city`, a

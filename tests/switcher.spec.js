@@ -105,6 +105,9 @@ test.describe('Your speaker profile', () => {
 });
 
 test.describe('Your interests', () => {
+  // The tests of one project share an attendee and rewrite what they hold, so
+  // they run one after another; the two projects use different attendees.
+  test.describe.configure({ mode: 'serial' });
   // Desktop and mobile run side by side, each on its own attendee; both put the
   // saved interests back, so nothing here leaks into another spec.
   const who = (testInfo) => (testInfo.project.name === 'mobile' ? ATTENDEES.marcus : ATTENDEES.kenji);
@@ -123,6 +126,8 @@ test.describe('Your interests', () => {
     const original = await read(request, id);
     const boot = await (await request.get('/api/bootstrap')).json();
     const topics = boot.tags.filter((t) => t.kind === 'topic').map((t) => t.name);
+    // Kenji is seeded with "Edge", a tech tag: it has no chip, so it is not pressed.
+    const pressed = original.filter((n) => topics.includes(n));
     try {
       await visit(page, '/', { as: id });
       const dialog = await open(page);
@@ -130,7 +135,7 @@ test.describe('Your interests', () => {
       await expect(toggles).toHaveCount(topics.length);
       for (const name of topics) {
         await expect(dialog.getByRole('button', { name, exact: true }))
-          .toHaveAttribute('aria-pressed', String(original.includes(name)));
+          .toHaveAttribute('aria-pressed', String(pressed.includes(name)));
       }
 
       // Flip the first topic and save; only that one changes.
@@ -139,13 +144,13 @@ test.describe('Your interests', () => {
       await shotForPR(page, 'The interests dialog with a topic toggled');
       await dialog.getByRole('button', { name: 'Save' }).click();
       await expect(dialog).toBeHidden();
-      const expected = original.includes(flip) ? original.filter((n) => n !== flip) : [...original, flip];
+      const expected = pressed.includes(flip) ? pressed.filter((n) => n !== flip) : [...pressed, flip];
       expect([...(await read(request, id))].sort()).toEqual([...expected].sort());
 
       await page.reload();
       const again = await open(page);
       await expect(again.getByRole('button', { name: flip, exact: true }))
-        .toHaveAttribute('aria-pressed', String(!original.includes(flip)));
+        .toHaveAttribute('aria-pressed', String(!pressed.includes(flip)));
     } finally {
       await restore(request, id, original);
     }
@@ -157,7 +162,8 @@ test.describe('Your interests', () => {
     try {
       await visit(page, '/', { as: id });
       const dialog = await open(page);
-      for (const btn of await dialog.locator('button[aria-pressed="true"]').all()) await btn.click();
+      const on = dialog.locator('button[aria-pressed="true"]');
+      while (await on.count()) await on.first().click();
       await dialog.getByRole('button', { name: 'Save' }).click();
       await expect(dialog).toBeHidden();
       expect(await read(request, id)).toEqual([]);
@@ -169,11 +175,12 @@ test.describe('Your interests', () => {
   test('Cancel, Escape and an outside click save nothing', async ({ page, request }, testInfo) => {
     const id = who(testInfo);
     const original = await read(request, id);
+    const topics = (await (await request.get('/api/bootstrap')).json()).tags.filter((t) => t.kind === 'topic').map((t) => t.name);
     await visit(page, '/', { as: id });
     for (const close of [
       (d) => d.getByRole('button', { name: 'Cancel' }).click(),
       () => page.keyboard.press('Escape'),
-      () => page.getByRole('button', { name: 'Close', exact: true }).click(),
+      () => page.getByRole('button', { name: 'Close', exact: true }).click({ position: { x: 5, y: 5 } }),
     ]) {
       const dialog = await open(page);
       await dialog.locator('button[aria-pressed]').first().click();
@@ -183,7 +190,7 @@ test.describe('Your interests', () => {
     }
     // The rest of the app still answers, and a reopened dialog starts clean.
     const dialog = await open(page);
-    expect(await dialog.locator('button[aria-pressed="true"]').count()).toBe(original.length);
+    await expect(dialog.locator('button[aria-pressed="true"]')).toHaveCount(original.filter((n) => topics.includes(n)).length);
   });
 
   test('at mobile width every topic is reachable and Save is visible', async ({ page }, testInfo) => {

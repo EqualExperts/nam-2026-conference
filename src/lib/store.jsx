@@ -65,6 +65,19 @@ export function ConferenceProvider({ children }) {
     toast({ message: following ? 'Unfollowed' : 'Following', icon: 'bell' });
   }, [currentUserId, followingIds, toast]);
 
+  /** Save the attendee's interests and swap their row in the bootstrap payload. */
+  const saveInterests = useCallback(async (interests) => {
+    try {
+      const saved = await api.saveInterests(currentUserId, interests);
+      setData((d) => d && { ...d, users: d.users.map((u) => (u.id === saved.id ? { ...u, interests: saved.interests } : u)) });
+      toast({ message: 'Interests saved', icon: 'check' });
+      return true;
+    } catch (err) {
+      toast({ message: `Could not save interests: ${err.message}`, icon: 'alert' });
+      return false;
+    }
+  }, [currentUserId, toast]);
+
   /** Apply a seat-state payload from the API to local state. */
   const applySeatState = useCallback((state) => {
     setSeatCounts((prev) => new Map(prev).set(state.sessionId, {
@@ -182,6 +195,7 @@ export function ConferenceProvider({ children }) {
       followingIds,
       isFollowing: (id) => followingIds.has(id),
       toggleFollow,
+      saveInterests,
       reservations,
       reservationFor: (id) => reservations.get(id) ?? null,
       seatCounts,
@@ -196,7 +210,7 @@ export function ConferenceProvider({ children }) {
       venueById: Object.fromEntries((data?.venues ?? []).map((v) => [v.id, v])),
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
-  }, [data, error, clock, currentUserId, followingIds, toggleFollow,
+  }, [data, error, clock, currentUserId, followingIds, toggleFollow, saveInterests,
       reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat,
       conflict, resolveConflict]);
 
