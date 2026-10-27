@@ -1111,7 +1111,10 @@ const fixed = rounds.reduce((n, r) => n + r.confirmed, 0) + specRounds.reduce((n
 const notVerified = [
   ...(!(lastRed && lastRed.checked) ? ['no red-check ran — no app code changed, or it could not'] : []),
   ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
-  ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
+  // QA skips a ship:fast pull request (agent-qa.yml), so fast must not promise it.
+  ...(!CODE_LENSES.some(l => l.key === 'browser') ? [SIZE === 'fast'
+    ? `not explored in a browser beyond its own tests, and QA skips a fast pull request — run \`/qa <this PR>\` from Claude to have it`
+    : 'not explored in a browser beyond its own tests — QA does that next'] : []),
   ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
   ...(gate.scope === 'branch' ? ["the whole browser suite did not run, here or on this pull request — only the specs the change reaches; main runs it after merge"] : []),
   ...(gate.excluded ? [`${gate.excluded.join(', ')} did not run — the decks, which this branch does not touch`] : []),

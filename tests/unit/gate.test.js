@@ -1,5 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable, redirectsOf, testIdsIn } from '../../scripts/gate.mjs';
 
 /**
@@ -336,5 +337,23 @@ import { MyAgendaPage } from './pages/MyAgendaPage.jsx';
     // A component's own test id, through the page that renders it.
     const list = ['tests/list.spec.js', `await expect(page.getByTestId("agenda-list")).toHaveCount(1);`];
     assert.deepEqual(affectedSpecs(['src/components/AgendaList.jsx'], repo([list, other])), ['tests/list.spec.js']);
+  });
+});
+
+describe('the gate as a command', () => {
+  // An unknown flag once ran the whole gate: a reviewer's --help sat through
+  // npm test and Playwright for two minutes (#220). These must return at once.
+  const gate = (...a) => spawnSync(process.execPath, ['scripts/gate.mjs', ...a], { encoding: 'utf8', timeout: 10_000 });
+
+  test('--help prints the usage and runs nothing', () => {
+    const r = gate('--help');
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /node scripts\/gate\.mjs --specs <base>/);
+  });
+
+  test('an unknown flag is refused, not run', () => {
+    const r = gate('--bogus');
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /gate: unknown --bogus/);
   });
 });

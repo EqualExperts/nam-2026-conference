@@ -1029,6 +1029,9 @@ describe('--fast', () => {
     assert.ok(!calls.includes('learn'), calls.join(', '));
     assert.match(prompts['open-pr'], /re-gated, not re-audited/);
     assert.match(prompts['open-pr'], /main runs it after merge/);
+    // QA skips a ship:fast pull request, so its body must not say QA is next.
+    assert.doesNotMatch(prompts['open-pr'], /QA does that next/);
+    assert.match(prompts['open-pr'], /QA skips a fast pull request/);
     assert.match(prompts['open-pr'], /6 browser in tests\/schedule\.spec\.js/);
   });
 

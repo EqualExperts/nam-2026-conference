@@ -16,6 +16,12 @@ on:
   workflow_dispatch:
 
 # A new push to the same branch makes the running job pointless.
+# The scope step reads the pull request's labels; say so rather than lean on
+# the repository's default token, which can be the restricted one.
+permissions:
+  contents: read
+  pull-requests: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
