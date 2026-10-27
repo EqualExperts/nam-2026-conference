@@ -101,6 +101,19 @@ describe('a laptop run finds its own transcripts', () => {
     assert.equal(tokens(total(fromTranscripts(dir, null, 12))), 1_000_000);
   });
 
+  test('the prompt need not be the first line — a relayed request can come before it', () => {
+    // Claude Code began opening each agent's transcript with the request that
+    // started the workflow; a first-line check then matched no agent and every
+    // laptop run recorded nothing.
+    const dir = mkdtempSync(join(require('node:os').tmpdir(), 'ai-cost-'));
+    const relay = JSON.stringify({ type: 'user', message: { role: 'user', content: '[Workflow harness — user request] ship 219' } });
+    const prompt = JSON.stringify({ type: 'user', message: { role: 'user', content: 'Work in /r/.claude/worktrees/wt-219' } });
+    writeFileSync(join(dir, 'agent-a.jsonl'), [relay, prompt, msg].join('\n'));
+    // A worktree named only in a later tool result is not this agent's ticket.
+    writeFileSync(join(dir, 'agent-b.jsonl'), [relay, msg, JSON.stringify({ type: 'user', message: { content: 'cd /r/.claude/worktrees/wt-219' } })].join('\n'));
+    assert.equal(tokens(total(fromTranscripts(dir, null, 219))), 1_000_000);
+  });
+
   test('auto is the session’s workflow directory written to last, in whichever project', () => {
     const root = mkdtempSync(join(require('node:os').tmpdir(), 'projects-'));
     const run = (project, session, wf, t) => {
