@@ -62,7 +62,7 @@ logic lives elsewhere: `GET /` and `GET /:id` (the user plus `followedSpeakers`,
 `GET /:id/agenda.ics` (`lib/ical.js:agendaCalendar`); `GET /:id/today` and
 `GET /:id/schedule` (`lib/agenda.js:todayFor`/`scheduleFor`, see the agenda
 doc); attendance, check-in and rating routes (see the attendance doc); and
-`PUT`/`DELETE /:id/follows/:speakerId`, which write `speaker_follows` directly
+`PUT /:id/interests` (`{ interests: string[] }`, replaces the list; 400 unless every name is a `topic` tag, 404 for an unknown attendee), `PUT`/`DELETE /:id/follows/:speakerId`, which write `speaker_follows` directly
 through the module-scope `follow`/`unfollow` statements.
 
 **Client.** `src/lib/api.js:reserveSeat(userId, sessionId, now)` PUTs `now` as

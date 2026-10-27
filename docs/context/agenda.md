@@ -76,7 +76,7 @@ top 8 topic-tag slugs by count across *all* their reservations (any day, either
 status). Candidates are `openInSlot`: same day and start, `is_keynote = 0`,
 `format != 'Social'`, `seats_taken < capacity`. Each gets `affinity` = number of
 its topic tags in that set; sort `affinity` desc then `avgRating` desc; top
-`SUGGESTION_COUNT` (3). `users.interests` is never read here.
+`SUGGESTION_COUNT` (3). `users.interests` is never read here (it is writable via `PUT /users/:id/interests`, still unread).
 
 **Speaker data.** `GET /api/users/:id` adds `speaker` and `speakingSessions`
 (`users.js:speakingSessions`, via `presenting` + plain `toSession`, so no

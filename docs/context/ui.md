@@ -19,6 +19,7 @@ files:
   - src/components/GeneratedCover.jsx
   - src/components/HeroMedia.jsx
   - src/components/UserSwitcher.jsx
+  - src/components/InterestsDialog.jsx
   - src/components/RouteChange.jsx
   - src/pages/HomePage.jsx
   - src/pages/NotFoundPage.jsx
@@ -32,6 +33,8 @@ tests:
   - tests/smoke.spec.js
   - tests/home.spec.js
   - tests/switcher.spec.js
+  - tests/interests.spec.js
+  - tests/api/users-interests.test.js
   - tests/presentation.spec.js
 related: [architecture, speakers, venues, schedule, testing]
 ---
@@ -141,7 +144,11 @@ sticky `glass` header, `<main id="main">`, and the footer.
   back). `/bootstrap` still returns all six. Calls `setCurrentUserId`; closes on outside pointer
   or Escape. Under the list, "Workshop talks" (`data-testid="talk-links"`, the
   `TALKS` array) links to both decks, so they are one click from every page
-  without taking header space. Each row shows "N on agenda"; every row but the signed-in
+  without taking header space. A `Your interests` button (`data-testid="open-interests"`)
+  above them closes the menu and opens `InterestsDialog` (state lives outside the menu's
+  `open &&` block): a portal to `body`, topic tags (`kind === 'topic'`) as `aria-pressed`
+  toggles on a local draft, scrolling list with a pinned Cancel/Save footer; only Save
+  calls `saveInterests`, Cancel, Escape and the backdrop (`interests-backdrop`) discard. Each row shows "N on agenda"; every row but the signed-in
   attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but
   the active row counts `'confirmed'` entries in `useConference().reservations`
   instead, since that's the only attendee the store keeps reservation state

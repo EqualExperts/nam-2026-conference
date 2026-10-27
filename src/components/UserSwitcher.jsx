@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { InterestsDialog } from './InterestsDialog.jsx';
 
 /**
  * The workshop's hosts, who agreed to appear as themselves. Only they are
@@ -26,6 +27,7 @@ export function UserSwitcher() {
   const { users = [], currentUser, setCurrentUserId, reservations } = useConference();
   const choices = users.filter((u) => u.company === HOST_COMPANY || u.id === currentUser?.id);
   const [open, setOpen] = useState(false);
+  const [editingInterests, setEditingInterests] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -128,6 +130,19 @@ export function UserSwitcher() {
               </Link>
             </div>
           )}
+          <div className="border-t border-hairline p-1.5">
+            <button
+              type="button"
+              data-testid="open-interests"
+              onClick={() => { setOpen(false); setEditingInterests(true); }}
+              className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-raised"
+            >
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-amber-500/12 text-amber-300">
+                <Icon name="check" className="size-3" />
+              </span>
+              <span className="text-sm font-semibold">Your interests</span>
+            </button>
+          </div>
           <div className="border-t border-hairline p-1.5" data-testid="talk-links">
             <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Workshop talks</p>
             {TALKS.map((t) => (
@@ -149,6 +164,7 @@ export function UserSwitcher() {
           </div>
         </div>
       )}
+      {editingInterests && <InterestsDialog onClose={() => setEditingInterests(false)} />}
     </div>
   );
 }
