@@ -131,6 +131,9 @@ if (!Number.isInteger(issue) || issue <= 0) {
   return { outcome: 'error', reason: `ship needs an issue number, got ${JSON.stringify(args)}` }
 }
 
+// For the hand-off: how long the run took, said in the chat that started it.
+const STARTED = Date.now()
+
 const SKILL = 'docs/harness/ship-playbook.md'
 // The sections a step needs, as one read. Told "follow §4–§6", every agent
 // on #64 spent two to four turns grepping the playbook's headings and paging
@@ -482,11 +485,12 @@ function enter(title) {
 // comment settles on the outcome, and the run's spend goes on the issue's
 // ledger and on the pull request, as agent-ship.yml's last steps do in CI.
 async function settle(outcome) {
-  if (!reporting()) return
+  if (!reporting()) return null
   for (const p of progress.phases) if (p.status === 'running') p.status = 'done'
   await progressQueue
   const pr = (/\/pull\/(\d+)/.exec(outcome.pr || '') || [])[1]
-  await rote(
+  // Its summary is ai-cost's last line — the spend, as posted on the PR.
+  return rote(
     `Run these two commands exactly as written, one after the other, and return ok=true with the last line the ` +
     `second printed as summary. Change nothing and read nothing else.\n\n${progressCmd(progressJson({ ended: true, outcome }))}\n\n` +
     `cd ${setup.workdir} && node scripts/ai-cost.mjs record --issue ${issue} --kind ship --transcripts auto --ticket ${issue}` +
@@ -1216,7 +1220,8 @@ const pr = await rote(
 if (!pr || !pr.ok) return handBack('PR', pr ? pr.summary : 'the PR agent died')
 
 // The PR agent released the lane on its way out.
-await settle({ outcome: 'shipped', pr: pr.url })
+const spent = await settle({ outcome: 'shipped', pr: pr.url })
+const spend = spent && /tokens/.test(spent.summary || '') ? spent.summary : null
 return {
   outcome: 'shipped',
   issue,
@@ -1224,4 +1229,13 @@ return {
   pr: pr.url,
   rounds,
   lessons,
+  // The hand-off, for the chat that asked for this run (CLAUDE.md, When ship
+  // finishes): a person in Claude Desktop should not need to know how to start
+  // the app, or which branch it has to be on.
+  minutes: Math.max(1, Math.round((Date.now() - STARTED) / 60000)),
+  ...(spend ? { spend } : {}),
+  ...(built.tryIt ? { tryIt: built.tryIt } : {}),
+  // By branch, not number: a bare number is read as a ticket first, and
+  // issue #2's branch would win over pull request #2's.
+  ...(setup.branch && !setup.runner ? { show: `npm run show -- ${setup.branch}` } : {}),
 }
