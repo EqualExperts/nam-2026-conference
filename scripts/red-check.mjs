@@ -55,6 +55,17 @@ export function plan(nameStatus, scope = null) {
 }
 
 /**
+ * Fast skipped the browser specs on the strength of the unit tests. If none
+ * of those failed on the base — a branch that only tidied an unrelated unit
+ * test — they proved nothing either way, so the browser specs get their say
+ * rather than the branch being called a refactor.
+ */
+export function browserFallback(p, runs) {
+  if (!(p.skipped && p.skipped.length) || runs.some(r => r.failed)) return p;
+  return { ...p, browser: p.skipped, skipped: [] };
+}
+
+/**
  * Did every test actually run and pass? On the base branch's code a test
  * that skips has not passed — it noticed something was missing — and the
  * repo's data guards skip exactly that way. Counting a skip as a pass once
@@ -109,6 +120,7 @@ function main() {
       const r = spawnSync('node', ['--test', ...p.unit], { cwd: dir, encoding: 'utf8' });
       runs.push({ kind: 'unit', failed: !unitAllPassed(r.status, r.stdout) });
     }
+    Object.assign(p, browserFallback(p, runs));
     if (p.browser.length) {
       // Its own ports and database: the gate or an app may be running.
       const env = { ...process.env, PORT: '4470', WEB_PORT: '4471', ORBIT_LANE: 'red-check', ORBIT_DB: join(dir, 'red-check.db') };

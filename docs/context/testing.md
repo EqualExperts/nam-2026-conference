@@ -145,11 +145,14 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 One browser test walks the closes and the save; what is stored is the API
 test's job.
 
+A sketch — put in your dialog's heading and whatever opens it (here a menu
+entry in the attendee switcher, which every page has):
+
 ```js
-const dialog = page.getByRole('dialog', { name: 'Your interests' });
+const dialog = page.getByRole('dialog', { name: '<its heading>' });
 const open = async () => {
   await page.getByRole('button', { name: /Switch attendee/ }).click();
-  await page.getByRole('button', { name: 'Your interests' }).click();
+  await page.getByRole('button', { name: '<the menu entry>' }).click();
   await expect(dialog).toBeVisible();
 };
 
