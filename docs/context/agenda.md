@@ -10,6 +10,7 @@ tests:
   - tests/home.spec.js
   - tests/api/agenda.test.js
   - tests/api/calendar.test.js
+  - tests/api/interests.test.js
   - tests/unit/ical.test.js
 related: [seats, attendance, clock, venues, schedule, speakers, ui]
 ---
@@ -77,6 +78,11 @@ status). Candidates are `openInSlot`: same day and start, `is_keynote = 0`,
 `format != 'Social'`, `seats_taken < capacity`. Each gets `affinity` = number of
 its topic tags in that set; sort `affinity` desc then `avgRating` desc; top
 `SUGGESTION_COUNT` (3). `users.interests` is never read here.
+
+**Interests.** `PUT /api/users/:id/interests` `{ interests: string[] }` replaces the
+column (`join(',')`, duplicates collapsed) and returns `toUser(row)`; 404 unknown
+user, 400 unless every entry is a `tags.name` of `kind = 'topic'`. UI: the switcher's
+`Your interests` dialog (ui doc); `tests/api/interests.test.js`.
 
 **Speaker data.** `GET /api/users/:id` adds `speaker` and `speakingSessions`
 (`users.js:speakingSessions`, via `presenting` + plain `toSession`, so no

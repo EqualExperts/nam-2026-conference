@@ -109,7 +109,7 @@ test.describe('Your interests', () => {
     const lane = await laneFor('switcher.interests', testInfo);
     const api = async (path, init) => (await request.fetch(`/api${path}`, init)).json();
     const original = (await api(`/users/${lane.user}`)).interests;
-    const topics = (await api('/meta/bootstrap')).tags.filter((t) => t.kind === 'topic').map((t) => t.name);
+    const topics = (await api('/bootstrap')).tags.filter((t) => t.kind === 'topic').map((t) => t.name);
 
     await visit(page, '/', { as: lane.user, at: await momentOn(0, '10:30') });
     const dialog = page.getByRole('dialog', { name: 'Your interests' });

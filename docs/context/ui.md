@@ -19,6 +19,7 @@ files:
   - src/components/GeneratedCover.jsx
   - src/components/HeroMedia.jsx
   - src/components/UserSwitcher.jsx
+  - src/components/InterestsDialog.jsx
   - src/components/RouteChange.jsx
   - src/pages/HomePage.jsx
   - src/pages/NotFoundPage.jsx
@@ -134,6 +135,11 @@ sticky `glass` header, `<main id="main">`, and the footer.
 - Footer: three `nav` columns (Programme, On site, Conference) built from an
   inline array of `[label, to]`, plus `conference.dates · conference.city` from
   bootstrap and a plain `<a href="/api/bootstrap">`.
+- `UserSwitcher`'s menu has a `Your interests` button that opens `InterestsDialog`
+  (portalled `role="dialog"`, a topic chip per `tags` of `kind: 'topic'` with
+  `aria-pressed`; Save calls `useConference().saveInterests`, which PUTs and swaps
+  the response into `data.users`; Cancel/Escape/backdrop write nothing; a failed
+  save stays open with an inline `role="alert"`). Its state lives outside the menu.
 - `UserSwitcher` sits in the header once `ready`: a `listbox` of the
   `useConference().users` whose company is `HOST_COMPANY` (Equal Experts: Jonas,
   Andy, Abraham), plus the selected attendee if it is someone else (tests pick

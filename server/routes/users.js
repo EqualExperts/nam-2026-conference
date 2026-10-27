@@ -47,6 +47,23 @@ usersRouter.get('/:id', (req, res) => {
   }));
 });
 
+const topicNames = db.prepare("SELECT name FROM tags WHERE kind = 'topic'");
+const setInterests = db.prepare('UPDATE users SET interests = ? WHERE id = ?');
+
+/** Replace this attendee's interests with a list of known topic tag names. */
+usersRouter.put('/:id/interests', (req, res) => {
+  if (!getUser.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+
+  const { interests } = req.body ?? {};
+  const known = new Set(topicNames.all().map((t) => t.name));
+  if (!Array.isArray(interests) || !interests.every((t) => typeof t === 'string' && known.has(t))) {
+    return res.status(400).json({ error: 'interests must be a list of topic tag names' });
+  }
+
+  setInterests.run([...new Set(interests)].join(','), req.params.id);
+  res.json(toUser(getUser.get(req.params.id)));
+});
+
 /** A subscribable feed of everything this attendee holds a seat for. */
 usersRouter.get('/:id/agenda.ics', (req, res) => {
   const ics = agendaCalendar(Number(req.params.id), baseUrlFor(req));

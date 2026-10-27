@@ -16,7 +16,7 @@ let nonTopic;
 
 before(async () => {
   ({ api, close } = await startApi());
-  const tags = (await api.json('/meta/bootstrap')).tags;
+  const tags = (await api.json('/bootstrap')).tags;
   topics = tags.filter((t) => t.kind === 'topic').map((t) => t.name);
   nonTopic = tags.find((t) => t.kind !== 'topic');
 });
