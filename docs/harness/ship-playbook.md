@@ -188,9 +188,21 @@ you predict.
 
 ## 6. Implement
 
-`npm test` after every edit — 160-odd tests in under a second. Match the
+`npm test` after every edit — the whole unit and API suite in a few seconds. Match the
 surrounding code, and commit in the Conventional Commits style `CLAUDE.md`
 describes.
+
+While a browser spec is red, run only it, on one project, failing fast:
+
+```bash
+npx playwright test tests/<your>.spec.js -g "<the test>" --project=desktop --max-failures=1 --timeout=10000
+```
+
+A plain `npx playwright test <file>` runs both projects at the 30-second
+timeout, so every failing try waits out the full timeout twice — on #219 six tries
+of that were five of the implementer's eight minutes. Run it once on
+`--project=mobile` when it is green on desktop; the gate runs both, at full
+timeouts, whatever you ran.
 
 ## 7. Prove it
 
