@@ -806,8 +806,11 @@ const built = await agent(
   `An assertion is not a test: prove each criterion at the cheapest layer that can (playbook §5) — a rule, a ` +
   `payload or a 400 in a unit or API test, which run in seconds; a browser test only for what only a page shows, ` +
   `the variants of one criterion in one test, never \`mode: 'serial'\`.` +
-  (SIZE === 'fast' ? ` This is a fast run, where a person is waiting: as few browser tests as the criteria allow — ` +
-    `on #219 three covered all seven criteria, where thirteen runs of seven tests were written. ` : ' ') +
+  (SIZE === 'fast' ? ` This is a fast run, where a person is waiting. Put the proof in unit and API tests first — ` +
+    `every rule, payload, validation and stored value, and any logic you can lift into a pure function to test ` +
+    `there. Then at most one browser test: one walk through the change that checks, as it goes, each criterion ` +
+    `only a page can show (it runs on the mobile project too, so a fit check rides along). On #219 seven browser ` +
+    `tests ran thirteen times on every try where one would have done. ` : ' ') +
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
   `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
   `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset. Set browserTest=true if you ` +

@@ -185,7 +185,13 @@ browser test for a rule an API test already proves, and never
 `test.describe.configure({ mode: 'serial' })`: it runs a file's tests one at
 a time and one failure skips the rest. Each browser test runs on two projects,
 on every try, at the gate and in CI; #219 wrote seven for seven criteria where
-three, beside its API tests, proved them all. A fast run keeps to the fewest.
+three, beside its API tests, proved them all.
+
+**A fast run leans on unit and API tests** — every rule, payload, validation
+and stored value, and any logic that can be lifted into a pure function and
+tested there — and writes **at most one browser test**: a single walk through
+the change that checks each page-only criterion as it goes, and runs on the
+mobile project too, so a fit check rides along.
 
 - **Never edit an existing test to make it pass.** A failing test means your
   change is wrong, unless the ticket explicitly changes that behaviour.

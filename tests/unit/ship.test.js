@@ -1012,8 +1012,9 @@ describe('--fast', () => {
     const fast = (await run({}, '7 --fast')).prompts.implement;
     assert.match(fast, /cheapest layer that can/);
     assert.match(fast, /never `mode: 'serial'`/);
-    assert.match(fast, /as few browser tests as the criteria allow/);
-    assert.doesNotMatch((await run({}, '7 --sized')).prompts.implement, /as few browser tests/);
+    assert.match(fast, /unit and API tests first/);
+    assert.match(fast, /at most one browser test/);
+    assert.doesNotMatch((await run({}, '7 --sized')).prompts.implement, /at most one browser test/);
   });
 
   const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
