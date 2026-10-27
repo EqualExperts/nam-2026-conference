@@ -131,9 +131,6 @@ if (!Number.isInteger(issue) || issue <= 0) {
   return { outcome: 'error', reason: `ship needs an issue number, got ${JSON.stringify(args)}` }
 }
 
-// For the hand-off: how long the run took, said in the chat that started it.
-const STARTED = Date.now()
-
 const SKILL = 'docs/harness/ship-playbook.md'
 // The sections a step needs, as one read. Told "follow §4–§6", every agent
 // on #64 spent two to four turns grepping the playbook's headings and paging
@@ -1231,8 +1228,9 @@ return {
   lessons,
   // The hand-off, for the chat that asked for this run (CLAUDE.md, When ship
   // finishes): a person in Claude Desktop should not need to know how to start
-  // the app, or which branch it has to be on.
-  minutes: Math.max(1, Math.round((Date.now() - STARTED) / 60000)),
+  // the app, or which branch it has to be on. No duration: a workflow may not
+  // read the clock (Date.now() throws — it would break resume), and the
+  // completion notice the chat receives already carries how long it ran.
   ...(spend ? { spend } : {}),
   ...(built.tryIt ? { tryIt: built.tryIt } : {}),
   // By branch, not number: a bare number is read as a ticket first, and
