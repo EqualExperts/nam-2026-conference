@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { animate, motion } from 'motion/react';
-import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
+import { at, Show, Replay, Code, Label, Model, Kicker, Tick, Verdict, Terminal, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
 import { Orbits } from './intro.jsx';
 
 const box = 'rounded-2xl border border-hairline bg-surface';
@@ -107,12 +107,12 @@ function NeedsHumanScene({ step }) {
 
 const NEEDS_HUMAN_BEATS = [
   {
-    kicker: '6 · When it will not converge',
+    kicker: '4.8 · When it will not converge',
     title: 'The same finding, surviving two fixes',
     body: 'Some tickets cannot be finished by an agent — the ticket contradicts itself, or the fix needs a decision only a person can make. Ship notices it is going round in circles and stops.',
   },
   {
-    kicker: '6 · needs-human, then you',
+    kicker: '4.8 · needs-human, then you',
     title: 'It hands back everything it knows; you answer and relabel',
     body: 'A draft pull request with the work so far, a comment saying exactly what is still open, and the needs-human label for the board. You make the call it could not; relabel ready-for-ai and a fresh run starts from your answer.',
   },
@@ -236,17 +236,17 @@ function ReviewScene({ step }) {
 
 const REVIEW_BEATS = [
   {
-    kicker: '7 · After the pull request opens',
+    kicker: '5 · After the pull request opens',
     title: 'Two more agents, on their own runners, in parallel',
     body: 'Code review and QA start when the pull request opens, sized from facts about the diff. The reviewer reads the ticket before the code and forms its own view; every blocker must name a real path to harm and survive a skeptic.',
   },
   {
-    kicker: '7 · QA',
+    kicker: '5 · QA',
     title: 'It tries to break the change in a real browser',
-    body: 'Probes on desktop and mobile, one per gap the pull request’s own tests leave. Every failure is reproduced on the branch and on main, so a bug that was already there is called pre-existing, not pinned on this change.',
+    body: 'Not the tests again — it reads the tests the pull request added and probes the gaps they leave, on desktop and mobile. Every failure is reproduced on the branch and on main, so a bug that was already there is called pre-existing, not pinned on this change.',
   },
   {
-    kicker: '7 · Confidence means coverage',
+    kicker: '5 · Confidence means coverage',
     title: 'The confidence tells you how to review it',
     body: 'High on both means the agents could judge all of it and found nothing — merge it. Low publishes as unproven, not green: that is the one a person should actually read. Machines gate, agents advise, people merge.',
   },
@@ -313,58 +313,15 @@ function MergeScene({ step }) {
         {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(139,92,246,0.7)', backgroundColor: 'rgba(196,181,253,0.16)' }} animate={{ boxShadow: '0 0 0 90px rgba(139,92,246,0)', backgroundColor: 'rgba(196,181,253,0)' }} transition={{ duration: 1.1 }} />}
       </Show>
 
-      <Replay on={step === 1} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1fr_1fr_1fr] gap-6">
-        <div className={`${box} col-span-1 p-6`}>
-          <Kicker>On every issue</Kicker>
-          <div className="mt-2 font-display text-[28px] text-ink">🧾 AI spend</div>
-          <div className="mt-1 text-[16px] text-muted">one comment, updated after every run</div>
-          <div className="mt-5 space-y-3">
-            {[['ship', 0.82], ['code review', 0.36], ['QA', 0.58], ['respond', 0.18]].map(([run, w], i) => (
-              <div key={run}>
-                <div className="flex justify-between text-[15px] text-muted"><span>{run}</span></div>
-                <div className="mt-1 flex h-3 overflow-hidden rounded-full bg-overlay">
-                  <span className="pz-fill block h-full bg-violet-400" style={{ width: `${w * 60}%`, animationDuration: '0.9s', animationDelay: `${300 + i * 200}ms` }} />
-                  <span className="pz-fill block h-full bg-sky-400" style={{ width: `${w * 30}%`, animationDuration: '0.9s', animationDelay: `${500 + i * 200}ms` }} />
-                  <span className="pz-fill block h-full bg-emerald-400" style={{ width: `${w * 10}%`, animationDuration: '0.9s', animationDelay: `${700 + i * 200}ms` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 flex gap-2"><Model m="opus" /><Model m="sonnet" /><Model m="haiku" /></div>
-        </div>
-        {[
-          { tone: 'emerald', pr: 96, title: 'Name the search when nothing matches', size: '🟢 A small ticket', ship: '12 min · Sonnet · one audit round', qa: 'QA skipped in 16 s — covered by its own tests', cost: 0.91 },
-          { tone: 'sky', pr: 97, title: 'Fix Undo after removing an ended seat', size: '🔵 A bigger ticket', ship: '22 min · Opus · plan audit, three lenses', qa: 'QA high confidence — 3 browser probes', cost: 7.99 },
-        ].map((t, i) => (
-          <div key={t.pr} className={`pz-appear flex flex-col rounded-2xl border p-6 ${t.tone === 'emerald' ? 'border-emerald-400/40 bg-emerald-500/[0.05]' : 'border-sky-400/40 bg-sky-500/[0.05]'}`} style={later(400 + i * 400)}>
-            <Kicker>{t.size}</Kicker>
-            <div className="mt-2 font-display text-[24px] leading-tight text-ink">PR #{t.pr} — {t.title}</div>
-            <div className="mt-4 space-y-2 text-[16px] text-muted">
-              <div>🚢 {t.ship}</div>
-              <div>🔍 code review: high confidence, about a minute</div>
-              <div>🧪 {t.qa}</div>
-            </div>
-            <div className="mt-auto pt-4 font-display text-[64px] leading-none text-ink">
-              <Count to={t.cost} prefix="$" decimals={2} delay={700 + i * 400} />
-            </div>
-            <div className="text-[15px] text-faint">label to merged, nobody at a terminal</div>
-          </div>
-        ))}
-      </Replay>
     </>
   );
 }
 
 const MERGE_BEATS = [
   {
-    kicker: '8 · A person merges',
+    kicker: '6 · A person merges',
     title: 'The last step is always yours',
     body: 'Two high-confidence passes and a green gate: read the description, check the decisions it made for you, press the button. Main is verified again, deployed only if green, and counted only once the new commit answers its health check.',
-  },
-  {
-    kicker: '8 · What it cost',
-    title: 'Every ticket says what it cost',
-    body: 'Each issue keeps one AI spend comment, split by run and by model. Two real tickets: under a dollar for a small fix, eight for a bigger one — label to merged, with nobody touching a terminal.',
   },
 ];
 
@@ -422,25 +379,71 @@ function ScaleScene({ step }) {
 
 const SCALE_BEATS = [
   {
-    kicker: '9 · Don’t babysit one ticket — hand it ten',
+    kicker: '7 · Don’t babysit one ticket — hand it ten',
     title: '/ship 64 65 66 67 68 69 70 71 72 73',
-    body: 'Nothing about ship needs you watching, so start the next nine. Each ticket gets its own worktree and ports — or label ten issues and get ten runners. Most come back as pull requests; the one that cannot converge comes back as a question.',
+    body: 'Nothing about ship needs you watching, so start the next nine. Each ticket gets its own worktree and ports — or label ten issues and get ten runners. Most come back as pull requests, one as a question. The limit is not the worktrees — it is how many you can review well.',
   },
 ];
 
 /* ------------------------------------------------------------------ *
- * Close.
+ * Your role — what the harness leaves to you, then the bookend.
  * ------------------------------------------------------------------ */
 
-function CloseScene({ step }) {
+/** Every ticket's AI spend — the dial you tune the harness by. */
+function CostPanel({ on }) {
+  return (
+    <Replay on={on} style={at(80, 80, 1440, 520)} className="grid grid-cols-[1fr_1fr_1fr] gap-6">
+      <div className={`${box} col-span-1 p-6`}>
+        <Kicker>On every issue</Kicker>
+        <div className="mt-2 font-display text-[28px] text-ink">🧾 AI spend</div>
+        <div className="mt-1 text-[16px] text-muted">one comment, updated after every run</div>
+        <div className="mt-5 space-y-3">
+          {[['ship', 0.82], ['code review', 0.36], ['QA', 0.58], ['respond', 0.18]].map(([run, w], i) => (
+            <div key={run}>
+              <div className="flex justify-between text-[15px] text-muted"><span>{run}</span></div>
+              <div className="mt-1 flex h-3 overflow-hidden rounded-full bg-overlay">
+                <span className="pz-fill block h-full bg-violet-400" style={{ width: `${w * 60}%`, animationDuration: '0.9s', animationDelay: `${300 + i * 200}ms` }} />
+                <span className="pz-fill block h-full bg-sky-400" style={{ width: `${w * 30}%`, animationDuration: '0.9s', animationDelay: `${500 + i * 200}ms` }} />
+                <span className="pz-fill block h-full bg-emerald-400" style={{ width: `${w * 10}%`, animationDuration: '0.9s', animationDelay: `${700 + i * 200}ms` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 flex gap-2"><Model m="opus" /><Model m="sonnet" /><Model m="haiku" /></div>
+      </div>
+      {[
+        { tone: 'emerald', pr: 96, title: 'Name the search when nothing matches', size: '🟢 A small ticket', ship: '12 min · Sonnet · one audit round', qa: 'QA skipped in 16 s — covered by its own tests', cost: 0.91 },
+        { tone: 'sky', pr: 97, title: 'Fix Undo after removing an ended seat', size: '🔵 A bigger ticket', ship: '22 min · Opus · plan audit, three lenses', qa: 'QA high confidence — 3 browser probes', cost: 7.99 },
+      ].map((t, i) => (
+        <div key={t.pr} className={`pz-appear flex flex-col rounded-2xl border p-6 ${t.tone === 'emerald' ? 'border-emerald-400/40 bg-emerald-500/[0.05]' : 'border-sky-400/40 bg-sky-500/[0.05]'}`} style={later(400 + i * 400)}>
+          <Kicker>{t.size}</Kicker>
+          <div className="mt-2 font-display text-[24px] leading-tight text-ink">PR #{t.pr} — {t.title}</div>
+          <div className="mt-4 space-y-2 text-[16px] text-muted">
+            <div>🚢 {t.ship}</div>
+            <div>🔍 code review: high confidence, about a minute</div>
+            <div>🧪 {t.qa}</div>
+          </div>
+          <div className="mt-auto pt-4 font-display text-[64px] leading-none text-ink">
+            <Count to={t.cost} prefix="$" decimals={2} delay={700 + i * 400} />
+          </div>
+          <div className="text-[15px] text-faint">label to merged, nobody at a terminal</div>
+        </div>
+      ))}
+    </Replay>
+  );
+}
+
+function RoleScene({ step }) {
   return (
     <>
-      <Show on={step === 0} style={at(80, 90, 1440, 500)} className="grid grid-cols-4 gap-6">
+      <CostPanel on={step === 0} />
+
+      <Show on={step === 1} style={at(80, 90, 1440, 500)} className="grid grid-cols-4 gap-6">
         {[
-          ['📄', 'Artifacts you can read', 'A plan before the code, a test that failed before the fix, every audit round, a confidence on every review.'],
-          ['🚦', 'A gate it cannot argue with', 'Every test, desktop and mobile, plus proof the new tests fail without the change.'],
-          ['👀', 'Independent eyes', 'Reviewers never see the reasoning behind the change. Every blocker survives a skeptic first.'],
-          ['🙋', 'You stay in control', 'Nothing merges itself. A ticket that will not come together comes back as needs-human.'],
+          ['✍️', 'You write the ticket', 'Its Done when is the contract every agent is judged against. The thinking moved up front — it did not go away.'],
+          ['🔧', 'You tune the harness', 'Which model, how many rounds, which checks. Shaping it to your codebase is engineering work, and it is yours.'],
+          ['🚦', 'You keep the gate', 'Nothing merges itself. The confidence tells you where your attention goes; the artifacts let you check in a minute.'],
+          ['🧠', 'You pace the work', 'You lead a team of agents now. Run as many as you can review well — that is the real limit.'],
         ].map(([icon, t, d], i) => (
           <motion.div
             key={t}
@@ -457,10 +460,10 @@ function CloseScene({ step }) {
       </Show>
 
       {/* the bookend: the title's orbits, back behind the last words */}
-      <Show on={step === 1} from="none" delay={400} style={at(0, 0, 1600, 900)} className="pointer-events-none">
+      <Show on={step === 2} from="none" delay={400} style={at(0, 0, 1600, 900)} className="pointer-events-none">
         <Orbits style={at(380, 10, 840, 840)} className="opacity-30" />
       </Show>
-      <Show on={step === 1} from="scale" style={at(80, 70, 1440, 760)} className="flex flex-col items-center justify-center text-center">
+      <Show on={step === 2} from="scale" style={at(80, 70, 1440, 760)} className="flex flex-col items-center justify-center text-center">
         <div className="font-display text-[88px] leading-[0.98] text-ink">
           Have the conversation.<br />
           Review the pull request.<br />
@@ -473,19 +476,140 @@ function CloseScene({ step }) {
   );
 }
 
-const CLOSE_BEATS = [
+const ROLE_BEATS = [
   {
-    kicker: '10 · Why you can trust what comes back',
-    title: 'Trust comes from what you can check, not from the model',
-    body: 'Every claim the harness makes leaves evidence a person can read in a minute. That is what lets you run ten tickets at once and still know what you are merging.',
+    kicker: '8 · Tuning it is your job',
+    title: 'Every ticket says what it cost — so you can tune it',
+    body: 'One AI spend comment per issue, split by run and by model: under a dollar for a small fix, eight for a bigger one. When a small ticket costs like a big one, this is how you notice — and the sizing rules are yours to change.',
+  },
+  {
+    kicker: '8 · Your role',
+    title: 'You are the tech lead of a team of agents',
+    body: 'None of this replaces engineering judgement; it moves it to where it counts. And trust comes from what you can check — a spec, a failing test, every audit round, a confidence on every review — not from the model.',
   },
   null,
 ];
 
-export const AFTER = [
+/* ------------------------------------------------------------------ *
+ * Now you — the lab: ship a ticket of your own, in your fork.
+ * ------------------------------------------------------------------ */
+
+const LAB_STEPS = [
+  ['🎫', 'Pick a ticket', 'one with a Done when — the product harness just raised it'],
+  ['🚢', 'Ship it', '/ship <n> in Claude Code, in your fork’s folder'],
+  ['👀', 'Review what comes back', 'the pull request — or the question'],
+];
+
+function LabScene({ step }) {
+  return (
+    <>
+      <div style={at(80, 80, 470, 520)} className="flex flex-col gap-4">
+        {LAB_STEPS.map(([icon, title, sub], i) => (
+          <div key={title} className={`flex items-center gap-4 rounded-2xl border px-5 py-5 transition-all duration-500
+            ${i === step ? 'pz-glow border-emerald-400/60 bg-raised' : 'border-hairline bg-surface'} ${i > step ? 'opacity-45' : ''}`}>
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-overlay font-display text-[24px] text-ink">{i < step ? '✓' : i + 1}</span>
+            <div>
+              <div className="text-[22px] font-semibold text-ink">{icon} {title}</div>
+              <div className="text-[16px] text-muted">{sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Replay on={step === 0} from="right" style={at(600, 80, 920, 520)}>
+        <Terminal
+          title="~/nam-2026-conference — claude"
+          bodyClass="min-h-[440px]"
+          lines={[
+            { t: 'gh issue list', tone: 'cmd', delay: 200 },
+            { t: '#42  Show my seats on My Agenda          feature', delay: 1300 },
+            { t: '#43  Name the search when nothing matches', tone: 'dim', delay: 1450 },
+            { t: 'gh issue view 42', tone: 'cmd', delay: 2000 },
+            { t: 'Done when', tone: 'hi', delay: 3100 },
+            { t: '  ☐ My Agenda lists every seat I hold, by day', delay: 3300 },
+            { t: '  ☐ a waitlisted session says so', delay: 3500 },
+            { t: 'Out of scope: suggestions', tone: 'dim', delay: 3700 },
+          ]}
+        />
+      </Replay>
+
+      <Replay on={step === 1} from="right" style={at(600, 80, 920, 520)} className="flex flex-col gap-5">
+        <Terminal
+          title="~/nam-2026-conference — claude"
+          lines={[
+            { t: '/ship 42', tone: 'cmd', delay: 200 },
+            { t: 'setup · reading #42 and the code it touches', delay: 1000 },
+            { t: 'small ticket · worktree wt-42 · lane 1', delay: 1400 },
+            { t: '#42 → ai-working · progress posted on the issue', tone: 'ok', delay: 1800 },
+          ]}
+        />
+        <div className="pz-appear grid grid-cols-2 gap-5" style={later(2300)}>
+          <div className={`${box} p-5`}>
+            <Kicker>While it runs</Kicker>
+            <div className="mt-2 text-[18px] text-muted">Watch the issue, not the terminal: each step posts there. The spec lands first — read it.</div>
+          </div>
+          <div className={`${box} p-5`}>
+            <Kicker>About 10–20 minutes</Kicker>
+            <div className="mt-2 text-[18px] text-muted">Got another ticket? <Code>/ship 43 44</Code> runs them side by side.</div>
+          </div>
+        </div>
+      </Replay>
+
+      <Replay on={step === 2} from="right" style={at(600, 80, 920, 520)} className="flex flex-col gap-5">
+        <div className="grid grid-cols-2 gap-5">
+          <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/[0.06] p-5">
+            <div className="flex items-center gap-2 text-[20px] font-semibold text-emerald-300"><PrIcon className="size-5" /> A pull request</div>
+            <ul className="mt-3 space-y-1.5 text-[17px] text-muted">
+              <li>• read <b className="text-ink">Decisions for you</b></li>
+              <li>• <b className="text-ink">open the diff — read the code</b></li>
+              <li>• try it: <Code>npm run dev</Code></li>
+              <li>• merge it, or comment <Code>@claude …</Code></li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10 p-5">
+            <div className="flex items-center gap-2"><Label name="needs-human" /></div>
+            <ul className="mt-3 space-y-1.5 text-[17px] text-muted">
+              <li>• read what is still open</li>
+              <li>• answer it on the issue</li>
+              <li>• <Code>/ship 42</Code> again</li>
+            </ul>
+          </div>
+        </div>
+        <div className="pz-appear flex items-center gap-5 rounded-2xl border border-violet-400/40 bg-raised px-7 py-6" style={later(900)}>
+          <span className="text-[40px]">🙋</span>
+          <span className="text-[22px] text-ink">Stuck? Put your hand up — we are walking the room.</span>
+        </div>
+      </Replay>
+    </>
+  );
+}
+
+const LAB_BEATS = [
+  {
+    kicker: '9 · Now you · step 1',
+    title: 'Pick a ticket from your fork',
+    body: 'Use one the product harness just raised, or any issue with a Done when list. Read it first: what it asks for, and what it says is out of scope.',
+  },
+  {
+    kicker: '9 · Now you · step 2',
+    title: '/ship it — then let it run',
+    body: 'In Claude Code, in your fork’s folder. Don’t watch the terminal: follow the issue, read the spec when it lands, and start a second ticket if you have one.',
+  },
+  {
+    kicker: '9 · Now you · step 3',
+    title: 'Review what comes back — and read the code',
+    body: 'A pull request: check its decisions, read the diff, try it, merge it. A needs-human: answer the question and ship it again. Either way, you decide.',
+  },
+];
+
+export const NEEDS_HUMAN = [
   { id: 'needs-human', name: 'When it gets stuck', accent: 'text-amber-300', tone: 'amber', beats: NEEDS_HUMAN_BEATS, Scene: NeedsHumanScene },
+];
+
+export const AFTER = [
   { id: 'review', name: 'Review and QA', accent: 'text-cyan-300', tone: 'cyan', beats: REVIEW_BEATS, Scene: ReviewScene },
   { id: 'merge', name: 'Merge', accent: 'text-violet-300', tone: 'violet', beats: MERGE_BEATS, Scene: MergeScene },
   { id: 'scale', name: 'Many at once', accent: 'text-sky-300', tone: 'sky', beats: SCALE_BEATS, Scene: ScaleScene },
-  { id: 'close', name: 'Why trust it', accent: 'text-violet-300', tone: 'violet', beats: CLOSE_BEATS, Scene: CloseScene },
+  { id: 'role', name: 'Your role', accent: 'text-violet-300', tone: 'violet', beats: ROLE_BEATS, Scene: RoleScene },
+  { id: 'lab', name: 'Now you', accent: 'text-emerald-300', tone: 'emerald', beats: LAB_BEATS, Scene: LabScene },
 ];

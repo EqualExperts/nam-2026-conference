@@ -196,7 +196,11 @@ in and out; a scene re-mounts each time it becomes current, so its entrance
 replays. `enter: 'cut'` swaps the fly-through for a crossfade, for a chapter whose
 predecessor already drew its opening frame — the map's last beat unpacks ship's
 stations exactly where `ship.jsx` draws them, so moving between the two must not
-move them. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
+move them. The engineering talk tells each idea once, at the station where it
+happens: sizing is Setup's second beat, the Swiss cheese strip sits on the code
+audit, and the needs-human chapter (`after.jsx`) breaks into ship after the loop,
+before `SHIP_PR` — ship's last stop, the same `ShipScene` offset by `PR_BEAT`. It
+ends on *Your role* and a three-step *Now you* lab. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
 that travels both talks, `Flip`, `Terminal`, `Verdict`…); `product/kit.jsx` the
 product talk's own (the hosts' faces, a transcript `Line` with its Me/Others lane,
 `Wave`, `Chunks`, `Flag`, the five-step `StepRail`); `Backdrop.jsx` the starfield
