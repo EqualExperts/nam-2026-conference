@@ -93,14 +93,15 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      # Without --with-deps: a fork's first pull request has no cache, and
+      # the libraries are the next step's to judge.
       - name: 🎭 Install Chromium
         if: steps.browsers.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       # The runner image ships Chrome, so its libraries are usually there
       # already; installing them anyway cost 43–141s of apt on every run.
       - name: Install Chromium system dependencies
-        if: steps.browsers.outputs.cache-hit == 'true'
         run: |
           node -e "require('@playwright/test').chromium.launch().then(b => b.close())" \
             || npx playwright install-deps chromium
