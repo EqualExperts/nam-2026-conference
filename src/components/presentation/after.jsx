@@ -498,7 +498,7 @@ const ROLE_BEATS = [
 
 const LAB_STEPS = [
   ['🎫', 'Pick a ticket', 'on GitHub, in your fork’s Issues'],
-  ['🚢', 'Ship it', 'ask Claude Desktop, in the Code tab'],
+  ['🚢', 'Ship it', 'ask Claude Desktop, in Code'],
   ['👀', 'Review what comes back', 'the pull request — or the question'],
 ];
 
@@ -515,12 +515,73 @@ function Browser({ url, children, className = '' }) {
   );
 }
 
-/** One message in the Claude Desktop chat. */
-function Bubble({ me, delay, children }) {
+/**
+ * The Code tab of Claude Desktop, as the room will see it: a light window, the
+ * project in the sidebar, the session in the middle, its environment on the right.
+ */
+const SIDEBAR = [['＋', 'New', '⌘N'], ['⌕', 'Search'], ['▢', 'Artifacts'], ['◫', 'Customize'], ['⋯', 'More']];
+
+function ClaudeDesktop() {
   return (
-    <div className={`pz-appear flex gap-3 ${me ? 'justify-end' : ''}`} style={later(delay)}>
-      {!me && <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#d97757]/25 text-[15px]">✳️</span>}
-      <div className={`max-w-[560px] rounded-2xl px-4 py-3 text-[17px] ${me ? 'bg-violet-500/25 text-ink' : 'bg-raised text-muted'}`}>{children}</div>
+    <div className="flex h-[400px] overflow-hidden rounded-2xl border border-black/10 bg-white text-[#1f1e1d] shadow-2xl shadow-black/50">
+      <div className="w-[215px] shrink-0 border-r border-black/10 bg-[#f7f7f5] px-3 py-3 text-[14px]">
+        <div className="flex items-center gap-1.5">
+          <span className="size-3 rounded-full bg-[#ff5f57]" /><span className="size-3 rounded-full bg-[#febc2e]" /><span className="size-3 rounded-full bg-[#28c840]" />
+          {/* chat or code: two icons, code chosen */}
+          <span className="ml-auto flex gap-1">
+            <span className="grid size-7 place-items-center rounded-lg text-black/45" aria-hidden="true">
+              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" strokeLinejoin="round" /></svg>
+            </span>
+            <span className="grid size-7 place-items-center rounded-lg border border-black/10 bg-white text-black/80 shadow-sm" aria-hidden="true">
+              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9 3 7 13" /></svg>
+            </span>
+          </span>
+        </div>
+        <div className="mt-3 space-y-0.5">
+          {SIDEBAR.map(([icon, label, key], i) => (
+            <div key={label} className={`flex items-center gap-2.5 rounded-lg px-2 py-1 ${i === 0 ? 'bg-black/5' : ''}`}>
+              <span className="w-4 text-center text-black/60">{icon}</span>{label}
+              {key && <span className="ml-auto text-[12px] text-black/40">{key}</span>}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 px-2 text-[13px] text-black/50">nam-2026-conference ▾</div>
+        <div className="mt-1 rounded-lg bg-black/[0.07] px-2 py-1.5">Ship issue #42</div>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="border-b border-black/10 px-5 py-2.5 text-[15px]">Ship issue #42 <span className="text-black/40">⌄</span></div>
+        <div className="flex-1 space-y-3 px-5 py-4 text-[15px] leading-relaxed">
+          <div className="pz-appear flex justify-end" style={later(300)}>
+            <div className="max-w-[300px] rounded-2xl bg-[#f0eee6] px-4 py-2.5">Hey, can you ship GitHub issue #42?</div>
+          </div>
+          <div className="pz-appear" style={later(1200)}>
+            On it. I’ll post every step on issue #42, so you can follow along there.
+            <ul className="mt-1.5 space-y-0.5">
+              {['Read the ticket — it can be built', 'A small one, so a light run', 'Writing the plan…'].map((l, i) => (
+                <li key={l} className="pz-appear flex gap-2" style={later(1700 + i * 450)}>
+                  <span className={i < 2 ? 'text-[#2f9e5b]' : 'text-[#d97757]'}>{i < 2 ? '✓' : '●'}</span>{l}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="mx-4 mb-4 rounded-2xl border border-black/10 px-4 py-3 text-[14px] text-black/40 shadow-sm">Reply to Claude…</div>
+      </div>
+
+      <div className="w-[215px] shrink-0 p-3">
+        <div className="rounded-xl border border-black/10 p-3 text-[13px]">
+          <div className="font-medium">Environment ▾</div>
+          <div className="mt-2 space-y-1.5 text-black/80">
+            <div>💻 This computer</div>
+            <div>📁 nam-2026-conference</div>
+            <div>⑂ main</div>
+          </div>
+        </div>
+        <div className="mt-2 flex justify-between rounded-xl border border-black/10 p-3 text-[13px]">
+          <span className="font-medium">Context ▸</span><span className="text-black/50">6%</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -534,7 +595,7 @@ function YourTurn() {
         Now it’s <span className="pz-shine bg-clip-text text-transparent">your turn</span>
       </div>
       <div className="pz-appear mt-6 max-w-[980px] text-[26px] leading-snug text-muted" style={later(600)}>
-        One ticket from your fork, all the way to a pull request — in GitHub and Claude Desktop. About twenty minutes, and we are here to help.
+        One ticket from your fork, all the way to a pull request — in GitHub and Claude Desktop. We are here to help.
       </div>
       <div className="mt-12 flex gap-5">
         {LAB_STEPS.map(([icon, title, sub], i) => (
@@ -601,33 +662,10 @@ function LabScene({ step: beat }) {
         </Browser>
       </Replay>
 
-      {/* 2 · Claude Desktop, Code tab, opened on the fork's folder */}
+      {/* 2 · Claude Desktop, Code tab, opened on the fork's folder — drawn light, as the app looks */}
       <Replay on={step === 1} from="right" style={at(570, 80, 950, 520)} className="flex flex-col gap-4">
-        <div className="flex h-[370px] overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40">
-          <div className="w-[190px] shrink-0 border-r border-hairline bg-raised p-4">
-            <div className="flex rounded-lg bg-ground/60 p-1 text-[14px]">
-              <span className="flex-1 rounded-md py-1 text-center text-faint">Chat</span>
-              <span className="flex-1 rounded-md bg-overlay py-1 text-center font-semibold text-ink">Code</span>
-            </div>
-            <div className="mt-4 text-[12px] uppercase tracking-wider text-faint">Folder</div>
-            <div className="mt-1 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[14px] text-ink">📁 nam-2026-conference</div>
-          </div>
-          <div className="flex flex-1 flex-col">
-            <div className="flex-1 space-y-3 p-5">
-              <Bubble me delay={300}>Hey, can you ship GitHub issue #42?</Bubble>
-              <Bubble delay={1200}>
-                On it. I’ll post every step on issue #42, so you can follow it there.
-                <div className="mt-2 space-y-1 text-[15px]">
-                  {['Read the ticket — it can be built', 'A small one: about 15 minutes', 'Writing the plan…'].map((l, i) => (
-                    <div key={l} className="pz-appear flex gap-2" style={later(1700 + i * 450)}><span className={i < 2 ? 'text-emerald-300' : 'text-amber-300'}>{i < 2 ? '✓' : '●'}</span>{l}</div>
-                  ))}
-                </div>
-              </Bubble>
-            </div>
-            <div className="m-4 mt-0 rounded-xl border border-hairline bg-ground/50 px-4 py-2.5 text-[15px] text-faint">Reply to Claude…</div>
-          </div>
-        </div>
-        <div className="pz-appear grid grid-cols-2 gap-4" style={later(3000)}>
+        <ClaudeDesktop />
+        <div className="pz-appear grid grid-cols-2 gap-4" style={later(3200)}>
           <div className={`${box} px-5 py-3`}>
             <Kicker>While it runs</Kicker>
             <div className="mt-1 text-[17px] text-muted">Watch the issue on GitHub. The plan lands first — read it.</div>
@@ -681,7 +719,7 @@ const LAB_BEATS = [
   {
     kicker: '9 · Now you · step 2',
     title: 'Ask Claude to ship it — then let it run',
-    body: 'In Claude Desktop, open the Code tab on your nam-2026-conference folder and ask in plain words: “can you ship issue #42?” Then follow the issue on GitHub, not the chat.',
+    body: 'In Claude Desktop, switch to Code, open your nam-2026-conference folder and ask in plain words: “can you ship issue #42?” Then follow the issue on GitHub, not the chat.',
   },
   {
     kicker: '9 · Now you · step 3',
