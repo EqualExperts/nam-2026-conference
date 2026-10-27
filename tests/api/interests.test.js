@@ -15,6 +15,15 @@ before(async () => {
 after(() => close());
 
 describe('PUT /users/:id/interests', () => {
+  test('every seeded attendee interest is a topic tag, so a no-op save loses nothing (runs first: later tests rewrite users)', async () => {
+    for (const id of [1, 2, 3, 4, 5, 6]) {
+      const { interests } = await api.json(`/users/${id}`);
+      assert.deepEqual(interests.filter((i) => !topics.includes(i)), [], `user ${id}`);
+      assert.equal((await api.put(`/users/${id}/interests`, { interests })).status, 200);
+      assert.deepEqual((await api.json(`/users/${id}`)).interests, interests);
+    }
+  });
+
   test('saves a selection that GET /users/:id then returns', async () => {
     const picked = [topics[0], topics[2]];
     const put = await api.put('/users/3/interests', { interests: picked });
