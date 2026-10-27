@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { visit, laneFor, momentOn, shotForPR, API } from './helpers.js';
 
 test.describe('Your interests', () => {
+  // every test writes the one attendee's interests, so they take turns
+  test.describe.configure({ mode: 'serial' });
   let lane;
   let seeded;
   let topics;
@@ -71,7 +73,12 @@ test.describe('Your interests', () => {
       await dialog.getByRole('button', { name: extra, exact: true }).click();
       if (how === 'Cancel') await dialog.getByTestId('interests-cancel').click();
       else if (how === 'Escape') await page.keyboard.press('Escape');
-      else await page.getByRole('button', { name: 'Close', exact: true }).click({ position: { x: 4, y: 4 } });
+      else {
+        // a point on the backdrop: outside the panel, wherever the layout puts it
+        const box = await dialog.locator('[tabindex="-1"]').boundingBox();
+        const vh = page.viewportSize().height;
+        await page.mouse.click(4, box.y > 8 ? box.y / 2 : (box.y + box.height + vh) / 2);
+      }
       await expect(dialog).toBeHidden();
       expect(await stored(request)).toEqual(seeded);
 

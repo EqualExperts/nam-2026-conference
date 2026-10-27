@@ -10,6 +10,7 @@ files:
 tests:
   - tests/api/seats.test.js
   - tests/api/overlap.test.js
+  - tests/api/users-interests.test.js
   - tests/seats.spec.js
 related: [attendance, agenda, clock, architecture, testing]
 ---
@@ -59,6 +60,7 @@ status 'confirmed'|'waitlisted', created_at)` and the counter
 The same file also owns routes from other areas — change them here, but the
 logic lives elsewhere: `GET /` and `GET /:id` (the user plus `followedSpeakers`,
 `speaker`, `speakingSessions`, `reservations`, `checkIns`, `ratings`);
+`PUT /:id/interests` (body `{interests: string[]}`; names of `topic` tags only, else 400; stores them comma-joined and answers `toUser`);
 `GET /:id/agenda.ics` (`lib/ical.js:agendaCalendar`); `GET /:id/today` and
 `GET /:id/schedule` (`lib/agenda.js:todayFor`/`scheduleFor`, see the agenda
 doc); attendance, check-in and rating routes (see the attendance doc); and

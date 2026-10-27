@@ -93,7 +93,7 @@ the routes. `/product-presentation` and `/engineering-presentation` sit outside 
 (`conference`, `venues`, `travel`, `tracks`, `tags`, `rooms`, `users`, `days`, `formats`,
 `levels`, `cuisines`) and adds: `ready`, `error`, `clock` (from `useConferenceClock(days)`),
 `currentUser`, `currentUserId`, `setCurrentUserId`; follows — `followingIds`,
-`isFollowing(id)`, `toggleFollow(id)`; seats — `reservations` (Map sessionId →
+`isFollowing(id)`, `toggleFollow(id)`, `saveInterests(names)` (own interests); seats — `reservations` (Map sessionId →
 `'confirmed'|'waitlisted'`), `reservationFor(id)`, `onAgenda(id)`, `seatCounts`,
 `seatsFor(id)`, `reserveSeat`, `releaseSeat`, `toggleSeat`, `conflict`,
 `resolveConflict(swap)`; lookups — `trackBySlug`, `venueById`, `roomById`.

@@ -169,6 +169,11 @@ export function ConferenceProvider({ children }) {
     setConflict(null);
   }, [conflict, currentUserId, applySeatState, toast, clock]);
 
+  const saveInterests = useCallback(async (interests) => {
+    const user = await api.saveInterests(currentUserId, interests);
+    setData((d) => d && { ...d, users: d.users.map((u) => (u.id === user.id ? { ...u, interests: user.interests } : u)) });
+  }, [currentUserId]);
+
   const value = useMemo(() => {
     const users = data?.users ?? [];
     return {
@@ -182,6 +187,7 @@ export function ConferenceProvider({ children }) {
       followingIds,
       isFollowing: (id) => followingIds.has(id),
       toggleFollow,
+      saveInterests,
       reservations,
       reservationFor: (id) => reservations.get(id) ?? null,
       seatCounts,
@@ -196,7 +202,7 @@ export function ConferenceProvider({ children }) {
       venueById: Object.fromEntries((data?.venues ?? []).map((v) => [v.id, v])),
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
-  }, [data, error, clock, currentUserId, followingIds, toggleFollow,
+  }, [data, error, clock, currentUserId, followingIds, toggleFollow, saveInterests,
       reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat,
       conflict, resolveConflict]);
 

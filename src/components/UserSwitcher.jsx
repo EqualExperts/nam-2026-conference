@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { InterestsDialog } from './InterestsDialog.jsx';
 
 /**
  * The workshop's hosts, who agreed to appear as themselves. Only they are
@@ -26,6 +27,7 @@ export function UserSwitcher() {
   const { users = [], currentUser, setCurrentUserId, reservations } = useConference();
   const choices = users.filter((u) => u.company === HOST_COMPANY || u.id === currentUser?.id);
   const [open, setOpen] = useState(false);
+  const [interestsOpen, setInterestsOpen] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export function UserSwitcher() {
   if (!currentUser) return null;
 
   return (
+    <>
     <div className="relative" ref={ref}>
       <button
         type="button"
@@ -113,6 +116,19 @@ export function UserSwitcher() {
               );
             })}
           </ul>
+          <div className="border-t border-hairline p-1.5">
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setInterestsOpen(true); }}
+              className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-raised"
+              data-testid="open-interests"
+            >
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-500/12 text-violet-300">
+                <Icon name="check" className="size-3" />
+              </span>
+              <span className="text-sm font-semibold">Your interests</span>
+            </button>
+          </div>
           {currentUser.isSpeaker && (
             <div className="border-t border-hairline p-1.5">
               <Link
@@ -150,5 +166,7 @@ export function UserSwitcher() {
         </div>
       )}
     </div>
+    {interestsOpen && <InterestsDialog onClose={() => setInterestsOpen(false)} />}
+    </>
   );
 }

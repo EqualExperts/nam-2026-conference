@@ -31,7 +31,9 @@ tests:
   - tests/unit/presentation.test.js
   - tests/smoke.spec.js
   - tests/home.spec.js
+  - src/components/InterestsDialog.jsx
   - tests/switcher.spec.js
+  - tests/interests.spec.js
   - tests/presentation.spec.js
 related: [architecture, speakers, venues, schedule, testing]
 ---
@@ -151,6 +153,13 @@ sticky `glass` header, `<main id="main">`, and the footer.
   (`own-speaker-profile`) sits between the list and the talk links and opens
   `/speakers/<currentUser.speakerId>`, which marks itself "This is you"
   (speakers doc). `tests/switcher.spec.js` covers the switcher and that link.
+  A `Your interests` button (`open-interests`) closes the menu and opens
+  `InterestsDialog` (`interests-dialog`, portalled to body, since the header's backdrop blur would trap a `fixed` overlay): every
+  `kind: 'topic'` tag from `useConference().tags` as an `aria-pressed` chip,
+  `currentUser.interests` pre-pressed; `interests-save` calls the store's
+  `saveInterests` (PUT, then swaps `interests` into `users`), `interests-cancel`,
+  Escape and the backdrop close without saving. The chip area scrolls, the footer
+  stays pinned. `tests/interests.spec.js` (lane `interests.modal`).
 
 **`HomePage`** (`/`) — static: nothing on it is about the signed-in attendee or
 what is live. It stacks `HeroBar` (`hero`: name, `conference.dates · city`, a
