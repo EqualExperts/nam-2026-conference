@@ -340,6 +340,19 @@ const group = (m, f) => {
 }
 const dedupe = fs => [...fs.reduce(group, new Map()).values()]
 
+// The verify agent relays two lines, the gate's as json and the red-check's
+// as red. On #219 it put the red-check's line in json — a green gate read as
+// red, and a fix round and a second two-minute gate aimed at nothing. Each
+// line says what it is (the gate has "ok", the red-check "checked"), so put a
+// swapped pair back rather than trust which slot it arrived in.
+function sortLines(ran) {
+  const parse = (s) => { try { return JSON.parse(s) } catch { return null } }
+  const j = parse(ran.json), r = parse(ran.red)
+  const isRed = (x) => x && typeof x === 'object' && 'checked' in x && !('ok' in x)
+  const isGate = (x) => x && typeof x === 'object' && 'ok' in x && 'unit' in x
+  return isRed(j) && (isGate(r) || !ran.red) ? { ...ran, json: ran.red || '', red: ran.json } : ran
+}
+
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
 // with a reason, never a green one.
 function readGate(g) {
@@ -907,7 +920,7 @@ for (let round = 1; ; round++) {
   // on: two runs started together each opened a PR, and once the first
   // merged the second was already conflicting. A merge, not a rebase — the
   // spec commit is pushed, and a rebase would mean a force-push.
-  const ran = await rote(
+  let ran = await rote(
     `${inTree()}\n\nFirst \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
@@ -919,6 +932,7 @@ for (let round = 1; ; round++) {
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
+  ran = sortLines(ran)
   gate = readGate(ran)
   // The merge was aborted, so a green line after a conflict is not this branch
   // on today's base: it goes to the fixer, never to the auditors (#153).

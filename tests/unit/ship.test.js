@@ -1007,6 +1007,21 @@ describe('a run with no size flag', () => {
   });
 });
 
+describe('the verify agent relays two lines', () => {
+  const redLine = JSON.stringify({ checked: true, failedOnBase: true, tests: ['tests/api/x.test.js'], reverted: ['server/routes/users.js'] });
+
+  test('a green gate relayed in the red-check slot is put back, not read as red — #219', async () => {
+    const { result, calls } = await run({ verify: { json: redLine, red: GREEN.json, facts: '' } });
+    assert.equal(result.outcome, 'shipped');
+    assert.ok(!calls.includes('fix#1'), calls.join(', '));
+  });
+
+  test('a real gate result is left where it is', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? { ...RED([{ test: 'a', error: 'e' }]), red: redLine } : GREEN) });
+    assert.ok(calls.includes('fix#1'), calls.join(', '));
+  });
+});
+
 describe('--fast', () => {
   test('the builder is told the cheapest layer, and on fast the fewest browser tests — #219', async () => {
     const fast = (await run({}, '7 --fast')).prompts.implement;
