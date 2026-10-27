@@ -235,13 +235,18 @@ export function render(state, { issue, runUrl, runId, repo, now, started } = {})
 }
 
 /**
- * The one-line PR status while code review or QA run — replaced by the
- * verdict the moment the workflow's task_notification carries one. `started`
+ * The one-line PR status while code review or QA run. Once the workflow's
+ * task_notification carries a verdict it says the run finished, not the
+ * verdict itself: the formatted verdict comment follows within seconds and
+ * this line is deleted, and the bare "PASS medium …" read in the meantime like
+ * a broken comment. `started`
  * here is always the stream's own `task_started`: neither job has a "within
  * about a minute" criterion, so there is no pre-checkout post to measure from.
  */
 export function prLine(state, { kind = 'review', now, started } = {}) {
-  if (state.ended && state.outcome && typeof state.outcome.verdictLine === 'string') return state.outcome.verdictLine;
+  if (state.ended && state.outcome && typeof state.outcome.verdictLine === 'string') {
+    return `${kind === 'qa' ? 'QA' : 'Review'} finished · ${minutesBetween(now, started)}m — the verdict is posted below`;
+  }
   const label = kind === 'qa' ? 'Running QA…' : 'Reviewing…';
   return `${label} · ${minutesBetween(now, started)}m`;
 }

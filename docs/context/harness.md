@@ -63,7 +63,9 @@ the spec writer and every auditor as notes that amend the ticket. `@claude` on
 a pull request is `agent-respond.yml`'s: a change to that diff, not a ship run. Its one step runs `claude-code-action` with the prompt
 `/ship <n>` — a saved workflow is a slash command, which is what lets it run
 headless — and `--allowedTools` including `Workflow`; phase agents inherit the
-rest. On a laptop it is the same `/ship <n>`. There is no `/build`: the
+rest — `/ship <n> --sized`, since a run with no size flag is fast. On a laptop
+it is `/ship <n>`, and asked from a chat the session first asks which of the
+four runs (CLAUDE.md). There is no `/build`: the
 step-by-step detail lives in `docs/harness/ship-playbook.md`, a plain doc the
 phase prompts point at by section, so it cannot be run on its own.
 
@@ -78,17 +80,38 @@ reports `ui` without a browser test, two build rounds, Sonnet), plus: the API
 or breadth (≥ 3 areas, ~7 app files) → `criteria` + `rules` auditors and three
 rounds; ≥ 2 open questions → one `spec-audit:combined`; `uiInteraction` →
 the browser pass always, four probes. `--full` / `--small` pick a preset.
+**No flag at all is `--fast`** — a laptop run, where a person waits — unless
+the issue is labelled `ship:full`; CI passes `--sized` for the sizing above.
 `--fast` is a third preset, never chosen by sizing — for a ticket already
 known to work, like a demo: no spec audit, one combined auditor
-and no browser explorer; the gate runs `GATE_SCOPE=branch` (`npm test` and only
-the `tests/*.spec.js` the branch changed — the whole suite when it changed
-none, and the pull request's CI always); a confirmed finding is fixed and
+and no browser explorer; the gate runs `GATE_SCOPE=branch` — all of `npm test` (four seconds), and only
+the browser specs the change reaches (`affectedSpecs`): from each changed file
+up the `src/` import graph to the pages it ends on, their routes in `App.jsx`,
+and the specs that open those routes with `visit(page, …)` or `goto(…)` (a
+computed path counts as every page; a redirect in `App.jsx` counts as where it
+lands), or that name a static `data-testid` the changed file or its page
+renders — how a spec that clicks its way there checks it — plus the branch's
+own specs. Anything the
+app shell renders, `src/lib/store.jsx`, `server/lib/`, the schema, the seed or
+the config → the whole suite; docs and `server/routes/` (which the API tests
+cover) → none. Where it cannot tell, fast falls back to the branch's own
+specs and `tests/smoke.spec.js` (`fastFallback`), which opens every page;
+only a change to what runs the tests (the Playwright or Vite config,
+`package.json`, `gate.mjs`) gets the whole suite — not `tests/helpers.js`,
+where every new browser test adds its data lane. Fast's red-check
+runs with `RED_SCOPE=unit`: the branch's unit and API tests alone, the browser
+spec only when there are none. The pull request's CI repeats the same choice (below); the
+whole suite runs on the push to main, after merge; a confirmed finding is fixed and
 re-gated but not re-audited (`reaudit: false`); no `learn`; never escalated.
 The PR's *Not verified* says what it skipped.
-Its pull request is labelled `ship:fast`, and `verify.yml`'s Playwright jobs
-read the label: they run only the specs the merge commit changed against its
-base (`HEAD^1`, `branchSpecs`), or the whole suite if none; the push to main
-runs the whole suite as always.
+Its pull request is labelled `ship:fast`. `verify.yml`'s Playwright jobs ask
+`node scripts/gate.mjs --specs HEAD^1 [--fast]` (`ciSpecs`) what to run: on
+any pull request the whole suite but the decks' spec, unless it touches a deck;
+on a `ship:fast` one only the specs the change reaches, as the local gate chose
+— recomputed from the diff, never read from a record of what the laptop ran,
+so commits pushed after ship are covered too. The push to main runs the whole
+suite. Chromium's system libraries install only if Chromium will not launch
+without them.
 After a green gate, `verify#n` also relays `qa-facts.mjs`: a small run whose
 diff is `--risky=yes` or over 300 app lines is **escalated** (criteria + rules
 on the session model); a gate red twice running moves the fixer to the session
@@ -121,7 +144,14 @@ A lens that dies is re-run once (`<lens>-retry#n`); twice, and the ticket is
 handed back. **The gate is a command, not an opinion**: the verify agent runs
 `node scripts/gate.mjs` and returns its JSON, and `readGate()` decides from
 that — anything unparseable is red. `gate.mjs` retries a failing browser test
-once (a pass on retry is `flaky`, not a failure) and lists removed assertions
+once (a pass on retry is `flaky`, not a failure); one that fails twice in a
+spec the branch did not change is run again alone, on one worker
+(`untouchedFailures`, `settleAlone`) — passing alone, it is `flaky` too. It
+leaves `tests/presentation.spec.js` out (`excluded`) unless the branch touches
+`src/components/presentation/` or that spec: the decks ride along in the fork,
+they are not the app. Its printed line keeps three lines of each error and ten
+failures (`printable`) so the verify agent can copy it; `test-results/gate.json`
+has the rest. It lists removed assertions
 or added skips in `tests/` as `tampered`, which only the lens that traces the criteria sees (`criteria`, or `combined` on a small ticket).
 
 **The red check.** After a green gate, `red-check#n` (Haiku) runs
@@ -186,7 +216,9 @@ docs-only change (unless `thorough` or bugs need rechecking) and `thorough`
 turns its triage off. No facts — a local run — means full, as before.
 
 **After the PR.** `agent-code-review.yml` and `agent-qa.yml` fire on
-`pull_request` `opened | reopened | ready_for_review`, skip drafts, run the
+`pull_request` `opened | reopened | ready_for_review`, skip drafts (and QA
+skips a `ship:fast` pull request, reading the label from the live pull request
+since `gh pr create --label` can land it after `opened`), run the
 `code-review` and `qa` **workflows**, and turn the verdict file into a check
 run. Both are built like ship's audit, and neither lets a model shape its own
 verdict — the script composes the comment and the verdict line from what
@@ -310,6 +342,16 @@ merges the lesson or not. Its own PR is on a `learn/…` branch, so its reviews
 cannot start another round.
 
 ## Invariants
+
+- **A laptop run never waits on a permission prompt.** `.claude/settings.json`
+  allows the commands ship's agents run — `git` up to `push`, the `gh issue|pr`
+  verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the
+  `GATE_*` and lane prefixes. A run that stopped to ask sat 27 minutes on one
+  `git push` until someone looked. The hook below still runs before each of them,
+  and `gh api` stays out of the list. In Actions the log reads *Ignoring 39
+  permissions.allow entries … this workspace has not been trusted*: harmless and
+  intended — each job passes its own `--allowedTools`, and trusting the runner's
+  checkout would hand a reviewer ship's `git push`.
 
 - **Attendee work stays on their fork.** `scripts/fork-guard.mjs --hook` runs
   from `.claude/settings.json` before every `Bash` and `mcp__*` call; it only

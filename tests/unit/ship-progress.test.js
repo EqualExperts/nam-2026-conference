@@ -242,9 +242,9 @@ describe('prLine', () => {
     assert.equal(prLine(readStream([]), { kind: 'qa', now: NOW, started: NOW - 3 * 60000 }), 'Running QA… · 3m');
   });
 
-  test('once the workflow reports, it prints the verdict line instead', () => {
+  test('once the workflow reports, it says it finished — never the bare verdict line', () => {
     const s = readStream([notification('completed', '/out.json')], () => ({ result: { verdictLine: 'PASS high 4/4 probes ran as planned' } }));
-    assert.equal(prLine(s, { kind: 'qa', now: NOW, started: NOW - 600000 }), 'PASS high 4/4 probes ran as planned');
+    assert.equal(prLine(s, { kind: 'qa', now: NOW, started: NOW - 600000 }), 'QA finished · 10m — the verdict is posted below');
   });
 });
 

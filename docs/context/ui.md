@@ -216,6 +216,36 @@ keyframes in `index.css`. The page wraps itself in `<MotionConfig
 reducedMotion="user">`, and every `pz-*` keyframe ends on its final frame, so
 with reduced motion each beat still shows everything it should.
 
+### Dialogs
+
+`ConflictDialog.jsx` is the pattern; a new modal copies its shape rather than
+working it out again — three ship runs of #219 each spent minutes rediscovering
+it by trial and error.
+
+- **Render it with `createPortal(…, document.body)`** when it is opened from
+  anywhere inside the header (the attendee menu, nav): the header is `glass`
+  (a backdrop filter), which makes it the containing block for `fixed`
+  children, so an unportalled `fixed inset-0` covers the header, not the page.
+- **Shape:** an outer `div` — `fixed inset-0 z-[70] grid place-items-end
+  sm:place-items-center`, `role="dialog"`, `aria-modal="true"`,
+  `aria-labelledby` its heading, a `data-testid` — holding first a full-screen
+  backdrop `<button type="button" aria-label="Close" className="absolute
+  inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />`, then the panel
+  (`relative`, `tabIndex={-1}`, focused on open). A click outside lands on that
+  button, so there is no event-target arithmetic.
+- **On a phone it is a bottom sheet.** Cap the panel — `max-h-[85dvh]` with
+  its body `overflow-y-auto` and the actions outside the scroll — so the Save
+  button stays on screen and the top of the screen stays backdrop: a sheet that
+  grows to the full height leaves nowhere to click outside it.
+- **Escape and focus** in one effect keyed on open: remember
+  `document.activeElement`, focus the panel, add a `keydown` listener for
+  `Escape`, set `body.style.overflow = 'hidden'`; undo all four on close. Read
+  the close handler through a ref so the effect does not re-run on each render.
+- **Closing without saving is the default.** Cancel, Escape and the backdrop
+  all call the same `onCancel`; only the primary button writes.
+
+How to test one: `docs/context/testing.md` § Testing a dialog.
+
 ## Invariants
 
 - The smoke test `every link in the footer resolves` visits each footer href
@@ -236,6 +266,9 @@ with reduced motion each beat still shows everything it should.
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
 - `format.time` expects `HH:MM`, not an ISO timestamp.
+- A `fixed` modal rendered inside the header covers only the header — it is
+  `glass`, a backdrop filter, so it contains `fixed` children. Portal it to
+  `document.body` (§ Dialogs).
 
 ## Where to change…
 

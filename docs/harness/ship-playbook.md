@@ -58,7 +58,7 @@ handed back, and a ticket that ships should not still say it is stuck.
 In a runner (`$GITHUB_ACTIONS` set) the machine is yours — just branch:
 
 ```bash
-git fetch origin
+git fetch --prune origin
 git checkout -b issue-<n>-<short-slug> origin/main
 ```
 
@@ -66,7 +66,7 @@ On a laptop, other agents may hold other tickets, so take a worktree and a
 lane, or you will eventually test another branch's code and pass:
 
 ```bash
-git fetch origin   # a laptop's origin/main can be days old
+git fetch --prune origin   # a laptop's origin/main can be days old, and a deleted branch lingers
 wt="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/wt-<n>"
 git worktree add -b issue-<n>-<short-slug> "$wt" origin/main   # or, continuing: git worktree add "$wt" issue-<n>-…
 cd "$wt" && npm install
@@ -78,6 +78,14 @@ Always that path — `.claude/worktrees/wt-<n>` inside the main checkout, which
 start in. A relative `../` landed runs in three different places, and a
 worktree nobody can find is one nobody cleans up. If it already exists from an
 earlier attempt, reuse it.
+
+**Continue an old branch only for an open draft** (§1). An `issue-<n>-*`
+branch with no open draft — its pull request closed, or never opened — is a
+scrapped attempt: start from the base, and if the name is taken, remove that
+worktree and branch first (`git worktree remove --force "$wt"; git branch -D
+issue-<n>-…`). Without `--prune`, a branch someone deleted on GitHub still
+shows as `origin/issue-<n>-…`, and a rerun of #219 built on the scrapped
+attempt's commits and called the ticket already done.
 
 The branch keeps up with its base from here on: every gate first runs
 `git fetch origin main && git merge --no-edit origin/main`, and the pull request
@@ -92,7 +100,7 @@ Before changing any code, write `specs/<n>-<short-slug>.md` and push it as the
 branch's **first commit**, so a reviewer reads what you intend before the diff.
 Headings: *What this changes* (in terms of what an attendee sees), *Where*
 (file by file — the function or line to change, the test file, and the lane or
-helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer), and only
+helpers the test will use, so the builder searches for nothing), *How it will be proved* (the check, and which layer — the cheapest that can; §5), and only
 where they apply, *Decisions* (anything the ticket left open, or got wrong) and
 *Out of scope*.
 
@@ -168,6 +176,24 @@ Derive a check from **Done when:**, at the cheapest layer that can prove it —
 `CLAUDE.md` says which. Run it and confirm it is red for the reason §3b made
 you predict.
 
+**Cheapest first, and few browser tests.** A rule, a payload, a 400 or what is
+stored is a unit or API test — they run in seconds. A browser test is for what
+only a page can show — that it opens, what is on screen, a keyboard or click
+path, that it fits a phone — and one test covers a criterion's variants
+(close by Cancel, then Escape, then a click outside, in one test). Never a
+browser test for a rule an API test already proves, and never
+`test.describe.configure({ mode: 'serial' })`: it runs a file's tests one at
+a time and one failure skips the rest. Each browser test runs on two projects,
+on every try, at the gate and in CI; #219 wrote seven for seven criteria where
+three, beside its API tests, proved them all.
+
+**A fast run leans on unit and API tests** — every rule, payload, validation
+and stored value, and any logic that can be lifted into a pure function and
+tested there — and writes **at most one browser test**, none when nothing an
+attendee sees changes: a single walk through
+the change that checks each page-only criterion as it goes, and runs on the
+mobile project too, so a fit check rides along.
+
 - **Never edit an existing test to make it pass.** A failing test means your
   change is wrong, unless the ticket explicitly changes that behaviour.
 - **Never delete, skip or `.only` a test.**
@@ -180,9 +206,29 @@ you predict.
 
 ## 6. Implement
 
-`npm test` after every edit — 160-odd tests in under a second. Match the
+`npm test` after every edit — the whole unit and API suite in a few seconds. Match the
 surrounding code, and commit in the Conventional Commits style `CLAUDE.md`
 describes.
+
+While a browser spec is red, run only it, on one project, failing fast:
+
+```bash
+npx playwright test tests/<your>.spec.js -g "<the test>" --project=desktop --max-failures=1 --timeout=10000
+```
+
+**Edit files with the Edit and Write tools**, not the shell. A laptop is
+macOS: `sed -i 's/…/'` is a syntax error there (BSD `sed` wants `-i ''`), and
+on #219 three such edits in one build each cost a turn before the fallback. A
+heredoc or `>` that writes a file also asks the person for permission, which
+nobody may be watching — one sat eleven minutes. The shell is zsh: quote a glob
+(`--include='*.js'`), or it fails with "no matches found". And run `git` and
+`gh` as their own commands, so each matches the repo's allow-list.
+
+A plain `npx playwright test <file>` runs both projects at the 30-second
+timeout, so every failing try waits out the full timeout twice — on #219 six tries
+of that were five of the implementer's eight minutes. Run it once on
+`--project=mobile` when it is green on desktop; the gate runs both, at full
+timeouts, whatever you ran.
 
 ## 7. Prove it
 
@@ -193,8 +239,10 @@ npm run shot -- /the-route    # only if something visual moved
 
 The Verify phase runs this and returns its last line verbatim — nothing
 else. It is `npm test` plus the whole Playwright suite, with the verdict read
-from Playwright's JSON report, one retry for a flaky browser test, and a list
-of any assertions the branch removed. Run it once; in a runner Chromium is
+from Playwright's JSON report, one retry for a flaky browser test (and one
+more run alone for a failure in a spec the branch did not touch), and a list
+of any assertions the branch removed. The decks' spec only runs when the
+branch changes a deck. Run it once; in a runner Chromium is
 already installed — never run `playwright install`.
 
 **Do not interpret a red result or try to fix it.** Return the line. The loop

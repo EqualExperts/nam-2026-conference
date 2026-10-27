@@ -1,7 +1,7 @@
 export const meta = {
   name: 'ship',
   description: 'Issue → spec → spec audit loop → implement → verify + code audit loop → context → learn → PR',
-  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label.',
+  whenToUse: 'Taking one GitHub issue to a pull request — /ship 42, or the ready-for-ai label. Asked from a chat with no size flag, first ask which of fast, sized, small or full they want (CLAUDE.md, What happens to a ticket).',
   phases: [
     { title: 'Setup', detail: 'read the ticket, gate it, claim it, branch' },
     { title: 'Spec', detail: 'write specs/<n>-<slug>.md' },
@@ -25,7 +25,10 @@ let MAX_BUILD_ROUNDS = 4
 // script composes the loop from it (profileFor, below): small is the base, a
 // risk adds the check that catches it, and only a rule, stored data or the
 // harness buys the full Opus loop. `ship:full` on the issue, or `--full` /
-// `--small` / `--fast` after the number, picks a preset outright. A three-line copy fix
+// `--small` / `--fast` after the number, picks a preset outright. With no
+// flag at all a run is fast: that is a laptop, and on a laptop it is the
+// workshop, where a person waits on the result. CI passes `--sized`, which is
+// this sizing. A three-line copy fix
 // does not need two spec auditors, three code auditors and Opus throughout —
 // that shape took a medium ticket 57 minutes. Small keeps what makes the
 // loop trustworthy — an independent audit, a skeptic, the machine gate — and
@@ -49,8 +52,8 @@ const TIERS = {
   },
   // A ticket someone has already seen work — the workshop's demo — where the
   // minutes matter more than the last check. Small's audit, minus what costs
-  // the time: the gate runs the branch's own browser specs (the pull request's
-  // CI runs the whole suite), one combined auditor and no browser explorer,
+  // the time: the gate runs only the browser specs the change reaches (the pull request's
+  // CI repeats that choice; main runs the whole suite after merge), one combined auditor and no browser explorer,
   // and a fix is re-gated but not re-audited. A one-component ticket took 16
   // minutes as small: two 4-minute full gates and three auditors, twice.
   // The PR body says what it skipped. Never chosen by sizing — only `--fast`.
@@ -98,9 +101,12 @@ const argText = typeof args === 'object' && args ? '' : String(args ?? '').trim(
 const LEAD = (/^#?\d+(?:(?:\s*,\s*|\s+and\s+|\s+)#?\d+)*/.exec(argText) || [''])[0]
 const ISSUES = [...new Set((LEAD.match(/\d+/g) || []).map(Number))]
 const issue = Number(typeof args === 'object' && args ? args.issue : ISSUES[0])
-const FORCED = typeof args === 'object' && args ? args.size : (/--(full|small|fast)\b/.exec(argText) || [])[1]
+const FLAG = typeof args === 'object' && args ? args.size : (/--(full|small|fast|sized)\b/.exec(argText) || [])[1]
+// No flag: fast, unless the issue carries ship:full (see PRESET).
+const DEFAULTED = !FLAG
+const FORCED = FLAG === 'sized' ? undefined : FLAG || 'fast'
 const NOTES = String((typeof args === 'object' && args ? args.notes : argText.slice(LEAD.length)) || '')
-  .replace(/@claude\b/gi, '').replace(/--(full|small|fast)\b/g, '').trim()
+  .replace(/@claude\b/gi, '').replace(/--(full|small|fast|sized)\b/g, '').trim()
 
 // Several tickets: one whole ship per ticket, all at once. Each gets its own
 // worktree and lane, so they build, boot the app and run the suite side by
@@ -112,7 +118,7 @@ if (ISSUES.length > 1 && !(typeof args === 'object' && args)) {
   }
   log(`shipping ${ISSUES.length} tickets in parallel: ${ISSUES.map(n => `#${n}`).join(', ')}`)
   const runs = await parallel(ISSUES.map(n => () =>
-    workflow('ship', { issue: n, notes: NOTES, ...(FORCED ? { size: FORCED } : {}) })))
+    workflow('ship', { issue: n, notes: NOTES, ...(FLAG ? { size: FLAG } : {}) })))
   return {
     outcome: 'batch',
     runs: runs.map((r, i) => r || { outcome: 'error', issue: ISSUES[i], reason: 'the run died' }),
@@ -333,6 +339,19 @@ const group = (m, f) => {
   return m
 }
 const dedupe = fs => [...fs.reduce(group, new Map()).values()]
+
+// The verify agent relays two lines, the gate's as json and the red-check's
+// as red. On #219 it put the red-check's line in json — a green gate read as
+// red, and a fix round and a second two-minute gate aimed at nothing. Each
+// line says what it is (the gate has "ok", the red-check "checked"), so put a
+// swapped pair back rather than trust which slot it arrived in.
+function sortLines(ran) {
+  const parse = (s) => { try { return JSON.parse(s) } catch { return null } }
+  const j = parse(ran.json), r = parse(ran.red)
+  const isRed = (x) => x && typeof x === 'object' && 'checked' in x && !('ok' in x)
+  const isGate = (x) => x && typeof x === 'object' && 'ok' in x && 'unit' in x
+  return isRed(j) && (isGate(r) || !ran.red) ? { ...ran, json: ran.red || '', red: ran.json } : ran
+}
 
 // Parse what gate.mjs printed. Anything that is not its JSON is a red gate
 // with a reason, never a green one.
@@ -575,8 +594,10 @@ setup = await agent(
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
-  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch is already on origin from an earlier ` +
-  `attempt, continue on it rather than making a new one, and say so in reason. First of all, check the base ` +
+  `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch --prune origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch has an open draft pull request ` +
+  `from an earlier attempt, continue on it rather than making a new one, and say so in reason. One with no open draft — closed, or never ` +
+  `opened — is scrapped: remove its worktree and local branch and start from origin/${BASE} — under a new name (add -2, -3…) if origin still has that one, ` +
+  `or the pull request's push is refused. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
   `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
   `later phase would run commands that do not exist in the worktree. ${PIN} Then \`gh repo set-default --view\` ` +
@@ -649,7 +670,10 @@ function profileFor(f) {
   }
   return { ...p, why: [f.why || 'a contained change', ...added].join('; ') }
 }
-const PRESET = FORCED && { ...TIERS[FORCED], size: FORCED, why: 'forced' }
+// A ship:full label outranks the laptop default; only a flag outranks the label.
+const LABELLED_FULL = DEFAULTED && setup.sizing && setup.sizing.labelledFull
+const PRESET = LABELLED_FULL ? { ...TIERS.full, size: 'full', why: 'labelled ship:full' }
+  : FORCED && { ...TIERS[FORCED], size: FORCED, why: DEFAULTED ? 'fast, the default with no --full' : 'forced' }
 if (!FORCED && !setup.sizing) log(`#${issue}: setup reported no sizing facts — the full loop by default`)
 T = PRESET || (setup.sizing ? profileFor(setup.sizing)
   : setup.size === 'small' ? { ...TIERS.small, size: 'small', why: 'setup said small' }
@@ -657,7 +681,7 @@ T = PRESET || (setup.sizing ? profileFor(setup.sizing)
 const SIZE = T.size
 MAX_SPEC_ROUNDS = T.specRounds
 MAX_BUILD_ROUNDS = T.buildRounds
-log(`#${issue} sized ${SIZE}${FORCED ? ' (forced)' : ` — ${T.why}`}`)
+log(`#${issue} sized ${SIZE}${FORCED && !DEFAULTED ? ' (forced)' : ` — ${T.why}`}`)
 const missingSetup = ['title', 'slug', 'branch', 'workdir', 'doneWhen'].filter(k => !setup[k] || (k === 'doneWhen' && !setup.doneWhen.length))
 if (missingSetup.length) {
   const partial = setup
@@ -792,6 +816,14 @@ const built = await agent(
   `Every state the change adds gets its own assertion — each branch of a status or label, the empty case, and, ` +
   `when a state depends on the clock, a moment before it applies (Day 1 08:00: the seed's morning is already ` +
   `attended and rated). On #70 an untested branch became a follow-up and an unpinned early morning an escape. ` +
+  `An assertion is not a test: prove each criterion at the cheapest layer that can (playbook §5) — a rule, a ` +
+  `payload or a 400 in a unit or API test, which run in seconds; a browser test only for what only a page shows, ` +
+  `the variants of one criterion in one test, never \`mode: 'serial'\`.` +
+  (SIZE === 'fast' ? ` This is a fast run, where a person is waiting. Put the proof in unit and API tests first — ` +
+    `every rule, payload, validation and stored value, and any logic you can lift into a pure function to test ` +
+    `there. Then at most one browser test — none when nothing an attendee sees changes: one walk through the change that checks, as it goes, each criterion ` +
+    `only a page can show (it runs on the mobile project too, so a fit check rides along). On #219 seven browser ` +
+    `tests ran thirteen times on every try where one would have done. ` : ' ') +
   `Set ui=true if anything an attendee sees in a browser changed — and then, in the browser test that proves it, ` +
   `call \`await shotForPR(page, '<what it shows>')\` (tests/helpers.js) at the moment the change is on screen: ` +
   `that is the pull request's picture, and it costs nothing when PR_SHOTS is unset. Set browserTest=true if you ` +
@@ -888,18 +920,19 @@ for (let round = 1; ; round++) {
   // on: two runs started together each opened a PR, and once the first
   // merged the second was already conflicting. A merge, not a rebase — the
   // spec commit is pushed, and a rebase would mean a force-push.
-  const ran = await rote(
+  let ran = await rote(
     `${inTree()}\n\nFirst \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
     `Then run \`${T.gateScope === 'branch' ? 'GATE_SCOPE=branch ' : ''}GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
-    `It runs npm test and ${T.gateScope === 'branch' ? "the branch's own Playwright specs" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
-    `install. Only if that line contains "ok":true, then run \`GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
+    `It runs npm test and ${T.gateScope === 'branch' ? "the Playwright specs the change reaches" : 'the whole Playwright suite'}; in a runner Chromium is installed — never run playwright ` +
+    `install. Only if that line contains "ok":true, then run \`${T.gateScope === 'branch' ? 'RED_SCOPE=unit ' : ''}GATE_BASE=origin/${BASE} node scripts/red-check.mjs\` ` +
     `once and return its last line, verbatim, as red. Then run \`node scripts/qa-facts.mjs origin/${BASE}\` and ` +
     `return the line it prints, verbatim, as facts. Change nothing and interpret nothing.`,
     { phase: 'Verify', label: `verify#${round}`, schema: GATE, effort: 'low', model: ROTE },
   )
   if (!ran) return handBack('Verify', 'the verify agent died')
+  ran = sortLines(ran)
   gate = readGate(ran)
   // The merge was aborted, so a green line after a conflict is not this branch
   // on today's base: it goes to the fixer, never to the auditors (#153).
@@ -949,7 +982,7 @@ for (let round = 1; ; round++) {
           `read the branch's own tests only to aim your probes past them. Write every probe into one file and run it ` +
           `once for both viewports (\`npx playwright test tests/qa-probe.spec.js\` runs both projects)` +
           `${setup.runner ? '' : `, behind \`eval "$(node scripts/lane.mjs claim ${issue})" &&\`; never release the lane — it belongs to the run`}.\n\n`
-        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the branch's own browser specs (${(gate.specs || []).join(', ')})` : 'the whole suite'} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
+        : `The gate has just run ${gate.scope === 'branch' ? `npm test and the browser specs the change reaches (${(gate.specs || []).join(', ') || 'none — no page renders it'})` : `the whole suite${gate.excluded ? ` but ${gate.excluded.join(', ')} (the decks; the branch does not touch them)` : ''}`} at ${gate.sha.slice(0, 7)}: ${gateLine(gate)}. Do not ` +
           `re-run it or \`npm test\` — read the tests instead; run a command only to prove one specific claim.\n\n`) +
       (TRACES_CRITERIA.has(l.key) && carried.length
         ? `The spec audit left these for the build to resolve — a blocker if any is still unresolved:\n${listFindings(carried)}\n\n`
@@ -1100,15 +1133,19 @@ const fixed = rounds.reduce((n, r) => n + r.confirmed, 0) + specRounds.reduce((n
 const notVerified = [
   ...(!(lastRed && lastRed.checked) ? ['no red-check ran — no app code changed, or it could not'] : []),
   ...(lastRed && lastRed.checked && !lastRed.failedOnBase ? ['the new tests also pass without the change (judged a refactor)'] : []),
-  ...(!CODE_LENSES.some(l => l.key === 'browser') ? ['not explored in a browser beyond its own tests — QA does that next'] : []),
+  // QA skips a ship:fast pull request (agent-qa.yml), so fast must not promise it.
+  ...(!CODE_LENSES.some(l => l.key === 'browser') ? [SIZE === 'fast'
+    ? `not explored in a browser beyond its own tests, and QA skips a fast pull request — run \`/qa <this PR>\` from Claude to have it`
+    : 'not explored in a browser beyond its own tests — QA does that next'] : []),
   ...(gate.browser.flakyTests && gate.browser.flakyTests.length ? [`${gate.browser.flakyTests.length} test(s) flaky, passed on retry`] : []),
-  ...(gate.scope === 'branch' ? ["the whole browser suite did not run here, only this branch's specs — the pull request's CI runs it"] : []),
+  ...(gate.scope === 'branch' ? ["the whole browser suite did not run, here or on this pull request — only the specs the change reaches; main runs it after merge"] : []),
+  ...(gate.excluded ? [`${gate.excluded.join(', ')} did not run — the decks, which this branch does not touch`] : []),
   ...(T.reaudit === false && rounds.some(r => r.confirmed) ? ['the fix for what the audit found was re-gated, not re-audited'] : []),
 ]
 const checksLine = [
   gate.scope === 'branch'
-    ? `Tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser in ${(gate.specs || []).join(', ')}, desktop and mobile`
-    : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser, desktop and mobile`,
+    ? `Tests pass — ${gate.unit.passed} unit · ${(gate.specs || []).length ? `${gate.browser.passed} browser in ${gate.specs.join(', ')}, desktop and mobile` : 'no browser spec reaches this change'}`
+    : `All tests pass — ${gate.unit.passed} unit · ${gate.browser.passed} browser${gate.excluded ? ' (all but the decks)' : ''}, desktop and mobile`,
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
 ].join(' · ')

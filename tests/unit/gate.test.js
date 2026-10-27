@@ -1,6 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs } from '../../scripts/gate.mjs';
+import { spawnSync } from 'node:child_process';
+import { summarise, tampered, isDirty, strays, addedTests, neverRanAdded, branchSpecs, deckTouched, withoutDeck, untouchedFailures, settleAlone, importsOf, routesOf, pathsIn, affectedSpecs, ciSpecs, printable, redirectsOf, testIdsIn, fastFallback } from '../../scripts/gate.mjs';
 
 /**
  * The gate is what the ship loop believes about a branch, so its two readers
@@ -162,5 +163,218 @@ describe('branchSpecs — what GATE_SCOPE=branch runs', () => {
   test('a branch that changed no browser spec gets an empty list — the gate then runs the whole suite', () => {
     assert.deepEqual(branchSpecs('tests/unit/ship.test.js\n'), []);
     assert.deepEqual(branchSpecs(''), []);
+  });
+});
+
+describe('the decks', () => {
+  test('a branch that touches a deck or its spec runs the deck spec', () => {
+    assert.equal(deckTouched('src/components/presentation/ship.jsx\nsrc/App.jsx'), true);
+    assert.equal(deckTouched('tests/presentation.spec.js'), true);
+  });
+
+  test('an app branch leaves the deck spec out of the suite', () => {
+    assert.equal(deckTouched('server/routes/users.js\nsrc/components/Layout.jsx\ntests/unit/presentation.test.js'), false);
+    assert.deepEqual(withoutDeck(['tests/agenda.spec.js', 'tests/presentation.spec.js']), ['tests/agenda.spec.js']);
+  });
+});
+
+describe('a failure that may only be load', () => {
+  const failed = [
+    { test: '[desktop] presentation.spec.js:40 › steps through every beat', error: 'Test timeout of 30000ms exceeded.', at: 'presentation.spec.js:40' },
+    { test: '[mobile] interests.spec.js:12 › saves the selection', error: 'Expected: true', at: 'interests.spec.js:12' },
+    { test: 'tests/x.spec.js:3', error: 'SyntaxError' },
+  ];
+
+  test('only a failure in a spec the branch did not change is rerun alone', () => {
+    assert.deepEqual(untouchedFailures(failed, 'tests/interests.spec.js\nsrc/App.jsx').map(f => f.at), ['presentation.spec.js:40']);
+  });
+
+  test('passing alone makes it flaky, not failed; failing alone keeps it failed', () => {
+    const browser = { passed: 200, failed: failed.slice(0, 1), flaky: 1, flakyTests: ['[mobile] a.spec.js:1 › a'], skipped: 0 };
+    const rerun = (status) => ({ suites: [{ file: 'presentation.spec.js', specs: [{ title: 'steps through every beat', file: 'presentation.spec.js', line: 40, tests: [{ projectName: 'desktop', status }] }] }] });
+
+    const settled = settleAlone(browser, rerun('expected'));
+    assert.deepEqual(settled.failed, []);
+    assert.equal(settled.flaky, 2);
+    assert.match(settled.flakyTests[1], /presentation\.spec\.js:40 .* passed run alone/);
+
+    assert.equal(settleAlone(browser, rerun('unexpected')).failed.length, 1);
+  });
+});
+
+describe('the specs a change reaches (fast)', () => {
+  const app = `import { HomePage } from './pages/HomePage.jsx';
+import { SchedulePage } from './pages/SchedulePage.jsx';
+import { SessionPage } from './pages/SessionPage.jsx';
+import { Layout } from './components/Layout.jsx';
+      <Route element={<Layout />}>
+        <Route index element={<HomePage />} />
+        <Route path="schedule" element={<SchedulePage />} />
+        <Route path="sessions/:id" element={<SessionPage />} />
+        <Route path="*" element={<NotFoundPage />} />`;
+  const repo = {
+    graph: new Map([
+      ['src/App.jsx', ['src/pages/HomePage.jsx', 'src/pages/SchedulePage.jsx', 'src/pages/SessionPage.jsx', 'src/components/Layout.jsx']],
+      ['src/pages/SchedulePage.jsx', ['src/components/FilterBar.jsx', 'src/components/SessionCard.jsx']],
+      ['src/pages/HomePage.jsx', ['src/components/SessionCard.jsx']],
+      ['src/pages/SessionPage.jsx', []],
+      ['src/components/Layout.jsx', ['src/components/UserSwitcher.jsx']],
+    ]),
+    routes: routesOf(app),
+    specs: new Map([
+      ['tests/schedule.spec.js', `await visit(page, '/schedule?day=1');`],
+      ['tests/session.spec.js', 'await visit(page, `/sessions/${id}`); // links back to /schedule'],
+      ['tests/home.spec.js', `await visit(page); expect(link).toHaveAttribute('href', '/schedule');`],
+      ['tests/smoke.spec.js', `for (const r of ROUTES) await visit(page, r.path);`],
+      ['tests/presentation.spec.js', `await page.goto('/schedule');`],
+    ]),
+  };
+
+  test('routes come from App.jsx, with the param dropped and the catch-all left out', () => {
+    assert.deepEqual([...repo.routes], [['src/pages/HomePage.jsx', '/'], ['src/pages/SchedulePage.jsx', '/schedule'], ['src/pages/SessionPage.jsx', '/sessions/']]);
+  });
+
+  test('a spec visits what it navigates to, not what it only mentions', () => {
+    assert.deepEqual(pathsIn(repo.specs.get('tests/session.spec.js')), ['/sessions/']);
+    assert.deepEqual(pathsIn(repo.specs.get('tests/home.spec.js')), ['/']);
+    assert.deepEqual(pathsIn(repo.specs.get('tests/smoke.spec.js')), ['*']);
+  });
+
+  test('a component reaches the pages that import it, and their specs — never the decks', () => {
+    assert.deepEqual(affectedSpecs(['src/components/FilterBar.jsx'], repo), ['tests/schedule.spec.js', 'tests/smoke.spec.js']);
+    assert.deepEqual(affectedSpecs(['src/components/SessionCard.jsx'], repo), ['tests/home.spec.js', 'tests/schedule.spec.js', 'tests/smoke.spec.js']);
+  });
+
+  test("the branch's own spec always runs; a change no page renders runs nothing else", () => {
+    assert.deepEqual(affectedSpecs(['tests/session.spec.js', 'docs/context/ui.md', 'server/routes/users.js'], repo), ['tests/session.spec.js']);
+  });
+
+  test('the shell, the rules or the config could break any page: the whole suite', () => {
+    for (const f of ['src/components/UserSwitcher.jsx', 'src/App.jsx', 'server/lib/seats.js', 'tests/helpers.js', 'vite.config.js', 'Makefile']) {
+      assert.equal(affectedSpecs([f], repo), null, f);
+    }
+  });
+
+  test('imports resolve relative to the file', () => {
+    assert.deepEqual(importsOf('src/pages/SchedulePage.jsx', `import { a } from '../components/FilterBar.jsx';\nimport x from 'react';\nconst L = lazy(() => import('./Other.jsx'));`),
+      ['src/components/FilterBar.jsx', 'src/pages/Other.jsx']);
+  });
+});
+
+describe('what CI runs for a pull request', () => {
+  const repo = {
+    graph: new Map([['src/App.jsx', ['src/pages/SchedulePage.jsx']], ['src/pages/SchedulePage.jsx', []]]),
+    routes: new Map([['src/pages/SchedulePage.jsx', '/schedule']]),
+    specs: new Map([['tests/schedule.spec.js', `visit(page, '/schedule')`], ['tests/smoke.spec.js', `visit(page, '/')`], ['tests/presentation.spec.js', `page.goto('/x')`]]),
+  };
+
+  test('any pull request: the whole suite but the decks, unless it touches one', () => {
+    assert.deepEqual(ciSpecs(['server/lib/seats.js'], repo, false), ['tests/schedule.spec.js', 'tests/smoke.spec.js']);
+    assert.deepEqual(ciSpecs(['src/components/presentation/ship.jsx'], repo, false), []);
+  });
+
+  test('a ship:fast one: the same specs the local gate chose', () => {
+    assert.deepEqual(ciSpecs(['src/pages/SchedulePage.jsx'], repo, true), ['tests/schedule.spec.js']);
+    assert.deepEqual(ciSpecs(['docs/context/ui.md'], repo, true), ['tests/smoke.spec.js']);
+  });
+});
+
+describe('the line the verify agent copies back', () => {
+  const failure = (i) => ({ test: `[desktop] a.spec.js:${i} › t${i}`, error: `line 1\nline 2\nline 3\nline 4\n${'x'.repeat(500)}`, at: `a.spec.js:${i}` });
+  const result = (n) => ({ ok: false, sha: 'abc', unit: { passed: 1, failed: 0 }, browser: { passed: 0, failed: Array.from({ length: n }, (_, i) => failure(i)), flaky: 0, skipped: 0 }, tampered: [] });
+
+  test('keeps three lines of each error, at most 300 characters', () => {
+    const [f] = printable(result(1)).browser.failed;
+    assert.equal(f.error, 'line 1\nline 2\nline 3');
+    assert.equal(f.test, '[desktop] a.spec.js:0 › t0');
+  });
+
+  test('names at most ten failures and says how many more gate.json has', () => {
+    const b = printable(result(13)).browser;
+    assert.equal(b.failed.length, 10);
+    assert.match(b.more, /^3 more failed/);
+    assert.equal(printable(result(2)).browser.more, undefined);
+  });
+
+  test('changes nothing but the failures — the rest is what readGate checks', () => {
+    const r = result(1);
+    const p = printable(r);
+    assert.deepEqual({ ...p, browser: { ...p.browser, failed: [] } }, { ...r, browser: { ...r.browser, failed: [] } });
+  });
+});
+
+describe('a spec that reaches a page without opening its route — #220', () => {
+  const app = `import { HomePage } from './pages/HomePage.jsx';
+import { MyAgendaPage } from './pages/MyAgendaPage.jsx';
+        <Route index element={<HomePage />} />
+        <Route path="my-agenda" element={<MyAgendaPage />} />
+        <Route path="my-plan" element={<Navigate to="/my-agenda" replace />} />`;
+  const repo = (specs) => ({
+    graph: new Map([['src/App.jsx', ['src/pages/HomePage.jsx', 'src/pages/MyAgendaPage.jsx']], ['src/pages/MyAgendaPage.jsx', ['src/components/AgendaList.jsx']]]),
+    routes: routesOf(app),
+    redirects: redirectsOf(app),
+    sources: new Map([
+      ['src/pages/MyAgendaPage.jsx', `<p data-testid="agenda-coming-soon">Soon</p><div data-testid={\`row-\${id}\`} />`],
+      ['src/components/AgendaList.jsx', `<ul data-testid={'agenda-list'} />`],
+    ]),
+    specs: new Map(specs),
+  });
+
+  test('redirects and static test ids are read; a computed id is not', () => {
+    assert.deepEqual([...redirectsOf(app)], [['/my-plan', '/my-agenda']]);
+    assert.deepEqual(testIdsIn(repo([]).sources.get('src/pages/MyAgendaPage.jsx')), ['agenda-coming-soon']);
+    assert.deepEqual(testIdsIn(`<ul data-testid={'agenda-list'} />`), ['agenda-list']);
+  });
+
+  test('opening a path that redirects to the page counts as opening the page', () => {
+    assert.deepEqual(affectedSpecs(['src/pages/MyAgendaPage.jsx'], repo([['tests/plan.spec.js', `await visit(page, '/my-plan');`]])), ['tests/plan.spec.js']);
+  });
+
+  test("clicking through to the page and checking its test id counts too", () => {
+    const home = ['tests/home.spec.js', `await visit(page); await click('My Agenda'); await expect(page.getByTestId('agenda-coming-soon')).toBeVisible();`];
+    const other = ['tests/other.spec.js', `await visit(page); await expect(page.getByTestId('hero')).toBeVisible();`];
+    assert.deepEqual(affectedSpecs(['src/pages/MyAgendaPage.jsx'], repo([home, other])), ['tests/home.spec.js']);
+    // A component's own test id, through the page that renders it.
+    const list = ['tests/list.spec.js', `await expect(page.getByTestId("agenda-list")).toHaveCount(1);`];
+    assert.deepEqual(affectedSpecs(['src/components/AgendaList.jsx'], repo([list, other])), ['tests/list.spec.js']);
+  });
+});
+
+describe('the gate as a command', () => {
+  // An unknown flag once ran the whole gate: a reviewer's --help sat through
+  // npm test and Playwright for two minutes (#220). These must return at once.
+  const gate = (...a) => spawnSync(process.execPath, ['scripts/gate.mjs', ...a], { encoding: 'utf8', timeout: 10_000 });
+
+  test('--help prints the usage and runs nothing', () => {
+    const r = gate('--help');
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /node scripts\/gate\.mjs --specs <base>/);
+  });
+
+  test('an unknown flag is refused, not run', () => {
+    const r = gate('--bogus');
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /gate: unknown --bogus/);
+  });
+});
+
+describe("fast's answer when the change could reach any page", () => {
+  test('a shared app file runs the branch specs and the smoke spec, not the whole suite', () => {
+    assert.deepEqual(fastFallback(['src/components/UserSwitcher.jsx', 'src/lib/store.jsx', 'tests/interests.spec.js']), ['tests/interests.spec.js', 'tests/smoke.spec.js']);
+    assert.deepEqual(fastFallback(['server/lib/seats.js']), ['tests/smoke.spec.js']);
+  });
+
+  test('a change to what runs the tests still gets the whole suite', () => {
+    for (const f of ['playwright.config.js', 'package.json', 'vite.config.js', 'Makefile']) assert.equal(fastFallback([f]), null, f);
+  });
+
+  test("a new test's data lane in tests/helpers.js is not a reason to run everything — #219", () => {
+    assert.deepEqual(fastFallback(['src/components/UserSwitcher.jsx', 'tests/helpers.js', 'tests/switcher.spec.js']), ['tests/smoke.spec.js', 'tests/switcher.spec.js']);
+  });
+
+  test('CI makes the same choice for a fast pull request', () => {
+    const repo = { graph: new Map([['src/App.jsx', ['src/components/Layout.jsx']]]), routes: new Map(), specs: new Map([['tests/smoke.spec.js', ''], ['tests/seats.spec.js', '']]) };
+    assert.deepEqual(ciSpecs(['src/components/Layout.jsx'], repo, true), ['tests/smoke.spec.js']);
+    assert.deepEqual(ciSpecs(['src/components/Layout.jsx'], repo, false), ['tests/seats.spec.js', 'tests/smoke.spec.js']);
   });
 });

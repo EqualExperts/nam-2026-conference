@@ -50,6 +50,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
           N: ${{ github.event.pull_request.number }}
         run: |
+          # A ship:fast pull request — the workshop's — skips exploratory QA:
+          # the minutes matter more than the probing, and its gate already ran
+          # the browser specs the change reaches. Read from the pull request,
+          # not the event: `gh pr create --label` can add the label just after
+          # `opened` fires. Run /qa from Claude to have it anyway.
+          if gh pr view "$N" --json labels --jq '.labels[].name' | grep -qx 'ship:fast'; then
+            echo "has=false" >> "$GITHUB_OUTPUT"
+            echo "ship:fast — exploratory QA skipped. Run \`/qa $N\` from Claude to have it anyway." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo "has=$HAS_KEY" >> "$GITHUB_OUTPUT"
           [ "$HAS_KEY" = "true" ] && exit 0
           # Said where people look, not only in this log: why nothing ran, and the

@@ -32,6 +32,12 @@ npm run verify   # reseed + Playwright, desktop and mobile — before "done"
 
 Every other command and flag: `docs/context/testing.md`.
 
+**Asked to open, try or show a feature in the browser**, run
+`npm run show -- <issue | PR | branch>` — never a bare `npm run dev` or
+`localhost:5173`, which serve whichever checkout started last, not the
+branch being worked on. It finds that branch's worktree (or makes one),
+starts the app on its lane and opens the page.
+
 ## Stack
 
 Node 22 · Express · better-sqlite3 · React 18 · Vite 6 · React Router 6 ·
@@ -205,7 +211,19 @@ and triggers: `docs/harness/github.md`.
 ## What happens to a ticket
 
 1. **Ship** — `ready-for-ai` (or `@claude` on an issue) runs `/ship`, where
-   every phase is a fresh agent. Setup sizes the ticket: most are **small**
+   every phase is a fresh agent. **Asked in a chat to ship an issue** without
+   a size flag, first ask which run with AskUserQuestion — four options, in
+   this order, each with its benefit:
+   - *Fast — for the workshop* (`--fast`): the quickest; one audit, and only
+     the browser tests for the pages the change reaches, here and in the pull
+     request's CI; the whole suite runs on main after merge.
+   - *Sized — let ship decide* (`--sized`): reads the ticket and picks small
+     or full, adding the checks what it touches needs.
+   - *Small* (`--small`): Sonnet, one combined audit and the whole suite.
+   - *Full — best quality* (`--full`): Opus, spec audits, three code
+     auditors, up to four rounds; the slowest.
+
+   Then start it with that flag. A run with no flag is fast. Setup sizes the ticket: most are **small**
    (one auditor per stage, two rounds, Sonnet); `ship:full` gets the whole
    loop on Opus. No pull request until the gate is green and no
    auditor blocker survives a skeptic; one that will not converge goes to a

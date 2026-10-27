@@ -37,7 +37,10 @@ const blocker = (claim) => ({
  * of the round number (the `#n` suffix). Returns the result and every label
  * that ran, in order.
  */
-async function run(answers = {}, args = 7) {
+// A bare number is CI's `/ship N --sized`: most of this file is about sizing.
+// `bare: true` runs it as typed on a laptop, with no flag.
+async function run(answers = {}, args = 7, { bare = false } = {}) {
+  if (!bare && typeof args !== 'object' && !/--(full|small|fast|sized)\b/.test(String(args))) args = `${args} --sized`;
   const calls = [];
   const prompts = {};
   const models = {};
@@ -323,12 +326,12 @@ describe('ship', () => {
     // Two runs started together both opened PRs from the same main; once the
     // first merged, the second was already conflicting.
     const { prompts } = await run();
-    assert.match(prompts.setup, /git fetch origin`? first, then from origin\/main/);
+    assert.match(prompts.setup, /git fetch --prune origin`? first, then from origin\/main/);
     assert.match(prompts['verify#1'], /git fetch origin main && git merge --no-edit origin\/main[\s\S]*gate\.mjs/);
     assert.match(prompts['open-pr'], /git merge --no-edit origin\/main[\s\S]*git push -u origin HEAD/);
     const playbook = readFileSync(new URL('../../docs/harness/ship-playbook.md', import.meta.url), 'utf8');
-    assert.match(playbook, /git fetch origin\ngit checkout -b issue-<n>/);
-    assert.match(playbook, /git fetch origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
+    assert.match(playbook, /git fetch --prune origin\ngit checkout -b issue-<n>/);
+    assert.match(playbook, /git fetch --prune origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
   });
 
   test('a conflict with the base goes to the fixer without an audit, and the gate re-runs — #150', async () => {
@@ -537,7 +540,7 @@ describe('ship', () => {
       return { ok: true, summary: 'done' };
     };
     const parallel = async (ts) => Promise.all(ts.map(t => t().catch(() => null)));
-    const result = await script({ issue: 7, base: 'harness/ship-loop' }, agent, parallel, () => {}, () => {});
+    const result = await script({ issue: 7, base: 'harness/ship-loop', size: 'sized' }, agent, parallel, () => {}, () => {});
     assert.equal(result.outcome, 'shipped');
     assert.match(prompts.setup, /origin\/harness\/ship-loop/);
     assert.match(prompts['verify#1'], /GATE_BASE=origin\/harness\/ship-loop/);
@@ -645,6 +648,15 @@ describe('ship', () => {
     assert.match(prompts['audit:criteria#1'], /keep it to the card/);
     assert.doesNotMatch(prompts['write-spec'], /@claude/);
     assert.match(prompts.setup, /closed pull request from an earlier attempt is not a reason to stop/);
+  });
+
+  test('only an open draft is an attempt to continue; a scrapped branch is started over — #219', async () => {
+    // Closed, branch deleted on GitHub: without --prune its origin/ ref lingered,
+    // and the rerun built on the scrapped commits and called the ticket done.
+    const { prompts } = await run();
+    assert.match(prompts.setup, /git fetch --prune origin/);
+    assert.match(prompts.setup, /branch has an open draft pull request[\s\S]*continue on it/);
+    assert.match(prompts.setup, /no open draft[\s\S]*is scrapped: remove its worktree and local branch and start from origin\/main/);
   });
 
   test('a bare issue number carries no notes', async () => {
@@ -971,7 +983,56 @@ describe('progress and spend on the issue, from a laptop', () => {
  * minutes matter. It keeps one independent audit and a skeptic, and says in
  * the pull request what it skipped.
  */
+/**
+ * With no flag a run is on a laptop — CI always passes `--sized` — and on a
+ * laptop it is the workshop, where a person sits waiting for it.
+ */
+describe('a run with no size flag', () => {
+  const sizing = { areas: ['ui', 'server-routes', 'tests'], files: 4, changesApi: true, changesRule: false,
+    changesData: false, openQuestions: 4, labelledFull: false, uiInteraction: true, layoutFit: true, why: 'a modal and a route' };
+
+  test('is fast, whatever sizing would have chosen', async () => {
+    const { result } = await run({ setup: { ...SETUP, sizing } }, '7', { bare: true });
+    assert.equal(result.size, 'fast');
+  });
+
+  test('--sized sizes it, --full runs it all', async () => {
+    assert.equal((await run({ setup: { ...SETUP, sizing } }, '7 --sized', { bare: true })).result.size, 'small');
+    assert.equal((await run({ setup: { ...SETUP, sizing } }, '7 --full', { bare: true })).result.size, 'full');
+  });
+
+  test('a ship:full label outranks the default', async () => {
+    const { result } = await run({ setup: { ...SETUP, sizing: { ...sizing, labelledFull: true } } }, '7', { bare: true });
+    assert.equal(result.size, 'full');
+  });
+});
+
+describe('the verify agent relays two lines', () => {
+  const redLine = JSON.stringify({ checked: true, failedOnBase: true, tests: ['tests/api/x.test.js'], reverted: ['server/routes/users.js'] });
+
+  test('a green gate relayed in the red-check slot is put back, not read as red — #219', async () => {
+    const { result, calls } = await run({ verify: { json: redLine, red: GREEN.json, facts: '' } });
+    assert.equal(result.outcome, 'shipped');
+    assert.ok(!calls.includes('fix#1'), calls.join(', '));
+  });
+
+  test('a real gate result is left where it is', async () => {
+    const { calls } = await run({ verify: (n) => (n === 1 ? { ...RED([{ test: 'a', error: 'e' }]), red: redLine } : GREEN) });
+    assert.ok(calls.includes('fix#1'), calls.join(', '));
+  });
+});
+
 describe('--fast', () => {
+  test('the builder is told the cheapest layer, and on fast the fewest browser tests — #219', async () => {
+    const fast = (await run({}, '7 --fast')).prompts.implement;
+    assert.match(fast, /cheapest layer that can/);
+    assert.match(fast, /never `mode: 'serial'`/);
+    assert.match(fast, /unit and API tests first/);
+    assert.match(fast, /at most one browser test/);
+    assert.match(fast, /none when nothing an attendee sees changes/);
+    assert.doesNotMatch((await run({}, '7 --sized')).prompts.implement, /at most one browser test/);
+  });
+
   const BRANCH_GATE = { json: JSON.stringify(gateResult({ scope: 'branch', specs: ['tests/schedule.spec.js'], browser: { passed: 6, failed: [], flaky: 0, skipped: 0 } })) };
 
   test('one combined auditor, no spec audit, no browser explorer, the gate scoped to the branch', async () => {
@@ -980,7 +1041,8 @@ describe('--fast', () => {
     assert.equal(result.size, 'fast');
     assert.deepEqual(calls.filter(c => /^(spec-audit|audit)/.test(c)), ['audit:combined#1']);
     assert.match(prompts['verify#1'], /GATE_SCOPE=branch GATE_BASE=origin\/main node scripts\/gate\.mjs/);
-    assert.match(prompts['audit:combined#1'], /the branch's own browser specs \(tests\/schedule\.spec\.js\)/);
+    assert.match(prompts['verify#1'], /RED_SCOPE=unit GATE_BASE=origin\/main node scripts\/red-check\.mjs/);
+    assert.match(prompts['audit:combined#1'], /the browser specs the change reaches \(tests\/schedule\.spec\.js\)/);
   });
 
   test('a confirmed finding is fixed and re-gated, not re-audited, and nothing is learnt', async () => {
@@ -992,7 +1054,10 @@ describe('--fast', () => {
     assert.deepEqual(calls.filter(c => /^(audit|fix|verify)/.test(c)), ['verify#1', 'audit:combined#1', 'fix#1', 'verify#2']);
     assert.ok(!calls.includes('learn'), calls.join(', '));
     assert.match(prompts['open-pr'], /re-gated, not re-audited/);
-    assert.match(prompts['open-pr'], /the pull request's CI runs it/);
+    assert.match(prompts['open-pr'], /main runs it after merge/);
+    // QA skips a ship:fast pull request, so its body must not say QA is next.
+    assert.doesNotMatch(prompts['open-pr'], /QA does that next/);
+    assert.match(prompts['open-pr'], /QA skips a fast pull request/);
     assert.match(prompts['open-pr'], /6 browser in tests\/schedule\.spec\.js/);
   });
 

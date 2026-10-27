@@ -36,12 +36,13 @@ to a pull request.
 
 1. **Pick an issue** that has a **Done when** list. One the product harness
    just created works.
-2. **Ship it:** `/ship 42`. It plans, writes a failing test, writes the code,
-   runs every test on desktop and mobile, and audits until the work is clean. A
-   small ticket takes about 10–20 minutes. You can watch the progress on the
-   issue. For a ticket you have seen work before — a demo — `/ship 42 --fast`
-   takes one audit and runs only the branch's own browser tests; the pull
-   request's CI runs the rest.
+2. **Ship it:** ask Claude to ship issue 42, and pick a run. **Fast** — the
+   default, for the workshop — plans, writes a failing test and the code, runs
+   only the browser tests for the pages it changed and takes one audit. The
+   pull request's CI repeats those tests on a clean machine; the rest run on
+   main after you merge, so a break elsewhere shows up there. **Full** (`/ship 42 --full`) runs every test on desktop and
+   mobile and audits until the work is clean, which takes far longer. You can
+   watch the progress on the issue.
 3. **Review the pull request** like any other. It has the plan, the test
    evidence, every audit round and the cost. Merge it, or comment `@claude …` to
    ask for a change.

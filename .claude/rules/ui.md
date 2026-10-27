@@ -21,6 +21,11 @@ UI work needs.
 not refetch venues, days, the clock, the current user or their reservations per
 page. (how: `docs/context/architecture.md`)
 
+**A modal copies `ConflictDialog`** — portalled to `document.body` when opened
+from the header, a full-screen backdrop `<button aria-label="Close">` behind
+the panel, Escape and focus in one effect, a bottom sheet capped at
+`max-h-[85dvh]` on a phone. (how: `docs/context/ui.md` § Dialogs)
+
 **Filters live in the URL** (`useSearchParams`), so a filtered view is shareable
 and survives reload. `'all'` means "no filter".
 

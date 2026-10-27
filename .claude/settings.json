@@ -2,6 +2,49 @@
   "env": {
     "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL": "5m"
   },
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git worktree:*)",
+      "Bash(git branch:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git cat-file:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr ready:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh repo set-default:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh label list:*)",
+      "Bash(gh auth status:*)",
+      "Bash(node scripts/:*)",
+      "Bash(GATE_SCOPE=branch GATE_BASE=:*)",
+      "Bash(GATE_BASE=:*)",
+      "Bash(eval \"$(node scripts/lane.mjs:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(npx playwright test:*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

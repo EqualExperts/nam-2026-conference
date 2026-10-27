@@ -2,6 +2,7 @@
  * Would the branch's tests fail without the branch's code?
  *
  *   node scripts/red-check.mjs          # prints one JSON line; GATE_BASE picks the base (origin/main)
+ *   RED_SCOPE=unit node scripts/red-check.mjs   # ship --fast: the unit and API tests alone, when there are any
  *
  * A test that passes with or without the change proves nothing, and it is
  * the easiest thing for an agent to write: on #41 the new tests exercised
@@ -32,7 +33,7 @@ const isBrowserTest = (f) => /^tests\/[^/]+\.spec\.js$/.test(f);
  * From `git diff --name-status base...HEAD`, what to revert and what to run.
  * Deleted tests are not run; added code is removed rather than reverted.
  */
-export function plan(nameStatus) {
+export function plan(nameStatus, scope = null) {
   const code = [], added = [], renamed = [], unit = [], browser = [];
   for (const line of nameStatus.split('\n').filter(Boolean)) {
     const [status, ...paths] = line.split('\t');
@@ -47,6 +48,9 @@ export function plan(nameStatus) {
     else if (isBrowserTest(file)) browser.push(file);
   }
   const applies = (code.length + added.length + renamed.length) > 0 && (unit.length + browser.length) > 0;
+  // Fast: a failing unit or API test is proof enough, and costs seconds; the
+  // browser run — a scratch app, seeded and booted — only when there is none.
+  if (scope === 'unit' && unit.length) return { applies, code, added, renamed, unit, browser: [], skipped: browser };
   return { applies, code, added, renamed, unit, browser };
 }
 
@@ -76,6 +80,7 @@ export function verdict(p, runs) {
     checked: true,
     failedOnBase,
     tests: [...p.unit, ...p.browser],
+    ...(p.skipped && p.skipped.length ? { notRun: p.skipped } : {}),
     reverted: [...p.code, ...p.added.map(f => `${f} (removed)`), ...p.renamed.map(r => `${r.to} → ${r.from}`)],
     ...(failedOnBase ? {} : { finding: 'none of the tests this branch added or changed fail when its app code is reverted — they would pass without the change' }),
   };
@@ -84,7 +89,7 @@ export function verdict(p, runs) {
 function main() {
   const base = process.env.GATE_BASE || 'origin/main';
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' });
-  const p = plan(git('diff', '--name-status', `${base}...HEAD`));
+  const p = plan(git('diff', '--name-status', `${base}...HEAD`), process.env.RED_SCOPE || null);
   if (!p.applies) { console.log(JSON.stringify(verdict(p, []))); return; }
 
   const dir = mkdtempSync(join(tmpdir(), 'red-check-'));

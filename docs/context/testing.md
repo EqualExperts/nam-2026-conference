@@ -9,12 +9,14 @@ files:
   - tests/unit/sandbox-db.js
   - scripts/lane.mjs
   - scripts/shot.mjs
+  - scripts/show.mjs
   - scripts/ci-summary.mjs
   - scripts/ci-summary-node.mjs
   - .github/workflows/verify.yml
 tests:
   - tests/unit/lane.test.js
   - tests/unit/lanes.test.js
+  - tests/unit/show.test.js
   - tests/unit/gitignore.test.js
   - tests/smoke.spec.js
   - tests/api/static.test.js
@@ -36,7 +38,9 @@ Why the cheapest layer wins: CLAUDE.md § Verifying a change. Which layer a test
 Commands: `npm test` (unit + API, under a second), `npm run verify` (reseed, then
 Playwright headless; `npm run verify -- --ui` or `npm run verify:ui` for the interactive
 runner), `npm run shot -- /schedule --mobile --user=2`, `npm run db:reset` (delete the
-database file and reseed). Two different things are called a **lane** here: a *port lane*
+database file and reseed), `npm run show -- 219 schedule` (serve issue 219's worktree —
+or a PR's or a named branch's, making the worktree if none has it — on its own lane and
+open `/schedule`; `scripts/show.mjs`, `pick()` decides which). Two different things are called a **lane** here: a *port lane*
 (`scripts/lane.mjs`, one per worktree) and a *data lane* (`LANES` in `tests/helpers.js`,
 one per Playwright test per project).
 
@@ -136,6 +140,32 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
 - `lane 0` must still set `ORBIT_LANE` truthy (`'0'` as a string) — `lane.test.js` pins it.
 - A lane never exports `ORBIT_DB`; each worktree seeds its own `data/orbit.db`.
 
+## Testing a dialog
+
+One browser test walks the closes and the save; what is stored is the API
+test's job.
+
+```js
+const dialog = page.getByRole('dialog', { name: 'Your interests' });
+const open = async () => {
+  await page.getByRole('button', { name: /Switch attendee/ }).click();
+  await page.getByRole('button', { name: 'Your interests' }).click();
+  await expect(dialog).toBeVisible();
+};
+
+await open(); await dialog.getByRole('button', { name: 'Cancel' }).click(); await expect(dialog).toBeHidden();
+await open(); await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
+// Outside: the backdrop button itself, at its top-left — never page.mouse at a
+// guessed coordinate, which on a phone lands on the sheet.
+await open(); await dialog.getByRole('button', { name: 'Close' }).click({ position: { x: 8, y: 8 } }); await expect(dialog).toBeHidden();
+```
+
+If the backdrop click times out with "element intercepts pointer events", the
+panel covers that corner: the sheet is too tall — cap it (`docs/context/ui.md`
+§ Dialogs), do not move the click. While iterating, run it on
+`--project=desktop --max-failures=1 --timeout=10000` (ship playbook §6), then
+once on mobile.
+
 ## Gotchas
 
 - **Pin the clock at every boundary the change depends on**, not only mid-morning:
@@ -209,5 +239,6 @@ print a markdown table to `$GITHUB_STEP_SUMMARY` and exit 0 even with no report.
   what the test writes (`attendance.checkin-toast`/`attendance.rating-toast` do this).
 - New route: add it to `ROUTES` in `tests/smoke.spec.js` with its heading regex — unless it renders
   outside `<Layout>`, as the two presentations do: smoke expects a header and footer, so a
-  full-screen route gets its own spec (`tests/presentation.spec.js`).
+  full-screen route gets its own spec (`tests/presentation.spec.js`), which the
+  ship gate skips unless the branch touches a deck.
 - New endpoint: `tests/api/endpoints.test.js` (see architecture).

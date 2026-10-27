@@ -71,7 +71,15 @@ real diff: a small run that reached a risky path (`server/lib`, the schema, the
 harness) or grew past 300 app lines is escalated to the full auditors on Opus,
 and a gate red twice running moves the fixer to Opus. The plan is re-audited
 only for a finding that changes what gets built; a gap in its detail goes to
-the builder as a note. Override with `/ship 42 --full` or `--small`.
+the builder as a note.
+
+**That sizing is `--sized`**, which is what CI's `ready-for-ai` run passes. On
+a laptop, a run with no flag is **fast** — the workshop's run, where someone is
+waiting: one combined auditor, no plan audit, no browser explorer, and the gate
+runs only the browser specs the change reaches (so does the pull request's CI;
+the whole suite runs on main after merge). Asked in a chat, Claude first offers
+fast, sized, small or full. Pick one outright with `/ship 42 --fast`,
+`--sized`, `--small` or `--full`.
 
 | | 🟢 **Small** | 🔵 **Full** |
 | --- | --- | --- |
@@ -176,8 +184,8 @@ every agent writing that context to the cache. So the harness is tuned for
 review and QA run when the pull request opens; `@claude` on the pull request
 asks for a change. Keys, tokens and triggers: [`github.md`](./github.md).
 
-**In Claude Code** — `/ship 42`, or `/ship 64 65 66` for several tickets in
-parallel; then `/code-review <pr>` and `/qa <pr>`. Every ticket gets its own git
+**In Claude Code** — `/ship 42` (fast; add `--sized` for the sizing above),
+or `/ship 64 65 66` for several tickets in parallel; then `/code-review <pr>` and `/qa <pr>`. Every ticket gets its own git
 worktree, under `.claude/worktrees/` inside the repo, and its own **lane** — a pair of ports from
 [`scripts/lane.mjs`](../../scripts/lane.mjs) — so several tickets can build,
 boot the app and run the whole suite at once without touching each other. The

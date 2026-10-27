@@ -218,7 +218,7 @@ jobs:
           git config user.email "noreply@anthropic.com"
           # Pushes use the same token as gh.
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          scripts/agent-run.sh "/ship $N $NOTES" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
+          scripts/agent-run.sh "/ship $N $NOTES --sized" "Workflow,Bash,Read,Write,Edit,Glob,Grep" claude-opus-5
 
       # What the run cost, on the ticket and on the pull request it opened: one
       # comment on the issue keeps every run's row and the total, so the

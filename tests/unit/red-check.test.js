@@ -78,3 +78,15 @@ test('on the base code a skipped test has not passed — the data guards skip ex
   assert.equal(browserAllPassed(0, { stats: { expected: 3, skipped: 1, unexpected: 0 } }), false);
   assert.equal(browserAllPassed(0, null), false);
 });
+
+test('fast (RED_SCOPE=unit): the unit and API tests alone when there are any; the browser only when there are none', () => {
+  const both = 'M\tserver/routes/users.js\nA\ttests/api/interests.test.js\nA\ttests/interests.spec.js';
+  const p = plan(both, 'unit');
+  assert.deepEqual(p.unit, ['tests/api/interests.test.js']);
+  assert.deepEqual(p.browser, []);
+  assert.deepEqual(verdict(p, [{ kind: 'unit', failed: true }]).notRun, ['tests/interests.spec.js']);
+  // A UI-only branch has nothing cheaper: its browser test still runs.
+  assert.deepEqual(plan('M\tsrc/pages/SchedulePage.jsx\nM\ttests/schedule.spec.js', 'unit').browser, ['tests/schedule.spec.js']);
+  // Without the scope, both run as before.
+  assert.deepEqual(plan(both).browser, ['tests/interests.spec.js']);
+});
