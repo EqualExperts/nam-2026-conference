@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { visit, momentOn, laneFor, bookableFor, shotForPR, ATTENDEES } from './helpers.js';
 
 test.describe('Attendee switcher', () => {
   test('the switcher counts what is on an agenda, not what was "saved"', async ({ page }) => {
@@ -101,5 +101,98 @@ test.describe('Your speaker profile', () => {
     await visit(page, '/', { as: ATTENDEES.kenji });
     await page.getByRole('button', { name: /Switch attendee/ }).click();
     await expect(page.getByTestId('own-speaker-profile')).toHaveCount(0);
+  });
+});
+
+test.describe('Your interests', () => {
+  // Desktop and mobile run side by side, each on its own attendee; both put the
+  // saved interests back, so nothing here leaks into another spec.
+  const who = (testInfo) => (testInfo.project.name === 'mobile' ? ATTENDEES.marcus : ATTENDEES.kenji);
+  const read = async (request, id) => (await (await request.get(`/api/users/${id}`)).json()).interests;
+  const restore = (request, id, interests) => request.put(`/api/users/${id}/interests`, { data: { interests } });
+  const open = async (page) => {
+    await page.getByRole('button', { name: /Switch attendee/ }).click();
+    await page.getByRole('button', { name: 'Your interests' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Your interests' });
+    await expect(dialog).toBeVisible();
+    return dialog;
+  };
+
+  test('lists every topic as a toggle, saves the choice, and keeps it after a reload', async ({ page, request }, testInfo) => {
+    const id = who(testInfo);
+    const original = await read(request, id);
+    const boot = await (await request.get('/api/bootstrap')).json();
+    const topics = boot.tags.filter((t) => t.kind === 'topic').map((t) => t.name);
+    try {
+      await visit(page, '/', { as: id });
+      const dialog = await open(page);
+      const toggles = dialog.locator('button[aria-pressed]');
+      await expect(toggles).toHaveCount(topics.length);
+      for (const name of topics) {
+        await expect(dialog.getByRole('button', { name, exact: true }))
+          .toHaveAttribute('aria-pressed', String(original.includes(name)));
+      }
+
+      // Flip the first topic and save; only that one changes.
+      const flip = topics[0];
+      await dialog.getByRole('button', { name: flip, exact: true }).click();
+      await shotForPR(page, 'The interests dialog with a topic toggled');
+      await dialog.getByRole('button', { name: 'Save' }).click();
+      await expect(dialog).toBeHidden();
+      const expected = original.includes(flip) ? original.filter((n) => n !== flip) : [...original, flip];
+      expect([...(await read(request, id))].sort()).toEqual([...expected].sort());
+
+      await page.reload();
+      const again = await open(page);
+      await expect(again.getByRole('button', { name: flip, exact: true }))
+        .toHaveAttribute('aria-pressed', String(!original.includes(flip)));
+    } finally {
+      await restore(request, id, original);
+    }
+  });
+
+  test('saving with nothing selected leaves no interests', async ({ page, request }, testInfo) => {
+    const id = who(testInfo);
+    const original = await read(request, id);
+    try {
+      await visit(page, '/', { as: id });
+      const dialog = await open(page);
+      for (const btn of await dialog.locator('button[aria-pressed="true"]').all()) await btn.click();
+      await dialog.getByRole('button', { name: 'Save' }).click();
+      await expect(dialog).toBeHidden();
+      expect(await read(request, id)).toEqual([]);
+    } finally {
+      await restore(request, id, original);
+    }
+  });
+
+  test('Cancel, Escape and an outside click save nothing', async ({ page, request }, testInfo) => {
+    const id = who(testInfo);
+    const original = await read(request, id);
+    await visit(page, '/', { as: id });
+    for (const close of [
+      (d) => d.getByRole('button', { name: 'Cancel' }).click(),
+      () => page.keyboard.press('Escape'),
+      () => page.getByRole('button', { name: 'Close', exact: true }).click(),
+    ]) {
+      const dialog = await open(page);
+      await dialog.locator('button[aria-pressed]').first().click();
+      await close(dialog);
+      await expect(dialog).toBeHidden();
+      expect(await read(request, id)).toEqual(original);
+    }
+    // The rest of the app still answers, and a reopened dialog starts clean.
+    const dialog = await open(page);
+    expect(await dialog.locator('button[aria-pressed="true"]').count()).toBe(original.length);
+  });
+
+  test('at mobile width every topic is reachable and Save is visible', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile layout');
+    await visit(page, '/', { as: ATTENDEES.marcus });
+    const dialog = await open(page);
+    await dialog.locator('button[aria-pressed]').last().scrollIntoViewIfNeeded();
+    await expect(dialog.locator('button[aria-pressed]').last()).toBeInViewport();
+    await expect(dialog.getByRole('button', { name: 'Save' })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });

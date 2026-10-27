@@ -172,6 +172,35 @@ describe('Every endpoint answers', () => {
     }
   });
 
+  test('an attendee\'s interests are saved as sent, narrowed by deselecting, and only topic tags are accepted', async () => {
+    const topics = (await api.json('/bootstrap')).tags.filter((t) => t.kind === 'topic').map((t) => t.name);
+    const notTopic = (await api.json('/bootstrap')).tags.find((t) => t.kind !== 'topic').name;
+    const [a, b] = topics;
+    const path = `/users/${ids.user}/interests`;
+    const stored = async () => (await api.json(`/users/${ids.user}`)).interests;
+    const original = await stored();
+
+    try {
+      assert.equal((await api.put(path, { interests: [a, b, a] })).status, 200);
+      assert.deepEqual(await stored(), [a, b]);
+
+      const narrowed = await api.put(path, { interests: [a] });
+      assert.deepEqual(narrowed.body.interests, [a]);
+      assert.deepEqual(await stored(), [a]);
+
+      for (const bad of [{ interests: ['Nope'] }, { interests: [a, notTopic] }, { interests: a }, {}]) {
+        assert.equal((await api.put(path, bad)).status, 400, JSON.stringify(bad));
+      }
+      assert.deepEqual(await stored(), [a], 'a refused save leaves the stored value alone');
+      assert.equal((await api.put('/users/999999/interests', { interests: [a] })).status, 404);
+
+      assert.equal((await api.put(path, { interests: [] })).status, 200);
+      assert.deepEqual(await stored(), []);
+    } finally {
+      await api.put(path, { interests: original });
+    }
+  });
+
   test('the whole surface is covered by this file', async () => {
     // Read the routers and assert every path we mount is exercised above, so
     // adding an endpoint without a test fails here rather than going unnoticed.
@@ -192,6 +221,7 @@ describe('Every endpoint answers', () => {
       'GET users/:id/reservations/:sessionId',
       'PUT users/:id/reservations/:sessionId', 'PUT users/:id/checkins/:sessionId',
       'PUT users/:id/ratings/:sessionId', 'PUT users/:id/follows/:speakerId',
+      'PUT users/:id/interests',
       'DELETE users/:id/reservations/:sessionId', 'DELETE users/:id/follows/:speakerId',
     ];
 
