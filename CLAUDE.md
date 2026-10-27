@@ -225,6 +225,18 @@ and triggers: `docs/harness/github.md`.
    - *Full — best quality* (`--full`): Opus, spec audits, three code
      auditors, up to four rounds; the slowest.
 
+   **When ship finishes**, the chat that asked for it gets the hand-off, not
+   a log. Lead with the pull request link (`pr`), then one line with how long
+   it took (`minutes`) and what it cost (`spend`), then what to try (`tryIt`).
+   Then offer to open it — *"Want me to open it in your browser?"* — and on a
+   yes run the returned `show` command (`npm run show -- <PR>`) in the
+   background: it serves **that pull request's branch** from its own worktree
+   and opens the page, never `main` or whatever this checkout is on. Never
+   check the branch out to do this — ship's own worktree already has it, and a
+   checkout here would move the person's main folder off `main`. Leave out
+   the rounds and lessons unless asked. A draft (`needs-human`) gets its link and
+   what is still open instead.
+
    Quote only that one time; the others are slower in that order, Full the
    slowest, and no time for them has been measured since — so do not put a
    number on them. Then start it with that flag. A run with no flag is fast. Setup sizes the ticket: most are **small**

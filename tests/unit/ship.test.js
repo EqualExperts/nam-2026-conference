@@ -1007,6 +1007,28 @@ describe('a run with no size flag', () => {
   });
 });
 
+describe('the hand-off to the chat that asked', () => {
+  const LAPTOP_RUN = { ...SETUP, runner: false, workdir: '/w/.claude/worktrees/wt-7' };
+
+  test('a shipped run returns the PR, its time, its spend, how to try it and how to open that branch', async () => {
+    const { result } = await run({
+      setup: LAPTOP_RUN,
+      implement: { ok: true, summary: 's', ui: true, browserTest: true, tryIt: 'Open /schedule as Jonas' },
+      report: { ok: true, summary: '3.3M tokens (2.9M cached reads · 300k cache writes · 30k output) · ~$2.45 — sonnet ~$2.00, haiku ~$0.45' },
+    }, '7 --fast');
+    assert.equal(result.pr, 'https://github.com/o/r/pull/9');
+    assert.ok(Number.isInteger(result.minutes) && result.minutes >= 1);
+    assert.match(result.spend, /~\$2\.45/);
+    assert.equal(result.tryIt, 'Open /schedule as Jonas');
+    assert.equal(result.show, 'npm run show -- 9');
+  });
+
+  test('a report that printed no spend line adds no spend', async () => {
+    const { result } = await run({ setup: LAPTOP_RUN, report: { ok: true, summary: 'no usage found — nothing recorded' } }, '7 --fast');
+    assert.equal(result.spend, undefined);
+  });
+});
+
 describe('the verify agent relays two lines', () => {
   const redLine = JSON.stringify({ checked: true, failedOnBase: true, tests: ['tests/api/x.test.js'], reverted: ['server/routes/users.js'] });
 
