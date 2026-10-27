@@ -214,16 +214,20 @@ and triggers: `docs/harness/github.md`.
    every phase is a fresh agent. **Asked in a chat to ship an issue** without
    a size flag, first ask which run with AskUserQuestion — four options, in
    this order, each with its benefit:
-   - *Fast — for the workshop* (`--fast`): the quickest; one audit, and only
-     the browser tests for the pages the change reaches, here and in the pull
-     request's CI; the whole suite runs on main after merge.
+   - *Fast — for the workshop* (`--fast`): the quickest — about six minutes
+     for a small ticket (#219, a modal and a route), more for a bigger one or
+     when the audit sends it round a fix; one audit, and only the browser tests
+     for the pages the change reaches, here and in the pull request's CI; the
+     whole suite runs on main after merge.
    - *Sized — let ship decide* (`--sized`): reads the ticket and picks small
      or full, adding the checks what it touches needs.
    - *Small* (`--small`): Sonnet, one combined audit and the whole suite.
    - *Full — best quality* (`--full`): Opus, spec audits, three code
      auditors, up to four rounds; the slowest.
 
-   Then start it with that flag. A run with no flag is fast. Setup sizes the ticket: most are **small**
+   Quote only that one time; the others are slower in that order, Full the
+   slowest, and no time for them has been measured since — so do not put a
+   number on them. Then start it with that flag. A run with no flag is fast. Setup sizes the ticket: most are **small**
    (one auditor per stage, two rounds, Sonnet); `ship:full` gets the whole
    loop on Opus. No pull request until the gate is green and no
    auditor blocker survives a skeptic; one that will not converge goes to a
