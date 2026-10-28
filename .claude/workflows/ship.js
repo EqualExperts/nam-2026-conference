@@ -270,7 +270,7 @@ const GATE = {
     json: { type: 'string', description: 'the last line gate.mjs printed, verbatim' },
     red: { type: 'string', description: 'verify only: the last line red-check.mjs printed, verbatim, if it was run' },
     facts: { type: 'string', description: 'verify only: the line qa-facts.mjs printed, verbatim' },
-    sync: { enum: ['current', 'merged', 'conflict', 'restacked'], description: 'verify only: what merging origin/<base> did; restacked: the stacked-on branch had merged, main was merged instead' },
+    sync: { enum: ['current', 'merged', 'conflict'], description: 'verify only: what merging origin/<base> did' },
     conflicts: { type: 'array', items: { type: 'string' }, description: 'verify only: the files the merge conflicted in' },
   },
 }
@@ -516,6 +516,8 @@ const inTree = ({ releases = false } = {}) =>
 
 async function handBack(stage, why, open, alsoOpen) {
   log(`handing #${issue} back at ${stage}: ${why}`)
+  // The draft targets what this stacks on — unless that has merged since.
+  await restackCheck(stage)
   // A run that could not converge is the one with the most to teach, so it
   // learns before it pushes — the lessons land on the draft with the work.
   const lessons = setup && setup.branch && !learned ? await learn(`stopped at ${stage}: ${why}`) : []
@@ -593,6 +595,26 @@ const specAsk = (path) =>
   `## Decisions\n<only if the ticket left something open>\n## Out of scope\n<only if needed>\n` +
   `Return each Decision as decisions, phrased as a yes/no question for the reviewer.`
 
+// A stacked run asks again whether what it stacks on is done, before each gate,
+// the pull request and a hand-back. Done is the dependency's issue closed —
+// what its PR merging does — not its branch being gone: GitHub keeps a merged
+// branch unless the repository deletes them. Done: the rest of the run is on
+// main. Still in flight: refresh the stack, which by now usually has a PR
+// number to name. Could not tell: carry on as stacked.
+async function restackCheck(at) {
+  if (!STACK) return
+  const r = await rote(
+    `${PIN} Then run exactly \`node scripts/depends.mjs ${issue}\` once and return the last line it printed, ` +
+    `verbatim, as depends. Change nothing and interpret nothing.`,
+    { phase: at, label: `depends-recheck`, schema: DEPENDS, effort: 'low', model: ROTE },
+  ).catch(() => null)
+  let d = null
+  try { d = JSON.parse((r && r.depends) || '') } catch { return }
+  if (!d || d.error) return
+  if (d.stackOn && d.stackOn.branch) { STACK = d.stackOn; BASE = STACK.branch; return }
+  if (!(d.unmet || []).length) { log(`#${STACK.n} has merged — #${issue} now builds on main`); BASE = 'main'; STACK = null }
+}
+
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
 enter('Setup')
 // What this ticket waits for, before anything is claimed. Done: build on the
@@ -606,9 +628,14 @@ if (!(typeof args === 'object' && args && args.base)) {
     { phase: 'Setup', label: 'depends', schema: DEPENDS, effort: 'low', model: ROTE },
   ).catch(() => null)
   let d = null
-  try { d = JSON.parse((deps && deps.depends) || '') } catch { /* an old checkout without the script: no stacking */ }
-  const unmet = (d && Array.isArray(d.unmet)) ? d.unmet : []
-  if (d && d.stackOn && d.stackOn.branch) {
+  try { d = JSON.parse((deps && deps.depends) || '') } catch { /* nothing parseable: below */ }
+  // Fail safe: a check that could not run is not "nothing to wait for".
+  if (!d || d.error) {
+    return { outcome: 'declined', issue, reason: `could not check what #${issue} depends on` +
+      `${d && d.error ? ` (${d.error})` : ''} — nothing was claimed or built; run ship again.` }
+  }
+  const unmet = Array.isArray(d.unmet) ? d.unmet : []
+  if (d.stackOn && d.stackOn.branch) {
     STACK = d.stackOn
     BASE = STACK.branch
     log(`#${issue} stacks on #${STACK.n} (${STACK.branch}${STACK.pr ? `, PR #${STACK.pr}` : ''}) — it builds on that branch`)
@@ -970,11 +997,10 @@ for (let round = 1; ; round++) {
   // on: two runs started together each opened a PR, and once the first
   // merged the second was already conflicting. A merge, not a rebase — the
   // spec commit is pushed, and a rebase would mean a force-push.
+  await restackCheck('Verify')
   let ran = await rote(
     `${inTree()}\n\n` +
-    (STACK ? `This branch stacks on ${BASE}. First \`git ls-remote --exit-code --heads origin ${BASE}\`: if it finds nothing, ` +
-      `#${STACK.n} has merged and its branch is gone — then in every command below use main wherever ${BASE} appears, ` +
-      `and return sync=restacked (or conflict) instead of current/merged.\n\n` : '') +
+    (STACK ? `This branch stacks on ${BASE} (#${STACK.n}'s, not merged yet), so that is the base below, not main.\n\n` : '') +
     `First \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
@@ -991,8 +1017,6 @@ for (let round = 1; ; round++) {
   // The merge was aborted, so a green line after a conflict is not this branch
   // on today's base: it goes to the fixer, never to the auditors (#153).
   if (ran.sync === 'conflict') gate = { ...gate, ok: false }
-  // What it stacked on landed while this ran: from here on it is a branch of main.
-  if (ran.sync === 'restacked' && STACK) { log(`#${STACK.n} merged mid-run — #${issue} now builds on main`); BASE = 'main'; STACK = null }
   // The round's line on the issue's progress comment, filled in as it goes.
   const shown = { n: round, gate: { ok: gate.ok, unit: gate.unit, browserPassed: gate.browser.passed }, audits: 0, fixRan: false }
   progress.rounds.push(shown)
@@ -1205,6 +1229,7 @@ const checksLine = [
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
 ].join(' · ')
+await restackCheck('PR')
 const pr = await rote(
   `${ticket}\n\n${inTree({ releases: true })}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
   `not re-read the spec, the playbook or the code, and do not run tests. Gather what *Changed* needs in ONE command, ` +

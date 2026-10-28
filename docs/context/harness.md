@@ -368,11 +368,15 @@ cannot start another round.
   branch, so the worktree, every gate's merge and the pull request's base all
   use it, and the PR body says *Stacked on #pr — merge that first*. In a batch
   (`/ship 2 3`, `args.batch`) it waits up to five minutes for a dependency's
-  branch to appear. Not being built, or two at once → declined before setup,
-  nothing claimed. If the branch it stacks on merges mid-run, the next gate
-  finds it gone, merges main instead (`sync: restacked`) and the run carries
-  on against main. When a stacked-on PR merges, `on-merge.yml`'s `restack`
-  job retargets each PR stacked on it to main, merges main in (never a rebase
+  branch to appear. Not being built, or two at once, or a check that could
+  not run → declined before setup, nothing claimed. A stacked run asks again
+  (`restackCheck`) before each gate, the pull request and a hand-back:
+  dependency done — its issue closed, not its branch gone, since GitHub keeps
+  merged branches unless the repository deletes them — and the rest of the run
+  is on main; still in flight, and the stack is refreshed, so the PR names the
+  dependency's PR number once it has one. When a stacked-on PR merges, `on-merge.yml`'s `restack`
+  job finds each PR stacked on it — still based on its branch, or whose banner
+  names its PR or its issue (`Stacked on … (#n)`) — retargets it to main, merges main in (never a rebase
   or force-push), pushes, reruns `verify.yml` (a push with the built-in token
   starts no workflow), and comments; a conflict gets a comment for a person.
 - **A laptop run never waits on a permission prompt.** `.claude/settings.json`

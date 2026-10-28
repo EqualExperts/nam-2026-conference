@@ -38,7 +38,7 @@ jobs:
         run: |
           # The issue it builds: "Closes #n" or "Refs #n" in the body, else
           # ship's branch name, issue-<n>-…
-          n=$(printf '%s\n' "$BODY" | grep -oiE '\b(closes|fixes|resolves|refs)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          n=$(printf '%s\n' "$BODY" | tr '\n' ' ' | grep -oiE '\b(closes|fixes|resolves|refs)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
           [ -n "$n" ] || n=$(printf '%s' "$HEAD" | sed -nE 's/^issue-([0-9]+)-.*/\1/p')
           if [ -z "$n" ]; then echo "No issue to tidy for this pull request."; exit 0; fi
           for label in ai-working needs-human ready-for-human; do
@@ -67,13 +67,18 @@ jobs:
           MERGED: ${{ github.event.pull_request.number }}
           MERGED_HEAD: ${{ github.event.pull_request.head.ref }}
           INTO: ${{ github.event.pull_request.base.ref }}
+          BODY: ${{ github.event.pull_request.body }}
         run: |
+          # Its issue, as the tidy job finds it: ship's banner always names it,
+          # "Stacked on … (#n)", even when the dependency had no PR number yet.
+          issue=$(printf '%s\n' "$BODY" | tr '\n' ' ' | grep -oiE '\b(closes|fixes|resolves|refs)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          [ -n "$issue" ] || issue=$(printf '%s' "$MERGED_HEAD" | sed -nE 's/^issue-([0-9]+)-.*/\1/p')
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Stacked on it: still based on its branch, or — if GitHub already
           # retargeted it when the branch was deleted — saying so in its body.
           stacked=$(gh pr list --state open --limit 100 --json number,headRefName,baseRefName,body \
-            --jq ".[] | select(.baseRefName == \"$MERGED_HEAD\" or (.body | test(\"Stacked on #$MERGED\\\\b\"))) | \"\(.number) \(.headRefName)\"")
+            --jq ".[] | select(.baseRefName == \"$MERGED_HEAD\" or (.body | test(\"Stacked on #$MERGED\\\\b\")) or (\"$issue\" != \"\" and (.body | test(\"Stacked on [^\\\\n]*\\\\(#$issue\\\\)\")))) | \"\(.number) \(.headRefName)\"")
           if [ -z "$stacked" ]; then echo "Nothing is stacked on #$MERGED."; exit 0; fi
           git fetch -q origin "$INTO"
           printf '%s\n' "$stacked" | while read -r pr head; do
