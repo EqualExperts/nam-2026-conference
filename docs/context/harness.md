@@ -360,6 +360,18 @@ cannot start another round.
   job removes `ai-working`, `needs-human` and `ready-for-human` from the issue
   a merged pull request names (`Closes`/`Refs #n`, else its `issue-<n>-`
   branch), with the built-in token — so it works on a fork with no API key.
+- **A stale session cannot run ship.** `ship.js` carries `const HARNESS = <n>`,
+  bumped with every change to it (a unit test fails if the file changed since
+  main and the stamp did not go up). A chat session loads a named workflow
+  when it starts and keeps it, so after a `git pull` it can run an older
+  ship.js than the repo: before anything is claimed, a rote step reads the
+  base's stamp (`git show origin/<base>:.claude/workflows/ship.js`), and a
+  higher one there declines the run — no label, no comment — saying to start
+  a new session or run it by path. A batch checks once and passes
+  `harnessChecked` to its runs. A check that could not run lets the run go on.
+- **The setup agent never judges a dependency.** Its prompt says Depends on
+  was settled by the script, names the stacked branch when there is one, and
+  forbids declining, commenting or labelling over it.
 - **A dependent ticket stacks on its dependency.** Before setup, a rote step
   runs `scripts/depends.mjs <n>`: it reads the `**Depends on:** #m` line
   create-tasks writes and asks GitHub whether each issue is closed as

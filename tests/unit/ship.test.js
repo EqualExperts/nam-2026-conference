@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process';
 const source = readFileSync(new URL('../../.claude/workflows/ship.js', import.meta.url), 'utf8')
   .replace(/^export const meta/m, 'const meta');
 const AsyncFunction = (async () => {}).constructor;
+const HARNESS_HERE = Number((/^const HARNESS = (\d+)/m.exec(source) || [])[1]);
 const script = new AsyncFunction('args', 'agent', 'parallel', 'phase', 'log', 'workflow', source);
 
 const SETUP = {
@@ -48,6 +49,12 @@ async function run(answers = {}, args = 7, { bare = false } = {}) {
   const agent = async (prompt, opts) => {
     // The dependency step before setup: none, unless a test answers it. Kept
     // out of calls, which most tests read as the run's sequence of agents.
+    // The stale-workflow check: the base carries the same stamp, unless a test says otherwise.
+    if (opts.label === 'harness') {
+      prompts.harness = prompt;
+      const a = answers.harness;
+      return typeof a === 'function' ? a(prompt) : a || { line: `const HARNESS = ${HARNESS_HERE}` };
+    }
     if (opts.label === 'depends' || opts.label === 'depends-recheck') {
       prompts[opts.label] = prompt;
       dependsAsked += 1;
@@ -1026,6 +1033,65 @@ test('ship never reads the clock — a workflow that does fails before its first
   assert.doesNotMatch(code, /\bDate\.now\s*\(|\bnew\s+Date\b|\bDate\s*\(/);
 });
 
+describe('a session running an older ship.js than the repository', () => {
+  test('is declined before anything is claimed, with what to do — #252', async () => {
+    const { result, calls } = await run({ harness: { line: `const HARNESS = ${HARNESS_HERE + 1}` } });
+    assert.equal(result.outcome, 'declined');
+    assert.match(result.reason, /older than the repository's/);
+    assert.match(result.reason, /start a new chat session, or run it from \.claude\/workflows\/ship\.js by path/);
+    assert.deepEqual(calls, []);
+  });
+
+  test('the same or a newer stamp goes ahead, and so does a check that could not run', async () => {
+    for (const harness of [{ line: `const HARNESS = ${HARNESS_HERE}` }, { line: `const HARNESS = ${HARNESS_HERE - 1}` }, { line: '' }, null]) {
+      const { result } = await run({ harness: () => harness });
+      assert.equal(result.outcome, 'shipped', JSON.stringify(harness));
+    }
+  });
+
+  test('a batch checks once, and its runs do not check again', async () => {
+    const labels = [], asked = [];
+    const agent = async (prompt, opts) => { labels.push(opts.label); return { line: `const HARNESS = ${HARNESS_HERE}` }; };
+    const workflow = async (name, a) => { asked.push(a); return { outcome: 'shipped', issue: a.issue }; };
+    await script('2 3', agent, async (ts) => Promise.all(ts.map(t => t())), () => {}, () => {}, workflow);
+    assert.deepEqual(labels, ['harness']);
+    assert.ok(asked.every(a => a.harnessChecked), JSON.stringify(asked));
+    const stale = await script('2 3', async () => ({ line: `const HARNESS = ${HARNESS_HERE + 1}` }), async (ts) => Promise.all(ts.map(t => t())), () => {}, () => {}, workflow);
+    assert.equal(stale.outcome, 'declined');
+  });
+});
+
+describe("the workflow's stamp", () => {
+  // A changed ship.js with the same stamp is a stale session nobody can
+  // detect. Compared with origin/main; a checkout without it skips.
+  test('ship.js changed since main means HARNESS changed too', () => {
+    let base;
+    try { base = execFileSync('git', ['show', 'origin/main:.claude/workflows/ship.js'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
+    catch { return; }
+    const strip = (s) => s.replace(/^const HARNESS = \d+$/m, '');
+    if (strip(base) === strip(source)) return;
+    const stamp = (s) => Number((/^const HARNESS = (\d+)/m.exec(s) || [])[1] || 0);
+    assert.ok(stamp(source) > stamp(base), `.claude/workflows/ship.js changed but HARNESS did not go up (main ${stamp(base)}, here ${stamp(source)}) — bump it`);
+  });
+});
+
+describe("a ticket's dependencies are the script's decision, never the setup agent's", () => {
+  test('setup is told the dependency was checked, and not to decline or label over it', async () => {
+    const { prompts } = await run();
+    assert.match(prompts.setup, /A Depends on line has already been checked by the script/);
+    assert.match(prompts.setup, /whatever it names is done, or there is none/);
+    assert.match(prompts.setup, /Never decline, comment or label because of a dependency/);
+  });
+
+  test('a dependency with a branch but no PR yet: it stacks, and setup is told which branch', async () => {
+    const early = { n: 6, branch: 'issue-6-signed-up-talks', pr: null };
+    const { result, prompts } = await run({ depends: { depends: JSON.stringify({ depends: [6], unmet: [{ ...early, title: 't' }], stackOn: early }) } });
+    assert.equal(result.outcome, 'shipped');
+    assert.match(prompts.setup, /#6 is not merged yet, and that is expected — this run builds on its branch, issue-6-signed-up-talks/);
+    assert.match(prompts.setup, /from origin\/issue-6-signed-up-talks/);
+  });
+});
+
 describe("a ticket's dependencies, and stacking on one", () => {
   const line = (o) => ({ depends: JSON.stringify(o) });
   const stack = { n: 2, branch: 'issue-2-suggested-talks', pr: 8 };
@@ -1057,7 +1123,7 @@ describe("a ticket's dependencies, and stacking on one", () => {
     const { result, prompts } = await run({ depends: line({ depends: [2], unmet: [{ ...stack, title: 't' }], stackOn: stack }) });
     assert.equal(result.outcome, 'shipped');
     assert.match(prompts.setup, /from origin\/issue-2-suggested-talks/);
-    assert.match(prompts.setup, /stacks on #2's branch/);
+    assert.match(prompts.setup, /this run builds on its branch, issue-2-suggested-talks/);
     assert.match(prompts['verify#1'], /GATE_BASE=origin\/issue-2-suggested-talks/);
     assert.match(prompts['verify#1'], /This branch stacks on issue-2-suggested-talks \(#2's, not merged yet\)/);
     assert.match(prompts['open-pr'], /gh pr create --base issue-2-suggested-talks/);

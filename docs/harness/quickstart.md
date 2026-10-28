@@ -42,7 +42,9 @@ to a pull request.
    pull request's CI repeats those tests on a clean machine; the rest run on
    main after you merge, so a break elsewhere shows up there. **Full** (`/ship 42 --full`) runs every test on desktop and
    mobile and audits until the work is clean, which takes far longer. You can
-   watch the progress on the issue.
+   watch the progress on the issue. Pulled a change to `.claude/workflows/`?
+   It takes effect in a **new chat session** — ship refuses to run an older
+   copy than the repository's, and says so.
 3. **Review the pull request** like any other. It has the plan, the test
    evidence, every audit round and the cost. Merge it, or comment `@claude …` to
    ask for a change.
