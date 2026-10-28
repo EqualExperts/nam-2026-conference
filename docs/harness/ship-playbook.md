@@ -37,6 +37,10 @@ gh pr list --state open --json number,headRefName,isDraft \
   --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
 ```
 
+Then `node scripts/depends.mjs <n>`, before claiming: if the ticket's
+**Depends on** line names an issue that is not done yet, stop here without
+claiming it — building on a base without the dependency only fails later.
+
 The **Done when:** clause is what you build, and later what you prove. Go to
 step 9 and stop if the issue is closed, already has a **ready** (non-draft)
 pull request, states no outcome you could write a check against, or asks for

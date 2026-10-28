@@ -166,6 +166,7 @@ const SETUP = {
     slug: { type: 'string', description: 'short kebab-case slug' },
     branch: { type: 'string', description: 'issue-<n>-<slug>' },
     workdir: { type: 'string', description: 'absolute path every later agent works in' },
+    depends: { type: 'string', description: 'the line node scripts/depends.mjs <issue> printed, verbatim' },
     checkout: { type: 'string', description: 'the main checkout of the repository you started in, before any cd: dirname of git rev-parse --path-format=absolute --git-common-dir' },
     runner: { type: 'boolean', description: 'true when $GITHUB_ACTIONS is set' },
     harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and docs/harness/ship-playbook.md' },
@@ -598,7 +599,9 @@ setup = await agent(
   `old (#1 in a fork: setup cd'd from nam-2026-conference-3 to nam-2026-conference and built on the old clone). `+
   `The worktree goes under that checkout's .claude/worktrees/ (§3). Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
-  `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
+  `against, or asks for two unrelated things; a draft is an earlier attempt to continue). Before you claim it, run ` +
+  `\`node scripts/depends.mjs ${issue}\` and return the line it prints, verbatim, as depends; if its unmet list is not ` +
+  `empty, do not claim the ticket and return proceed=false naming what it waits for. Otherwise claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch --prune origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch has an open draft pull request ` +
@@ -631,6 +634,14 @@ setup = await agent(
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium', ...(FORCED === 'fast' ? { model: 'sonnet' } : {}) },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
+// A ticket that depends on one not yet done is not built on a base without it.
+// The script read the "Depends on" line and asked GitHub; this does not
+// depend on the setup agent having noticed.
+const waits = (() => { try { return JSON.parse(setup.depends || '{}').unmet || [] } catch { return [] } })()
+if (waits.length) {
+  return { outcome: 'declined', issue, reason: `#${issue} depends on ${waits.map(w => `#${w.n} (${w.title})`).join(', ')}, ` +
+    `not done yet — merge ${waits.length === 1 ? 'its pull request' : 'their pull requests'} first, then ship #${issue}.` }
+}
 // A laptop worktree belongs under the main checkout of the repository the run
 // started in (§3: from the common dir, so starting in one of its worktrees is
 // the same checkout). One anywhere else is another clone — #1 in a fork was

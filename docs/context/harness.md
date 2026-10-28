@@ -28,11 +28,13 @@ files:
   - scripts/ai-cost.mjs
   - scripts/fork-guard.mjs
   - .claude/settings.json
+  - scripts/depends.mjs
   - ONBOARD_CLAUDE.md
   - docs/context/README.md
   - specs/README.md
 tests:
   - tests/unit/ship.test.js
+  - tests/unit/depends.test.js
   - tests/unit/fork-guard.test.js
   - tests/unit/review-workflows.test.js
   - tests/unit/deploy-workflow.test.js
@@ -353,6 +355,11 @@ cannot start another round.
   on the last line. The chat that started ship runs it under a monitor and
   relays each line (CLAUDE.md) — in Claude Desktop the workflow is otherwise
   silent until it ends.
+- **A dependent ticket waits for its dependency.** Setup runs
+  `scripts/depends.mjs <n>` before it claims the ticket: it reads the
+  `**Depends on:** #m` line create-tasks writes and asks GitHub whether each
+  issue is closed as completed. Any that is not, and the run is declined —
+  in code, from the line setup relays, not on the agent's reading.
 - **A laptop run never waits on a permission prompt.** `.claude/settings.json`
   allows the commands ship's agents run — `git` up to `push`, the `gh issue|pr`
   verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the

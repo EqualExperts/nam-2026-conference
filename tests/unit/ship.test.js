@@ -1015,6 +1015,26 @@ test('ship never reads the clock — a workflow that does fails before its first
   assert.doesNotMatch(code, /\bDate\.now\s*\(|\bnew\s+Date\b|\bDate\s*\(/);
 });
 
+describe("a ticket's dependencies", () => {
+  test('setup runs the dependency check before it claims the ticket', async () => {
+    const { prompts } = await run();
+    assert.match(prompts.setup, /Before you claim it, run `node scripts\/depends\.mjs 7`/);
+  });
+
+  test('one not done stops the run before anything is built — even if setup went ahead', async () => {
+    const depends = JSON.stringify({ depends: [1], unmet: [{ n: 1, title: 'Choose interests', state: 'OPEN' }] });
+    const { result, calls } = await run({ setup: { ...SETUP, depends } });
+    assert.equal(result.outcome, 'declined');
+    assert.match(result.reason, /depends on #1 \(Choose interests\), not done yet/);
+    assert.ok(!calls.includes('implement'), calls.join(', '));
+  });
+
+  test('all done, or none, goes ahead', async () => {
+    const { calls } = await run({ setup: { ...SETUP, depends: '{"depends":[1],"unmet":[]}' } });
+    assert.ok(calls.includes('implement'));
+  });
+});
+
 describe('setup works in the checkout it started in', () => {
   const LAPTOP_AT = (workdir) => ({ ...SETUP, runner: false, checkout: '/Users/a/nam-2026-conference-3', workdir });
 
