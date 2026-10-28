@@ -113,8 +113,8 @@ const NEEDS_HUMAN_BEATS = [
   },
   {
     kicker: '4.8 · needs-human, then you',
-    title: 'It hands back everything it knows; you answer and relabel',
-    body: 'A draft pull request with the work so far, a comment saying exactly what is still open, and the needs-human label for the board. You make the call it could not; relabel ready-for-ai and a fresh run starts from your answer.',
+    title: 'It hands back everything it knows; you answer and ship it again',
+    body: 'A draft pull request with the work so far, a comment saying exactly what is still open, and the needs-human label for the board. You make the call it could not, then ship it again — a fresh run starts from your answer.',
   },
 ];
 
@@ -238,7 +238,7 @@ const REVIEW_BEATS = [
   {
     kicker: '5 · After the pull request opens',
     title: 'Two more agents, on their own runners, in parallel',
-    body: 'Code review and QA start when the pull request opens, sized from facts about the diff. The reviewer reads the ticket before the code and forms its own view; every blocker must name a real path to harm and survive a skeptic.',
+    body: 'Code review and QA start when the pull request opens — in a fork, when you ask Claude; a fast run skips QA. Each is sized from the diff, and every blocker must name a real path to harm and survive a skeptic.',
   },
   {
     kicker: '5 · QA',
@@ -381,7 +381,7 @@ const SCALE_BEATS = [
   {
     kicker: '7 · Don’t babysit one ticket — hand it ten',
     title: '/ship 64 65 66 67 68 69 70 71 72 73',
-    body: 'Nothing about ship needs you watching, so start the next nine. Each ticket gets its own worktree and ports — or label ten issues and get ten runners. Most come back as pull requests, one as a question. The limit is not the worktrees — it is how many you can review well.',
+    body: 'Nothing about ship needs you watching, so start the next nine, each in its own worktree. One that depends on another stacks on it, and moves to main by itself once that merges. The limit is how many you can review well.',
   },
 ];
 
@@ -587,7 +587,7 @@ function ClaudeDesktop() {
           <div className="pz-appear" style={later(1200)}>
             On it. I’ll post every step on issue #42, so you can follow along there.
             <ul className="mt-1.5 space-y-0.5">
-              {['Read the ticket — it can be built', 'A small one, so a light run', 'Writing the plan…'].map((l, i) => (
+              {['Read the ticket — it can be built', 'A fast run, as you picked', 'Writing the plan…'].map((l, i) => (
                 <li key={l} className="pz-appear flex gap-2" style={later(1700 + i * 450)}>
                   <span className={i < 2 ? 'text-[#2f9e5b]' : 'text-[#d97757]'}>{i < 2 ? '✓' : '●'}</span>{l}
                 </li>
@@ -792,12 +792,12 @@ const LAB_BEATS = [
   {
     kicker: '9 · Now you · step 2',
     title: 'Ask Claude to ship it — then let it run',
-    body: 'In Claude Desktop, switch to Code, open your nam-2026-conference folder and ask in plain words: “can you ship issue #42?” Then follow the issue on GitHub, not the chat.',
+    body: 'In Claude Desktop, switch to Code, open your nam-2026-conference folder and ask: “can you ship issue #42?” Pick Fast when it asks. When it is done, it posts the pull request and offers to open it.',
   },
   {
     kicker: '9 · Now you · step 3',
     title: 'Review what comes back — and read the code',
-    body: 'In a fork there is no Actions key, so ask Claude to review and QA the pull request — each posts a comment with a confidence. Then open Files changed, read the code and merge.',
+    body: 'There is no Actions key in a fork, so ask Claude to review the pull request; QA is optional on a fast run. Then open Files changed, read the code and click Squash and merge.',
   },
 ];
 

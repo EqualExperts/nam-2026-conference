@@ -454,7 +454,7 @@ const SHIP_BEATS = [
   {
     kicker: '4.2 · Size it',
     title: 'Spend the frontier model where the decision is',
-    body: 'Setup runs on Opus because every later step is sized by its call: Sonnet and Haiku for mechanical work, Opus for the hard tickets. A diff that grows risky escalates itself — or force it with /ship 42 --full.',
+    body: 'On GitHub, setup sizes it, and every later step follows its call: Sonnet and Haiku for mechanical work, Opus for the hard tickets. From a chat you pick — Fast for the workshop, Sized, Small or Full.',
   },
   {
     kicker: '4.3 · Spec, then a spec audit',
@@ -469,7 +469,7 @@ const SHIP_BEATS = [
   {
     kicker: '4.5 · The gate and the red-check',
     title: 'A gate agents cannot argue with — and proof the test can fail',
-    body: 'Every unit, API and browser test, on desktop and on mobile: a script with an exit code. Then the old code goes back and the new tests run again — if they still pass, they never tested the change.',
+    body: 'Every unit and API test, and the browser tests — all on a full run, those the change reaches on a fast one. Then the old code goes back: if the new tests still pass, they never tested the change.',
   },
   {
     kicker: '4.6 · Code audit',
