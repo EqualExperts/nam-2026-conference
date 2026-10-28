@@ -54,5 +54,6 @@ request labelled `needs-human` that lists what is still open.
 ## On GitHub Actions instead
 
 The same agents can run in the cloud — label an issue `ready-for-ai` and one
-ships it. The workshop demos that on the main repo; a fork needs an API key for
-it, set up as in [github.md](github.md).
+ships it. The workshop demos that on the main repo. A fork needs an API key for
+it, set up as in [github.md](github.md); without one, the fork guard blocks the
+label on purpose, and you ship from Claude instead.

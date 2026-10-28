@@ -205,8 +205,12 @@ attendees: `docs/context/seed.md`.
 ## Setting this up on a fork
 
 Actions → **Set up the harness** → Run workflow. A fork inherits the workflows
-but not the labels, and `ready-for-ai` is what starts everything. Keys, tokens
-and triggers: `docs/harness/github.md`.
+but not the labels. Keys, tokens and triggers: `docs/harness/github.md`.
+
+**In a workshop fork, ship from Claude, not the label.** `ready-for-ai` starts
+ship on GitHub Actions, which needs an `ANTHROPIC_API_KEY` secret a workshop
+fork does not have — so the fork guard blocks adding it, on purpose, and says
+why. Ask Claude to ship the issue (`/ship <n>`) instead.
 
 ## What happens to a ticket
 
@@ -225,13 +229,23 @@ and triggers: `docs/harness/github.md`.
    - *Full — best quality* (`--full`): Opus, spec audits, three code
      auditors, up to four rounds; the slowest.
 
+   **Several tickets at once:** ask the size **once for the batch**, and say
+   before starting that they run side by side. Tickets that depend on each
+   other (a **Depends on** line) or change the same page or file do **not** run
+   side by side: run them one after another, merging each before the next, or
+   every later one fights the same conflicts. Never start a run — one or many —
+   before the person has picked the size.
+
    **While ship runs**, the chat that started it stays with the person: the
    run is in the background, and only `/workflows` shows its steps. Straight
    after starting it, start a monitor (the Monitor tool) on
    `node scripts/ship-progress.mjs watch <n>`. It prints one plain line per
    step — the plan ready, the tests running, the review, the pull request —
    and exits after the last. Post each line as its own short message, as it
-   is: no agent names, no rounds, nothing added.
+   is: no agent names, no rounds, nothing added. **Never say how a run is going
+   without just having read it** — the feed, the issue's progress comment
+   (`gh issue view <n> --comments`), or the workflow's state. "It's
+   progressing" from memory has been wrong.
 
    **When ship finishes**, the chat that asked for it gets the hand-off, not
    a log. Lead with the pull request link (`pr`), then one line with how long
@@ -243,8 +257,9 @@ and triggers: `docs/harness/github.md`.
    opens the page, never `main` or whatever this checkout is on. Never
    check the branch out to do this — ship's own worktree already has it, and a
    checkout here would move the person's main folder off `main`. Leave out
-   the rounds and lessons unless asked. A draft (`needs-human`) gets its link and
-   what is still open instead.
+   the rounds and lessons unless asked. End with the person's next step:
+   *review it, then click **Squash and merge** on GitHub*. A draft
+   (`needs-human`) gets its link and what is still open instead.
 
    Quote only that one time; the others are slower in that order, Full the
    slowest, and no time for them has been measured since — so do not put a
@@ -294,3 +309,14 @@ subject genuinely covers it.
   identical apart from the dates. Never use `Math.random()` there.
 - Do not commit `data/orbit.db`, `.screenshots/`, or Playwright artefacts.
 - Do not introduce a state management library, an ORM, or a UI kit.
+- **Merge, never rebase, a pushed branch, and never force-push.** To bring a
+  branch up to date, `git merge origin/main` into it, resolve, commit and push
+  — ship does exactly this before every gate. A rebase rewrites what is already
+  pushed and needs `--force-with-lease`, which the permission check may refuse
+  one time and allow the next.
+- **Merging a pull request is the person's click.** Asked to merge, give the
+  link and the button (*open #8 and click **Squash and merge***), not
+  `gh pr merge` — the merge is the review, and the permission check does not
+  allow it reliably. Anything else the check blocks: say in one sentence what
+  was blocked and hand the person the exact step; do not retry it or route
+  around it.
