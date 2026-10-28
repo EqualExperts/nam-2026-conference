@@ -14,6 +14,7 @@ files:
   - .github/workflows/agent-code-review.yml
   - .github/workflows/agent-qa.yml
   - .github/workflows/agent-respond.yml
+  - .github/workflows/labels-on-merge.yml
   - .github/workflows/learn-escape.yml
   - .github/workflows/deploy.yml
   - .github/workflows/setup.yml
@@ -355,6 +356,10 @@ cannot start another round.
   on the last line. The chat that started ship runs it under a monitor and
   relays each line (CLAUDE.md) — in Claude Desktop the workflow is otherwise
   silent until it ends.
+- **A merged pull request leaves its issue clean.** `labels-on-merge.yml`
+  removes `ai-working`, `needs-human` and `ready-for-human` from the issue a
+  merged pull request names (`Closes`/`Refs #n`, else its `issue-<n>-`
+  branch), with the built-in token — so it works on a fork with no API key.
 - **A dependent ticket waits for its dependency.** Setup runs
   `scripts/depends.mjs <n>` before it claims the ticket: it reads the
   `**Depends on:** #m` line create-tasks writes and asks GitHub whether each

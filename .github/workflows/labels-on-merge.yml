@@ -1,0 +1,39 @@
+## When a pull request merges, its issue is done: take off the labels that
+## said otherwise. Ship puts `ai-working` on while it builds, `ready-for-human`
+## when it opens the pull request, and `needs-human` when it hands one back —
+## and nothing took them off again, so merged tickets kept saying a person was
+## needed. The built-in token is enough, so this runs on a fork with no
+## ANTHROPIC_API_KEY, as soon as Actions is on.
+name: 🏷️ Tidy labels on merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  tidy:
+    if: ${{ github.event.pull_request.merged && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    permissions:
+      issues: write          # remove the labels
+      pull-requests: read
+
+    steps:
+      - name: Remove ai-working, needs-human and ready-for-human from its issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          # Passed as data, never pasted into the script: a body is anyone's text.
+          BODY: ${{ github.event.pull_request.body }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # The issue it builds: "Closes #n" or "Refs #n" in the body, else
+          # ship's branch name, issue-<n>-…
+          n=$(printf '%s\n' "$BODY" | grep -oiE '\b(closes|fixes|resolves|refs)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          [ -n "$n" ] || n=$(printf '%s' "$HEAD" | sed -nE 's/^issue-([0-9]+)-.*/\1/p')
+          if [ -z "$n" ]; then echo "No issue to tidy for this pull request."; exit 0; fi
+          for label in ai-working needs-human ready-for-human; do
+            gh issue edit "$n" --remove-label "$label" >/dev/null 2>&1 && echo "  #$n: removed $label" || true
+          done
