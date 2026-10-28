@@ -1034,7 +1034,7 @@ test('ship never reads the clock — a workflow that does fails before its first
 });
 
 describe('a session running an older ship.js than the repository', () => {
-  test('is declined before anything is claimed, with what to do — #252', async () => {
+  test('is declined before anything is claimed, with what to do', async () => {
     const { result, calls } = await run({ harness: { line: `const HARNESS = ${HARNESS_HERE + 1}` } });
     assert.equal(result.outcome, 'declined');
     assert.match(result.reason, /older than the repository's/);
