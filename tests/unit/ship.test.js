@@ -1042,6 +1042,11 @@ describe("a ticket's dependencies, and stacking on one", () => {
     assert.deepEqual(calls, []);
   });
 
+  test("in a batch, a dependency whose branch never appeared says to ship this one again — not 'ship both together'", async () => {
+    const { result } = await run({ depends: line({ depends: [2], unmet: [{ n: 2, title: 'Suggested talks', branch: null, pr: null }], stackOn: null }) }, { issue: 7, batch: [2, 7] });
+    assert.match(result.reason, /shipped alongside it, but #2's branch had not appeared after five minutes — once #2's run has pushed its spec, ship #7 again/);
+  });
+
   test('two not done cannot both be stacked on', async () => {
     const unmet = [{ n: 2, title: 'a', branch: 'issue-2-a', pr: 8 }, { n: 3, title: 'b', branch: 'issue-3-b', pr: 9 }];
     const { result } = await run({ depends: line({ depends: [2, 3], unmet, stackOn: null }) });

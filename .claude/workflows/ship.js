@@ -642,7 +642,10 @@ if (!(typeof args === 'object' && args && args.base)) {
   } else if (unmet.length) {
     return { outcome: 'declined', issue, reason: unmet.length > 1
       ? `#${issue} depends on ${unmet.map(u => `#${u.n}`).join(' and ')}, none of them done yet — a branch can stack on one, not several. Merge all but one first.`
-      : `#${issue} depends on #${unmet[0].n} (${unmet[0].title}), which is not done and not being built — ship #${unmet[0].n} first, or both together: /ship ${unmet[0].n} ${issue}.` }
+      : BATCHED.includes(unmet[0].n)
+        // Shipped together, and the wait ran out before its branch appeared.
+        ? `#${issue} depends on #${unmet[0].n} (${unmet[0].title}), shipped alongside it, but #${unmet[0].n}'s branch had not appeared after five minutes — once #${unmet[0].n}'s run has pushed its spec, ship #${issue} again and it stacks on it.`
+        : `#${issue} depends on #${unmet[0].n} (${unmet[0].title}), which is not done and not being built — ship #${unmet[0].n} first, or both together: /ship ${unmet[0].n} ${issue}.` }
   }
 }
 setup = await agent(

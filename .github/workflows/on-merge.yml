@@ -81,15 +81,25 @@ jobs:
             --jq ".[] | select(.baseRefName == \"$MERGED_HEAD\" or (.body | test(\"Stacked on #$MERGED\\\\b\")) or (\"$issue\" != \"\" and (.body | test(\"Stacked on [^\\\\n]*\\\\(#$issue\\\\)\")))) | \"\(.number) \(.headRefName)\"")
           if [ -z "$stacked" ]; then echo "Nothing is stacked on #$MERGED."; exit 0; fi
           git fetch -q origin "$INTO"
+          # One stacked PR failing must not stop the rest, or leave it moved
+          # with nobody told: every step is checked, and a failure is a comment.
+          set +e
           printf '%s\n' "$stacked" | while read -r pr head; do
             echo "== #$pr ($head)"
-            gh pr edit "$pr" --base "$INTO" >/dev/null
-            git fetch -q origin "$head"
-            git checkout -q -B "$head" "origin/$head"
+            say() { gh pr comment "$pr" --body "$1" >/dev/null || echo "  could not comment on #$pr"; }
+            if ! gh pr edit "$pr" --base "$INTO" >/dev/null; then
+              say "🥞 #$MERGED merged, but this pull request could not be pointed at \`$INTO\` automatically. Change its base to \`$INTO\` (Edit, next to the title), then merge \`$INTO\` into \`$head\` — a merge, never a rebase."
+              continue
+            fi
+            git fetch -q origin "$head" && git checkout -q -B "$head" "origin/$head" || { say "🥞 #$MERGED merged and this pull request now targets \`$INTO\`, but its branch could not be fetched to bring it up to date. Merge \`$INTO\` into \`$head\` by hand."; continue; }
             if git merge --no-edit "origin/$INTO"; then
-              git push -q origin "$head"
-              gh workflow run verify.yml --ref "$head" >/dev/null 2>&1 || true
-              gh pr comment "$pr" --body "🥞 #$MERGED merged, so this pull request now targets \`$INTO\` and has it merged in. Its checks are running again."
+              if git push -q origin "$head"; then
+                gh workflow run verify.yml --ref "$head" >/dev/null 2>&1 || true
+                say "🥞 #$MERGED merged, so this pull request now targets \`$INTO\` and has it merged in. Its checks are running again."
+              else
+                # Most likely: \`$INTO\` changed a workflow file, which the built-in token may not push.
+                say "🥞 #$MERGED merged and this pull request now targets \`$INTO\`, but pushing the update was refused — usually because \`$INTO\` changed a workflow file, which this job's token may not push. Merge \`$INTO\` into \`$head\` and push it yourself — a merge, never a rebase."
+              fi
             else
               files=$(git diff --name-only --diff-filter=U | sed 's/^/`/; s/$/`/' | paste -sd, - | sed 's/,/, /g')
               git merge --abort
