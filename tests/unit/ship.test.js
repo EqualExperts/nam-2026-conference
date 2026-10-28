@@ -45,6 +45,13 @@ async function run(answers = {}, args = 7, { bare = false } = {}) {
   const prompts = {};
   const models = {};
   const agent = async (prompt, opts) => {
+    // The dependency step before setup: none, unless a test answers it. Kept
+    // out of calls, which most tests read as the run's sequence of agents.
+    if (opts.label === 'depends') {
+      prompts.depends = prompt;
+      const a = answers.depends;
+      return typeof a === 'function' ? a(0, prompt) : a || { depends: '{"depends":[],"unmet":[],"stackOn":null}' };
+    }
     calls.push(opts.label);
     prompts[opts.label] = prompt;
     models[opts.label] = opts.model;
@@ -1015,23 +1022,57 @@ test('ship never reads the clock — a workflow that does fails before its first
   assert.doesNotMatch(code, /\bDate\.now\s*\(|\bnew\s+Date\b|\bDate\s*\(/);
 });
 
-describe("a ticket's dependencies", () => {
-  test('setup runs the dependency check before it claims the ticket', async () => {
+describe("a ticket's dependencies, and stacking on one", () => {
+  const line = (o) => ({ depends: JSON.stringify(o) });
+  const stack = { n: 2, branch: 'issue-2-suggested-talks', pr: 8 };
+
+  test('the dependency check runs before setup, so nothing is claimed for a ticket that cannot start', async () => {
     const { prompts } = await run();
-    assert.match(prompts.setup, /Before you claim it, run `node scripts\/depends\.mjs 7`/);
+    assert.match(prompts.depends, /node scripts\/depends\.mjs 7 --wait 120/);
   });
 
-  test('one not done stops the run before anything is built — even if setup went ahead', async () => {
-    const depends = JSON.stringify({ depends: [1], unmet: [{ n: 1, title: 'Choose interests', state: 'OPEN' }] });
-    const { result, calls } = await run({ setup: { ...SETUP, depends } });
+  test('a dependency not done and not being built stops the run before setup', async () => {
+    const { result, calls } = await run({ depends: line({ depends: [2], unmet: [{ n: 2, title: 'Suggested talks', branch: null, pr: null }], stackOn: null }) });
     assert.equal(result.outcome, 'declined');
-    assert.match(result.reason, /depends on #1 \(Choose interests\), not done yet/);
-    assert.ok(!calls.includes('implement'), calls.join(', '));
+    assert.match(result.reason, /depends on #2 \(Suggested talks\), which is not done and not being built — ship #2 first, or both together: \/ship 2 7/);
+    assert.deepEqual(calls, []);
   });
 
-  test('all done, or none, goes ahead', async () => {
-    const { calls } = await run({ setup: { ...SETUP, depends: '{"depends":[1],"unmet":[]}' } });
-    assert.ok(calls.includes('implement'));
+  test('two not done cannot both be stacked on', async () => {
+    const unmet = [{ n: 2, title: 'a', branch: 'issue-2-a', pr: 8 }, { n: 3, title: 'b', branch: 'issue-3-b', pr: 9 }];
+    const { result } = await run({ depends: line({ depends: [2, 3], unmet, stackOn: null }) });
+    assert.match(result.reason, /a branch can stack on one, not several/);
+  });
+
+  test('one being built is stacked on: built from its branch, gated against it, the PR targets it and says so', async () => {
+    const { result, prompts } = await run({ depends: line({ depends: [2], unmet: [{ ...stack, title: 't' }], stackOn: stack }) });
+    assert.equal(result.outcome, 'shipped');
+    assert.match(prompts.setup, /from origin\/issue-2-suggested-talks/);
+    assert.match(prompts.setup, /stacks on #2's branch/);
+    assert.match(prompts['verify#1'], /GATE_BASE=origin\/issue-2-suggested-talks/);
+    assert.match(prompts['verify#1'], /This branch stacks on issue-2-suggested-talks/);
+    assert.match(prompts['open-pr'], /gh pr create --base issue-2-suggested-talks/);
+    assert.match(prompts['open-pr'], /Stacked on #8\*\* \(#2\) — merge that first/);
+  });
+
+  test('if what it stacked on merges mid-run, the rest of the run builds on main', async () => {
+    const { prompts } = await run({
+      depends: line({ depends: [2], unmet: [{ ...stack, title: 't' }], stackOn: stack }),
+      verify: (n) => (n === 1 ? { ...GREEN, sync: 'restacked' } : GREEN),
+      audit: (n) => ({ covered: 'all', findings: n === 1 ? [blocker('a gap')] : [] }),
+    });
+    assert.match(prompts['open-pr'], /gh pr create --base main/);
+    assert.doesNotMatch(prompts['open-pr'], /Stacked on/);
+  });
+
+  test('a batch tells each run who runs alongside it, so a dependency started with it is waited for', async () => {
+    const asked = [];
+    const workflow = async (name, a) => { asked.push(a); return { outcome: 'shipped', issue: a.issue }; };
+    const parallel = async (ts) => Promise.all(ts.map(t => t()));
+    await script('2 3', async () => ({}), parallel, () => {}, () => {}, workflow);
+    assert.deepEqual(asked.map(a => a.batch), [[2, 3], [2, 3]]);
+    const { prompts } = await run({}, { issue: 3, batch: [2, 3] });
+    assert.match(prompts.depends, /node scripts\/depends\.mjs 3 --batch 2 --wait 300/);
   });
 });
 

@@ -229,12 +229,14 @@ why. Ask Claude to ship the issue (`/ship <n>`) instead.
    - *Full — best quality* (`--full`): Opus, spec audits, three code
      auditors, up to four rounds; the slowest.
 
-   **Several tickets at once:** ask the size **once for the batch**, and say
-   before starting that they run side by side. Tickets that depend on each
-   other (a **Depends on** line) or change the same page or file do **not** run
-   side by side: run them one after another, merging each before the next, or
-   every later one fights the same conflicts. Never start a run — one or many —
-   before the person has picked the size.
+   **Several tickets at once** (`/ship 2 3 4`): ask the size **once for the
+   batch**, and say before starting that they run side by side. A ticket whose
+   **Depends on** names another in flight **stacks** on it: it builds on that
+   branch, its pull request says *merge #n first*, and when #n merges it is
+   moved to main and updated automatically. Tickets that change the same page
+   or file without a **Depends on** between them still conflict: give the later
+   one a **Depends on** so it stacks, or run them one after another. Never
+   start a run — one or many — before the person has picked the size.
 
    **While ship runs**, the chat that started it stays with the person: the
    run is in the background, and only `/workflows` shows its steps. Straight
