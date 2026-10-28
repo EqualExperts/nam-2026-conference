@@ -166,6 +166,7 @@ const SETUP = {
     slug: { type: 'string', description: 'short kebab-case slug' },
     branch: { type: 'string', description: 'issue-<n>-<slug>' },
     workdir: { type: 'string', description: 'absolute path every later agent works in' },
+    checkout: { type: 'string', description: 'the main checkout of the repository you started in, before any cd: dirname of git rev-parse --path-format=absolute --git-common-dir' },
     runner: { type: 'boolean', description: 'true when $GITHUB_ACTIONS is set' },
     harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and docs/harness/ship-playbook.md' },
     // Before `doneWhen`: an agent's `resultPreview` is capped at 400
@@ -590,7 +591,12 @@ setup = await agent(
   `${BATCH} Before anything else — before reading or claiming the ticket — ${PIN.replace(/^Unless/, 'unless')} Then run ` +
   `\`node scripts/fork-guard.mjs\`: if it exits non-zero, this checkout writes to the workshop's original repository, ` +
   `not the attendee's fork — return proceed=false with its message as reason and touch nothing (no label, no comment). ` +
-  `Set up to ship GitHub issue #${issue}. Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
+  `Set up to ship GitHub issue #${issue}. **The checkout is the repository you start in**: run \`pwd; dirname ` +
+  `"$(git rev-parse --path-format=absolute --git-common-dir)"\` first, before any cd, and return that path as checkout — ` +
+  `the main checkout, the same whether you start in it or in one of its worktrees. Never cd to any other folder to look for ` +
+  `the repository — a folder with the same name, or one ending -2 or -3, is another clone the person keeps, often days ` +
+  `old (#1 in a fork: setup cd'd from nam-2026-conference-3 to nam-2026-conference and built on the old clone). `+
+  `The worktree goes under that checkout's .claude/worktrees/ (§3). Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
@@ -625,6 +631,15 @@ setup = await agent(
   { phase: 'Setup', label: 'setup', schema: SETUP, effort: 'medium', ...(FORCED === 'fast' ? { model: 'sonnet' } : {}) },
 )
 if (!setup) { setup = null; return handBack('Setup', 'the setup agent died, possibly after claiming the ticket') }
+// A laptop worktree belongs under the main checkout of the repository the run
+// started in (§3: from the common dir, so starting in one of its worktrees is
+// the same checkout). One anywhere else is another clone — #1 in a fork was
+// built on a days-old one.
+if (setup.proceed && !setup.runner && setup.checkout && setup.workdir &&
+    !setup.workdir.startsWith(`${setup.checkout.replace(/\/$/, '')}/.claude/worktrees/`)) {
+  return { outcome: 'declined', issue, reason: `setup made its worktree at ${setup.workdir}, outside the checkout it started in ` +
+    `(${setup.checkout}) — another clone of the repository. Nothing was built; run ship again from ${setup.checkout}.` }
+}
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
   ? `origin/${BASE} has no harness (scripts/gate.mjs, docs/harness/) — pass { issue, base } with a branch that does`
   : setup.reason }
