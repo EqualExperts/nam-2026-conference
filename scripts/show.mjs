@@ -90,23 +90,32 @@ async function main() {
     execFileSync('npm', ['install', '--silent'], { cwd: dir, stdio: 'inherit' });
   }
 
-  const lane = await claim({ worktree: dir, label: `show ${branch}` });
+  // Its own lane, beside the worktree's: the preview on the test lane's ports
+  // made every spec run in that worktree fail to start its app.
+  const lane = await claim({ worktree: dir, label: `show ${branch}`, role: 'show' });
+  let prLabel = null;
+  try {
+    const n = execFileSync('gh', ['pr', 'list', '--head', branch, '--state', 'all', '--json', 'number', '-q', '.[0].number'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (n) prLabel = `PR #${n}`;
+  } catch { /* no gh, or no pull request yet */ }
   const url = `http://localhost:${lane.webPort}/${process.argv[3] ? process.argv[3].replace(/^\//, '') : ''}`;
   const sha = git(['rev-parse', '--short', 'HEAD'], dir);
   const app = spawn('npm', ['run', 'dev'], {
     cwd: dir, stdio: ['ignore', 'ignore', 'inherit'],
-    env: { ...process.env, ORBIT_LANE: String(lane.lane), PORT: String(lane.port), WEB_PORT: String(lane.webPort), NO_OPEN: '1' },
+    env: { ...process.env, ORBIT_LANE: String(lane.lane), PORT: String(lane.port), WEB_PORT: String(lane.webPort), NO_OPEN: '1',
+      // The banner Layout shows: which branch this is, so two previews never pass for one app.
+      VITE_PREVIEW_LABEL: prLabel ? `${prLabel} · ${branch}` : branch },
   });
-  const stop = () => { app.kill(); release({ worktree: dir }); process.exit(0); };
+  const stop = () => { app.kill(); release({ worktree: dir, role: 'show' }); process.exit(0); };
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
-  app.on('exit', (code) => { release({ worktree: dir }); process.exit(code ?? 0); });
+  app.on('exit', (code) => { release({ worktree: dir, role: 'show' }); process.exit(code ?? 0); });
 
   for (let i = 0; i < 120; i++) {
     try { if ((await fetch(url)).ok) break; } catch { /* not up yet */ }
     await new Promise((r) => setTimeout(r, 500));
   }
-  console.log(`show: ${branch} at ${sha} → ${url}  (from ${dir}; Ctrl-C to stop)`);
+  console.log(`show: ${prLabel ? `${prLabel}, ` : ''}${branch} at ${sha} → ${url}  (from ${dir}; its own test data; Ctrl-C to stop)`);
   if (process.platform === 'darwin' && !process.env.CI) spawn('open', [url], { stdio: 'ignore' });
   else if (process.platform === 'linux' && !process.env.CI) spawn('xdg-open', [url], { stdio: 'ignore' }).on('error', () => {});
 }
