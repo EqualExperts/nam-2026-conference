@@ -37,6 +37,12 @@ gh pr list --state open --json number,headRefName,isDraft \
   --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
 ```
 
+A ticket whose **Depends on** names an issue not merged yet is checked
+before setup starts (`node scripts/depends.mjs <n>`): if that issue is being
+built, this run **stacks** on its branch — the base the prompt names is that
+branch, not main — and the pull request says so; if it is not, the run never
+reaches setup.
+
 The **Done when:** clause is what you build, and later what you prove. Go to
 step 9 and stop if the issue is closed, already has a **ready** (non-draft)
 pull request, states no outcome you could write a check against, or asks for

@@ -111,6 +111,9 @@ export async function claim({
   root = laneRoot(),
   worktree = worktreeOf(),
   label = null,
+  // A second lane for the same worktree: `npm run show`'s preview, which must
+  // never hold the ports that worktree's tests boot their app on.
+  role = null,
   first = FIRST_PORT,
   last = LAST_PORT,
   free = portFree,
@@ -119,7 +122,7 @@ export async function claim({
   mkdirSync(root, { recursive: true });
   sweep(root, { exists });
 
-  const held = list(root).find((lane) => lane.worktree === worktree);
+  const held = list(root).find((lane) => lane.worktree === worktree && (lane.role ?? null) === role);
   if (held) return held;
 
   for (let port = first; port <= last - 1; port += 2) {
@@ -130,6 +133,7 @@ export async function claim({
       worktree,
       name: basename(worktree),
       label,
+      ...(role ? { role } : {}),
       claimedAt: new Date().toISOString(),
     };
 
@@ -152,9 +156,9 @@ export async function claim({
 }
 
 /** Release this worktree's lane, or one named by port. Returns what it freed. */
-export function release({ root = laneRoot(), worktree = worktreeOf(), port = null, label = null } = {}) {
+export function release({ root = laneRoot(), worktree = worktreeOf(), port = null, label = null, role = null } = {}) {
   const lane = list(root).find((l) =>
-    port ? l.port === Number(port) : label ? String(l.label) === String(label) : l.worktree === worktree);
+    port ? l.port === Number(port) : label ? String(l.label) === String(label) : l.worktree === worktree && (l.role ?? null) === role);
   if (!lane) return null;
   rmSync(lockPath(root, lane.port), { force: true });
   return lane;
@@ -180,7 +184,8 @@ export function heldLane({ cwd = process.cwd(), root, worktree } = {}) {
   try {
     const r = root ?? laneRoot(cwd);
     const w = worktree ?? worktreeOf(cwd);
-    return list(r).find((lane) => lane.worktree === w) ?? null;
+    // The worktree's own lane, never its preview's (`role: 'show'`).
+    return list(r).find((lane) => lane.worktree === w && !lane.role) ?? null;
   } catch {
     return null;   // not a git checkout, or no registry yet
   }

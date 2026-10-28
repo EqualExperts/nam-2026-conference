@@ -118,15 +118,19 @@ if (ISSUES.length > 1 && !(typeof args === 'object' && args)) {
   }
   log(`shipping ${ISSUES.length} tickets in parallel: ${ISSUES.map(n => `#${n}`).join(', ')}`)
   const runs = await parallel(ISSUES.map(n => () =>
-    workflow('ship', { issue: n, notes: NOTES, ...(FLAG ? { size: FLAG } : {}) })))
+    workflow('ship', { issue: n, notes: NOTES, batch: ISSUES, ...(FLAG ? { size: FLAG } : {}) })))
   return {
     outcome: 'batch',
     runs: runs.map((r, i) => r || { outcome: 'error', issue: ISSUES[i], reason: 'the run died' }),
   }
 }
 // The branch the work starts from and the pull request targets. `main`
-// unless this ticket stacks on another pull request that has not landed.
-const BASE = (typeof args === 'object' && args && args.base) || 'main'
+// unless this ticket stacks on another that has not landed — passed in as
+// `base`, or found from its **Depends on** line before setup (STACK).
+let BASE = (typeof args === 'object' && args && args.base) || 'main'
+let STACK = null
+// The tickets shipped alongside this one, when it is part of `/ship 2 3 4`.
+const BATCHED = (typeof args === 'object' && args && Array.isArray(args.batch)) ? args.batch.filter(n => n !== issue) : []
 if (!Number.isInteger(issue) || issue <= 0) {
   return { outcome: 'error', reason: `ship needs an issue number, got ${JSON.stringify(args)}` }
 }
@@ -269,6 +273,12 @@ const GATE = {
     sync: { enum: ['current', 'merged', 'conflict'], description: 'verify only: what merging origin/<base> did' },
     conflicts: { type: 'array', items: { type: 'string' }, description: 'verify only: the files the merge conflicted in' },
   },
+}
+
+const DEPENDS = {
+  type: 'object',
+  required: ['depends'],
+  properties: { depends: { type: 'string', description: 'the last line node scripts/depends.mjs printed, verbatim' } },
 }
 
 const DONE = {
@@ -506,6 +516,8 @@ const inTree = ({ releases = false } = {}) =>
 
 async function handBack(stage, why, open, alsoOpen) {
   log(`handing #${issue} back at ${stage}: ${why}`)
+  // The draft targets what this stacks on — unless that has merged since.
+  await restackCheck(stage)
   // A run that could not converge is the one with the most to teach, so it
   // learns before it pushes — the lessons land on the draft with the work.
   const lessons = setup && setup.branch && !learned ? await learn(`stopped at ${stage}: ${why}`) : []
@@ -583,8 +595,59 @@ const specAsk = (path) =>
   `## Decisions\n<only if the ticket left something open>\n## Out of scope\n<only if needed>\n` +
   `Return each Decision as decisions, phrased as a yes/no question for the reviewer.`
 
+// A stacked run asks again whether what it stacks on is done, before each gate,
+// the pull request and a hand-back. Done is the dependency's issue closed —
+// what its PR merging does — not its branch being gone: GitHub keeps a merged
+// branch unless the repository deletes them. Done: the rest of the run is on
+// main. Still in flight: refresh the stack, which by now usually has a PR
+// number to name. Could not tell: carry on as stacked.
+async function restackCheck(at) {
+  if (!STACK) return
+  const r = await rote(
+    `${PIN} Then run exactly \`node scripts/depends.mjs ${issue}\` once and return the last line it printed, ` +
+    `verbatim, as depends. Change nothing and interpret nothing.`,
+    { phase: at, label: `depends-recheck`, schema: DEPENDS, effort: 'low', model: ROTE },
+  ).catch(() => null)
+  let d = null
+  try { d = JSON.parse((r && r.depends) || '') } catch { return }
+  if (!d || d.error) return
+  if (d.stackOn && d.stackOn.branch) { STACK = d.stackOn; BASE = STACK.branch; return }
+  if (!(d.unmet || []).length) { log(`#${STACK.n} has merged — #${issue} now builds on main`); BASE = 'main'; STACK = null }
+}
+
 // ── 1. Setup ─────────────────────────────────────────────────────────────────
 enter('Setup')
+// What this ticket waits for, before anything is claimed. Done: build on the
+// base. Not done but being built (a branch, an open PR): stack on it — build
+// on its branch, and the on-merge workflow moves this PR to main when it
+// lands. Not done and not started, or two at once: stop, nothing touched.
+if (!(typeof args === 'object' && args && args.base)) {
+  const deps = await rote(
+    `${PIN} Then run exactly \`node scripts/depends.mjs ${issue}${BATCHED.length ? ` --batch ${BATCHED.join(',')} --wait 300` : ' --wait 120'}\` ` +
+    `once and return the last line it printed, verbatim, as depends. Change nothing and interpret nothing.`,
+    { phase: 'Setup', label: 'depends', schema: DEPENDS, effort: 'low', model: ROTE },
+  ).catch(() => null)
+  let d = null
+  try { d = JSON.parse((deps && deps.depends) || '') } catch { /* nothing parseable: below */ }
+  // Fail safe: a check that could not run is not "nothing to wait for".
+  if (!d || d.error) {
+    return { outcome: 'declined', issue, reason: `could not check what #${issue} depends on` +
+      `${d && d.error ? ` (${d.error})` : ''} — nothing was claimed or built; run ship again.` }
+  }
+  const unmet = Array.isArray(d.unmet) ? d.unmet : []
+  if (d.stackOn && d.stackOn.branch) {
+    STACK = d.stackOn
+    BASE = STACK.branch
+    log(`#${issue} stacks on #${STACK.n} (${STACK.branch}${STACK.pr ? `, PR #${STACK.pr}` : ''}) — it builds on that branch`)
+  } else if (unmet.length) {
+    return { outcome: 'declined', issue, reason: unmet.length > 1
+      ? `#${issue} depends on ${unmet.map(u => `#${u.n}`).join(' and ')}, none of them done yet — a branch can stack on one, not several. Merge all but one first.`
+      : BATCHED.includes(unmet[0].n)
+        // Shipped together, and the wait ran out before its branch appeared.
+        ? `#${issue} depends on #${unmet[0].n} (${unmet[0].title}), shipped alongside it, but #${unmet[0].n}'s branch had not appeared after five minutes — once #${unmet[0].n}'s run has pushed its spec, ship #${issue} again and it stacks on it.`
+        : `#${issue} depends on #${unmet[0].n} (${unmet[0].title}), which is not done and not being built — ship #${unmet[0].n} first, or both together: /ship ${unmet[0].n} ${issue}.` }
+  }
+}
 setup = await agent(
   (NOTES ? `This run was asked for in a comment: "${NOTES}". A closed pull request from an earlier attempt is ` +
     `not a reason to stop.\n\n` : '') +
@@ -598,7 +661,8 @@ setup = await agent(
   `old (#1 in a fork: setup cd'd from nam-2026-conference-3 to nam-2026-conference and built on the old clone). `+
   `The worktree goes under that checkout's .claude/worktrees/ (§3). Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
-  `against, or asks for two unrelated things; a draft is an earlier attempt to continue), claim it — removing ` +
+  `against, or asks for two unrelated things; a draft is an earlier attempt to continue)` +
+  `${STACK ? ` — its **Depends on** #${STACK.n} is not merged yet, and that is expected: this run stacks on #${STACK.n}'s branch, ${STACK.branch}` : ''}, claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch --prune origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch has an open draft pull request ` +
@@ -936,8 +1000,11 @@ for (let round = 1; ; round++) {
   // on: two runs started together each opened a PR, and once the first
   // merged the second was already conflicting. A merge, not a rebase — the
   // spec commit is pushed, and a rebase would mean a force-push.
+  await restackCheck('Verify')
   let ran = await rote(
-    `${inTree()}\n\nFirst \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
+    `${inTree()}\n\n` +
+    (STACK ? `This branch stacks on ${BASE} (#${STACK.n}'s, not merged yet), so that is the base below, not main.\n\n` : '') +
+    `First \`git fetch origin ${BASE} && git merge --no-edit origin/${BASE}\`. If it says "Already up to date", ` +
     `sync is current; if it merged, sync is merged. If it conflicts, run \`git diff --name-only --diff-filter=U\`, ` +
     `return those files as conflicts, run \`git merge --abort\`, return sync=conflict with json set to "" — and run nothing else.\n\n` +
     `Then run \`${T.gateScope === 'branch' ? 'GATE_SCOPE=branch ' : ''}GATE_BASE=origin/${BASE} node scripts/gate.mjs\` once and return the last line it printed, verbatim, as json. ` +
@@ -1165,6 +1232,7 @@ const checksLine = [
   ...(lastRed && lastRed.checked && lastRed.failedOnBase ? ['the new tests fail without the change'] : []),
   `independent audit: ${fixed ? `${fixed} problem${fixed === 1 ? '' : 's'} found and fixed, ` : ''}clean after ${rounds.length} round${rounds.length === 1 ? '' : 's'}`,
 ].join(' · ')
+await restackCheck('PR')
 const pr = await rote(
   `${ticket}\n\n${inTree({ releases: true })}\n\nOpen the pull request for this branch. Everything is built, gated and audited: do ` +
   `not re-read the spec, the playbook or the code, and do not run tests. Gather what *Changed* needs in ONE command, ` +
@@ -1189,6 +1257,8 @@ const pr = await rote(
   // file paths and a table of agent shorthand.
   `Write this body to /tmp/pr-body-${issue}.md, filling the <…> parts in plain words:\n\n` +
   `Closes #${issue} · 📄 [Spec](https://github.com/<owner>/<repo>/blob/${setup.branch}/${spec.path})\n\n` +
+  (STACK ? `> 🥞 **Stacked on ${STACK.pr ? `#${STACK.pr}` : `#${STACK.n}'s branch`}** (#${STACK.n}) — merge that first. When it merges, this ` +
+    `pull request is pointed at main and brought up to date automatically, and its checks run again.\n\n` : '') +
   `## What changes\n<two or three short sentences: why this was needed (from the ticket), then what an attendee or ` +
   `developer sees or gets now — not how it was built>\n\n` +
   `<media — each screenshot on its own line with a one-line bold caption above it>\n\n` +

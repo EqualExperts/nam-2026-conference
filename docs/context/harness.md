@@ -14,6 +14,7 @@ files:
   - .github/workflows/agent-code-review.yml
   - .github/workflows/agent-qa.yml
   - .github/workflows/agent-respond.yml
+  - .github/workflows/on-merge.yml
   - .github/workflows/learn-escape.yml
   - .github/workflows/deploy.yml
   - .github/workflows/setup.yml
@@ -28,11 +29,13 @@ files:
   - scripts/ai-cost.mjs
   - scripts/fork-guard.mjs
   - .claude/settings.json
+  - scripts/depends.mjs
   - ONBOARD_CLAUDE.md
   - docs/context/README.md
   - specs/README.md
 tests:
   - tests/unit/ship.test.js
+  - tests/unit/depends.test.js
   - tests/unit/fork-guard.test.js
   - tests/unit/review-workflows.test.js
   - tests/unit/deploy-workflow.test.js
@@ -353,6 +356,29 @@ cannot start another round.
   on the last line. The chat that started ship runs it under a monitor and
   relays each line (CLAUDE.md) — in Claude Desktop the workflow is otherwise
   silent until it ends.
+- **A merged pull request leaves its issue clean.** `on-merge.yml`'s `tidy`
+  job removes `ai-working`, `needs-human` and `ready-for-human` from the issue
+  a merged pull request names (`Closes`/`Refs #n`, else its `issue-<n>-`
+  branch), with the built-in token — so it works on a fork with no API key.
+- **A dependent ticket stacks on its dependency.** Before setup, a rote step
+  runs `scripts/depends.mjs <n>`: it reads the `**Depends on:** #m` line
+  create-tasks writes and asks GitHub whether each issue is closed as
+  completed. All done → build on main. One not done but being built (an open
+  pull request, or an `issue-<m>-` branch) → **stack**: `BASE` becomes that
+  branch, so the worktree, every gate's merge and the pull request's base all
+  use it, and the PR body says *Stacked on #pr — merge that first*. In a batch
+  (`/ship 2 3`, `args.batch`) it waits up to five minutes for a dependency's
+  branch to appear. Not being built, or two at once, or a check that could
+  not run → declined before setup, nothing claimed. A stacked run asks again
+  (`restackCheck`) before each gate, the pull request and a hand-back:
+  dependency done — its issue closed, not its branch gone, since GitHub keeps
+  merged branches unless the repository deletes them — and the rest of the run
+  is on main; still in flight, and the stack is refreshed, so the PR names the
+  dependency's PR number once it has one. When a stacked-on PR merges, `on-merge.yml`'s `restack`
+  job finds each PR stacked on it — still based on its branch, or whose banner
+  names its PR or its issue (`Stacked on … (#n)`) — retargets it to main, merges main in (never a rebase
+  or force-push), pushes, reruns `verify.yml` (a push with the built-in token
+  starts no workflow), and comments; a conflict gets a comment for a person.
 - **A laptop run never waits on a permission prompt.** `.claude/settings.json`
   allows the commands ship's agents run — `git` up to `push`, the `gh issue|pr`
   verbs, `node scripts/…`, `npm test|run`, `npx playwright test`, the

@@ -191,3 +191,29 @@ test('a port held only on IPv6 localhost is not free — Vite binds [::1]', asyn
     await new Promise((done) => held.close(done));
   }
 });
+
+describe("a preview's lane beside the worktree's own", () => {
+  // npm run show once took the worktree's lane, so a spec run in that
+  // worktree found its web port held by the preview and could not start.
+  test('the same worktree gets a second, separate pair of ports for its preview', async () => {
+    const own = await claimFor('wt-a');
+    const show = await claimFor('wt-a', { role: 'show' });
+    assert.notEqual(show.port, own.port);
+    assert.equal((await claimFor('wt-a', { role: 'show' })).port, show.port, 'claiming again returns the same preview lane');
+  });
+
+  test("Playwright's lookup finds the test lane, never the preview's", async () => {
+    const show = await claimFor('wt-a', { role: 'show' });
+    assert.equal(heldLane({ root, worktree: tree('wt-a') }), null);
+    const own = await claimFor('wt-a');
+    assert.equal(heldLane({ root, worktree: tree('wt-a') }).port, own.port);
+    assert.notEqual(own.port, show.port);
+  });
+
+  test('releasing the preview leaves the test lane alone', async () => {
+    const own = await claimFor('wt-a');
+    await claimFor('wt-a', { role: 'show' });
+    release({ root, worktree: tree('wt-a'), role: 'show' });
+    assert.deepEqual(list(root).map(l => l.port), [own.port]);
+  });
+});

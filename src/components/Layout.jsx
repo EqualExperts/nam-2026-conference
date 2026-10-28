@@ -62,6 +62,14 @@ export function Layout() {
         Skip to content
       </a>
 
+      {/* `npm run show` sets this: each preview is its own branch with its own
+          seeded data, and two side by side looked like a bug, not two branches. */}
+      {import.meta.env.VITE_PREVIEW_LABEL && (
+        <p data-testid="preview-banner" className="bg-amber-500/15 px-4 py-1.5 text-center text-xs text-amber-200">
+          Preview of <span className="font-semibold">{import.meta.env.VITE_PREVIEW_LABEL}</span> — only this branch's changes, with its own test data
+        </p>
+      )}
+
       <header className="glass sticky top-0 z-40 border-b border-hairline">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
           <Logo />

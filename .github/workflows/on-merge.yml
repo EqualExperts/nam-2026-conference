@@ -1,0 +1,108 @@
+## When a pull request merges, two things follow from it, and nobody should
+## have to remember either. The built-in token does both, so this runs on a
+## fork with no ANTHROPIC_API_KEY, as soon as Actions is on.
+##
+##  - tidy: its issue is done, so take off the labels that said otherwise.
+##    Ship puts `ai-working` on while it builds, `ready-for-human` when it
+##    opens the pull request and `needs-human` when it hands one back, and
+##    nothing took them off: merged tickets kept saying a person was needed.
+##
+##  - restack: a pull request ship stacked on this one (its ticket said
+##    "Depends on") now points at main and gets main merged in — a merge,
+##    never a rebase, so nothing is force-pushed — and its checks run again.
+##    One that conflicts gets a comment saying so, for a person to resolve.
+name: 🥞 On merge — tidy labels, restack
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  tidy:
+    if: ${{ github.event.pull_request.merged && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    permissions:
+      issues: write          # remove the labels
+      pull-requests: read
+
+    steps:
+      - name: Remove ai-working, needs-human and ready-for-human from its issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          # Passed as data, never pasted into the script: a body is anyone's text.
+          BODY: ${{ github.event.pull_request.body }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # The issue it builds: "Closes #n" or "Refs #n" in the body, else
+          # ship's branch name, issue-<n>-…
+          n=$(printf '%s\n' "$BODY" | tr '\n' ' ' | grep -oiE '\b(closes|fixes|resolves|refs)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          [ -n "$n" ] || n=$(printf '%s' "$HEAD" | sed -nE 's/^issue-([0-9]+)-.*/\1/p')
+          if [ -z "$n" ]; then echo "No issue to tidy for this pull request."; exit 0; fi
+          for label in ai-working needs-human ready-for-human; do
+            gh issue edit "$n" --remove-label "$label" >/dev/null 2>&1 && echo "  #$n: removed $label" || true
+          done
+
+  restack:
+    if: ${{ github.event.pull_request.merged && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: write        # push the merge onto the stacked branch
+      pull-requests: write   # retarget it, comment on it
+      actions: write         # run its checks again: a push with this token starts no workflow by itself
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Point the pull requests stacked on this one at its base, and merge it in
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MERGED: ${{ github.event.pull_request.number }}
+          MERGED_HEAD: ${{ github.event.pull_request.head.ref }}
+          INTO: ${{ github.event.pull_request.base.ref }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Its issue, as the tidy job finds it: ship's banner always names it,
+          # "Stacked on … (#n)", even when the dependency had no PR number yet.
+          issue=$(printf '%s\n' "$BODY" | tr '\n' ' ' | grep -oiE '\b(closes|fixes|resolves|refs)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          [ -n "$issue" ] || issue=$(printf '%s' "$MERGED_HEAD" | sed -nE 's/^issue-([0-9]+)-.*/\1/p')
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Stacked on it: still based on its branch, or — if GitHub already
+          # retargeted it when the branch was deleted — saying so in its body.
+          stacked=$(gh pr list --state open --limit 100 --json number,headRefName,baseRefName,body \
+            --jq ".[] | select(.baseRefName == \"$MERGED_HEAD\" or (.body | test(\"Stacked on #$MERGED\\\\b\")) or (\"$issue\" != \"\" and (.body | test(\"Stacked on [^\\\\n]*\\\\(#$issue\\\\)\")))) | \"\(.number) \(.headRefName)\"")
+          if [ -z "$stacked" ]; then echo "Nothing is stacked on #$MERGED."; exit 0; fi
+          git fetch -q origin "$INTO"
+          # One stacked PR failing must not stop the rest, or leave it moved
+          # with nobody told: every step is checked, and a failure is a comment.
+          set +e
+          printf '%s\n' "$stacked" | while read -r pr head; do
+            echo "== #$pr ($head)"
+            say() { gh pr comment "$pr" --body "$1" >/dev/null || echo "  could not comment on #$pr"; }
+            if ! gh pr edit "$pr" --base "$INTO" >/dev/null; then
+              say "🥞 #$MERGED merged, but this pull request could not be pointed at \`$INTO\` automatically. Change its base to \`$INTO\` (Edit, next to the title), then merge \`$INTO\` into \`$head\` — a merge, never a rebase."
+              continue
+            fi
+            git fetch -q origin "$head" && git checkout -q -B "$head" "origin/$head" || { say "🥞 #$MERGED merged and this pull request now targets \`$INTO\`, but its branch could not be fetched to bring it up to date. Merge \`$INTO\` into \`$head\` by hand."; continue; }
+            if git merge --no-edit "origin/$INTO"; then
+              if git push -q origin "$head"; then
+                gh workflow run verify.yml --ref "$head" >/dev/null 2>&1 || true
+                say "🥞 #$MERGED merged, so this pull request now targets \`$INTO\` and has it merged in. Its checks are running again."
+              else
+                # Most likely: \`$INTO\` changed a workflow file, which the built-in token may not push.
+                say "🥞 #$MERGED merged and this pull request now targets \`$INTO\`, but pushing the update was refused — usually because \`$INTO\` changed a workflow file, which this job's token may not push. Merge \`$INTO\` into \`$head\` and push it yourself — a merge, never a rebase."
+              fi
+            else
+              files=$(git diff --name-only --diff-filter=U | sed 's/^/`/; s/$/`/' | paste -sd, - | sed 's/,/, /g')
+              git merge --abort
+              gh pr comment "$pr" --body "🥞 #$MERGED merged and this pull request now targets \`$INTO\`, but merging \`$INTO\` into it conflicts in ${files:-some files}. A person needs to resolve it: merge \`$INTO\` into \`$head\`, fix the conflicts and push — a merge, never a rebase."
+            fi
+          done
