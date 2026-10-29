@@ -23,6 +23,12 @@ export const meta = {
 const argText = typeof args === 'object' && args ? '' : String(args ?? '')
 const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
 const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
+
+// Follow-ups are listed in the comment; filing each as an issue is opt-in
+// (--file-follow-ups, or the FILE_FOLLOW_UPS repository variable in CI). On by
+// default they buried a workshop fork's Issues tab under tickets nobody asked
+// for, alongside the ones the attendees wrote.
+const FILE_FOLLOW_UPS = typeof args === 'object' && args ? args.fileFollowUps === true : /--file-follow-ups\b/.test(argText)
 // Facts the job computes from git, and the team's dial (the REVIEW_DEPTH repo
 // variable): fast | balanced | thorough. Review depth follows risk — a copy
 // fix and a change to the seat rules should not get the same review.
@@ -450,7 +456,7 @@ async function publish(r) {
   const CALLOUT = { high: ['TIP', '●●●'], medium: ['NOTE', '●●○'], low: ['WARNING', '●○○'] }
   const fus = r.followUps || []
   const listed = fus.length
-    ? `\n\n#### Follow-ups\nNot blockers, so they do not colour the check — each is filed as an issue.\n\n` +
+    ? `\n\n#### Follow-ups\nNot blockers, so they do not colour the check — ${FILE_FOLLOW_UPS ? 'each is filed as an issue' : 'listed here, not filed; fix them now or later, as you judge'}.\n\n` +
       fus.map(f => `- \`${f.file}:${f.line}\` ${f.claim}${f.why ? ` — *${f.why}*` : ''}`).join('\n')
     : ''
   let body, line
@@ -474,7 +480,7 @@ async function publish(r) {
   // treat every previous blocker as closed.
   let file = []
   if (r.verdict === 'pass' || r.verdict === 'fail') {
-    file = fus.filter(f => !filedBefore.has(keyOf(f))).map(f => ({
+    file = (FILE_FOLLOW_UPS ? fus : []).filter(f => !filedBefore.has(keyOf(f))).map(f => ({
       key: keyOf(f),
       title: `Follow-up from #${pr}: ${f.claim}`.slice(0, 120),
       body: `Raised by code review on #${pr} at \`${f.file}:${f.line}\` and judged not a blocker` +

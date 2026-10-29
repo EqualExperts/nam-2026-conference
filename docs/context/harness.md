@@ -445,9 +445,13 @@ cannot start another round.
   script demotes one with either left blank to a follow-up, and a skeptic
   (in either pass) may answer `contrived` — real, but only from an input
   nobody gives — which does the same. Follow-ups never colour the check:
-  they are listed in the comment, returned as `followUps` (at most three,
-  minus any key the last marker already filed) on a pass **or** a fail, and
-  the job's *📌 File follow-ups* step opens one `follow-up` issue each.
+  they are listed in the comment. **Filing them as issues is opt-in**
+  (`--file-follow-ups`, which CI passes when the repository variable
+  `FILE_FOLLOW_UPS` is `true`): only then are they returned as `followUps`
+  (at most three, minus any key the last marker already filed) on a pass
+  **or** a fail, and the job's *📌 File follow-ups* step opens one
+  `follow-up` issue each. Off, the comment says they are listed, not filed —
+  on by default they filled a workshop fork's Issues tab.
 - **Only a finished pass leaves a marker.** A `verdict: 'none'` comment has
   none, so the run after it reviews as if it were the first rather than
   treating every previous blocker as closed.
