@@ -241,12 +241,12 @@ function GapsScene({ step }) {
         </Replay>
         <Replay on={step === 1} className="absolute inset-0 flex flex-col gap-3">
           <Turn delay={200}>
-            What does done look like? My best guess, from what was said and what the mobile specs already check:
+            What does done look like? My best guess, from what was said:
             <ul className="mt-2 space-y-1 text-[15px] text-muted">
               {[
-                'the first session card is in view without scrolling past the full filter block',
-                'every filter — day, track, venue, level, format, topic, search — still reachable',
-                'the existing mobile specs still pass',
+                'on a phone, the first session shows without scrolling',
+                'on a phone, every filter — day, track, venue, level, format, topic, search — is still there',
+                'on a laptop, the schedule looks and works as it does today',
               ].map((l, i) => <li key={l} className="pz-appear" style={later(1500 + i * 350)}>• {l}</li>)}
             </ul>
           </Turn>

@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Code, Label, Terminal, IssueCard, IssueIcon, PrIcon, MergeIcon, Kicker, Token, later } from './kit.jsx';
+import { at, Show, Replay, Code, Label, IssueCard, IssueIcon, PrIcon, MergeIcon, Kicker, Token, later } from './kit.jsx';
 import { STATIONS, Station, SX, STATION_W, STATION_Y, RAIL_Y, TOKEN_PARK } from './ship.jsx';
+import { GH, GhOpenIcon, GitHub, ClaudeDesktop } from './apps.jsx';
 import { ISSUE_140 } from './issue.js';
 
 /* ------------------------------------------------------------------ *
@@ -145,8 +146,9 @@ function IssueScene() {
 
 const DOORS = ['M800 58 C 800 96, 420 72, 420 112', 'M800 58 C 800 96, 1180 72, 1180 112'];
 
-/* One beat, both doors at once: the label lands on the left and the Actions
- * runner picks it up; /ship types on the right; both roads join at ship.js. */
+/* One beat, both doors at once: on GitHub the label lands and ship answers on
+ * the issue; in Claude Desktop you ask, pick the run, and it starts; both
+ * roads join at ship.js. The same two apps the lab shows at the end. */
 const JOIN_AT = 3200;
 
 function TwoWaysScene() {
@@ -165,45 +167,63 @@ function TwoWaysScene() {
         ))}
       </svg>
 
-      <div style={at(80, 112, 680, 408)} className="card relative p-7">
-        <Kicker>🌐 In GitHub — no terminal</Kicker>
-        <div className="mt-2 font-display text-[34px] text-ink">Label it</div>
-        <div className="mt-5 flex items-center gap-3 rounded-xl border border-hairline bg-raised px-4 py-3">
-          <IssueIcon className="size-5 text-emerald-400" />
-          <span className="text-[18px] text-ink">#140 Keep sessions in view on mobile</span>
-          <span className="ml-auto flex gap-2">
-            <span className="pz-pop" style={later(700)}><Label name="ready-for-ai" /></span>
-          </span>
+      {/* the left door: the issue on GitHub, labelled, and ship answering on it */}
+      <div style={at(80, 112, 680, 408)} className="flex flex-col">
+        <div className="flex items-baseline gap-3">
+          <span className="font-display text-[30px] text-ink">Label it</span>
+          <Kicker>On GitHub</Kicker>
         </div>
-        <Replay delay={1100} className="mt-5 overflow-hidden rounded-xl border border-hairline bg-[#0d0f15]">
-          <div className="flex items-center gap-2 border-b border-hairline px-4 py-2 font-mono text-[13px] text-faint">
-            <span className="size-2 rounded-full bg-amber-400 animate-pulse-dot" /> Actions · agent-ship.yml
+        <GitHub tab="Issues" className="mt-3 min-h-0 flex-1">
+          <div className="px-5 py-3">
+            <div className="text-[20px] leading-tight">Keep sessions in view on mobile <span className={GH.muted}>#140</span></div>
+            <span className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full ${GH.green} px-2.5 py-0.5 text-[13px] font-semibold text-white`}><GhOpenIcon className="size-3.5" /> Open</span>
+            <div className="mt-3 grid grid-cols-[1fr_150px] gap-4 text-[14px]">
+              <div className="space-y-2.5">
+                <div className={`pz-appear flex items-center gap-2 ${GH.muted}`} style={later(600)}>
+                  <span className="size-5 shrink-0 rounded-full bg-violet-300" aria-hidden="true" />
+                  <span><b className={GH.ink}>you</b> added the <span className="rounded-full bg-[#d8b4fe] px-2 text-[12px] font-semibold text-[#3b0764]">ready-for-ai</span> label</span>
+                </div>
+                <div className={`pz-appear overflow-hidden rounded-md border ${GH.line}`} style={later(1500)}>
+                  <div className={`flex items-center gap-2 border-b ${GH.line} bg-[#f6f8fa] px-3 py-1.5`}>
+                    <span className="grid size-5 place-items-center rounded-full bg-[#1f2328] text-[11px] text-white" aria-hidden="true">▷</span>
+                    <b>github-actions</b><span className={GH.muted}>bot · just now</span>
+                  </div>
+                  <div className="space-y-1 px-3 py-2">
+                    <div className="font-semibold">🚢 Ship · fast · 1m elapsed</div>
+                    {[['Setup', 'done'], ['Spec', 'done'], ['Implement', 'running…']].map(([p, st], i) => (
+                      <div key={p} className="pz-appear flex justify-between" style={later(1900 + i * 300)}>
+                        <span>{p}</span><span className={st === 'done' ? GH.open : GH.muted}>{st}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className={`border-l ${GH.line} pl-3`}>
+                <div className={`font-semibold ${GH.muted}`}>Labels</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <span className="pz-pop rounded-full bg-[#d8b4fe] px-2 text-[12px] font-semibold text-[#3b0764]" style={later(600)}>ready-for-ai</span>
+                </div>
+                <div className={`pz-appear mt-2 text-[12px] ${GH.muted}`} style={later(1500)}>A fresh GitHub runner picked it up.</div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-1 px-4 py-3 font-mono text-[15px] text-muted">
-            <div className="pz-appear" style={later(500)}>on: issues · labeled <span className="text-violet-300">ready-for-ai</span></div>
-            <div className="pz-appear" style={later(800)}>runs-on: ubuntu-latest · a fresh machine</div>
-            <div className="pz-appear text-ink" style={later(1100)}>claude › /ship 140</div>
-            <div className="pz-appear text-sky-300" style={later(1500)}>#140 → ai-working · progress posted on the issue</div>
-          </div>
-          <div className="relative h-1 overflow-hidden bg-overlay"><div className="pz-scan absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-violet-400 to-transparent" /></div>
-        </Replay>
+        </GitHub>
       </div>
 
-      <div style={at(840, 112, 680, 408)} className="card p-7">
-        <Kicker>💻 In Claude Code — your terminal</Kicker>
-        <div className="mt-2 font-display text-[34px] text-ink">Ship it</div>
-        <Terminal
-          className="mt-5"
-          title="~/nam-2026-conference — claude"
-          bodyClass="min-h-[228px] text-[16px]"
-          lines={[
-            { t: 'Ready. What should we build?', tone: 'dim' },
-            { t: '/ship 140', tone: 'cmd', delay: 700 },
-            { t: 'setup · reading #140 and the code it touches', delay: 1600 },
-            { t: 'worktree  .claude/worktrees/wt-140', delay: 2000 },
-            { t: 'lane 3 → api :4306 · web :4307', delay: 2400 },
-            { t: '#140 → ai-working', tone: 'ok', delay: 2800 },
-          ]}
+      {/* the right door: asking Claude, in Claude Desktop — the way the room will */}
+      <div style={at(840, 112, 680, 408)} className="flex flex-col">
+        <div className="flex items-baseline gap-3">
+          <span className="font-display text-[30px] text-ink">Ask Claude</span>
+          <Kicker>In Claude Desktop</Kicker>
+        </div>
+        <ClaudeDesktop
+          compact
+          className="mt-3 min-h-0 flex-1"
+          session="Ship issue #140"
+          ask="Can you ship issue #140?"
+          question={{ ask: 'How thorough should ship be?', options: ['Fast — for the workshop', 'Sized', 'Small', 'Full'] }}
+          reply="On it — a fast run, on your laptop in its own workspace."
+          steps={['Read the ticket — it can be built', 'Writing the plan…']}
         />
       </div>
 
@@ -366,8 +386,8 @@ export const INTRO = [
     beats: [
       {
         kicker: '2 · Starting it',
-        title: 'Label it on GitHub, or /ship it in Claude Code — same script',
-        body: 'ready-for-ai starts a fresh Actions runner that claims the issue and posts progress there; /ship 140 gives it its own worktree and ports locally. Either way it is ship.js — where it runs only changes who pays.',
+        title: 'Label it on GitHub, or ask Claude — same script',
+        body: 'The label starts a fresh GitHub runner that claims the issue and posts progress there. Asking Claude runs it on your laptop, in its own workspace. Either way it is ship.js — where it runs only changes who pays.',
       },
     ],
     Scene: TwoWaysScene,

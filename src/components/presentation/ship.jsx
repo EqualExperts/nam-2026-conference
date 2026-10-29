@@ -95,7 +95,7 @@ function SetupDetail() {
         <Kicker>The ticket</Kicker>
         <div className="mt-3 font-display text-[24px] leading-tight text-ink">#140 Keep sessions in view on mobile</div>
         <div className="mt-4 space-y-2 text-[15px] text-muted">
-          {['first card visible on a phone', 'every filter reachable', 'mobile specs still pass'].map((d, i) => (
+          {['first session in view on a phone', 'every filter still there', 'laptop unchanged'].map((d, i) => (
             <div key={d} className="pz-appear flex gap-2" style={later(200 + i * 150)}><span className="text-violet-300">☐</span>{d}</div>
           ))}
         </div>
@@ -182,7 +182,39 @@ function ImplementDetail() {
   );
 }
 
-/* The gate, then the same test run twice: with the change, then with the old
+/* The gate: everything runs, and one exit code decides. */
+const GATE = [
+  ['Unit and API tests', 'every one, in about a second'],
+  ['Browser tests, desktop and mobile', 'all of them — or, on a fast run, the ones the change reaches'],
+  ['Tests it deleted or skipped', 'listed for the auditor — a test cannot quietly go missing'],
+];
+
+function GateDetail() {
+  return (
+    <div className="grid h-full grid-cols-[1fr_420px] gap-6">
+      <div className={`${box} flex flex-col gap-3 p-6`}>
+        <Kicker>scripts/gate.mjs</Kicker>
+        {GATE.map(([what, how], i) => (
+          <div key={what} className="pz-appear flex items-center gap-4 rounded-xl bg-raised px-5 py-3" style={later(300 + i * 350)}>
+            <Tick />
+            <div>
+              <div className="text-[21px] text-ink">{what}</div>
+              <div className="text-[16px] text-muted">{how}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className={`${box} pz-appear flex flex-col justify-center p-6`} style={later(1500)}>
+        <div className="font-mono text-[26px] text-emerald-300">{'{"ok":true}'}</div>
+        <div className="mt-3 text-[20px] text-muted">
+          The script reads the exit code, not the agent’s word. <b className="text-ink">Red goes back to the implementer</b>, however sure it sounds.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The same test run twice: with the change, then with the old
  * code put back. The code card turns over to origin/main and the green result
  * flips red. */
 function Run({ file, tone, children }) {
@@ -230,7 +262,7 @@ function RedCheckDetail() {
         <div className="pz-appear mt-3 text-[18px] text-emerald-300" style={later(FLIP + 1200)}>… which is the point: the test can tell the two apart.</div>
       </div>
       <div className="pz-appear col-span-2 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(FLIP + 1700)}>
-        <Code>scripts/gate.mjs</Code> runs every unit, API and browser test, desktop and mobile — an exit code no agent can argue with. Then <Code>scripts/red-check.mjs</Code>: <b className="text-ink">a test that still passes without the fix proves nothing</b>.
+        <Code>scripts/red-check.mjs</Code> puts the old code back and runs the new tests: <b className="text-ink">a test that still passes without the fix proves nothing</b>.
       </div>
     </div>
   );
@@ -387,7 +419,7 @@ function PrDetail() {
 }
 
 // One entry per beat: the station the ticket stops at, and what it shows there.
-// Setup takes two beats — the claim, then the sizing. Spec audit, Gate and Learn
+// Setup takes two beats — the claim, then the sizing. Spec audit and Learn
 // have no stop of their own: the ticket ticks them off on its way past, and
 // their story rides in the neighbouring captions.
 const STOPS = [
@@ -396,13 +428,14 @@ const STOPS = [
   { at: 0, Detail: SizeDetail },
   { at: 1, Detail: SpecDetail },
   { at: 3, Detail: ImplementDetail },
+  { at: 4, Detail: GateDetail },
   { at: 5, Detail: RedCheckDetail },
   { at: 6, Detail: AuditDetail },
   { at: 7, Detail: LoopDetail },
   { at: 9, Detail: PrDetail },
 ];
 /** Where the needs-human chapter breaks in: after the loop, before the pull request. */
-const PR_BEAT = 8;
+const PR_BEAT = 9;
 
 const LOOP_BACK = `M${center(7)} 160 C ${center(7)} 204, ${center(3)} 204, ${center(3)} 160`;
 
@@ -454,7 +487,7 @@ const SHIP_BEATS = [
   {
     kicker: '4.2 · Size it',
     title: 'Spend the frontier model where the decision is',
-    body: 'Setup runs on Opus because every later step is sized by its call: Sonnet and Haiku for mechanical work, Opus for the hard tickets. A diff that grows risky escalates itself — or force it with /ship 42 --full.',
+    body: 'On GitHub, setup picks Small or Full. From a chat, Claude asks you, and today you pick Fast.',
   },
   {
     kicker: '4.3 · Spec, then a spec audit',
@@ -467,22 +500,27 @@ const SHIP_BEATS = [
     body: 'The check is committed while it still fails, so the history proves it failed. Every state the change adds gets its own assertion, including the moment just before a time-dependent rule applies.',
   },
   {
-    kicker: '4.5 · The gate and the red-check',
-    title: 'A gate agents cannot argue with — and proof the test can fail',
-    body: 'Every unit, API and browser test, on desktop and on mobile: a script with an exit code. Then the old code goes back and the new tests run again — if they still pass, they never tested the change.',
+    kicker: '4.5 · The gate',
+    title: 'A gate agents cannot argue with',
+    body: 'Not AI at all: a script runs the tests and reads the exit code. An agent saying it is done counts for nothing until the gate is green.',
   },
   {
-    kicker: '4.6 · Code audit',
+    kicker: '4.6 · The red-check',
+    title: 'Proof the test can fail',
+    body: 'Green alone proves little. The old code goes back and the new tests run again: if they still pass, they never tested the change.',
+  },
+  {
+    kicker: '4.7 · Code audit',
     title: 'Independent auditors, and a skeptic for every blocker',
     body: 'One lens each: the ticket’s criteria, the repo’s rules, a real browser. No layer is trusted alone — like slices of Swiss cheese, each has holes, but not in the same places, and the gate and red-check are not AI at all.',
   },
   {
-    kicker: '4.7 · Fix and loop',
+    kicker: '4.8 · Fix and loop',
     title: 'Fix, gate, audit — until a round comes back clean',
     body: 'Round limits are code, not a prompt’s good intentions: two rounds for a small ticket, four for a full one. Nothing spins all night on your token bill.',
   },
   {
-    kicker: '4.9 · Learn, then the pull request',
+    kicker: '4.10 · Learn, then the pull request',
     title: 'A pull request you can actually review',
     body: 'What the audits caught becomes context the next agent reads. Then the pull request opens — spec, proof, every audit round, the decisions for you to confirm, and the cost. Never before the gate is green.',
   },
@@ -493,27 +531,16 @@ const SHIP_BEATS = [
 
  * ------------------------------------------------------------------ */
 
-const FACTS = [
-  ['areas', 'ui · tests'],
-  ['app files', '1'],
-  ['business rule', 'no'],
-  ['stored data', 'no'],
-  ['API', 'no'],
-  ['harness', 'no'],
-  ['open design questions', '1'],
-  ['new interaction', 'no'],
-];
-
-function Lane({ title, tone, steps, foot, glow }) {
+function Lane({ title, tone, steps, foot, at }) {
   return (
-    <div className={`rounded-2xl border p-5 transition-all duration-700 ${glow ? 'pz-glow border-emerald-400/50 bg-raised' : 'border-hairline bg-surface'}`}>
+    <div className="pz-appear rounded-2xl border border-hairline bg-surface px-5 py-4" style={later(at)}>
       <div className="flex items-baseline justify-between">
-        <div className={`font-display text-[26px] ${tone}`}>{title}</div>
+        <div className={`font-display text-[24px] ${tone}`}>{title}</div>
         <div className="font-mono text-[15px] text-muted">{foot}</div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {steps.map(([label, m, n], i) => (
-          <span key={label} className="pz-appear flex items-center gap-2 rounded-xl border border-hairline bg-overlay/60 px-3 py-2 text-[15px] text-ink" style={later(300 + i * 120)}>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {steps.map(([label, m, n]) => (
+          <span key={label} className="flex items-center gap-2 rounded-xl border border-hairline bg-overlay/60 px-3 py-1.5 text-[15px] text-ink">
             {label}<Model m={m}>{n ? `${MODEL_NAME[m]} ×${n}` : undefined}</Model>
           </span>
         ))}
@@ -526,36 +553,13 @@ const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' };
 
 function SizeDetail() {
   return (
-    <div className="grid h-full grid-cols-[400px_1fr] gap-6">
-      <div className={`${box} p-5`}>
-        <Model m="opus" className="text-[15px]">Setup · Opus</Model>
-        <div className="mt-2 font-display text-[22px] leading-tight text-ink">Reports facts, not a verdict</div>
-        <div className="mt-3 space-y-1">
-          {FACTS.slice(0, 6).map(([k, v], i) => (
-            <div key={k} className="pz-appear flex justify-between border-b border-hairline/60 pb-1 text-[15px]" style={later(200 + i * 90)}>
-              <span className="text-muted">{k}</span><span className="font-mono text-ink">{v}</span>
-            </div>
-          ))}
-        </div>
-        <div className="pz-appear mt-3 text-[15px] text-faint" style={later(900)}>
-          The <b className="text-ink">script</b> composes the run from these — an agent never picks its own budget.
-        </div>
-      </div>
-      <div className="flex flex-col gap-4">
-        <Lane
-          glow
-          title="🟢 Small — most tickets"
-          tone="text-emerald-300"
-          foot="2 rounds · ~$0.70–1.50"
-          steps={[['setup + plan', 'opus'], ['implement', 'sonnet'], ['gate', 'haiku'], ['one auditor', 'sonnet'], ['fix', 'sonnet'], ['PR', 'haiku']]}
-        />
-        <Lane
-          title="🔵 Full — rules, APIs, bigger changes"
-          tone="text-fuchsia-300"
-          foot="4 rounds · ~$6.50"
-          steps={[['setup', 'opus'], ['plan writer', 'opus'], ['plan audit', 'opus', 2], ['implement', 'opus'], ['gate', 'haiku'], ['auditors', 'opus', 3], ['fix', 'opus'], ['PR', 'haiku']]}
-        />
-      </div>
+    <div className="flex flex-col gap-3">
+      <Lane at={200} title="⚡ Fast — the workshop" tone="text-emerald-300" foot="2 rounds"
+        steps={[['setup', 'sonnet'], ['plan', 'sonnet'], ['implement', 'sonnet'], ['gate, tests it reaches', 'haiku'], ['one auditor', 'sonnet'], ['fix', 'sonnet'], ['PR', 'haiku']]} />
+      <Lane at={450} title="🟢 Small — most tickets" tone="text-sky-300" foot="2 rounds"
+        steps={[['setup', 'opus'], ['plan', 'sonnet'], ['implement', 'sonnet'], ['gate', 'haiku'], ['auditors', 'sonnet', 2], ['fix', 'sonnet'], ['PR', 'haiku']]} />
+      <Lane at={700} title="🔵 Full — rules, APIs, bigger changes" tone="text-fuchsia-300" foot="4 rounds"
+        steps={[['setup', 'opus'], ['plan', 'opus'], ['plan audit', 'opus', 2], ['implement', 'opus'], ['gate', 'haiku'], ['auditors', 'opus', 3], ['fix', 'opus'], ['PR', 'haiku']]} />
     </div>
   );
 }

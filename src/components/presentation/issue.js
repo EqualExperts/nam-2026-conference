@@ -6,12 +6,12 @@
 export const ISSUE_140 = {
   number: 140,
   title: 'Keep sessions in view on mobile: stop the stacked filters filling the screen',
-  why: 'on a phone the day tabs, track pills and venue filter stack at full width, so an attendee scrolls past the whole filter block before seeing a single session.',
-  what: 'below the desktop breakpoint, compact the filter block on /schedule so sessions start in view — every filter still reachable.',
+  why: 'on a phone the filters fill the whole screen, so you have to scroll before you see a single session.',
+  what: 'make the schedule’s filters take up less room on a phone, so the sessions are the first thing you see.',
   doneWhen: [
-    'At a phone-width viewport on /schedule, the first session card is visible without scrolling past the full filter block.',
-    'Every filter (day, track, venue, level, format, topic, search) is still reachable on mobile.',
-    'Existing mobile specs still pass.',
+    'On a phone, I can see the first session on the schedule without scrolling.',
+    'On a phone, I can still filter by day, track, venue, level, format and topic, and search.',
+    'On a laptop, the schedule looks and works exactly as it does today.',
   ],
-  outOfScope: 'whether the My agenda card hides on phones — a layout call for whoever builds this.',
+  outOfScope: 'whether to hide the My Agenda card on phones. Whoever builds this can decide.',
 };
