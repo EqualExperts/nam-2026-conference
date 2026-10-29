@@ -20,6 +20,12 @@ export const meta = {
 const argText = typeof args === 'object' && args ? '' : String(args ?? '')
 const pr = Number(typeof args === 'object' && args ? args.pr : (/#?(\d+)/.exec(argText) || [])[1])
 const PUBLISH = typeof args === 'object' && args ? args.publish !== false : !/--no-publish/.test(argText)
+
+// Follow-ups are listed in the comment; filing each as an issue is opt-in
+// (--file-follow-ups, or the FILE_FOLLOW_UPS repository variable in CI). On by
+// default they buried a workshop fork's Issues tab under tickets nobody asked
+// for, alongside the ones the attendees wrote.
+const FILE_FOLLOW_UPS = typeof args === 'object' && args ? args.fileFollowUps === true : /--file-follow-ups\b/.test(argText)
 // The team's dial and one more fact: a change that is only prose about the app
 // is not QA's to exercise, and "thorough" never lets the planner skip.
 const DEPTH = (/--depth=(fast|balanced|thorough)\b/.exec(argText) || [])[1] || (typeof args === 'object' && args && args.depth) || 'balanced'
@@ -468,7 +474,7 @@ function criteriaCovered(criteria, ranIds) {
 
 async function publish(r) {
   const CALLOUT = { high: ['TIP', '●●●'], medium: ['NOTE', '●●○'], low: ['WARNING', '●○○'] }
-  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug', 'follow-up': 'a follow-up — reproduced, but contrived or harmless; filed as an issue' }
+  const LABEL = { bug: 'a bug in this change', 'pre-existing': 'pre-existing', flaky: 'a question — did not reproduce', question: 'a question — reproduced, but refuted as a bug', 'follow-up': `a follow-up — reproduced, but contrived or harmless${FILE_FOLLOW_UPS ? '; filed as an issue' : ''}` }
   const findings = r.findings || []
   let head, line
   if (r.verdict === 'fail') {
@@ -496,7 +502,7 @@ async function publish(r) {
   let comment = body, file = []
   if (r.verdict === 'pass' || r.verdict === 'fail') {
     const fus = findings.filter(f => f.kind === 'follow-up').slice(0, 3)
-    file = fus.filter(f => !filedBefore.has(f.probe.id)).map(f => ({
+    file = (FILE_FOLLOW_UPS ? fus : []).filter(f => !filedBefore.has(f.probe.id)).map(f => ({
       key: f.probe.id,
       title: `Follow-up from #${pr}: ${f.probe.id} — ${f.happened}`.slice(0, 120),
       body: `QA reproduced this on #${pr} and judged it not a blocker: ${f.doubt}.\n\nProbe ${f.probe.id} (${f.project})\n` +
