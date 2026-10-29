@@ -182,7 +182,39 @@ function ImplementDetail() {
   );
 }
 
-/* The gate, then the same test run twice: with the change, then with the old
+/* The gate: everything runs, and one exit code decides. */
+const GATE = [
+  ['Unit and API tests', 'every one, in about a second'],
+  ['Browser tests, desktop and mobile', 'all of them — or, on a fast run, the ones the change reaches'],
+  ['Tests it deleted or skipped', 'listed for the auditor — a test cannot quietly go missing'],
+];
+
+function GateDetail() {
+  return (
+    <div className="grid h-full grid-cols-[1fr_420px] gap-6">
+      <div className={`${box} flex flex-col gap-3 p-6`}>
+        <Kicker>scripts/gate.mjs</Kicker>
+        {GATE.map(([what, how], i) => (
+          <div key={what} className="pz-appear flex items-center gap-4 rounded-xl bg-raised px-5 py-3" style={later(300 + i * 350)}>
+            <Tick />
+            <div>
+              <div className="text-[21px] text-ink">{what}</div>
+              <div className="text-[16px] text-muted">{how}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className={`${box} pz-appear flex flex-col justify-center p-6`} style={later(1500)}>
+        <div className="font-mono text-[26px] text-emerald-300">{'{"ok":true}'}</div>
+        <div className="mt-3 text-[20px] text-muted">
+          The script reads the exit code, not the agent’s word. <b className="text-ink">Red goes back to the implementer</b>, however sure it sounds.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The same test run twice: with the change, then with the old
  * code put back. The code card turns over to origin/main and the green result
  * flips red. */
 function Run({ file, tone, children }) {
@@ -230,7 +262,7 @@ function RedCheckDetail() {
         <div className="pz-appear mt-3 text-[18px] text-emerald-300" style={later(FLIP + 1200)}>… which is the point: the test can tell the two apart.</div>
       </div>
       <div className="pz-appear col-span-2 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(FLIP + 1700)}>
-        <Code>scripts/gate.mjs</Code> runs every unit, API and browser test, desktop and mobile — an exit code no agent can argue with. Then <Code>scripts/red-check.mjs</Code>: <b className="text-ink">a test that still passes without the fix proves nothing</b>.
+        <Code>scripts/red-check.mjs</Code> puts the old code back and runs the new tests: <b className="text-ink">a test that still passes without the fix proves nothing</b>.
       </div>
     </div>
   );
@@ -387,7 +419,7 @@ function PrDetail() {
 }
 
 // One entry per beat: the station the ticket stops at, and what it shows there.
-// Setup takes two beats — the claim, then the sizing. Spec audit, Gate and Learn
+// Setup takes two beats — the claim, then the sizing. Spec audit and Learn
 // have no stop of their own: the ticket ticks them off on its way past, and
 // their story rides in the neighbouring captions.
 const STOPS = [
@@ -396,13 +428,14 @@ const STOPS = [
   { at: 0, Detail: SizeDetail },
   { at: 1, Detail: SpecDetail },
   { at: 3, Detail: ImplementDetail },
+  { at: 4, Detail: GateDetail },
   { at: 5, Detail: RedCheckDetail },
   { at: 6, Detail: AuditDetail },
   { at: 7, Detail: LoopDetail },
   { at: 9, Detail: PrDetail },
 ];
 /** Where the needs-human chapter breaks in: after the loop, before the pull request. */
-const PR_BEAT = 8;
+const PR_BEAT = 9;
 
 const LOOP_BACK = `M${center(7)} 160 C ${center(7)} 204, ${center(3)} 204, ${center(3)} 160`;
 
@@ -467,22 +500,27 @@ const SHIP_BEATS = [
     body: 'The check is committed while it still fails, so the history proves it failed. Every state the change adds gets its own assertion, including the moment just before a time-dependent rule applies.',
   },
   {
-    kicker: '4.5 · The gate and the red-check',
-    title: 'A gate agents cannot argue with — and proof the test can fail',
-    body: 'Every unit and API test, and the browser tests — all on a full run, those the change reaches on a fast one. Then the old code goes back: if the new tests still pass, they never tested the change.',
+    kicker: '4.5 · The gate',
+    title: 'A gate agents cannot argue with',
+    body: 'Not AI at all: a script runs the tests and reads the exit code. An agent saying it is done counts for nothing until the gate is green.',
   },
   {
-    kicker: '4.6 · Code audit',
+    kicker: '4.6 · The red-check',
+    title: 'Proof the test can fail',
+    body: 'Green alone proves little. The old code goes back and the new tests run again: if they still pass, they never tested the change.',
+  },
+  {
+    kicker: '4.7 · Code audit',
     title: 'Independent auditors, and a skeptic for every blocker',
     body: 'One lens each: the ticket’s criteria, the repo’s rules, a real browser. No layer is trusted alone — like slices of Swiss cheese, each has holes, but not in the same places, and the gate and red-check are not AI at all.',
   },
   {
-    kicker: '4.7 · Fix and loop',
+    kicker: '4.8 · Fix and loop',
     title: 'Fix, gate, audit — until a round comes back clean',
     body: 'Round limits are code, not a prompt’s good intentions: two rounds for a small ticket, four for a full one. Nothing spins all night on your token bill.',
   },
   {
-    kicker: '4.9 · Learn, then the pull request',
+    kicker: '4.10 · Learn, then the pull request',
     title: 'A pull request you can actually review',
     body: 'What the audits caught becomes context the next agent reads. Then the pull request opens — spec, proof, every audit round, the decisions for you to confirm, and the cost. Never before the gate is green.',
   },

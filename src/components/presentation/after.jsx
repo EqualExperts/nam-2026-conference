@@ -108,12 +108,12 @@ function NeedsHumanScene({ step }) {
 
 const NEEDS_HUMAN_BEATS = [
   {
-    kicker: '4.8 · When it will not converge',
+    kicker: '4.9 · When it will not converge',
     title: 'The same finding, surviving two fixes',
     body: 'Some tickets cannot be finished by an agent — the ticket contradicts itself, or the fix needs a decision only a person can make. Ship notices it is going round in circles and stops.',
   },
   {
-    kicker: '4.8 · needs-human, then you',
+    kicker: '4.9 · needs-human, then you',
     title: 'It hands back everything it knows; you answer and ship it again',
     body: 'A draft pull request with the work so far, a comment saying exactly what is still open, and the needs-human label for the board. You make the call it could not, then ship it again — a fresh run starts from your answer.',
   },
