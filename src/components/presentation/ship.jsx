@@ -95,7 +95,7 @@ function SetupDetail() {
         <Kicker>The ticket</Kicker>
         <div className="mt-3 font-display text-[24px] leading-tight text-ink">#140 Keep sessions in view on mobile</div>
         <div className="mt-4 space-y-2 text-[15px] text-muted">
-          {['first card visible on a phone', 'every filter reachable', 'mobile specs still pass'].map((d, i) => (
+          {['first session in view on a phone', 'every filter still there', 'laptop unchanged'].map((d, i) => (
             <div key={d} className="pz-appear flex gap-2" style={later(200 + i * 150)}><span className="text-violet-300">☐</span>{d}</div>
           ))}
         </div>
