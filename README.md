@@ -4,6 +4,8 @@
 
 **A workshop on AI across the software delivery lifecycle**
 
+[▶️ Try the app](https://orbit26.up.railway.app/)
+
 </div>
 
 A conference app wired to two AI harnesses: one turns a conversation into a
