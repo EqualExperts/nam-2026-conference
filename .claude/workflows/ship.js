@@ -14,6 +14,13 @@ export const meta = {
   ],
 }
 
+// The workflow's version. Bump it in any change to this file — a unit test
+// fails if the file changed and this did not. A chat session loads a named
+// workflow when it starts and keeps it, so after a `git pull` the session can
+// run an older ship.js than the repository it builds in: old code reading new
+// docs, deciding by itself what the code no longer does. Setup refuses that.
+const HARNESS = 2
+
 // ── Knobs ────────────────────────────────────────────────────────────────────
 // A loop that has not converged by these counts is not going to. Past them the
 // ticket goes to a person, with everything still open written down, rather than
@@ -108,6 +115,25 @@ const FORCED = FLAG === 'sized' ? undefined : FLAG || 'fast'
 const NOTES = String((typeof args === 'object' && args ? args.notes : argText.slice(LEAD.length)) || '')
   .replace(/@claude\b/gi, '').replace(/--(full|small|fast|sized)\b/g, '').trim()
 
+// Is this ship.js older than the one on the base? One rote step reads the
+// base's stamp; a lower stamp here means a stale session, and nothing is
+// touched. A higher one (run by path from a branch) is fine. The check that
+// could not run lets the run go on: it guards a stale session, not the network.
+const STALE_SCHEMA = { type: 'object', required: ['line'], properties: { line: { type: 'string', description: 'the line the command printed, verbatim, or "" if none' } } }
+async function staleness(base) {
+  const r = await rote(
+    `Run exactly \`git fetch -q origin ${base}; git show origin/${base}:.claude/workflows/ship.js | grep -m1 -E '^const HARNESS = '\` ` +
+    `once and return the line it printed, verbatim, as line ("" if it printed nothing). Change nothing and interpret nothing.`,
+    { phase: 'Setup', label: 'harness', schema: STALE_SCHEMA, effort: 'low', model: ROTE },
+  ).catch(() => null)
+  const m = /HARNESS\s*=\s*(\d+)/.exec((r && r.line) || '')
+  return m && Number(m[1]) > HARNESS
+    ? `This session's ship workflow is older than the repository's (version ${HARNESS}, origin/${base} has ${m[1]}) — ` +
+      `start a new chat session, or run it from .claude/workflows/ship.js by path. Nothing was claimed or changed.`
+    : null
+}
+const CHECKED = typeof args === 'object' && args && args.harnessChecked
+
 // Several tickets: one whole ship per ticket, all at once. Each gets its own
 // worktree and lane, so they build, boot the app and run the suite side by
 // side; each sizes itself, so a copy fix and a feature in the same batch get
@@ -116,9 +142,11 @@ if (ISSUES.length > 1 && !(typeof args === 'object' && args)) {
   if (typeof workflow !== 'function') {
     return { outcome: 'error', reason: 'shipping several tickets needs the workflow() hook — run each with /ship <n>' }
   }
+  const stale = await staleness('main')
+  if (stale) return { outcome: 'declined', issues: ISSUES, reason: stale }
   log(`shipping ${ISSUES.length} tickets in parallel: ${ISSUES.map(n => `#${n}`).join(', ')}`)
   const runs = await parallel(ISSUES.map(n => () =>
-    workflow('ship', { issue: n, notes: NOTES, batch: ISSUES, ...(FLAG ? { size: FLAG } : {}) })))
+    workflow('ship', { issue: n, notes: NOTES, batch: ISSUES, harnessChecked: true, ...(FLAG ? { size: FLAG } : {}) })))
   return {
     outcome: 'batch',
     runs: runs.map((r, i) => r || { outcome: 'error', issue: ISSUES[i], reason: 'the run died' }),
@@ -621,6 +649,10 @@ enter('Setup')
 // base. Not done but being built (a branch, an open PR): stack on it — build
 // on its branch, and the on-merge workflow moves this PR to main when it
 // lands. Not done and not started, or two at once: stop, nothing touched.
+if (!CHECKED) {
+  const stale = await staleness(BASE)
+  if (stale) return { outcome: 'declined', issue, reason: stale }
+}
 if (!(typeof args === 'object' && args && args.base)) {
   const deps = await rote(
     `${PIN} Then run exactly \`node scripts/depends.mjs ${issue}${BATCHED.length ? ` --batch ${BATCHED.join(',')} --wait 300` : ' --wait 120'}\` ` +
@@ -662,7 +694,11 @@ setup = await agent(
   `The worktree goes under that checkout's .claude/worktrees/ (§3). Follow §1–§3 of ${SKILL} exactly (${sections(1, '4')} prints them, and §9 is ${sections(9, '10')}): read the ticket, decide whether ` +
   `it is shippable (stop if it is closed, already has a ready — non-draft — PR, states no outcome a check could be written ` +
   `against, or asks for two unrelated things; a draft is an earlier attempt to continue)` +
-  `${STACK ? ` — its **Depends on** #${STACK.n} is not merged yet, and that is expected: this run stacks on #${STACK.n}'s branch, ${STACK.branch}` : ''}, claim it — removing ` +
+  `. **A Depends on line has already been checked by the script** (scripts/depends.mjs, before you started): ` +
+  (STACK
+    ? `#${STACK.n} is not merged yet, and that is expected — this run builds on its branch, ${STACK.branch}, so that is the base below. `
+    : `whatever it names is done, or there is none. `) +
+  `Never decline, comment or label because of a dependency: that is not your call. Then claim it — removing ` +
   `ready-for-ai (and any needs-human or ready-for-human left by an earlier attempt) whether or not you proceed — ` +
   `and make the workspace — branch in a runner, ` +
   `worktree + npm install on a laptop, at exactly the path §3 gives (.claude/worktrees/wt-${issue} inside the checkout) — \`git fetch --prune origin\` first, then from origin/${BASE}, not necessarily main. If an issue-${issue}-* branch has an open draft pull request ` +

@@ -263,6 +263,12 @@ why. Ask Claude to ship the issue (`/ship <n>`) instead.
    *review it, then click **Squash and merge** on GitHub*. A draft
    (`needs-human`) gets its link and what is still open instead.
 
+   **A change to `.claude/workflows/` takes effect in a new chat session.** A
+   session loads ship when it starts and keeps that copy, so after a pull it
+   would run old code against new docs. Ship checks its own version stamp
+   (`HARNESS`) against the base's before it touches the ticket, and stops with
+   *start a new chat session* if it is older.
+
    Quote only that one time; the others are slower in that order, Full the
    slowest, and no time for them has been measured since — so do not put a
    number on them. Then start it with that flag. A run with no flag is fast. Setup sizes the ticket: most are **small**
