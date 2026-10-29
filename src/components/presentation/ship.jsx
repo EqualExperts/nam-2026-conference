@@ -454,7 +454,7 @@ const SHIP_BEATS = [
   {
     kicker: '4.2 · Size it',
     title: 'Spend the frontier model where the decision is',
-    body: 'On GitHub, setup sizes it, and every later step follows its call: Sonnet and Haiku for mechanical work, Opus for the hard tickets. From a chat you pick — Fast for the workshop, Sized, Small or Full.',
+    body: 'On GitHub, setup picks Small or Full. From a chat, Claude asks you, and today you pick Fast.',
   },
   {
     kicker: '4.3 · Spec, then a spec audit',
@@ -493,27 +493,16 @@ const SHIP_BEATS = [
 
  * ------------------------------------------------------------------ */
 
-const FACTS = [
-  ['areas', 'ui · tests'],
-  ['app files', '1'],
-  ['business rule', 'no'],
-  ['stored data', 'no'],
-  ['API', 'no'],
-  ['harness', 'no'],
-  ['open design questions', '1'],
-  ['new interaction', 'no'],
-];
-
-function Lane({ title, tone, steps, foot, glow }) {
+function Lane({ title, tone, steps, foot, at }) {
   return (
-    <div className={`rounded-2xl border p-5 transition-all duration-700 ${glow ? 'pz-glow border-emerald-400/50 bg-raised' : 'border-hairline bg-surface'}`}>
+    <div className="pz-appear rounded-2xl border border-hairline bg-surface px-5 py-4" style={later(at)}>
       <div className="flex items-baseline justify-between">
-        <div className={`font-display text-[26px] ${tone}`}>{title}</div>
+        <div className={`font-display text-[24px] ${tone}`}>{title}</div>
         <div className="font-mono text-[15px] text-muted">{foot}</div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {steps.map(([label, m, n], i) => (
-          <span key={label} className="pz-appear flex items-center gap-2 rounded-xl border border-hairline bg-overlay/60 px-3 py-2 text-[15px] text-ink" style={later(300 + i * 120)}>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {steps.map(([label, m, n]) => (
+          <span key={label} className="flex items-center gap-2 rounded-xl border border-hairline bg-overlay/60 px-3 py-1.5 text-[15px] text-ink">
             {label}<Model m={m}>{n ? `${MODEL_NAME[m]} ×${n}` : undefined}</Model>
           </span>
         ))}
@@ -526,36 +515,13 @@ const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' };
 
 function SizeDetail() {
   return (
-    <div className="grid h-full grid-cols-[400px_1fr] gap-6">
-      <div className={`${box} p-5`}>
-        <Model m="opus" className="text-[15px]">Setup · Opus</Model>
-        <div className="mt-2 font-display text-[22px] leading-tight text-ink">Reports facts, not a verdict</div>
-        <div className="mt-3 space-y-1">
-          {FACTS.slice(0, 6).map(([k, v], i) => (
-            <div key={k} className="pz-appear flex justify-between border-b border-hairline/60 pb-1 text-[15px]" style={later(200 + i * 90)}>
-              <span className="text-muted">{k}</span><span className="font-mono text-ink">{v}</span>
-            </div>
-          ))}
-        </div>
-        <div className="pz-appear mt-3 text-[15px] text-faint" style={later(900)}>
-          The <b className="text-ink">script</b> composes the run from these — an agent never picks its own budget.
-        </div>
-      </div>
-      <div className="flex flex-col gap-4">
-        <Lane
-          glow
-          title="🟢 Small — most tickets"
-          tone="text-emerald-300"
-          foot="2 rounds · ~$0.70–1.50"
-          steps={[['setup + plan', 'opus'], ['implement', 'sonnet'], ['gate', 'haiku'], ['one auditor', 'sonnet'], ['fix', 'sonnet'], ['PR', 'haiku']]}
-        />
-        <Lane
-          title="🔵 Full — rules, APIs, bigger changes"
-          tone="text-fuchsia-300"
-          foot="4 rounds · ~$6.50"
-          steps={[['setup', 'opus'], ['plan writer', 'opus'], ['plan audit', 'opus', 2], ['implement', 'opus'], ['gate', 'haiku'], ['auditors', 'opus', 3], ['fix', 'opus'], ['PR', 'haiku']]}
-        />
-      </div>
+    <div className="flex flex-col gap-3">
+      <Lane at={200} title="⚡ Fast — the workshop" tone="text-emerald-300" foot="2 rounds"
+        steps={[['setup', 'sonnet'], ['plan', 'sonnet'], ['implement', 'sonnet'], ['gate, tests it reaches', 'haiku'], ['one auditor', 'sonnet'], ['fix', 'sonnet'], ['PR', 'haiku']]} />
+      <Lane at={450} title="🟢 Small — most tickets" tone="text-sky-300" foot="2 rounds"
+        steps={[['setup', 'opus'], ['plan', 'sonnet'], ['implement', 'sonnet'], ['gate', 'haiku'], ['auditors', 'sonnet', 2], ['fix', 'sonnet'], ['PR', 'haiku']]} />
+      <Lane at={700} title="🔵 Full — rules, APIs, bigger changes" tone="text-fuchsia-300" foot="4 rounds"
+        steps={[['setup', 'opus'], ['plan', 'opus'], ['plan audit', 'opus', 2], ['implement', 'opus'], ['gate', 'haiku'], ['auditors', 'opus', 3], ['fix', 'opus'], ['PR', 'haiku']]} />
     </div>
   );
 }
