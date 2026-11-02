@@ -1,7 +1,16 @@
+---
+area: data-model
+summary: The SQLite schema — every table, its rough size from a fresh seed, and the columns that carry meaning.
+read_when: adding or changing a table or column, writing a query, wondering what a field means
+files:
+  - server/db.js
+related: [architecture, seed]
+---
+
 # Data model
 
 SQLite, one file at `data/orbit.db`, rebuilt from scratch by `npm run db:seed`.
-The authoritative schema is the `SCHEMA` string in [`server/db.js`](../server/db.js);
+The authoritative schema is the `SCHEMA` string in [`server/db.js`](../../server/db.js);
 this document explains the shape and the parts that carry meaning.
 
 ## Scale

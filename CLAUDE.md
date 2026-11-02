@@ -19,7 +19,7 @@ another change:
 Everything underneath is real and tested: seats, the waitlist, clashes,
 check-in, ratings, follows, `/users/:id/schedule`, `/users/:id/today`, `/live`
 and the `.ics` exports, each with a function in `src/lib/api.js`. A ticket that
-only needs a page on top of one of those is small. (how: `docs/context/agenda.md`)
+only needs a page on top of one of those is small. (how: `context/engineering-context/agenda.md`)
 
 ## Run it
 
@@ -30,7 +30,7 @@ npm test         # unit + API, under a second — after every edit
 npm run verify   # reseed + Playwright, desktop and mobile — before "done"
 ```
 
-Every other command and flag: `docs/context/testing.md`.
+Every other command and flag: `context/engineering-context/testing.md`.
 
 **Asked to open, try or show a feature in the browser**, run
 `npm run show -- <issue | PR | branch>` — never a bare `npm run dev` or
@@ -46,7 +46,13 @@ if you are reaching for one, you are probably solving the wrong problem.
 
 ## Start from the context docs
 
-This file says what was decided and why; `docs/context/` says where it lives
+`context/` holds what the code cannot tell you, with an `index.md` in every
+folder — read the index, then only the documents it points you to.
+`product-context/` is who the app is for and why, `engineering-context/` is how
+it is built, and `winnow-transcripts/` records what each conversation decided.
+`context/index.md` says what goes where.
+
+This file says what was decided and why; `context/engineering-context/` says where it lives
 and how it works — files, functions, payloads, test ids, the repo layout.
 `node scripts/context.mjs index` lists one doc per area and when to read it;
 `show <doc>` prints a doc's outline and `show <doc> Gotchas <part>` just those
@@ -117,14 +123,14 @@ toast — a toast disappears while the decision is still open.
 
 The rules run in transactions in `seats.js` and `attendance.js`, taking the
 clock from the *client*, because conference time is simulated. (how:
-`docs/context/seats.md`, `attendance.md`)
+`context/engineering-context/seats.md`, `attendance.md`)
 
 ### Writing tests against this
 
 That state is real, and Playwright tests all run concurrently. Give each
 **test, per project,** its own attendee and day (a data lane), release what you
 book, and never reuse an attended session — a check-in cannot be undone. (how:
-`docs/context/testing.md`)
+`context/engineering-context/testing.md`)
 
 ## The conference clock
 
@@ -137,7 +143,7 @@ every 30 seconds, clamped to a lively mid-morning outside 08:00–22:30. Read it
 from `useConference().clock` (`{ day, time }`) — never `new Date()` in a
 component. Pin it with `?at=YYYY-MM-DDTHH:MM`; a value without the time part is
 ignored. **Any test that touches live state must pin the clock**, otherwise it
-passes or fails depending on the hour it runs. (how: `docs/context/clock.md`)
+passes or fails depending on the hour it runs. (how: `context/engineering-context/clock.md`)
 
 ## Nothing may claim to be true when it is not
 
@@ -163,7 +169,7 @@ Three layers, fastest first: `npm test`, `npm run verify` (the gate for
 "done"), `npm run shot` if visual. **If a rule can be proven without a browser,
 prove it without one** — an agent can afford `npm test` after every edit, not
 Playwright. Pure functions → unit; rules needing the database → API; what the
-attendee sees → spec. (how: `docs/context/testing.md`)
+attendee sees → spec. (how: `context/engineering-context/testing.md`)
 
 **Claim a lane before you run anything** in a worktree
 (`eval "$(node scripts/lane.mjs claim 42)"`). Without one, Playwright reuses any
@@ -193,19 +199,19 @@ GitHub MCP server or the REST API with a token reach the same issues; none is
 preferred, so use whichever is available. To confirm access, probe read-only —
 list or read an existing issue — and never create a test ticket to find out.
 
-Labels and workflow conventions live in `docs/harness/github.md` and
-`docs/context/harness.md`; they are not repeated here.
+Labels and workflow conventions live in `context/engineering-context/harness/github.md` and
+`context/engineering-context/harness.md`; they are not repeated here.
 
 ## Data model
 
 Four days from the day you seed, ~140 sessions, 110 speakers, **two venues 6.2
-miles apart**, no authentication. Schema: `docs/DATA_MODEL.md`; the seeded
-attendees: `docs/context/seed.md`.
+miles apart**, no authentication. Schema: `context/engineering-context/data-model.md`; the seeded
+attendees: `context/engineering-context/seed.md`.
 
 ## Setting this up on a fork
 
 Actions → **Set up the harness** → Run workflow. A fork inherits the workflows
-but not the labels. Keys, tokens and triggers: `docs/harness/github.md`.
+but not the labels. Keys, tokens and triggers: `context/engineering-context/harness/github.md`.
 
 **In a workshop fork, ship from Claude, not the label.** `ready-for-ai` starts
 ship on GitHub Actions, which needs an `ANTHROPIC_API_KEY` secret a workshop
@@ -274,7 +280,7 @@ why. Ask Claude to ship the issue (`/ship <n>`) instead.
    a **confidence** meaning coverage, not feeling; a low one reads *unproven*.
 4. **A human merges.** Nothing is a required check.
 
-(how: `docs/context/harness.md`, `docs/harness/ship-playbook.md`)
+(how: `context/engineering-context/harness.md`, `context/engineering-context/harness/ship-playbook.md`)
 
 ## Every change starts with a spec
 

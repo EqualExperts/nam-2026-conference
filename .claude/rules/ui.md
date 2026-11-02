@@ -19,12 +19,12 @@ UI work needs.
 
 **Page data comes from `useFetch`; global data from `useConference()`** — do
 not refetch venues, days, the clock, the current user or their reservations per
-page. (how: `docs/context/architecture.md`)
+page. (how: `context/engineering-context/architecture.md`)
 
 **A modal copies `ConflictDialog`** — portalled to `document.body` when opened
 from the header, a full-screen backdrop `<button aria-label="Close">` behind
 the panel, Escape and focus in one effect, a bottom sheet capped at
-`max-h-[85dvh]` on a phone. (how: `docs/context/ui.md` § Dialogs)
+`max-h-[85dvh]` on a phone. (how: `context/engineering-context/ui.md` § Dialogs)
 
 **Filters live in the URL** (`useSearchParams`), so a filtered view is shareable
 and survives reload. `'all'` means "no filter".
@@ -60,7 +60,7 @@ If you ever regenerate a synthetic one:
    the dataset contains children.
 
 Everything else — avatar fallbacks, cover art, sponsor marks — is generated
-deterministically from a string. (how: `docs/context/seed.md`, `ui.md`)
+deterministically from a string. (how: `context/engineering-context/seed.md`, `ui.md`)
 
 `VenueRouteMap` is the *only* map, and it is honest because the two venues'
 lat/lng are real. There was once a per-venue "floor plan" built from invented
@@ -82,7 +82,7 @@ teams build; build one when a ticket asks for it. When you do:
 - Sections **self-hide when empty** — follow `LatestAnnouncement`.
 - Home is not a brochure: an attendee bought a ticket, so the dates and track
   list tell them nothing new. A section there has to answer "why here and not on
-  the page that owns it?" (how: `docs/context/agenda.md`)
+  the page that owns it?" (how: `context/engineering-context/agenda.md`)
 
 ## Chrome and correctness
 
@@ -98,7 +98,7 @@ Easy to forget, and immediately read as unfinished:
   and forces `.reveal` visible, so nothing hides behind an animation that never
   runs; anything new must survive that. The one exception is the presentation,
   which uses Motion (`motion/react`) under `<MotionConfig reducedMotion="user">`;
-  keep that library there. (how: `docs/context/ui.md`)
+  keep that library there. (how: `context/engineering-context/ui.md`)
 
 ## The schedule has two views
 
@@ -111,7 +111,7 @@ The grid only makes sense when whole rooms are visible, so a content filter
 grid with a reason; a venue filter only drops columns. It relies on the seed
 giving each day a **stable set of five rooms, each with a track for the day** —
 scatter talks across arbitrary rooms and the grid becomes a mostly-empty
-spreadsheet. (how: `docs/context/schedule.md`)
+spreadsheet. (how: `context/engineering-context/schedule.md`)
 
 ## Visual hierarchy
 
@@ -126,4 +126,4 @@ The speakers page is tiered because 110 people are too many for one flat grid
 — followed, then featured headliners, then an A–Z index — and flattens once the
 user searches, filters or re-sorts, because then they have stated what matters.
 Mixed grids use `grid-flow-row-dense` so wide cards leave no holes. (how:
-`docs/context/speakers.md`)
+`context/engineering-context/speakers.md`)

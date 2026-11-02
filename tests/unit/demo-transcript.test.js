@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const PATH = 'docs/demo/winnow-transcript.txt';
+const PATH = 'context/winnow-transcripts/demo-transcript.txt';
 const tracked = () => execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n');
 
 test('the demo transcript exists with a header naming its source and how to use it', () => {
@@ -37,7 +37,7 @@ test('the transcript is tracked and the audio is not', () => {
 });
 
 test('the quickstart links to the transcript from the product harness walkthrough', () => {
-  const guide = readFileSync('docs/harness/quickstart.md', 'utf8');
+  const guide = readFileSync('context/engineering-context/harness/quickstart.md', 'utf8');
   const start = guide.indexOf('## The product harness');
   const end = guide.indexOf('## The engineering harness');
   assert.ok(start > -1 && end > start);

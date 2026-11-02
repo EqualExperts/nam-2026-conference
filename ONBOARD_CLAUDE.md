@@ -890,7 +890,7 @@ filled in:
 > **yes**: the workshop plans to listen to a live conversation. It's a one-time
 > download of a few hundred MB plus a microphone permission, so it's best done
 > now rather than on the day. Then
-> `/winnow docs/demo/winnow-transcript.txt` to turn a sample conversation into
+> `/winnow context/winnow-transcripts/demo-transcript.txt` to turn a sample conversation into
 > tickets, and `/ship <ticket number>` to build one.
 >
 > *Heads-up: `/ship` is heavy. One small ticket can take a million or so

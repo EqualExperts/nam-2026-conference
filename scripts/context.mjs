@@ -7,7 +7,7 @@
  *   node scripts/context.mjs show seats                # a doc's outline: its sections and parts, with sizes
  *   node scripts/context.mjs show seats Gotchas Waitlist   # only those parts
  *
- * Each file in `docs/context/` describes one area of the app, with YAML front
+ * Each file in `context/engineering-context/` describes one area of the app, with YAML front
  * matter saying what it covers, which files it owns and when to read it. An
  * agent starts from `index` — about a thousand tokens — picks the one or two docs
  * its ticket touches, and opens source only for the lines it will change.
@@ -33,7 +33,7 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
-export const DIR = 'docs/context';
+export const DIR = 'context/engineering-context';
 const LISTS = ['files', 'tests', 'related'];
 /** Every tracked file under these must be owned by some doc. */
 export const OWNED = ['server/', 'src/', 'scripts/', 'tests/'];
@@ -64,12 +64,12 @@ export function frontMatter(text) {
 
 const unquote = (s) => s.replace(/^(['"])(.*)\1$/, '$2');
 
-/** Every context doc, with its front matter and path. README is the index's own doc. */
+/** Every context doc, with its front matter and path. index.md is the folder's own map. */
 export function load(root = ROOT) {
   const dir = join(root, DIR);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
-    .filter(f => f.endsWith('.md') && f !== 'README.md')
+    .filter(f => f.endsWith('.md') && f !== 'index.md')
     .sort()
     .map(f => {
       const path = `${DIR}/${f}`;

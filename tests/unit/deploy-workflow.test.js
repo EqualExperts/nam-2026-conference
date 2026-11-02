@@ -77,7 +77,7 @@ describe('deploy workflow', () => {
   });
 
   test('the secret is documented', () => {
-    const doc = read('docs/harness/github.md');
+    const doc = read('context/engineering-context/harness/github.md');
     assert.match(doc, /RAILWAY_TOKEN/);
     assert.match(doc, /deploy\.yml/);
     assert.match(doc, /project token/);

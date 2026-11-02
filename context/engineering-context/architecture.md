@@ -61,7 +61,7 @@ EXISTS` throughout); `migrate()` execs it, `dropAll()` drops every table child-f
 Tables: `users`, `venues`, `venue_travel`, `tracks`, `tags`, `rooms`, `speakers`,
 `sessions`, `session_tags`, `session_speakers`, `reservations`, `check_ins`,
 `speaker_follows`, `ratings`, `vendors`, `sponsors`, `announcements`. Column-level detail:
-`docs/DATA_MODEL.md`.
+`context/engineering-context/data-model.md`.
 
 **Mappers** (`server/lib/query.js`). `SESSION_SELECT` joins session → track → room → venue
 and computes `waitlist_count`; append `WHERE …` to it. `toSession(row, extra)` derives

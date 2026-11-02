@@ -1,7 +1,17 @@
-# Context docs
+# Engineering context
 
-A map of the app, one file per area, so an agent can find what it needs
-without reading the source to work out how things fit together.
+How the app is built and how it is worked on. One doc per area of the app, so
+an agent can find what it needs without reading the source to work out how
+things fit together — plus the schema and the harness:
+
+- `<area>.md` — one per area: seats, schedule, clock, ui, testing and the rest.
+  `node scripts/context.mjs index` lists them with when to read each.
+- [`data-model.md`](data-model.md) — the SQLite schema; an area doc like the others.
+- [`harness/`](harness/index.md) — how ship, code review and QA run, and the
+  playbooks they follow. [`harness.md`](harness.md) is the map for changing them.
+
+How to run the app and the tests: the *Run it* section of
+[`CLAUDE.md`](../../CLAUDE.md) and [`testing.md`](testing.md).
 
 ```bash
 node scripts/context.mjs index                 # every doc, one entry each — start here

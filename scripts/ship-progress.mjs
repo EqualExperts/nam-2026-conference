@@ -19,7 +19,7 @@
  * `agent-ship.yml`'s pre-checkout step sets `SHIP_PROGRESS_STARTED` (the
  * run's own start, never the CLI's) and `SHIP_PROGRESS_COMMENT_ID` before
  * either ever runs, so both know where to write and how old the run really
- * is without asking the stream. See docs/context/harness.md.
+ * is without asking the stream. See context/engineering-context/harness.md.
  *
  * Every function below is pure except the two entry points, which take their
  * IO (the `gh` calls, the transcript read, the clock) as parameters — that is

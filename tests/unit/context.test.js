@@ -56,7 +56,7 @@ describe('which docs a change touches', () => {
 
 test('every real context doc names only paths and areas that exist', () => {
   const docs = load();
-  assert.ok(docs.length > 0, 'docs/context has no docs');
+  assert.ok(docs.length > 0, 'context/engineering-context has no docs');
   assert.deepEqual(problems(docs), []);
 });
 

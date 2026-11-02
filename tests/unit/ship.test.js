@@ -264,7 +264,7 @@ describe('ship', () => {
     // printed nothing — which is the normal case: no commit after the gate.
     const { prompts } = await run();
     assert.match(prompts['open-pr'], /Empty is the normal case[^.]*carry on/);
-    assert.match(prompts['open-pr'], /Only if it lists a file outside docs\/, specs\/ or \*\.md[^.]*return ok=false/);
+    assert.match(prompts['open-pr'], /Only if it lists a file outside context\/, specs\/ or \*\.md[^.]*return ok=false/);
   });
 
   test('setup pins gh to origin, and stops if it still points elsewhere — #149', async () => {
@@ -287,7 +287,7 @@ describe('ship', () => {
   test('the onboarding and the playbook pin gh before anything reads an issue — #149', () => {
     const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
     assert.match(read('ONBOARD_CLAUDE.md'), /gh repo set-default "\$\(git remote get-url origin\)"/);
-    assert.match(read('docs/harness/ship-playbook.md'), /gh repo set-default "\$\(git remote get-url origin\)"\ngh issue view/);
+    assert.match(read('context/engineering-context/harness/ship-playbook.md'), /gh repo set-default "\$\(git remote get-url origin\)"\ngh issue view/);
   });
 
   test('an unshippable ticket stops at setup and opens nothing', async () => {
@@ -339,7 +339,7 @@ describe('ship', () => {
     assert.match(prompts.setup, /git fetch --prune origin`? first, then from origin\/main/);
     assert.match(prompts['verify#1'], /git fetch origin main && git merge --no-edit origin\/main[\s\S]*gate\.mjs/);
     assert.match(prompts['open-pr'], /git merge --no-edit origin\/main[\s\S]*git push -u origin HEAD/);
-    const playbook = readFileSync(new URL('../../docs/harness/ship-playbook.md', import.meta.url), 'utf8');
+    const playbook = readFileSync(new URL('../../context/engineering-context/harness/ship-playbook.md', import.meta.url), 'utf8');
     assert.match(playbook, /git fetch --prune origin\ngit checkout -b issue-<n>/);
     assert.match(playbook, /git fetch --prune origin[^\n]*\nwt=[^\n]*\ngit worktree add/);
   });
@@ -489,7 +489,7 @@ describe('ship', () => {
     });
     assert.ok(!calls.includes('context'));
     assert.match(prompts.implement, /node scripts\/context\.mjs for <changed files>/);
-    assert.match(prompts['fix#1'], /docs\/context\/ doc/);
+    assert.match(prompts['fix#1'], /context\/engineering-context\/ doc/);
   });
 
   test('a PR agent that fails learns once, not twice', async () => {

@@ -1,7 +1,7 @@
 # Workshop quickstart — using the harnesses
 
-Not set up yet? Paste the prompt from the [README](../../README.md) into Claude
-Code: it follows [ONBOARD_CLAUDE.md](../../ONBOARD_CLAUDE.md). Once you're set
+Not set up yet? Paste the prompt from the [README](../../../README.md) into Claude
+Code: it follows [ONBOARD_CLAUDE.md](../../../ONBOARD_CLAUDE.md). Once you're set
 up, run everything below from Claude in your fork's folder. Every step in detail:
 [How the harness works](README.md).
 
@@ -17,7 +17,7 @@ one before.
 2. **Process a transcript:** `/winnow`, then paste the transcript or give a
    file path. It sorts what was said into decisions, work and noise, and asks
    about gaps and contradictions. Nothing to hand it? Try
-   `/winnow docs/demo/winnow-transcript.txt`. When you say go, it records the
+   `/winnow context/winnow-transcripts/demo-transcript.txt`. When you say go, it records the
    decisions in the docs (`update-context`) and raises the issues
    (`create-tasks`). Use the full transcript, not an AI summary: a summary
    drops who said what, and which decision replaced which.
@@ -27,7 +27,7 @@ one before.
    transcript.
 
 **You should end up with:** new issues on your fork, and possibly edits to
-`docs/` for you to review and commit.
+`context/` for you to review and commit.
 
 ## The engineering harness: from a ticket to a pull request
 

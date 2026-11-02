@@ -26,7 +26,7 @@ gh pr diff <pr>
 ```
 
 Then the branch's `specs/` file, the parts of `CLAUDE.md` the diff touches, and
-the `docs/context/` docs that own the changed files
+the `context/engineering-context/` docs that own the changed files
 (`node scripts/context.mjs for $(git diff --name-only origin/main...HEAD)`) —
 they say how the area works, so you read source only to check a line.
 Work out for yourself whether each **Done when:** criterion is met.
@@ -62,9 +62,9 @@ lenses when the diff touches it:
 - **A GitHub Actions defect.** A trigger that cannot fire as intended, an
   `if:` that is wrong for a concrete payload (say which), untrusted text
   reaching a `run:` script or an agent with a token, a permission or token
-  broader than the step needs. `docs/harness/github.md` is what this repo
+  broader than the step needs. `context/engineering-context/harness/github.md` is what this repo
   already learned; contradicting it is a finding.
-- **A doc that is false.** CLAUDE.md, `docs/context/` and the playbooks are
+- **A doc that is false.** CLAUDE.md, `context/engineering-context/` and the playbooks are
   read *instead of* the code. A claim the code does not bear out, two docs that
   now disagree, or an instruction an agent would follow into a wrong action.
 - **An orchestration defect.** A workflow path where a dead agent reads as a

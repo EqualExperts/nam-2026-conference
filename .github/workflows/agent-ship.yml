@@ -127,7 +127,7 @@ jobs:
       # run's own start, from the Actions API — never the CLI's) and
       # `SHIP_PROGRESS_COMMENT_ID` travel to every later step through
       # $GITHUB_ENV, which is written once and survives whatever happens to
-      # the step below. See docs/context/harness.md.
+      # the step below. See context/engineering-context/harness.md.
       - name: 📣 Post the starting comment
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}

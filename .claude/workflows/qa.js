@@ -36,7 +36,7 @@ if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `qa nee
 const WORKDIR = typeof args === 'object' && args && args.workdir
 const HERE = WORKDIR
   ? `Work in ${WORKDIR}, a checkout of the pull request: cd there at the start of every Bash command. ` +
-    `Read docs/harness/ and scripts/context.mjs from the directory you started in — the harness may be newer ` +
+    `Read context/engineering-context/harness/ and scripts/context.mjs from the directory you started in — the harness may be newer ` +
     `than the pull request's base. Prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim qa-${pr})" &&\`.\n\n`
   : ''
 
@@ -54,7 +54,7 @@ const PIN = `Unless $GITHUB_ACTIONS is set, before any \`gh\` command run ` +
 // prompts that mention it cannot drift apart.
 const BASE_WT = '"$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/worktrees/qa-base"'
 
-const PLAYBOOK = 'docs/harness/qa-playbook.md'
+const PLAYBOOK = 'context/engineering-context/harness/qa-playbook.md'
 // A section of the playbook in one read, and the reading discipline every QA
 // agent needs: each turn re-reads everything before it, so a turn per grep and
 // a whole doc "for context" are what a QA pass mostly pays for.
@@ -242,7 +242,7 @@ const SCOPE = !previous ? ''
       : '')
 let budget = recheck.length ? `at most ${fresh} new probes (${recheck.length} of ${MAX_PROBES} are already spent re-running previous bugs)` : `at most ${MAX_PROBES} probes`
 
-// Prose about the app — docs/, specs/, markdown, never the harness playbooks —
+// Prose about the app — context/, specs/, markdown, never the harness playbooks —
 // has nothing a browser or a command can exercise that code review's
 // docs-truth lens does not already read.
 if (DOCS_ONLY && DEPTH !== 'thorough' && !recheck.length) {
