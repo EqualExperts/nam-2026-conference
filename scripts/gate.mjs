@@ -202,7 +202,7 @@ const visits = (paths, route) => paths.some(p => p === '*' || route === '/' ? p 
   : route.endsWith('/') ? p.startsWith(route) : p === route || p === `${route}/`);
 
 /** Files whose change the API tests cover, or that no page renders. */
-const NO_PAGE = [/^docs\//, /^specs\//, /^tests\/(unit|api)\//, /^\.claude\//, /^\.github\//, /\.md$/, /^server\/routes\//];
+const NO_PAGE = [/^context\//, /^specs\//, /^tests\/(unit|api)\//, /^\.claude\//, /^\.github\//, /\.md$/, /^server\/routes\//];
 /** Files every page depends on, or that decide what runs. */
 const EVERY_PAGE = [/^src\/(App|main)\.jsx$/, /^src\/index\.css$/, /^server\/(lib\/|db\.js|seed\.js)/,
   /^tests\/helpers\.js$/, /^playwright\.config\.js$/, /^package(-lock)?\.json$/, /^vite\.config\.js$/, /^index\.html$/, /^scripts\/gate\.mjs$/];
@@ -264,7 +264,7 @@ const RUNS_TESTS = [/^playwright\.config\.js$/, /^package(-lock)?\.json$/, /^vit
  * runs the tests gets the whole suite here too (null).
  */
 export function fastFallback(changed) {
-  if (changed.some(f => RUNS_TESTS.some(r => r.test(f)) || !/^(src|server|tests|docs|specs|\.claude|\.github)\/|\.md$/.test(f))) return null;
+  if (changed.some(f => RUNS_TESTS.some(r => r.test(f)) || !/^(src|server|tests|context|specs|\.claude|\.github)\/|\.md$/.test(f))) return null;
   return [...new Set([...branchSpecs(changed.join('\n')), 'tests/smoke.spec.js'])].sort();
 }
 

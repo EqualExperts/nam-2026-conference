@@ -110,7 +110,7 @@ function Bucket({ b, i, lines, full }) {
           )}
           {b.id === 'know' && (
             <div className="pz-appear mt-auto rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[14px] text-emerald-100" style={later(1600)}>
-              → <Code className="text-[12px]">docs/context/testing.md</Code> — the viewport the mobile specs run at
+              → <Code className="text-[12px]">context/<wbr />engineering‑context/testing.md</Code> — the viewport the mobile specs run at
             </div>
           )}
           {b.id === 'work' && (
@@ -133,7 +133,7 @@ function Bucket({ b, i, lines, full }) {
   );
 }
 
-const GROUND = ['CLAUDE.md', 'docs/context/schedule.md', 'docs/context/testing.md', '.claude/rules/ui.md'];
+const GROUND = ['CLAUDE.md', 'context/engineering-context/schedule.md', 'context/engineering-context/testing.md', '.claude/rules/ui.md'];
 
 function WinnowScene({ step }) {
   const by = (id) => LINES.filter((l) => l.b === id);
@@ -288,7 +288,7 @@ const GAPS_BEATS = [
 /* Only approved items: the noise was listed in the chat and goes no further. */
 const PROPOSAL = [
   { t: '# mobile filters — proposal', c: 'text-ink font-semibold' },
-  { t: '## Knowledge (1) → docs/context/testing.md', c: 'text-emerald-300' },
+  { t: '## Knowledge (1) → context/engineering-context/testing.md', c: 'text-emerald-300' },
   { t: 'Modern phones are the bar: an iPhone 15-size viewport.', c: 'text-muted' },
   { t: '## Tasks (1)', c: 'text-violet-300' },
   { t: `${ISSUE_140.title.split(':')[0]} — why, what, Done when ×3, out of scope`, c: 'text-muted' },

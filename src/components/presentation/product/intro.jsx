@@ -181,7 +181,7 @@ function WhereScene({ step }) {
 
 const DOORS = [
   { x: 80,   icon: '🔴', title: 'Live', cmd: '/listen-to-meeting', sub: 'sit in the meeting; flags while it is still running', to: 0 },
-  { x: 580,  icon: '📄', title: 'Afterwards', cmd: '/winnow <transcript | paste | audio>', sub: 'a transcript file, pasted notes — or a voice note, via Transcribe', to: 2, demo: '/winnow docs/demo/winnow-transcript.txt' },
+  { x: 580,  icon: '📄', title: 'Afterwards', cmd: '/winnow <transcript | paste | audio>', sub: 'a transcript file, pasted notes — or a voice note, via Transcribe', to: 2, demo: '/winnow context/winnow-transcripts/demo-transcript.txt' },
   { x: 1080, icon: '⚡', title: 'One line', cmd: '/create-tasks <one line>', sub: 'you already know the ticket — just raise it properly', to: 4 },
 ];
 const DOOR_W = 440;
@@ -214,7 +214,7 @@ function WaysScene({ step }) {
           'two channels, local Whisper, chunks on disk — and a flag only when it matters',
           'faster-whisper, model small, on your machine — no hosted service, no account',
           'every line into one bucket: noise, durable knowledge, actionable work, or both',
-          'knowledge placed by the doc map into docs/context/ — integrated, never appended',
+          'knowledge placed by the doc map into context/ — integrated, never appended',
           'one goal per ticket, a Done when a test could check, a duplicate search first',
         ].map((t, i) => (
           <div key={t} className="pz-appear text-[16px] leading-snug text-muted" style={later(i * 120)}>{t}</div>

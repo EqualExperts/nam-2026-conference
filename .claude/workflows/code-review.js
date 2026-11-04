@@ -41,7 +41,7 @@ if (!Number.isInteger(pr) || pr <= 0) return { verdict: 'error', reason: `code-r
 const WORKDIR = typeof args === 'object' && args && args.workdir
 const HERE = WORKDIR
   ? `Work in ${WORKDIR}, a checkout of the pull request: cd there at the start of every Bash command. ` +
-    `Read docs/harness/ and scripts/context.mjs from the directory you started in — the harness may be newer ` +
+    `Read context/engineering-context/harness/ and scripts/context.mjs from the directory you started in — the harness may be newer ` +
     `than the pull request's base. Prefix anything that boots the app or runs Playwright with \`eval "$(node scripts/lane.mjs claim code-review-${pr})" &&\`.\n\n`
   : ''
 
@@ -52,7 +52,7 @@ const PIN = `Unless $GITHUB_ACTIONS is set, before any \`gh\` command run ` +
   `\`gh repo set-default "$(git remote get-url origin)"\`: without it a clone with an \`upstream\` remote sends ` +
   `every \`gh\` call to the upstream repository instead of this one.`
 
-const PLAYBOOK = 'docs/harness/code-review-playbook.md'
+const PLAYBOOK = 'context/engineering-context/harness/code-review-playbook.md'
 const MAX_FINDINGS = 3
 
 // The marker a verdict comment ends with, read back by the next run on the
@@ -206,7 +206,7 @@ function kindsOf(files) {
     // ai-cost, agent-run.sh and the agent definitions were read as app code,
     // judged by the app's rules, and never asked whether a dead agent passes.
     else if (/^(\.claude\/(workflows|agents)\/|scripts\/)/.test(f) || f === '.claude/settings.json') kinds.add('orchestration')
-    else if (f === 'CLAUDE.md' || f === 'README.md' || f.startsWith('docs/') || /^\.claude\/(skills|rules)\//.test(f) || f.startsWith('specs/')) kinds.add('context')
+    else if (f === 'CLAUDE.md' || f === 'README.md' || f.startsWith('context/') || /^\.claude\/(skills|rules)\//.test(f) || f.startsWith('specs/')) kinds.add('context')
     else if (f.startsWith('tests/') || f === 'playwright.config.js') kinds.add('tests')
     else if (f !== 'package-lock.json') kinds.add('app')
   }
@@ -256,18 +256,19 @@ const LENSES = [
       `text — an issue, comment or PR body, a branch name — reach a \`run:\` script through \`\${{ }}\` (script ` +
       `injection), or reach an agent that holds write tools and a token? Least-privilege permissions, which ` +
       `token each step uses, concurrency groups that queue or cancel the right runs, timeouts against the ` +
-      `worst case, \`always()\` steps after a timeout. docs/harness/github.md records what this repo learned ` +
+      `worst case, \`always()\` steps after a timeout. context/engineering-context/harness/github.md records what this repo learned ` +
       `the hard way — a change that contradicts it is a blocker.`,
   },
   {
     key: 'docs',
     when: k => k.has('context'),
-    ask: `Review the changed AI-context and docs — CLAUDE.md, docs/context/, docs/harness/ playbooks, README, ` +
+    ask: `Review the changed AI-context and docs — CLAUDE.md, context/ (product, engineering, the harness playbooks), README, ` +
       `specs — as text agents will read INSTEAD of the code (docs-truth). Check every changed factual claim ` +
       `against the code it describes: file:function names, payload fields, test ids, commands and flags, ` +
       `section numbers that the workflow scripts cite. A blocker is a claim that is false, two documents that ` +
       `now contradict each other, or an instruction an agent would follow into a wrong action. Where a fact ` +
-      `belongs is set by docs/context/README.md: decisions in CLAUDE.md, where-and-how in docs/context.`,
+      `belongs is set by context/index.md: decisions in CLAUDE.md, product in context/product-context/, where-and-how in ` +
+      `context/engineering-context/.`,
   },
   {
     key: 'orchestration',
@@ -323,7 +324,7 @@ const lens = (l, retry) => agent(
   `${HERE}You are reviewing a pull request you did not write. Each turn re-reads everything before it, so batch ` +
   `the reads you know you need into one command, and do not run the test suite — the gate has. ${ticket}\n\nFiles: ${ctx.files.join(', ')}. Read ` +
   `\`gh pr diff ${pr}\`, the spec in specs/ if the branch has one, the rule file in .claude/rules/ for each area the diff ` +
-  `touches (ui.md for src/, server.md for server/ — a diff does not load them), and the docs/context/ docs that own the ` +
+  `touches (ui.md for src/, server.md for server/ — a diff does not load them), and the context/engineering-context/ docs that own the ` +
   `changed files (\`node scripts/context.mjs for <files>\`, then \`show <doc>\` for its outline and \`show <doc> <part>\` ` +
   `for the parts you need — not whole docs). Your lens only: ${l.ask}\n\n` +
   `§2–§4 of ${PLAYBOOK} say what never to flag. Cite file:line read from the line, never inferred from a ` +

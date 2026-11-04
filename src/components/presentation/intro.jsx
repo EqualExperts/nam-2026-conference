@@ -82,9 +82,9 @@ function TitleScene() {
 
 const CONTEXT = [
   { name: 'CLAUDE.md', what: 'decisions and why', x: 70, y: 110, side: 'left' },
-  { name: 'docs/context/schedule.md', what: 'where it lives', x: 70, y: 260, side: 'left' },
+  { name: 'context/engineering-context/schedule.md', what: 'where it lives', x: 70, y: 260, side: 'left' },
   { name: '.claude/rules/ui.md', what: 'UI conventions', x: 70, y: 410, side: 'left' },
-  { name: 'docs/context/testing.md', what: 'how to prove it', x: 1240, y: 150, side: 'right' },
+  { name: 'context/engineering-context/testing.md', what: 'how to prove it', x: 1240, y: 150, side: 'right' },
   { name: 'specs/', what: 'every past plan', x: 1240, y: 330, side: 'right' },
 ];
 
@@ -99,7 +99,7 @@ function IssueScene() {
         {CONTEXT.map((c, i) => {
           const fromX = c.side === 'left' ? c.x + 290 : c.x;
           const toX = c.side === 'left' ? 390 : 1210;
-          const d = `M${fromX} ${c.y + 34} C ${(fromX + toX) / 2} ${c.y + 34}, ${(fromX + toX) / 2} 330, ${toX} 330`;
+          const d = `M${fromX} ${c.y + 42} C ${(fromX + toX) / 2} ${c.y + 42}, ${(fromX + toX) / 2} 330, ${toX} 330`;
           return (
             <g key={c.name}>
               <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#4c3d7a" strokeWidth="2" style={later(DOCS_AT + 300 + i * 120)} />
@@ -130,9 +130,14 @@ function IssueScene() {
       </div>
 
       {CONTEXT.map((c, i) => (
-        <Show key={c.name} from={c.side} delay={DOCS_AT + i * 120} style={at(c.x, c.y, 290, 68)}
-          className="rounded-xl border border-hairline bg-raised px-4 py-2.5">
-          <div className="font-mono text-[15px] text-ink">{c.name}</div>
+        <Show key={c.name} from={c.side} delay={DOCS_AT + i * 120} style={at(c.x, c.y, 290, 84)}
+          className="flex flex-col justify-center rounded-xl border border-hairline bg-raised px-4 py-2.5">
+          {c.name.includes('/') && !c.name.endsWith('/') && (
+            <div className="font-mono text-[12px] text-faint">{c.name.slice(0, c.name.lastIndexOf('/') + 1)}</div>
+          )}
+          <div className="font-mono text-[15px] text-ink">
+            {c.name.endsWith('/') ? c.name : c.name.slice(c.name.lastIndexOf('/') + 1)}
+          </div>
           <div className="text-[14px] text-faint">{c.what}</div>
         </Show>
       ))}

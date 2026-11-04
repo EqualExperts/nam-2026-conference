@@ -4,7 +4,7 @@
 ## Code review and QA call this when they fail a pull request that ship built.
 ## An agent decides whether the mistake would recur on another ticket and, if
 ## so, teaches the harness where it would have been caught in time — an audit
-## rule in ship.js, or a gotcha in docs/context — and opens that as a pull
+## rule in ship.js, or a gotcha in context/engineering-context — and opens that as a pull
 ## request. A person decides whether the lesson is right; nothing here merges.
 ##
 ## Escapes are labelled `harness-escape`, so `gh pr list --label
@@ -87,5 +87,5 @@ jobs:
 
           If it does not generalise, change nothing: comment one line on #$PR saying so and why, and stop.
 
-          If it does, teach the harness where it would have been caught in time, preferring in this order: (1) name a mechanical check that would catch it — describe it in the pull request body, do not build it; (2) a rule in the audit prompts in .claude/workflows/ship.js (SPEC_LENSES_ALL / CODE_LENSES_ALL asks), since those are what missed it; (3) a gotcha in the docs/context doc that owns the area. Keep the edit small and in the voice around it; write only what the code bears out. Run npm test. Then: git checkout -b learn/escape-$PR-$slug origin/main before editing, commit as \"docs(harness): learn from the escape on #$PR\", push, and open a pull request with that title whose body gives the finding, the class, what you changed and why there, and Refs #$PR. Comment the lesson PR's link on #$PR."
+          If it does, teach the harness where it would have been caught in time, preferring in this order: (1) name a mechanical check that would catch it — describe it in the pull request body, do not build it; (2) a rule in the audit prompts in .claude/workflows/ship.js (SPEC_LENSES_ALL / CODE_LENSES_ALL asks), since those are what missed it; (3) a gotcha in the context/engineering-context doc that owns the area. Keep the edit small and in the voice around it; write only what the code bears out. Run npm test. Then: git checkout -b learn/escape-$PR-$slug origin/main before editing, commit as \"docs(harness): learn from the escape on #$PR\", push, and open a pull request with that title whose body gives the finding, the class, what you changed and why there, and Refs #$PR. Comment the lesson PR's link on #$PR."
           scripts/agent-run.sh "$prompt" "Bash,Read,Write,Edit,Glob,Grep" claude-sonnet-5

@@ -2,7 +2,7 @@
 
 A conference companion app for a fictional applied-AI conference in Las Vegas:
 four days, ~140 sessions, 110 speakers, two venues six miles apart. It exists
-to give the [engineering harness](../README.md) real work — seats and
+to give the [engineering harness](../../README.md) real work — seats and
 waitlists, clashing sessions, check-in windows, ratings, and a clock that runs
 — so the agents have real bugs to find and real rules to respect.
 
@@ -53,8 +53,8 @@ Playwright. No ORM, no state library, no component kit.
 
 ## Read next
 
-- **[CLAUDE.md](../CLAUDE.md)** — the architecture, the conventions and the
+- **[CLAUDE.md](../../CLAUDE.md)** — the architecture, the conventions and the
   decisions behind them. People and agents work to the same rules.
-- **[docs/context/](./context/README.md)** — one doc per area of the app; what
+- **[context/engineering-context/](../engineering-context/index.md)** — one doc per area of the app; what
   agents read instead of the source.
-- **[docs/DATA_MODEL.md](./DATA_MODEL.md)** — the schema.
+- **[context/engineering-context/data-model.md](../engineering-context/data-model.md)** — the schema.

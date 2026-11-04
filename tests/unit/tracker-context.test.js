@@ -40,8 +40,8 @@ describe('tracker access in the AI context', () => {
 
   test('links the label docs instead of restating labels', () => {
     const s = section();
-    assert.ok(s.includes('docs/harness/github.md'));
-    assert.ok(s.includes('docs/context/harness.md'));
+    assert.ok(s.includes('context/engineering-context/harness/github.md'));
+    assert.ok(s.includes('context/engineering-context/harness.md'));
     for (const label of ['ai-working', 'needs-human', 'ready-for-human', 'ship:full']) {
       assert.ok(!s.includes(label), `${label} is not restated`);
     }

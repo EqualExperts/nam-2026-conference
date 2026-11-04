@@ -246,7 +246,7 @@ import { Layout } from './components/Layout.jsx';
   });
 
   test("the branch's own spec always runs; a change no page renders runs nothing else", () => {
-    assert.deepEqual(affectedSpecs(['tests/session.spec.js', 'docs/context/ui.md', 'server/routes/users.js'], repo), ['tests/session.spec.js']);
+    assert.deepEqual(affectedSpecs(['tests/session.spec.js', 'context/engineering-context/ui.md', 'server/routes/users.js'], repo), ['tests/session.spec.js']);
   });
 
   test('the shell, the rules or the config could break any page: the whole suite', () => {
@@ -275,7 +275,7 @@ describe('what CI runs for a pull request', () => {
 
   test('a ship:fast one: the same specs the local gate chose', () => {
     assert.deepEqual(ciSpecs(['src/pages/SchedulePage.jsx'], repo, true), ['tests/schedule.spec.js']);
-    assert.deepEqual(ciSpecs(['docs/context/ui.md'], repo, true), ['tests/smoke.spec.js']);
+    assert.deepEqual(ciSpecs(['context/engineering-context/ui.md'], repo, true), ['tests/smoke.spec.js']);
   });
 });
 

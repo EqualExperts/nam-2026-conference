@@ -11,9 +11,9 @@ import { ISSUE_140 } from '../issue.js';
 
 const DOC_MAP = [
   { doc: 'CLAUDE.md', what: 'decisions, and why' },
-  { doc: 'docs/context/testing.md', what: 'how a change is proved — the viewports the specs run at', hit: true },
-  { doc: 'docs/context/ui.md', what: 'UI conventions' },
-  { doc: 'docs/context/schedule.md', what: 'where the schedule lives' },
+  { doc: 'context/engineering-context/testing.md', what: 'how a change is proved — the viewports the specs run at', hit: true },
+  { doc: 'context/engineering-context/ui.md', what: 'UI conventions' },
+  { doc: 'context/engineering-context/schedule.md', what: 'where the schedule lives' },
 ];
 
 /* The Browser paragraph of testing.md, with the new sentence set into it. */
@@ -58,7 +58,7 @@ function RememberScene() {
 
       <Show from="right" delay={600} style={at(580, 70, 940, 400)} className="overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15]">
         <div className="flex border-b border-hairline bg-surface font-mono text-[13px]">
-          <span className="border-r border-hairline bg-[#0d0f15] px-4 py-2 text-ink">docs/context/testing.md</span>
+          <span className="border-r border-hairline bg-[#0d0f15] px-4 py-2 text-ink">context/engineering-context/testing.md</span>
           <span className="px-4 py-2 text-faint">Browser</span>
         </div>
         <div className="px-6 py-5 font-mono text-[16px] leading-relaxed text-muted">
@@ -75,7 +75,7 @@ function RememberScene() {
 
       <Show from="up" delay={3400} style={at(580, 500, 940, 110)} className={`${box} flex items-center gap-5 px-6`}>
         <Code className="shrink-0 whitespace-nowrap">git status</Code>
-        <span className="shrink-0 whitespace-nowrap font-mono text-[16px] text-amber-300">M docs/context/testing.md</span>
+        <span className="shrink-0 whitespace-nowrap font-mono text-[16px] text-amber-300">M context/engineering-context/testing.md</span>
         <span className="ml-auto text-[17px] text-muted">the edit shows up in git status — <b className="text-ink">the diff is yours to review</b> before it becomes the team’s memory</span>
       </Show>
     </>
@@ -216,7 +216,7 @@ function HandoffScene({ step, leaving, advance }) {
       </Show>
       <Show on={step === 0} from="up" delay={RECAP_AT} style={at(80, 200, 1440, 200)} className="overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15]">
         <div className="flex items-center border-b border-hairline bg-surface font-mono text-[13px]">
-          <span className="border-r border-hairline bg-[#0d0f15] px-4 py-2 text-ink">docs/context/testing.md</span>
+          <span className="border-r border-hairline bg-[#0d0f15] px-4 py-2 text-ink">context/engineering-context/testing.md</span>
           <span className="px-4 py-2 text-faint">Browser</span>
           <span className="ml-auto px-4 py-2 text-amber-300">M · in git status, for you to review</span>
         </div>
@@ -279,7 +279,7 @@ const HANDOFF_BEATS = [
   {
     kicker: '10 · What the meeting produced',
     title: 'A meeting became a ticket — and one line of memory',
-    body: 'Issue #140, with a why and three Done when lines, and one sentence in docs/context/testing.md the next agent will read. Nothing ran without someone saying yes. What happens to #140 next is the engineering harness.',
+    body: 'Issue #140, with a why and three Done when lines, and one sentence in context/engineering-context/testing.md the next agent will read. Nothing ran without someone saying yes. What happens to #140 next is the engineering harness.',
   },
   null,
 ];

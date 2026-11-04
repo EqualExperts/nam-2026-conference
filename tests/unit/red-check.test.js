@@ -13,7 +13,7 @@ const diff = [
   'M\ttests/unit/format.test.js',
   'A\ttests/plural.spec.js',
   'D\ttests/unit/old.test.js',
-  'M\tdocs/context/ui.md',
+  'M\tcontext/engineering-context/ui.md',
 ].join('\n');
 
 test('reverts changed app code, removes added app code, runs added and changed tests only', () => {

@@ -125,7 +125,7 @@ Every row of *How it will be proved* must name an assertion that is **false on
 main today** — judge that by reading the code the row is about, not by running
 anything: writing a draft test, breaking the source and reverting it is the
 build's job, and `scripts/red-check.mjs` proves it for real once the change
-exists. To learn what the seed holds, read `docs/context/seed.md` or ask the API
+exists. To learn what the seed holds, read `context/engineering-context/seed.md` or ask the API
 (`attendedSession()`, `bookableFor()`); never open `data/orbit.db` directly. A row whose assertions all already hold (typically because it names an
 absence, or a side effect the change happens to keep) proves nothing, and it
 reads as proof right through the audit.
@@ -169,7 +169,7 @@ node scripts/context.mjs index
 ```
 
 That is the map: one entry per area of the app, saying what it covers and when
-to read it. Pick the one or two docs in `docs/context/` your ticket touches and
+to read it. Pick the one or two docs in `context/engineering-context/` your ticket touches and
 read them by the piece — `node scripts/context.mjs show <doc>` for the outline,
 `show <doc> Gotchas <part>` for what you need — because whatever you read is
 re-read on every turn after it;

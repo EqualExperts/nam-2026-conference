@@ -49,7 +49,7 @@ export function codeLines(numstat) {
     // Tests are left out too: a test that covers a change makes it safer to
     // review, not bigger — #94, a two-line copy change, counted its 30-line
     // test and came out small, so QA explored what the test already proved.
-    if (/^(specs|docs\/context|tests)\//.test(file || '') || file === 'README.md') continue;
+    if (/^(specs|tests)\/|^context\/(?!engineering-context\/harness\/)/.test(file || '') || file === 'README.md') continue;
     n += add === '-' ? BINARY_LINES : Number(add) + Number(del);
   }
   return n;
@@ -58,7 +58,7 @@ export function codeLines(numstat) {
 /** Where a missed defect costs an attendee's seat or every later ticket. */
 export function risky(names) {
   return names.split('\n').filter(Boolean).some(f =>
-    /^(server\/lib\/|\.claude\/|\.github\/|scripts\/|docs\/harness\/)/.test(f)
+    /^(server\/lib\/|\.claude\/|\.github\/|scripts\/|context\/engineering-context\/harness\/)/.test(f)
     || ['CLAUDE.md', 'server/db.js', 'server/seed.js'].includes(f));
 }
 
@@ -102,24 +102,24 @@ export function appChange(names) {
     || ['index.html', 'package.json', 'package-lock.json'].includes(f) || /^vite\.config\./.test(f));
 }
 
-/** Docs-only: every changed file is prose — docs/, specs/ or a markdown file — and none is a harness playbook. */
+/** Docs-only: every changed file is prose — context/, specs/ or a markdown file — and none is a harness playbook. */
 export function docsOnly(names) {
   const files = names.split('\n').filter(Boolean);
   return files.length > 0
-    && files.every(f => /^(docs|specs)\//.test(f) || f.endsWith('.md'))
-    && !files.some(f => f.startsWith('docs/harness/') || f === 'CLAUDE.md');
+    && files.every(f => /^(context|specs)\//.test(f) || f.endsWith('.md'))
+    && !files.some(f => f.startsWith('context/engineering-context/harness/') || f === 'CLAUDE.md');
 }
 
 /**
- * UI-only: every changed file under src/, tests/, docs/ or specs/, at least
- * one under src/, and none under docs/harness/ — the playbooks are the
- * harness, not documentation of the app.
+ * UI-only: every changed file under src/, tests/, context/ or specs/, at least
+ * one under src/, and none under context/engineering-context/harness/ — the
+ * playbooks are the harness, not documentation of the app.
  */
 export function uiOnly(names) {
   const files = names.split('\n').filter(Boolean);
   return files.length > 0
-    && files.every(f => /^(src|tests|docs|specs)\//.test(f))
-    && !files.some(f => f.startsWith('docs/harness/'))
+    && files.every(f => /^(src|tests|context|specs)\//.test(f))
+    && !files.some(f => f.startsWith('context/engineering-context/harness/'))
     && files.some(f => f.startsWith('src/'));
 }
 

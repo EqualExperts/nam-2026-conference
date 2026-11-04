@@ -198,7 +198,7 @@ describe('code-review', () => {
   });
 
   test('an AI-context change gets the docs-truth lens', async () => {
-    assert.deepEqual(await lensesFor(['CLAUDE.md', 'docs/context/seats.md']), ['criteria', 'docs']);
+    assert.deepEqual(await lensesFor(['CLAUDE.md', 'context/engineering-context/seats.md']), ['criteria', 'docs']);
   });
 
   test('a workflow-script change gets orchestration, logic and tests', async () => {
@@ -206,14 +206,14 @@ describe('code-review', () => {
   });
 
   test('a mixed change gets the union', async () => {
-    assert.deepEqual(await lensesFor(['server/lib/seats.js', '.github/workflows/verify.yml', 'docs/context/seats.md']),
+    assert.deepEqual(await lensesFor(['server/lib/seats.js', '.github/workflows/verify.yml', 'context/engineering-context/seats.md']),
       ['actions', 'criteria', 'docs', 'logic', 'rules', 'tests']);
   });
 
   test('the Actions lens is pointed at what this repo learned the hard way', async () => {
     const { prompts } = await run({ context: { ...CTX, files: ['.github/workflows/agent-ship.yml'] } });
     assert.match(prompts['review:actions'], /script injection/);
-    assert.match(prompts['review:actions'], /docs\/harness\/github\.md/);
+    assert.match(prompts['review:actions'], /context\/engineering-context\/harness\/github\.md/);
   });
 
   test('an Actions blocker outranks a docs one', async () => {
@@ -865,7 +865,7 @@ describe('review depth follows risk', () => {
   });
 
   test('thorough reviews everything in full, docs included', async () => {
-    const { lenses } = await lensesAndModel(['docs/context/ui.md'], '42 --depth=thorough --docs-only=yes');
+    const { lenses } = await lensesAndModel(['context/engineering-context/ui.md'], '42 --depth=thorough --docs-only=yes');
     assert.ok(lenses.includes('review:docs'));
   });
 
@@ -895,7 +895,7 @@ describe('review depth follows risk', () => {
   });
 
   const qa = runner('qa', (label) => {
-    if (label === 'scope') return { head: 'abc1234', files: ['docs/context/ui.md'] };
+    if (label === 'scope') return { head: 'abc1234', files: ['context/engineering-context/ui.md'] };
     if (label === 'plan') return { issue: 27, base: 'main', surface: true, probes: [] };
     if (label === 'publish') return { ok: true };
   });

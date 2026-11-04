@@ -6,22 +6,30 @@
 
 </div>
 
-![How agents work in this repo: a GitHub Issue goes to Ship, where an agent loop specs, builds, tests, audits and fixes until clean; then a pull request, independent code review and QA, and a person merges. A ticket that will not converge goes to needs-human with a draft PR.](../images/harness-flow.png)
+![How agents work in this repo: a GitHub Issue goes to Ship, where an agent loop specs, builds, tests, audits and fixes until clean; then a pull request, independent code review and QA, and a person merges. A ticket that will not converge goes to needs-human with a draft PR.](./harness-flow.png)
 
 The [presentation](https://orbit26.up.railway.app/engineering-presentation) shows what the
 harness does. This page is how: what runs, how hard each part works, what it
 costs, and what to do when it goes wrong. The playbooks next to this file say how each step is *done*;
-[`docs/context/harness.md`](../context/harness.md) is the map for changing the
+[`harness.md`](../harness.md) is the map for changing the
 machinery itself.
+
+**In this folder:**
+
+- [`quickstart.md`](quickstart.md) — the workshop path: Winnow to tickets, ship to a pull request. Start here.
+- [`ship-playbook.md`](ship-playbook.md) — every step of ship; read when working on a ship run.
+- [`code-review-playbook.md`](code-review-playbook.md) — how code review judges a pull request, and what it never flags.
+- [`qa-playbook.md`](qa-playbook.md) — how QA probes a pull request in a browser.
+- [`github.md`](github.md) — labels, secrets, tokens and triggers for a fork.
 
 ## 🧩 The pieces
 
 | | Workflow | Starts when | What it does |
 | --- | --- | --- | --- |
-| 🚢 | **ship** — [`ship.js`](../../.claude/workflows/ship.js) | `ready-for-ai` on an issue, `@claude` on an issue, or `/ship 42` | Ticket → plan → build → test ⇄ audit → pull request |
-| 🔍 | **code review** — [`code-review.js`](../../.claude/workflows/code-review.js) | a pull request opens, or is marked ready | Reads the ticket first, then the diff; every blocker must survive a skeptic |
-| 🧪 | **QA** — [`qa.js`](../../.claude/workflows/qa.js) | the same | Drives the app on desktop and mobile, and reproduces each failure on the branch **and** on `main` |
-| 💬 | **respond** — [`agent-respond.yml`](../../.github/workflows/agent-respond.yml) | `@claude …` on a pull request | Makes the change you asked for, runs the gate, replies |
+| 🚢 | **ship** — [`ship.js`](../../../.claude/workflows/ship.js) | `ready-for-ai` on an issue, `@claude` on an issue, or `/ship 42` | Ticket → plan → build → test ⇄ audit → pull request |
+| 🔍 | **code review** — [`code-review.js`](../../../.claude/workflows/code-review.js) | a pull request opens, or is marked ready | Reads the ticket first, then the diff; every blocker must survive a skeptic |
+| 🧪 | **QA** — [`qa.js`](../../../.claude/workflows/qa.js) | the same | Drives the app on desktop and mobile, and reproduces each failure on the branch **and** on `main` |
+| 💬 | **respond** — [`agent-respond.yml`](../../../.github/workflows/agent-respond.yml) | `@claude …` on a pull request | Makes the change you asked for, runs the gate, replies |
 
 Each workflow is a **script, not a prompt**: the loops, the round limits and
 who judges what are code. Every step is a fresh agent that never sees the
@@ -93,7 +101,7 @@ QA scale up with it.
 ## 🔍 How code review and QA size themselves
 
 A one-line fix should not get the review a thousand-line change does.
-[`scripts/qa-facts.mjs`](../../scripts/qa-facts.mjs) decides from facts, never
+[`scripts/qa-facts.mjs`](../../../scripts/qa-facts.mjs) decides from facts, never
 from an agent's word:
 
 - 📏 **Code lines** — the diff, minus the spec and context docs every ship PR carries
@@ -187,7 +195,7 @@ asks for a change. Keys, tokens and triggers: [`github.md`](./github.md).
 **In Claude Code** — `/ship 42` (fast; add `--sized` for the sizing above),
 or `/ship 64 65 66` for several tickets in parallel; then `/code-review <pr>` and `/qa <pr>`. Every ticket gets its own git
 worktree, under `.claude/worktrees/` inside the repo, and its own **lane** — a pair of ports from
-[`scripts/lane.mjs`](../../scripts/lane.mjs) — so several tickets can build,
+[`scripts/lane.mjs`](../../../scripts/lane.mjs) — so several tickets can build,
 boot the app and run the whole suite at once without touching each other. The
 gate stops any dev server its own worktree left running before it starts.
 

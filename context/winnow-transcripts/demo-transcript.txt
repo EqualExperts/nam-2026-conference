@@ -5,7 +5,7 @@ can try winnow without an idea or a meeting of your own. The text below the
 divider is verbatim, timestamps and transcription slips included: sorting
 those out is part of the practice.
 
-How to use it:  /winnow docs/demo/winnow-transcript.txt
+How to use it:  /winnow context/winnow-transcripts/demo-transcript.txt
 ----------------------------------------------------------------------------
 0:02: So let's take a look at the website.
 0:06: Now, one of the things that I have noticed is that when I go to the search function, I can philtre by several components, one of them being the track.

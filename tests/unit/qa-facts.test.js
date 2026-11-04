@@ -12,16 +12,16 @@ test('a binary file counts as over the cap, so an image can never hide in a skip
   assert.equal(appLines('5\t0\tsrc/a.js\n-\t-\tsrc/logo.png'), 5 + BINARY_LINES);
 });
 
-test('UI-only: src plus tests, docs/context or specs', () => {
-  assert.equal(uiOnly('src/a.jsx\ntests/a.spec.js\ndocs/context/ui.md\nspecs/1-x.md'), true);
+test('UI-only: src plus tests, context/engineering-context or specs', () => {
+  assert.equal(uiOnly('src/a.jsx\ntests/a.spec.js\ncontext/engineering-context/ui.md\nspecs/1-x.md'), true);
 });
 
 test('not UI-only: a harness playbook, a workflow, a script, the server, or no src at all', () => {
-  assert.equal(uiOnly('src/a.jsx\ndocs/harness/qa-playbook.md'), false);
+  assert.equal(uiOnly('src/a.jsx\ncontext/engineering-context/harness/qa-playbook.md'), false);
   assert.equal(uiOnly('src/a.jsx\n.github/workflows/agent-qa.yml'), false);
   assert.equal(uiOnly('src/a.jsx\nscripts/gate.mjs'), false);
   assert.equal(uiOnly('src/a.jsx\nserver/lib/seats.js'), false);
-  assert.equal(uiOnly('tests/a.spec.js\ndocs/context/ui.md'), false);
+  assert.equal(uiOnly('tests/a.spec.js\ncontext/engineering-context/ui.md'), false);
   assert.equal(uiOnly(''), false);
 });
 
@@ -30,9 +30,9 @@ test('total lines count every file, a binary as over any cap', () => {
 });
 
 test('docs-only: prose about the app, never the harness playbooks or CLAUDE.md', () => {
-  assert.equal(docsOnly('docs/context/ui.md\nspecs/1-x.md\nREADME.md'), true);
-  assert.equal(docsOnly('docs/context/ui.md\nsrc/a.jsx'), false);
-  assert.equal(docsOnly('docs/harness/qa-playbook.md'), false);
+  assert.equal(docsOnly('context/engineering-context/ui.md\nspecs/1-x.md\nREADME.md'), true);
+  assert.equal(docsOnly('context/engineering-context/ui.md\nsrc/a.jsx'), false);
+  assert.equal(docsOnly('context/engineering-context/harness/qa-playbook.md'), false);
   assert.equal(docsOnly('CLAUDE.md'), false);
   assert.equal(docsOnly(''), false);
 });
@@ -41,8 +41,10 @@ describe('size: how hard code review and QA work', () => {
   const size = (o) => sizeFor({ codeLines: 10, docsOnly: false, risky: false, ticket: '', depth: 'balanced', ...o });
 
   test('code lines leave out the spec and context docs every ship pull request carries', () => {
-    assert.equal(codeLines('80\t0\tspecs/61-x.md\n6\t2\tdocs/context/agenda.md\n3\t1\tserver/routes/users.js'), 4);
+    assert.equal(codeLines('80\t0\tspecs/61-x.md\n6\t2\tcontext/engineering-context/agenda.md\n3\t1\tserver/routes/users.js'), 4);
     assert.equal(codeLines('1\t1\tsrc/pages/SchedulePage.jsx\n30\t0\ttests/schedule.spec.js'), 2, 'a covering test does not make a change bigger — #94');
+    assert.equal(codeLines('5\t0\tcontext/product-context/prd.md\n9\t0\tcontext/winnow-transcripts/2026-11-02-x.md'), 0, 'product and Winnow records are prose too');
+    assert.equal(codeLines('2\t1\tcontext/engineering-context/harness/qa-playbook.md'), 3, 'a playbook drives the agents, so it counts');
   });
 
   test('a one-line fix is tiny; a thousand-line change is large', () => {
@@ -86,11 +88,11 @@ describe('too small for QA to start', () => {
 
 test('an app change is anything an attendee runs: src, server, public, the page shell, the build, the dependencies', () => {
   for (const f of ['src/a.jsx', 'server/lib/seats.js', 'public/avatars/1.jpg', 'index.html', 'package.json', 'vite.config.js']) {
-    assert.equal(appChange(`docs/x.md\n${f}`), true, f);
+    assert.equal(appChange(`context/x.md\n${f}`), true, f);
   }
 });
 
 test('a harness, test or docs change is not an app change — QA has nothing to explore', () => {
-  assert.equal(appChange('.claude/workflows/ship.js\nscripts/qa-facts.mjs\ntests/unit/ship.test.js\ndocs/harness/README.md\n.github/workflows/agent-qa.yml'), false);
+  assert.equal(appChange('.claude/workflows/ship.js\nscripts/qa-facts.mjs\ntests/unit/ship.test.js\ncontext/engineering-context/harness/index.md\n.github/workflows/agent-qa.yml'), false);
   assert.equal(appChange(''), false);
 });

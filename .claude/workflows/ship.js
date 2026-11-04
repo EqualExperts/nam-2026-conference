@@ -135,7 +135,7 @@ if (!Number.isInteger(issue) || issue <= 0) {
   return { outcome: 'error', reason: `ship needs an issue number, got ${JSON.stringify(args)}` }
 }
 
-const SKILL = 'docs/harness/ship-playbook.md'
+const SKILL = 'context/engineering-context/harness/ship-playbook.md'
 // The sections a step needs, as one read. Told "follow §4–§6", every agent
 // on #64 spent two to four turns grepping the playbook's headings and paging
 // through it; this prints exactly those sections in one command.
@@ -153,7 +153,7 @@ const PIN = `Unless $GITHUB_ACTIONS is set, before any \`gh\` command run ` +
 // Every agent is a fresh context. Without this line each one re-reads the
 // source to learn how the app fits together, and that is most of the bill.
 const MAP =
-  `Start from \`node scripts/context.mjs index\` and pick the one or two docs in docs/context/ for the area ` +
+  `Start from \`node scripts/context.mjs index\` and pick the one or two docs in context/engineering-context/ for the area ` +
   `this touches. \`node scripts/context.mjs show <doc>\` prints a doc's outline; \`show <doc> Gotchas <part>…\` ` +
   `prints only those parts — read the Gotchas and the parts you need, never a whole doc: what you read is ` +
   `re-read on every turn after. Take their word for how the app fits together; open source only for the lines ` +
@@ -172,18 +172,18 @@ const SETUP = {
     workdir: { type: 'string', description: 'absolute path every later agent works in' },
     checkout: { type: 'string', description: 'the main checkout of the repository you started in, before any cd: dirname of git rev-parse --path-format=absolute --git-common-dir' },
     runner: { type: 'boolean', description: 'true when $GITHUB_ACTIONS is set' },
-    harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and docs/harness/ship-playbook.md' },
+    harnessOnBase: { type: 'boolean', description: 'origin/<base> has scripts/gate.mjs and context/engineering-context/harness/ship-playbook.md' },
     // Before `doneWhen`: an agent's `resultPreview` is capped at 400
     // characters, and `doneWhen` is verbatim ticket text -- with the tier
     // after it, the tier falls off the end of a live progress render before
-    // anyone reading the issue ever sees it. See docs/context/harness.md.
+    // anyone reading the issue ever sees it. See context/engineering-context/harness.md.
     // Facts about the change, not a verdict: the script sizes the ticket from
     // them by one rule (profileFor below), so every ticket is sized the same way.
     sizing: {
       type: 'object',
       required: ['areas', 'files', 'changesApi', 'changesRule', 'changesData', 'openQuestions', 'labelledFull', 'uiInteraction', 'layoutFit'],
       properties: {
-        areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, docs/harness/' },
+        areas: { type: 'array', items: { enum: ['ui', 'server-routes', 'server-rules', 'schema-seed', 'harness', 'tests', 'docs'] }, description: 'every part of the repo the change will touch — ui: src/; server-routes: server/routes/; server-rules: server/lib/; schema-seed: server/db.js or server/seed.js; harness: .claude/, .github/, scripts/, context/engineering-context/harness/' },
         files: { type: 'integer', description: 'roughly how many app files (src/, server/) the change will edit or add — not tests, docs or the spec, which grow with any change' },
         changesApi: { type: 'boolean', description: 'an endpoint is added, or a response or request shape changes' },
         changesRule: { type: 'boolean', description: 'a business rule changes — seats, waitlists, the overlap guard, check-in, ratings, the clock' },
@@ -564,7 +564,7 @@ async function learn(how) {
     `${inTree()}\n\nThe ship run for issue #${issue} ${how}. Along the way independent audits confirmed these ` +
     `problems the implementer had missed:\n\n${listFindings(history)}\n\nFind at most two classes of mistake that ` +
     `would recur on a different ticket — not this ticket's specifics. For each, decide where the knowledge ` +
-    `would have been seen in time: the *Gotchas* of the docs/context/ doc for that area (usually), CLAUDE.md ` +
+    `would have been seen in time: the *Gotchas* of the context/engineering-context/ doc for that area (usually), CLAUDE.md ` +
     `(only for a decision, not a fact about code), or ${SKILL} (for a process step). If it is already written ` +
     `there, it is being missed: make it shorter and move it higher rather than repeating it. Edit those files, ` +
     `in the voice around them, present tense — they are read instead of the code, so write only what you have ` +
@@ -670,7 +670,7 @@ setup = await agent(
   `opened — is scrapped: remove its worktree and local branch and start from origin/${BASE} — under a new name (add -2, -3…) if origin still has that one, ` +
   `or the pull request's push is refused. First of all, check the base ` +
   `carries the harness this run depends on: \`git cat-file -e origin/${BASE}:scripts/gate.mjs && git cat-file -e ` +
-  `origin/${BASE}:docs/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
+  `origin/${BASE}:context/engineering-context/harness/ship-playbook.md\`. If not, set harnessOnBase=false and proceed=false — every ` +
   `later phase would run commands that do not exist in the worktree. ${PIN} Then \`gh repo set-default --view\` ` +
   `must name the repository origin points at; if it does not, return proceed=false saying so. \`gh\` works there ` +
   `as whoever is signed in: if it cannot read the issue, return proceed=false saying so — never \`gh auth ` +
@@ -705,7 +705,7 @@ if (setup.proceed && !setup.runner && setup.checkout && setup.workdir &&
     `(${setup.checkout}) — another clone of the repository. Nothing was built; run ship again from ${setup.checkout}.` }
 }
 if (!setup.proceed) return { outcome: 'declined', issue, reason: setup.harnessOnBase === false
-  ? `origin/${BASE} has no harness (scripts/gate.mjs, docs/harness/) — pass { issue, base } with a branch that does`
+  ? `origin/${BASE} has no harness (scripts/gate.mjs, context/engineering-context/harness/) — pass { issue, base } with a branch that does`
   : setup.reason }
 // The loop is composed from what the ticket risks, not picked from two sizes.
 // Small is the base; each risk adds the check that catches it; only a business
@@ -827,7 +827,7 @@ for (let round = 1; round <= MAX_SPEC_ROUNDS; round++) {
   const specAudit = await audit(SPEC_LENSES, (l, retry) =>
     agent(
       `You are auditing a spec you did not write. ${BATCH} ${ticket}\n\nRead ${spec.path} on branch ${setup.branch} ` +
-      `(in ${setup.workdir}) and the docs/context/ docs for the files it names. ${MAP} ${l.ask}\n\n` +
+      `(in ${setup.workdir}) and the context/engineering-context/ docs for the files it names. ${MAP} ${l.ask}\n\n` +
       `You are judging the plan, not building it: open source only for a line the spec cites that the docs do ` +
       `not settle, and do not run tests or read node_modules — the build and the gate prove whether it works. ` +
       `A spec audit that re-derives the implementation costs more than the implementation.\n\n` +
@@ -886,7 +886,7 @@ const built = await agent(
   `confirm it fails for the reason you expect — then commit it on its own, red, as "test(…)", before any fix; ` +
   `that commit is the evidence the check proves something. Then implement, running \`npm test\` after every edit. Commit ` +
   `in Conventional Commits and push. In the same push keep the docs true — you know what changed, a fresh agent ` +
-  `would have to re-learn it: \`node scripts/context.mjs for <changed files>\` names the docs/context/ docs that ` +
+  `would have to re-learn it: \`node scripts/context.mjs for <changed files>\` names the context/engineering-context/ docs that ` +
   `own them; update each the change made wrong or incomplete (a new function, payload or testid — usually a ` +
   `line or two), and a new file no doc owns goes into the \`files\` of the doc for its area. ` +
   `Do NOT run the whole Playwright suite or the gate — the next phase does, once — but a browser test you ` +
@@ -927,9 +927,9 @@ const CODE_LENSES_ALL = [
       `that would pass before the change or an existing test weakened when the ticket did not ask for it ` +
       `(test-weakened). Then the same diff against CLAUDE.md: a decision it contradicts (quote the rule and the ` +
       `line) or a rule in .claude/rules/ for an area the diff touches, or a logic error with an input and the wrong output it produces. Last, \`node scripts/context.mjs ` +
-      `for <changed files>\`: a docs/context/ doc that now describes the code wrongly is docs-stale (a minor ` +
+      `for <changed files>\`: a context/engineering-context/ doc that now describes the code wrongly is docs-stale (a minor ` +
       `unless an agent following it would build the wrong thing). ` +
-      `docs/harness/code-review-playbook.md §2–§4 says what not to flag.`,
+      `context/engineering-context/harness/code-review-playbook.md §2–§4 says what not to flag.`,
   },
   {
     key: 'criteria',
@@ -943,12 +943,12 @@ const CODE_LENSES_ALL = [
     key: 'rules',
     ask: `Read \`git diff origin/${BASE}...HEAD\` against CLAUDE.md. A blocker is a decision it records being ` +
       `contradicted — quote the rule and the line. Also: a logic error, with an input and the wrong output it ` +
-      `produces. Follow docs/harness/code-review-playbook.md §2–§4 for what not to flag.`,
+      `produces. Follow context/engineering-context/harness/code-review-playbook.md §2–§4 for what not to flag.`,
   },
   {
     key: 'browser',
-    ask: `Drive the change in a real browser and try to break it, following docs/harness/qa-playbook.md §1–§3 ` +
-      `(\`awk '/^## 1\\./,/^## 4\\./' docs/harness/qa-playbook.md\` prints them) ` +
+    ask: `Drive the change in a real browser and try to break it, following context/engineering-context/harness/qa-playbook.md §1–§3 ` +
+      `(\`awk '/^## 1\\./,/^## 4\\./' context/engineering-context/harness/qa-playbook.md\` prints them) ` +
       `(probes in tests/qa-probe.spec.js, both projects, re-run before calling anything a bug, delete the probe ` +
       `after and leave \`git status\` clean). Never check out another commit or stash in this tree; to try a ` +
       `probe on main, \`git worktree add "$(dirname "$(git rev-parse --path-format=absolute ` +
@@ -1177,7 +1177,7 @@ for (let round = 1; ; round++) {
     `${ticket}\n\n${inTree()}\n\nThe spec is ${spec.path}. These were independently confirmed against your ` +
     `branch:\n\n${listFindings(open)}\n\nFix each at its cause. The rules of §5 of ${SKILL} (${sections(5, '6')}) still hold: never ` +
     `edit an existing test to make it pass, never skip or delete one. If a finding shows the spec was wrong, ` +
-    `fix the spec too and say so in the summary; if a fix changes what a docs/context/ doc says, fix the doc. ` +
+    `fix the spec too and say so in the summary; if a fix changes what a context/engineering-context/ doc says, fix the doc. ` +
     `\`npm test\` after every edit, and a browser test you added or changed alone by title; do not run the whole Playwright ` +
     `suite. Leave \`git status\` clean. Commit and push.`,
     { phase: 'Code Audit', label: `fix#${round}`, schema: DONE, model: T.build },
@@ -1240,7 +1240,7 @@ const pr = await rote(
   `\`git diff --stat origin/${BASE}...HEAD; echo ---; git log --oneline origin/${BASE}..HEAD; echo ---; ` +
   `git log --name-only --format=%h ${gate.sha}..HEAD; echo ---; git remote get-url origin\`\n` +
   `The third part lists what was committed after the gate passed on ${gate.sha.slice(0, 7)}. Empty is the normal ` +
-  `case — nothing changed since the tests ran — so carry on. Only if it lists a file outside docs/, specs/ or *.md ` +
+  `case — nothing changed since the tests ran — so carry on. Only if it lists a file outside context/, specs/ or *.md ` +
   `did code change after the gate: then stop and return ok=false.\n\n` +
   (visible
     ? `Something an attendee sees changed. The branch's browser test calls shotForPR at the moment worth seeing: ` +

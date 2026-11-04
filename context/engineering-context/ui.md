@@ -244,7 +244,7 @@ it by trial and error.
 - **Closing without saving is the default.** Cancel, Escape and the backdrop
   all call the same `onCancel`; only the primary button writes.
 
-How to test one: `docs/context/testing.md` § Testing a dialog.
+How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 
 ## Invariants
 
@@ -258,7 +258,7 @@ How to test one: `docs/context/testing.md` § Testing a dialog.
   not leave content hidden when it is.
 - Motion (`motion/react`) stays inside the two presentations. The app's own motion is CSS.
 - The presentation states only what the harness really does; its numbers (round
-  limits, typical costs, PR #96 and #97) are `docs/harness/README.md`'s — change them together.
+  limits, typical costs, PR #96 and #97) are `context/engineering-context/harness/index.md`'s — change them together.
 
 ## Gotchas
 

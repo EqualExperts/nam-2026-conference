@@ -1,6 +1,9 @@
 import { describe, test } from 'node:test';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
-import { frontMatter, load, docsFor, problems, unowned, tracked, parts } from '../../scripts/context.mjs';
+import { frontMatter, load, docsFor, problems, unowned, tracked, parts, ROOT } from '../../scripts/context.mjs';
 
 /**
  * The context docs are what an agent reads instead of the source, so a doc
@@ -56,7 +59,7 @@ describe('which docs a change touches', () => {
 
 test('every real context doc names only paths and areas that exist', () => {
   const docs = load();
-  assert.ok(docs.length > 0, 'docs/context has no docs');
+  assert.ok(docs.length > 0, 'context/engineering-context has no docs');
   assert.deepEqual(problems(docs), []);
 });
 
@@ -79,4 +82,19 @@ describe('parts — reading a doc by the piece', () => {
     assert.doesNotMatch(p[2].text, /Gotchas/, 'a part never runs into the next section');
     assert.match(p[0].text, /Three\./, 'a section includes its parts');
   });
+});
+
+test('every folder under context/ opens with an index.md, so an agent reads the map before the folder', () => {
+  const missing = [];
+  const walk = (dir) => {
+    if (!existsSync(join(ROOT, dir, 'index.md'))) missing.push(dir);
+    for (const e of readdirSync(join(ROOT, dir), { withFileTypes: true })) if (e.isDirectory()) walk(`${dir}/${e.name}`);
+  };
+  walk('context');
+  assert.deepEqual(missing, []);
+});
+
+test('docs/ is gone — context/ is the only home for the project context', () => {
+  // tracked files, not the directory: a leftover .DS_Store keeps docs/ alive on a Mac
+  assert.equal(execFileSync('git', ['ls-files', 'docs'], { cwd: ROOT, encoding: 'utf8' }), '');
 });
