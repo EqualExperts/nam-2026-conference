@@ -15,18 +15,22 @@ context/
     demo-transcript.txt       was docs/demo/winnow-transcript.txt
   product-context/
     index.md
-    prd.md                    from docs/APP.md and CLAUDE.md's product decisions
-    user-personas.md          from the seeded attendees and ticket tiers
+    prd.md                    was docs/APP.md, word for word; only its links re-pointed
+    user-personas.md          new: the attendee types, from the seeded accounts and tiers
   engineering-context/
     index.md                  was docs/context/README.md
     <area>.md                 was docs/context/<area>.md
     data-model.md             was docs/DATA_MODEL.md, now with front matter
-    harness/                  was docs/harness/
-      images/harness-flow.png was docs/images/
+    harness/
+      index.md                was docs/harness/README.md
+      <playbooks>.md          was docs/harness/*.md
+      harness-flow.png        was docs/images/harness-flow.png
 ```
 
 ## Where
-- `git mv` for every file above, so history follows.
+- `git mv` for every file above, so history follows. Moved docs keep their
+  text; only paths and relative links change (the two indexes that were
+  READMEs get an opening that describes their folder).
 - `scripts/context.mjs` — `DIR = 'context/engineering-context'`; the index doc is
   `index.md`, not `README.md`.
 - `context/engineering-context/data-model.md` — gains front matter (`area:
@@ -44,11 +48,14 @@ context/
 ## How it will be proved
 | Done when | Check | Layer |
 | --- | --- | --- |
-| `docs/` is gone | `test ! -e docs` | gate |
-| no live file names `docs/context`, `docs/harness`, `docs/demo` or `DATA_MODEL` | `git grep` outside `specs/` returns nothing | gate |
+| `docs/` is gone | `context.test.js`: no `docs/` directory | unit |
+| no live file names `docs/context`, `docs/harness`, `docs/demo` or `DATA_MODEL` | `git grep` outside `specs/` returns nothing | review |
+| every relative Markdown link resolves | a link scan over every tracked `.md` outside `specs/` | review |
 | the context tooling reads the new folder | `context.mjs check` inside `npm test`; `index` lists `data-model` | unit |
 | prose vs harness classification unchanged in meaning | `qa-facts`, `gate`, `review-workflows` unit tests, paths updated | unit |
-| every folder under `context/` has an `index.md` | `find context -type d` vs `find context -name index.md` | gate |
+| every folder under `context/` has an `index.md` | `context.test.js` walks `context/` | unit |
+| harness playbooks still count as code, product and Winnow records as prose | `qa-facts.test.js` `codeLines` cases | unit |
+| the decks still fit with the longer paths | screenshots of every slide that shows one; the ticket slide's callouts split folder from file name | visual |
 | nothing the attendee sees changed | `npm run verify` | spec |
 
 ## Decisions
@@ -60,6 +67,11 @@ context/
 - `winnow-transcripts/` is top level, not under product: Winnow may be run on a
   technical conversation too.
 - Old `specs/` keep the paths they were written with — they record history.
+- `prd.md` is `APP.md` moved, not rewritten: this change reshapes the context,
+  it does not edit what it says.
+- CI's code review and QA run `main`'s harness on a pull request, so on this
+  one they read the old paths and flag them; judge it by `npm test` on the
+  branch.
 
 ## Out of scope
 - Winnow writing its record into `winnow-transcripts/` and offering to commit

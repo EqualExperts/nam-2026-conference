@@ -3,7 +3,7 @@
 Not set up yet? Paste the prompt from the [README](../../../README.md) into Claude
 Code: it follows [ONBOARD_CLAUDE.md](../../../ONBOARD_CLAUDE.md). Once you're set
 up, run everything below from Claude in your fork's folder. Every step in detail:
-[How the harness works](README.md).
+[How the harness works](index.md).
 
 ## The product harness: from a conversation to tickets
 

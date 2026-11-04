@@ -262,12 +262,13 @@ const LENSES = [
   {
     key: 'docs',
     when: k => k.has('context'),
-    ask: `Review the changed AI-context and docs — CLAUDE.md, context/engineering-context/, context/engineering-context/harness/ playbooks, README, ` +
+    ask: `Review the changed AI-context and docs — CLAUDE.md, context/ (product, engineering, the harness playbooks), README, ` +
       `specs — as text agents will read INSTEAD of the code (docs-truth). Check every changed factual claim ` +
       `against the code it describes: file:function names, payload fields, test ids, commands and flags, ` +
       `section numbers that the workflow scripts cite. A blocker is a claim that is false, two documents that ` +
       `now contradict each other, or an instruction an agent would follow into a wrong action. Where a fact ` +
-      `belongs is set by context/engineering-context/index.md: decisions in CLAUDE.md, where-and-how in context/engineering-context.`,
+      `belongs is set by context/index.md: decisions in CLAUDE.md, product in context/product-context/, where-and-how in ` +
+      `context/engineering-context/.`,
   },
   {
     key: 'orchestration',
