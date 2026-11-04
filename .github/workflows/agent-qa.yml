@@ -238,7 +238,7 @@ jobs:
           # built without the label was a small ticket; anyone else's, unknown.
           ticket=${TICKET:-$(case "$HEAD_REF" in issue-[0-9]*-*) echo small ;; esac)}
           facts=$(node scripts/qa-facts.mjs "origin/$BASE" --ticket="$ticket" --depth="$DEPTH")
-          scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
+          scripts/agent-run.sh "/qa $PR --no-publish $facts --depth=$DEPTH ${{ vars.FILE_FOLLOW_UPS == 'true' && '--file-follow-ups' || '' }}" "Workflow,Bash,Read,Write,Glob,Grep" claude-sonnet-5
 
       # The ticket's running AI spend gains this pass's row (see agent-ship.yml).
       - name: 🧾 Record the AI spend

@@ -18,7 +18,9 @@ const load = (name) => {
 
 function runner(name, defaults) {
   const script = load(name);
-  return async (answers = {}, args = 42) => {
+  // Most of this file asserts what a follow-up would be filed as, so runs opt in
+  // by default; the "not filed by default" tests below pass a bare 42.
+  return async (answers = {}, args = '42 --file-follow-ups') => {
     const calls = [], prompts = {};
     const agent = async (prompt, opts) => {
       calls.push(opts.label); prompts[opts.label] = prompt;
@@ -362,6 +364,16 @@ describe('code-review', () => {
       assert.equal(result.verdict, 'pass');
       assert.deepEqual(result.followUps, []);
       assert.match(result.comment, /the empty state has no aria-label/, 'a known follow-up vanished from the comment');
+    });
+
+    test('by default a follow-up is listed in the comment, not filed as an issue', async () => {
+      const fu = { ...blocker('the empty state has no aria-label'), severity: 'follow-up' };
+      const { result } = await run({ 'review:logic': { ...clean(), findings: [fu] } }, 42);
+      assert.equal(result.verdict, 'pass');
+      assert.deepEqual(result.followUps, []);
+      assert.match(result.comment, /the empty state has no aria-label/);
+      assert.match(result.comment, /listed here, not filed/);
+      assert.doesNotMatch(result.comment, /each is filed as an issue/);
     });
 
     test('a failing review still returns its follow-ups', async () => {
@@ -764,6 +776,16 @@ describe('qa', () => {
       // #113: the label must not tell the reader a harmless glitch needs a contrived input.
       assert.doesNotMatch(result.comment, /only with an input nobody gives/);
       assert.match(result.comment, /a follow-up — reproduced, but contrived or harmless/);
+    });
+
+    test('by default a QA follow-up is listed in the comment, not filed as an issue', async () => {
+      const { result } = await run({
+        probe: withFail('b'),
+        skeptic: { refuted: false, harmless: true, why: 'a second tooltip stays up; every button still works' },
+      }, 42);
+      assert.deepEqual(result.followUps, []);
+      assert.match(result.comment, /a second tooltip stays up/);
+      assert.doesNotMatch(result.comment, /filed as an issue/);
     });
 
     test('a follow-up the last review already filed is not filed again', async () => {

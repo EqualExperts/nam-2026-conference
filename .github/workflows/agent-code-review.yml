@@ -162,7 +162,7 @@ jobs:
           ticket=${TICKET:-$(case "$HEAD_REF" in issue-[0-9]*-*) echo small ;; esac)}
           facts=$(node scripts/qa-facts.mjs "origin/$BASE" --ticket="$ticket" --depth="$DEPTH")
           case "$HEAD_REF" in issue-[0-9]*-*) shipped=yes ;; *) shipped=no ;; esac
-          scripts/agent-run.sh "/code-review $PR --no-publish $facts --shipped=$shipped --depth=$DEPTH" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
+          scripts/agent-run.sh "/code-review $PR --no-publish $facts --shipped=$shipped --depth=$DEPTH ${{ vars.FILE_FOLLOW_UPS == 'true' && '--file-follow-ups' || '' }}" "Workflow,Bash,Read,Glob,Grep" claude-opus-5
 
       # The ticket's running AI spend gains this pass's row (see agent-ship.yml).
       - name: 🧾 Record the AI spend

@@ -134,8 +134,9 @@ merge: **machines gate, agents advise.**
 
 **Reviews converge.** A re-review checks the previous blockers and only what
 changed since. A blocker must name a realistic path to harm — who reaches it
-and what they lose; anything less becomes a `follow-up` issue and the check
-stays green.
+and what they lose; anything less is listed as a follow-up in the comment and
+the check stays green. Set the repository variable `FILE_FOLLOW_UPS=true` to
+have each filed as a `follow-up` issue too.
 
 ## 👀 See it for real
 
