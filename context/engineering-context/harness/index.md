@@ -14,6 +14,14 @@ costs, and what to do when it goes wrong. The playbooks next to this file say ho
 [`harness.md`](../harness.md) is the map for changing the
 machinery itself.
 
+**In this folder:**
+
+- [`quickstart.md`](quickstart.md) — the workshop path: Winnow to tickets, ship to a pull request. Start here.
+- [`ship-playbook.md`](ship-playbook.md) — every step of ship; read when working on a ship run.
+- [`code-review-playbook.md`](code-review-playbook.md) — how code review judges a pull request, and what it never flags.
+- [`qa-playbook.md`](qa-playbook.md) — how QA probes a pull request in a browser.
+- [`github.md`](github.md) — labels, secrets, tokens and triggers for a fork.
+
 ## 🧩 The pieces
 
 | | Workflow | Starts when | What it does |

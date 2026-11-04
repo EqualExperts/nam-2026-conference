@@ -1,4 +1,5 @@
 import { describe, test } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -94,5 +95,6 @@ test('every folder under context/ opens with an index.md, so an agent reads the 
 });
 
 test('docs/ is gone — context/ is the only home for the project context', () => {
-  assert.equal(existsSync(join(ROOT, 'docs')), false);
+  // tracked files, not the directory: a leftover .DS_Store keeps docs/ alive on a Mac
+  assert.equal(execFileSync('git', ['ls-files', 'docs'], { cwd: ROOT, encoding: 'utf8' }), '');
 });

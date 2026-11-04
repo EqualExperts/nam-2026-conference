@@ -19,8 +19,8 @@ most clashes, full rooms and trips between the two venues.
 
 ## The short-stay attendee
 
-A standard ticket for two days, with a light plan: the keynote and a few talks
-chosen in advance.
+A standard ticket for two days, with a light plan: a few talks chosen in
+advance, often the keynote.
 
 - **Needs:** to find the few sessions worth the trip, keep a seat in them, and
   not miss the keynote.

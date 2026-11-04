@@ -214,7 +214,7 @@ function WaysScene({ step }) {
           'two channels, local Whisper, chunks on disk — and a flag only when it matters',
           'faster-whisper, model small, on your machine — no hosted service, no account',
           'every line into one bucket: noise, durable knowledge, actionable work, or both',
-          'knowledge placed by the doc map into context/engineering-context/ — integrated, never appended',
+          'knowledge placed by the doc map into context/ — integrated, never appended',
           'one goal per ticket, a Done when a test could check, a duplicate search first',
         ].map((t, i) => (
           <div key={t} className="pz-appear text-[16px] leading-snug text-muted" style={later(i * 120)}>{t}</div>

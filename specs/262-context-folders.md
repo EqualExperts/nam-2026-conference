@@ -29,8 +29,8 @@ context/
 
 ## Where
 - `git mv` for every file above, so history follows. Moved docs keep their
-  text; only paths and relative links change (the two indexes that were
-  READMEs get an opening that describes their folder).
+  text; only paths and relative links change (the engineering index gets an
+  opening that describes its folder, the harness index a list of its files).
 - `scripts/context.mjs` — `DIR = 'context/engineering-context'`; the index doc is
   `index.md`, not `README.md`.
 - `context/engineering-context/data-model.md` — gains front matter (`area:
@@ -52,7 +52,7 @@ context/
 | no live file names `docs/context`, `docs/harness`, `docs/demo` or `DATA_MODEL` | `git grep` outside `specs/` returns nothing | review |
 | every relative Markdown link resolves | a link scan over every tracked `.md` outside `specs/` | review |
 | the context tooling reads the new folder | `context.mjs check` inside `npm test`; `index` lists `data-model` | unit |
-| prose vs harness classification unchanged in meaning | `qa-facts`, `gate`, `review-workflows` unit tests, paths updated | unit |
+| harness playbooks stay harness; everything else under `context/` is prose (APP.md, DATA_MODEL.md and the demo transcript used to count as code lines; now they do not) | `qa-facts`, `gate`, `review-workflows` unit tests, paths updated | unit |
 | every folder under `context/` has an `index.md` | `context.test.js` walks `context/` | unit |
 | harness playbooks still count as code, product and Winnow records as prose | `qa-facts.test.js` `codeLines` cases | unit |
 | the decks still fit with the longer paths | screenshots of every slide that shows one; the ticket slide's callouts split folder from file name | visual |

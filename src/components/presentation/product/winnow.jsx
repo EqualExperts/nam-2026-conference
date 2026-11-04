@@ -110,7 +110,7 @@ function Bucket({ b, i, lines, full }) {
           )}
           {b.id === 'know' && (
             <div className="pz-appear mt-auto rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[14px] text-emerald-100" style={later(1600)}>
-              → <Code className="text-[12px]">context/engineering-context/testing.md</Code> — the viewport the mobile specs run at
+              → <Code className="text-[12px]">context/<wbr />engineering‑context/testing.md</Code> — the viewport the mobile specs run at
             </div>
           )}
           {b.id === 'work' && (

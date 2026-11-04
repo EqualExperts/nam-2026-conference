@@ -56,4 +56,4 @@ to turn on Actions. A checklist shows how far along you are.
 Then `/winnow` turns a conversation into tickets and `/ship 42` builds one —
 the [workshop quickstart](context/engineering-context/harness/quickstart.md) walks through both.
 Both read and write [`context/`](context/index.md): the product and engineering
-knowledge they share, and a record of each conversation Winnow processed.
+knowledge they share, and the conversations Winnow works from.
