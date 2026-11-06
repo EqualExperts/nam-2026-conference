@@ -639,12 +639,14 @@ export const OPENING = [
     id: 'context', name: 'Lesson 1 · Shared context', accent: 'text-emerald-300', tone: 'emerald',
     beats: [
       {
-        kicker: '3 · Lesson one',
+        lesson: { label: 'Lesson one', n: '1' },
+        kicker: 'Shared context',
         title: 'Shared context connects the SDLC — and beyond',
         body: 'Creating and curating a shared context across disciplines and harnesses is the foundation of a connected SDLC, whatever tools you choose. And marketing, security and executives can tap into it too, for their own needs.',
       },
       {
-        kicker: '3 · What we mean by context',
+        lesson: { label: 'Lesson one', n: '1' },
+        kicker: 'What we mean by context',
         title: 'Markdown, living in version control',
         body: '“Context” is an overloaded word. Here it means markdown files in the repo, next to the code — read by every person and every agent, and changed the way code is: on a branch, reviewed, merged.',
       },
@@ -655,12 +657,14 @@ export const OPENING = [
     id: 'parallel', name: 'Lesson 2 · Parallel work', accent: 'text-violet-300', tone: 'violet',
     beats: [
       {
-        kicker: '4 · Lesson two',
+        lesson: { label: 'Lesson two', n: '2' },
+        kicker: 'Parallel work',
         title: 'Parallel workflows are the big leap in engineering',
         body: 'Running engineering work in parallel — not one babysat ticket after another — is what truly accelerates engineering with AI.',
       },
       {
-        kicker: '4 · The real unlock',
+        lesson: { label: 'Lesson two', n: '2' },
+        kicker: 'The real unlock',
         title: 'Constraints are real. Parallelism is still the unlock.',
         body: 'Triage, tokens and complexity all set limits, and there is a lot to optimise. But what accelerates your work is being able to parallelise it, consistently.',
       },

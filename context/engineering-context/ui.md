@@ -194,7 +194,8 @@ product harness"), and the product deck on the one the engineering deck opens wi
 `presentation/product/chapters.js` the product ones and
 `presentation/opening/chapters.js` the opening's (scenes in `opening/opening.jsx`,
 built from the shared and product kits — that deck passes `captions="top"`, so its
-captions sit at the top and its scenes draw below them); each is
+captions sit at the top and its scenes draw below them, and its lesson beats carry
+`lesson: { label, n }` for a badge and a large numeral in the caption); each is
 `{ id, name, accent, tone, beats, Scene, enter? }` — one
 caption per beat (`null` for none) and a `Scene({ step, leaving, advance })` laid out in stage
 pixels. The chapters either side of the current one stay mounted so they can fly

@@ -95,7 +95,14 @@ function Caption({ beat, accent, index, top }) {
       animate="shown"
       transition={{ staggerChildren: 0.035 }}
     >
-      <motion.div variants={WORD} className={`font-mono text-[15px] uppercase tracking-[0.2em] ${accent}`}>{beat.kicker}</motion.div>
+      {/* a beat can belong to a named section (`lesson: { label, n }`): a badge, and its number large behind the headline */}
+      {beat.lesson && (
+        <motion.div variants={WORD} aria-hidden="true" className={`pointer-events-none absolute right-0 top-[-34px] font-display text-[200px] leading-none ${accent}`}><span className="opacity-40">{beat.lesson.n}</span></motion.div>
+      )}
+      <motion.div variants={WORD} className={`flex items-center gap-4 font-mono text-[15px] uppercase tracking-[0.2em] ${accent}`}>
+        {beat.lesson && <span className="rounded-full border-2 border-current bg-white/5 px-4 py-0.5 font-display text-[20px] font-semibold tracking-[0.14em] [word-spacing:0.35em]">{beat.lesson.label}</span>}
+        {beat.kicker}
+      </motion.div>
       <h2 className="mt-2 font-display text-[46px] leading-tight text-ink">
         {beat.title.split(' ').map((w, i) => (
           <motion.span key={i} variants={WORD} transition={{ type: 'spring', stiffness: 220, damping: 22 }} className="mr-[0.25em] inline-block">{w}</motion.span>
