@@ -30,14 +30,14 @@ function NeedsHumanScene({ step }) {
       <Show on={step === 0} from="scale" style={at(80, 80, 1440, 520)} className="grid grid-cols-[520px_1fr] gap-10">
         <div className="relative">
           <svg viewBox="0 0 520 480" className="absolute inset-0 size-full" aria-hidden="true">
-            <circle cx="260" cy="240" r="170" fill="none" stroke="#333950" strokeWidth="3" />
-            <circle cx="260" cy="240" r="170" pathLength="1" className="pz-flow" fill="none" stroke="#f59e0b" strokeWidth="3" />
+            <circle cx="260" cy="240" r="170" fill="none" stroke="var(--color-techblue)" strokeWidth="3" />
+            <circle cx="260" cy="240" r="170" pathLength="1" className="pz-flow" fill="none" stroke="var(--color-ember-ink)" strokeWidth="3" />
           </svg>
           {[['🛠️ Fix', 190, 30], ['🚦 Gate', 360, 300], ['🧐 Audit', 20, 300]].map(([l, x, y]) => (
-            <div key={l} className={`${box} absolute grid h-[86px] w-[140px] place-items-center text-[20px] font-semibold text-ink`} style={{ left: x, top: y }}>{l}</div>
+            <div key={l} className={`${box} absolute grid h-[86px] w-[140px] place-items-center text-[20px] font-medium text-ink`} style={{ left: x, top: y }}>{l}</div>
           ))}
           <motion.div
-            className="absolute left-[178px] top-[196px] grid h-[88px] w-[164px] place-items-center rounded-2xl border-2 border-rose-400/70 bg-rose-500/15 text-center font-display text-[28px] text-rose-200"
+            className="absolute left-[178px] top-[196px] grid h-[88px] w-[164px] place-items-center rounded-2xl border-2 border-ember/70 bg-ember/15 text-center font-display text-[28px] text-ember-ink"
             initial={{ scale: 0, rotate: -12 }}
             animate={{ scale: 1, rotate: -6 }}
             transition={{ type: 'spring', stiffness: 260, damping: 12, delay: 2.4 }}
@@ -47,17 +47,17 @@ function NeedsHumanScene({ step }) {
         </div>
         <div className="flex flex-col justify-center gap-3">
           {[1, 2, 3].map((round, i) => (
-            <div key={round} className="pz-appear flex items-center gap-5 rounded-xl border border-amber-400/40 bg-amber-500/10 px-5 py-4" style={later(300 + i * 650)}>
+            <div key={round} className="pz-appear flex items-center gap-5 rounded-xl border border-ember/40 bg-ember/10 px-5 py-4" style={later(300 + i * 650)}>
               <span className="font-mono text-[15px] text-faint">Round {round}</span>
               <span className="text-[19px] text-ink">The grid still hides the first card on a 360 px phone</span>
-              {i > 0 && <span className="pz-pop ml-auto shrink-0 rounded-full bg-rose-500/20 px-3 py-0.5 font-mono text-[13px] text-rose-200" style={later(300 + i * 650 + 500)}>same finding</span>}
+              {i > 0 && <span className="pz-pop ml-auto shrink-0 rounded-full bg-ember/20 px-3 py-0.5 font-mono text-[13px] text-ember-ink" style={later(300 + i * 650 + 500)}>same finding</span>}
             </div>
           ))}
           {/* the round that is not run */}
           <div className="pz-appear flex items-center gap-5 rounded-xl border border-dashed border-hairline px-5 py-4" style={later(2500)}>
             <span className="font-mono text-[15px] text-faint">Round 4</span>
-            <span className="text-[19px] text-faint line-through decoration-rose-400/70">The grid still hides the first card on a 360 px phone</span>
-            <span className="ml-auto shrink-0 font-mono text-[13px] text-rose-300">not run</span>
+            <span className="text-[19px] text-faint line-through decoration-ember-ink/70">The grid still hides the first card on a 360 px phone</span>
+            <span className="ml-auto shrink-0 font-mono text-[13px] text-ember-ink">not run</span>
           </div>
           <div className="pz-appear text-[19px] text-muted" style={later(2800)}>The fixer has tried twice. A fourth round would only spend money.</div>
         </div>
@@ -66,38 +66,38 @@ function NeedsHumanScene({ step }) {
       {/* what it leaves behind */}
       <Show on={step >= 1} from="up" style={at(80, 70, 840)} className={`${box} overflow-hidden pb-6`}>
         <div className="flex items-center gap-3 border-b border-hairline px-6 py-4">
-          <IssueIcon className="size-6 text-emerald-400" />
+          <IssueIcon className="size-6 text-teal-ink" />
           <span className="font-display text-[24px] text-ink">#140 Keep sessions in view on mobile</span>
         </div>
         <div className="flex items-center gap-2 px-6 pt-4">
           <span className="text-[15px] text-faint">labels</span>
-          <span className="pz-strike text-amber-300" style={later(RELABEL_AT)}><Label name="needs-human" /></span>
+          <span className="pz-strike text-ember-ink" style={later(RELABEL_AT)}><Label name="needs-human" /></span>
           <span className="pz-pop" style={later(RELABEL_AT)}><Label name="ready-for-ai" /></span>
         </div>
         <div className="m-6 mb-4 rounded-xl border border-hairline bg-raised p-5">
-          <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-violet-500/30 text-[14px]">🤖</span> ship · stopped at Code audit</div>
+          <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-brand/30 text-[14px]">🤖</span> ship · stopped at Code audit</div>
           <div className="mt-3 text-[18px] text-ink">I could not get the first card into view on a 360 px phone without hiding the day tabs. <b>Still open:</b></div>
           <ul className="mt-2 space-y-1 text-[17px] text-muted">
             <li>• keep the day tabs visible, or collapse them behind Filters?</li>
             <li>• draft PR #142 has everything else, green</li>
           </ul>
         </div>
-        <Show on={step >= 1} from="left" delay={RELABEL_AT - 900} className="mx-6 rounded-xl border border-sky-400/40 bg-sky-500/10 p-5">
-          <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-sky-500/30 text-[14px]">🙋</span> you</div>
+        <Show on={step >= 1} from="left" delay={RELABEL_AT - 900} className="mx-6 rounded-xl border border-brand/40 bg-brand/10 p-5">
+          <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-brand/30 text-[14px]">🙋</span> you</div>
           <div className="mt-2 text-[18px] text-ink">Collapse them behind Filters — the day is in the heading anyway.</div>
         </Show>
       </Show>
 
       <Show on={step >= 1} from="right" delay={400} style={at(960, 70, 560, 250)} className={`${box} p-6`}>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-overlay px-3 py-1 text-[14px] font-semibold text-muted"><PrIcon /> Draft</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-overlay px-3 py-1 text-[14px] font-medium text-muted"><PrIcon /> Draft</span>
           <span className="font-display text-[22px] text-ink">#142</span>
         </div>
         <div className="mt-3 text-[18px] text-muted"><Code>Refs #140</Code> — not <i>Closes</i>. The branch, the spec, every round so far, and what is still open.</div>
       </Show>
 
       <Show on={step >= 1} from="right" delay={700} style={at(960, 350, 560, 260)} className="flex flex-col justify-center gap-3">
-        <div className="pz-appear rounded-2xl border border-violet-400/50 bg-raised p-6" style={later(RELABEL_AT + 400)}>
+        <div className="pz-appear rounded-2xl border border-brand/50 bg-raised p-6" style={later(RELABEL_AT + 400)}>
             <div className="font-display text-[26px] text-ink">🔁 Back into ship</div>
             <div className="mt-2 text-[18px] text-muted">Relabel <Label name="ready-for-ai" className="mx-1 text-[12px]" /> and a fresh run picks up the answer, the branch and the spec.</div>
           </div>
@@ -125,7 +125,7 @@ const NEEDS_HUMAN_BEATS = [
 
 function Runner({ icon, name, file, lines, step, glow }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-[#0d0f15] transition-all duration-700 ${glow ? 'border-violet-400/50' : 'border-hairline'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-[var(--color-ground)] transition-all duration-700 ${glow ? 'border-brand/50' : 'border-hairline'}`}>
       <div className="flex items-center gap-3 border-b border-hairline bg-surface px-5 py-3">
         <span className="text-[24px]">{icon}</span>
         <span className="font-display text-[22px] text-ink">{name}</span>
@@ -134,7 +134,7 @@ function Runner({ icon, name, file, lines, step, glow }) {
       <div className="space-y-1.5 px-5 py-4 font-mono text-[15px] text-muted">
         {lines.map((l, i) => <div key={i} className="pz-appear" style={later(step + i * 350)}>{l}</div>)}
       </div>
-      <div className="relative h-1 overflow-hidden bg-overlay"><div className="pz-scan absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-cyan-300 to-transparent" /></div>
+      <div className="relative h-1 overflow-hidden bg-overlay"><div className="pz-scan absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-teal-ink to-transparent" /></div>
     </div>
   );
 }
@@ -143,7 +143,7 @@ function ReviewScene({ step }) {
   return (
     <>
       <Show on={step === 0} style={at(80, 80, 380, 260)} className={`${box} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white"><PrIcon /> Open</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-techblue px-3 py-1 text-[14px] font-medium text-white"><PrIcon /> Open</span>
         <div className="mt-3 font-display text-[24px] leading-tight text-ink">#142 Keep sessions in view on mobile</div>
         <div className="mt-2 text-[16px] text-muted">opened → two workflows start, side by side</div>
       </Show>
@@ -177,15 +177,15 @@ function ReviewScene({ step }) {
             <div className="mx-auto mt-2 h-1.5 w-16 rounded-full bg-overlay" />
             <div className="p-3 font-mono text-[11px] text-faint">Pixel 7 · /schedule</div>
             <div className="space-y-2 px-3">
-              <div className="flex gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className="h-5 flex-1 rounded bg-violet-500/30" />)}</div>
+              <div className="flex gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className="h-5 flex-1 rounded bg-brand/30" />)}</div>
               <div className="grid grid-cols-2 gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className="h-5 rounded bg-raised" />)}</div>
-              {[0, 1, 2, 3].map((i) => <div key={i} className={`h-[60px] rounded-lg ${i === 0 ? 'bg-emerald-500/20 ring-1 ring-emerald-400/60' : 'bg-raised'}`} />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className={`h-[60px] rounded-lg ${i === 0 ? 'bg-teal/20 ring-1 ring-teal/60' : 'bg-raised'}`} />)}
             </div>
           </div>
           {[[120, 70, 400], [330, 210, 900], [700, 230, 1400], [690, 120, 1900]].map(([x, y, d], i) => (
             <motion.span
               key={i}
-              className="absolute grid size-9 place-items-center rounded-full bg-cyan-400/90 font-mono text-[14px] font-bold text-ground shadow-lg shadow-cyan-500/40"
+              className="absolute grid size-9 place-items-center rounded-full bg-teal/90 font-mono text-[14px] font-bold text-ground shadow-lg shadow-teal/40"
               style={{ left: x, top: y }}
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: [0, 1.3, 1], opacity: 1 }}
@@ -211,22 +211,22 @@ function ReviewScene({ step }) {
 
       {/* confidence decides who reads it */}
       <Replay on={step === 2} style={at(80, 80, 1440, 520)} className="grid grid-cols-2 gap-8">
-        <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-emerald-400/40 bg-emerald-500/[0.06] p-7" style={later(100)}>
-          <Kicker className="text-emerald-300">Both high</Kicker>
+        <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-teal/40 bg-teal/[0.06] p-7" style={later(100)}>
+          <Kicker className="text-teal-ink">Both high</Kicker>
           <Verdict pass level="high" title="Code review">Every criterion traced.</Verdict>
           <Verdict pass level="high" title="QA">Every criterion exercised, both viewports.</Verdict>
           <div className="mt-auto flex items-center gap-4">
-            <span className="grid size-14 place-items-center rounded-full bg-emerald-500/20 text-[30px]">⚡</span>
-            <div><div className="font-display text-[28px] text-emerald-200">Merge on sight</div><div className="text-[16px] text-muted">the agents could judge all of it, and found nothing</div></div>
+            <span className="grid size-14 place-items-center rounded-full bg-teal/20 text-[30px]">⚡</span>
+            <div><div className="font-display text-[28px] text-teal-ink">Merge on sight</div><div className="text-[16px] text-muted">the agents could judge all of it, and found nothing</div></div>
           </div>
         </div>
-        <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-amber-400/40 bg-amber-500/[0.06] p-7" style={later(700)}>
-          <Kicker className="text-amber-300">One low</Kicker>
+        <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-ember/40 bg-ember/[0.06] p-7" style={later(700)}>
+          <Kicker className="text-ember-ink">One low</Kicker>
           <Verdict pass level="high" title="Code review">Every criterion traced.</Verdict>
           <Verdict pass level="low" title="QA">The change is in the seed — none of it is reachable from the UI.</Verdict>
           <div className="mt-auto flex items-center gap-4">
-            <span className="grid size-14 place-items-center rounded-full bg-amber-500/20 text-[30px]">👀</span>
-            <div><div className="font-display text-[28px] text-amber-200">Unproven — read it yourself</div><div className="text-[16px] text-muted">a pass nobody could earn does not read like one</div></div>
+            <span className="grid size-14 place-items-center rounded-full bg-ember/20 text-[30px]">👀</span>
+            <div><div className="font-display text-[28px] text-ember-ink">Unproven — read it yourself</div><div className="text-[16px] text-muted">a pass nobody could earn does not read like one</div></div>
           </div>
         </div>
       </Replay>
@@ -261,7 +261,7 @@ const REVIEW_BEATS = [
 const SPARKS = Array.from({ length: 34 }, (_, i) => {
   const a = (i / 34) * Math.PI * 2 + (i % 3) * 0.13;
   const r = 260 + ((i * 37) % 180);
-  return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, s: 8 + ((i * 5) % 12), c: ['bg-violet-300', 'bg-fuchsia-300', 'bg-cyan-300', 'bg-emerald-300'][i % 4] };
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, s: 8 + ((i * 5) % 12), c: ['bg-brand-ink', 'bg-brand-ink', 'bg-teal-ink', 'bg-teal-ink'][i % 4] };
 });
 
 function Burst() {
@@ -290,7 +290,7 @@ function MergeScene({ step }) {
       <Show on={step === 0} from="scale" style={at(330, 90, 940, 500)} className={`${box} flex flex-col items-center justify-center p-10 text-center`}>
         {merged && <Burst />}
         <motion.div
-          className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[20px] font-semibold text-white ${merged ? 'bg-violet-600' : 'bg-emerald-600'}`}
+          className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[20px] font-medium text-white ${merged ? 'bg-techblue' : 'bg-techblue'}`}
           animate={{ scale: merged ? [1, 1.25, 1] : 1 }}
           transition={{ duration: 0.5 }}
         >
@@ -304,14 +304,14 @@ function MergeScene({ step }) {
         <motion.button
           type="button"
           tabIndex={-1}
-          className={`relative mt-8 rounded-xl px-8 py-4 font-display text-[24px] text-white ${merged ? 'bg-violet-700/50' : 'bg-emerald-600'}`}
+          className={`relative mt-8 rounded-xl px-8 py-4 font-display text-[24px] text-white ${merged ? 'bg-brand/50' : 'bg-techblue'}`}
           animate={merged ? { scale: [1, 0.92, 1.06, 1] } : {}}
           transition={{ duration: 0.5 }}
         >
           {merged ? '✓ Pull request merged' : 'Merge pull request'}
-          {!merged && <span className="pz-ping absolute inset-0 rounded-xl border-2 border-emerald-300" style={{ animationDelay: '700ms' }} aria-hidden="true" />}
+          {!merged && <span className="pz-ping absolute inset-0 rounded-xl border-2 border-teal" style={{ animationDelay: '700ms' }} aria-hidden="true" />}
         </motion.button>
-        {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(139,92,246,0.7)', backgroundColor: 'rgba(196,181,253,0.16)' }} animate={{ boxShadow: '0 0 0 90px rgba(139,92,246,0)', backgroundColor: 'rgba(196,181,253,0)' }} transition={{ duration: 1.1 }} />}
+        {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 color-mix(in srgb, var(--color-techblue) 70%, transparent)', backgroundColor: 'color-mix(in srgb, var(--color-brand-ink) 16%, transparent)' }} animate={{ boxShadow: '0 0 0 90px color-mix(in srgb, var(--color-techblue) 0%, transparent)', backgroundColor: 'color-mix(in srgb, var(--color-brand-ink) 0%, transparent)' }} transition={{ duration: 1.1 }} />}
       </Show>
 
     </>
@@ -349,7 +349,7 @@ function ScaleScene({ step }) {
               <span className="font-mono text-[14px] text-muted">wt-{n} · :{4300 + 2 * (i + 1)}</span>
               <div className="h-2.5 overflow-hidden rounded-full bg-overlay">
                 <motion.div
-                  className={`h-full rounded-full ${human ? 'bg-gradient-to-r from-violet-500 to-amber-400' : 'bg-gradient-to-r from-violet-500 to-cyan-300'}`}
+                  className={`h-full rounded-full ${human ? 'bg-gradient-to-r from-brand to-ember-ink' : 'bg-gradient-to-r from-brand to-teal-ink'}`}
                   initial={{ width: '0%' }}
                   animate={{ width: human ? '78%' : '100%' }}
                   transition={{ duration: dur, delay: 0.4 + i * 0.12, ease: [0.4, 0, 0.2, 1] }}
@@ -361,14 +361,14 @@ function ScaleScene({ step }) {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4 + i * 0.12 + dur, type: 'spring', stiffness: 300, damping: 15 }}
               >
-                {human ? <Label name="needs-human" className="text-[12px]" /> : <span className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-emerald-300"><PrIcon /> PR</span>}
+                {human ? <Label name="needs-human" className="text-[12px]" /> : <span className="inline-flex items-center gap-1.5 text-[15px] font-medium text-teal-ink"><PrIcon /> PR</span>}
               </motion.span>
             </div>
           );
         })}
         {/* the tally, once the last lane is home */}
         <div className="pz-appear flex items-center gap-6 px-6 py-3 text-[16px] text-muted" style={later(7000)}>
-          <span className="flex items-center gap-2"><span className="inline-flex items-center gap-1.5 font-semibold text-emerald-300"><PrIcon /> 9</span> pull requests, ready for review</span>
+          <span className="flex items-center gap-2"><span className="inline-flex items-center gap-1.5 font-medium text-teal-ink"><PrIcon /> 9</span> pull requests, ready for review</span>
           <span className="flex items-center gap-2"><Label name="needs-human" className="text-[12px]" /> 1 question, back to you</span>
           <span className="ml-auto font-mono text-[14px] text-faint">nobody watched any of them</span>
         </div>
@@ -403,9 +403,9 @@ function CostPanel({ on }) {
             <div key={run}>
               <div className="flex justify-between text-[15px] text-muted"><span>{run}</span></div>
               <div className="mt-1 flex h-3 overflow-hidden rounded-full bg-overlay">
-                <span className="pz-fill block h-full bg-violet-400" style={{ width: `${w * 60}%`, animationDuration: '0.9s', animationDelay: `${300 + i * 200}ms` }} />
-                <span className="pz-fill block h-full bg-sky-400" style={{ width: `${w * 30}%`, animationDuration: '0.9s', animationDelay: `${500 + i * 200}ms` }} />
-                <span className="pz-fill block h-full bg-emerald-400" style={{ width: `${w * 10}%`, animationDuration: '0.9s', animationDelay: `${700 + i * 200}ms` }} />
+                <span className="pz-fill block h-full bg-brand-ink" style={{ width: `${w * 60}%`, animationDuration: '0.9s', animationDelay: `${300 + i * 200}ms` }} />
+                <span className="pz-fill block h-full bg-brand-ink" style={{ width: `${w * 30}%`, animationDuration: '0.9s', animationDelay: `${500 + i * 200}ms` }} />
+                <span className="pz-fill block h-full bg-teal-ink" style={{ width: `${w * 10}%`, animationDuration: '0.9s', animationDelay: `${700 + i * 200}ms` }} />
               </div>
             </div>
           ))}
@@ -413,10 +413,10 @@ function CostPanel({ on }) {
         <div className="mt-5 flex gap-2"><Model m="opus" /><Model m="sonnet" /><Model m="haiku" /></div>
       </div>
       {[
-        { tone: 'emerald', pr: 96, title: 'Name the search when nothing matches', size: '🟢 A small ticket', ship: '12 min · Sonnet · one audit round', qa: 'QA skipped in 16 s — covered by its own tests', cost: 0.91 },
-        { tone: 'sky', pr: 97, title: 'Fix Undo after removing an ended seat', size: '🔵 A bigger ticket', ship: '22 min · Opus · plan audit, three lenses', qa: 'QA high confidence — 3 browser probes', cost: 7.99 },
+        { tone: 'teal', pr: 96, title: 'Name the search when nothing matches', size: '🟢 A small ticket', ship: '12 min · Sonnet · one audit round', qa: 'QA skipped in 16 s — covered by its own tests', cost: 0.91 },
+        { tone: 'blue', pr: 97, title: 'Fix Undo after removing an ended seat', size: '🔵 A bigger ticket', ship: '22 min · Opus · plan audit, three lenses', qa: 'QA high confidence — 3 browser probes', cost: 7.99 },
       ].map((t, i) => (
-        <div key={t.pr} className={`pz-appear flex flex-col rounded-2xl border p-6 ${t.tone === 'emerald' ? 'border-emerald-400/40 bg-emerald-500/[0.05]' : 'border-sky-400/40 bg-sky-500/[0.05]'}`} style={later(400 + i * 400)}>
+        <div key={t.pr} className={`pz-appear flex flex-col rounded-2xl border p-6 ${t.tone === 'teal' ? 'border-teal/40 bg-teal/[0.05]' : 'border-brand/40 bg-brand/[0.05]'}`} style={later(400 + i * 400)}>
           <Kicker>{t.size}</Kicker>
           <div className="mt-2 font-display text-[24px] leading-tight text-ink">PR #{t.pr} — {t.title}</div>
           <div className="mt-4 space-y-2 text-[16px] text-muted">
@@ -517,8 +517,8 @@ function YourTurn() {
       <div className="mt-12 flex gap-5">
         {LAB_STEPS.map(([icon, title, sub], i) => (
           <div key={title} className="pz-appear w-[370px] rounded-2xl border border-hairline bg-surface px-6 py-5 text-left" style={later(1100 + i * 250)}>
-            <div className="font-mono text-[14px] text-emerald-300">step {i + 1}</div>
-            <div className="mt-1 text-[22px] font-semibold text-ink">{icon} {title}</div>
+            <div className="font-mono text-[14px] text-teal-ink">step {i + 1}</div>
+            <div className="mt-1 text-[22px] font-medium text-ink">{icon} {title}</div>
             <div className="text-[16px] text-muted">{sub}</div>
           </div>
         ))}
@@ -537,10 +537,10 @@ function LabScene({ step: beat }) {
       <Show on={beat > 0} from="left" style={at(80, 80, 440, 520)} className="flex flex-col gap-4">
         {LAB_STEPS.map(([icon, title, sub], i) => (
           <div key={title} className={`flex items-center gap-4 rounded-2xl border px-5 py-5 transition-all duration-500
-            ${i === step ? 'pz-glow border-emerald-400/60 bg-raised' : 'border-hairline bg-surface'} ${i > step ? 'opacity-45' : ''}`}>
+            ${i === step ? 'pz-glow border-teal/60 bg-raised' : 'border-hairline bg-surface'} ${i > step ? 'opacity-45' : ''}`}>
             <span className="grid size-12 shrink-0 place-items-center rounded-full bg-overlay font-display text-[24px] text-ink">{i < step ? '✓' : i + 1}</span>
             <div>
-              <div className="text-[22px] font-semibold text-ink">{icon} {title}</div>
+              <div className="text-[22px] font-medium text-ink">{icon} {title}</div>
               <div className="text-[16px] text-muted">{sub}</div>
             </div>
           </div>
@@ -552,22 +552,22 @@ function LabScene({ step: beat }) {
         <GitHub tab="Issues" className="relative h-full">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              <span className="text-[22px] font-semibold">Issues</span>
-              <span className={`rounded-md ${GH.green} px-3 py-1 text-[14px] font-semibold text-white`}>New issue</span>
+              <span className="text-[22px] font-medium">Issues</span>
+              <span className={`rounded-md ${GH.green} px-3 py-1 text-[14px] font-medium text-white`}>New issue</span>
             </div>
             <div className={`mt-3 overflow-hidden rounded-md border ${GH.line}`}>
-              <div className={`flex gap-4 border-b ${GH.line} bg-[#f6f8fa] px-4 py-2 text-[14px]`}>
-                <span className="font-semibold">Open <span className="rounded-full bg-black/[0.07] px-1.5">2</span></span>
+              <div className={`flex gap-4 border-b ${GH.line} bg-[var(--color-cloud)] px-4 py-2 text-[14px]`}>
+                <span className="font-medium">Open <span className="rounded-full bg-ground/[0.07] px-1.5">2</span></span>
                 <span className={GH.muted}>Closed</span>
               </div>
               {[
                 ['Pick more than one track on the schedule', 42, 'just now', true],
                 ['Name the search when nothing matches', 43, '2 days ago', false],
               ].map(([t, n, when, pick], i) => (
-                <div key={n} className={`pz-appear flex gap-3 border-b ${GH.line} px-4 py-2.5 last:border-b-0 ${pick ? 'bg-[#ddf4ff]/60' : ''}`} style={later(200 + i * 150)}>
+                <div key={n} className={`pz-appear flex gap-3 border-b ${GH.line} px-4 py-2.5 last:border-b-0 ${pick ? 'bg-[var(--color-cloud)]/60' : ''}`} style={later(200 + i * 150)}>
                   <GhOpenIcon className={`mt-1 size-4 shrink-0 ${GH.open}`} />
                   <div>
-                    <div className="text-[16px] font-semibold">{t}</div>
+                    <div className="text-[16px] font-medium">{t}</div>
                     <div className={`text-[13px] ${GH.muted}`}>#{n} · opened {when}</div>
                   </div>
                 </div>
@@ -577,16 +577,16 @@ function LabScene({ step: beat }) {
 
           {/* the click: the issue page slides up over the list */}
           <div className="pz-appear absolute inset-x-0 bottom-0 top-[86px] bg-white px-6 py-4" style={later(1400)}>
-            <div className="text-[24px] leading-tight">Pick more than one track on the schedule <span className="text-[#59636e]">#42</span></div>
-            <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full ${GH.green} px-3 py-1 text-[14px] font-semibold text-white`}><GhOpenIcon /> Open</span>
+            <div className="text-[24px] leading-tight">Pick more than one track on the schedule <span className="text-[var(--color-overlay)]">#42</span></div>
+            <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full ${GH.green} px-3 py-1 text-[14px] font-medium text-white`}><GhOpenIcon /> Open</span>
             <div className="mt-3 grid grid-cols-[1fr_180px] gap-5">
-              <div className={`overflow-hidden rounded-md border border-[#54aeff]/60`}>
-                <div className="flex items-center gap-2 border-b border-[#54aeff]/40 bg-[#ddf4ff] px-4 py-2 text-[14px]">
-                  <span className="size-5 rounded-full bg-violet-300" aria-hidden="true" />
+              <div className={`overflow-hidden rounded-md border border-[var(--color-brand)]/60`}>
+                <div className="flex items-center gap-2 border-b border-[var(--color-brand)]/40 bg-[var(--color-cloud)] px-4 py-2 text-[14px]">
+                  <span className="size-5 rounded-full bg-brand-ink" aria-hidden="true" />
                   <b>you</b><span className={GH.muted}>opened just now</span>
                 </div>
                 <div className="px-4 py-3">
-                  <div className={`border-b ${GH.line} pb-1 text-[18px] font-semibold`}>Acceptance criteria</div>
+                  <div className={`border-b ${GH.line} pb-1 text-[18px] font-medium`}>Acceptance criteria</div>
                   <ul className="mt-2 space-y-1.5 text-[15px]">
                     {['The schedule’s track filter takes more than one track', 'It shows sessions in any of the tracks picked'].map((d, i) => (
                       <li key={d} className="pz-appear flex items-center gap-2" style={later(1900 + i * 200)}>
@@ -598,8 +598,8 @@ function LabScene({ step: beat }) {
                 </div>
               </div>
               <div className="space-y-3 text-[14px]">
-                <div className={`border-b ${GH.line} pb-2`}><div className={`font-semibold ${GH.muted}`}>Assignees</div><div className={GH.muted}>No one</div></div>
-                <div className={`border-b ${GH.line} pb-2`}><div className={`font-semibold ${GH.muted}`}>Labels</div><span className="mt-1 inline-block rounded-full bg-[#a2eeef] px-2 text-[12px] font-semibold">enhancement</span></div>
+                <div className={`border-b ${GH.line} pb-2`}><div className={`font-medium ${GH.muted}`}>Assignees</div><div className={GH.muted}>No one</div></div>
+                <div className={`border-b ${GH.line} pb-2`}><div className={`font-medium ${GH.muted}`}>Labels</div><span className="mt-1 inline-block rounded-full bg-[var(--color-cloud)] px-2 text-[12px] font-medium">enhancement</span></div>
               </div>
             </div>
           </div>
@@ -625,29 +625,29 @@ function LabScene({ step: beat }) {
       <Replay on={step === 2} from="right" style={at(570, 80, 950, 520)} className="flex flex-col gap-4">
         <GitHub tab="Pull requests">
           <div className="px-6 py-4">
-            <div className="text-[22px] leading-tight">Pick more than one track on the schedule <span className="text-[#59636e]">#44</span></div>
+            <div className="text-[22px] leading-tight">Pick more than one track on the schedule <span className="text-[var(--color-overlay)]">#44</span></div>
             <div className="mt-2 flex items-center gap-2 text-[14px]">
-              <span className={`inline-flex items-center gap-1.5 rounded-full ${GH.green} px-3 py-1 font-semibold text-white`}><PrIcon /> Open</span>
-              <span className={GH.muted}>wants to merge into <span className="rounded bg-[#ddf4ff] px-1 font-mono text-[13px] text-[#0969da]">main</span> · Closes #42</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full ${GH.green} px-3 py-1 font-medium text-white`}><PrIcon /> Open</span>
+              <span className={GH.muted}>wants to merge into <span className="rounded bg-[var(--color-cloud)] px-1 font-mono text-[13px] text-[var(--color-techblue)]">main</span> · Closes #42</span>
             </div>
             <div className={`mt-2 flex gap-5 border-b ${GH.line} text-[14px]`}>
               {['Conversation', 'Commits', 'Checks', 'Files changed'].map((t, i) => (
-                <span key={t} className={`border-b-2 pb-1.5 ${i === 0 ? 'border-[#fd8c73] font-semibold' : `border-transparent ${GH.muted}`} ${t === 'Files changed' ? 'font-semibold text-[#1f2328]' : ''}`}>
-                  {t}{t === 'Files changed' && <span className="ml-1 rounded-full bg-[#ffebe9] px-1.5 text-[12px] text-[#cf222e]">read me</span>}
+                <span key={t} className={`border-b-2 pb-1.5 ${i === 0 ? 'border-[var(--color-ember-ink)] font-medium' : `border-transparent ${GH.muted}`} ${t === 'Files changed' ? 'font-medium text-[var(--color-ground)]' : ''}`}>
+                  {t}{t === 'Files changed' && <span className="ml-1 rounded-full bg-[var(--color-cloud)] px-1.5 text-[12px] text-[var(--color-techblue)]">read me</span>}
                 </span>
               ))}
             </div>
             {/* in a fork no runner reviews it: you ask, from the same Claude Desktop chat */}
             <div className="pz-appear mt-2.5 flex items-center gap-3" style={later(200)}>
-              <span className="text-[13px] leading-tight text-[#59636e]">Normally GitHub Actions runs these.<br />Your fork has no API key, so ask:</span>
-              <span className="rounded-2xl bg-[#f0eee6] px-3 py-1.5 text-[14px]">Can you review and QA pull request #44?</span>
+              <span className="text-[13px] leading-tight text-[var(--color-overlay)]">Normally GitHub Actions runs these.<br />Your fork has no API key, so ask:</span>
+              <span className="rounded-2xl bg-[var(--color-cloud)] px-3 py-1.5 text-[14px]">Can you review and QA pull request #44?</span>
             </div>
             <div className="mt-2 space-y-2">
               {[['🔍', 'Code review', 'Every criterion traced to the code.'], ['🧪', 'QA', 'Two tracks picked on desktop and phone — both show.']].map(([icon, who, what], i) => (
                 <div key={who} className={`pz-appear overflow-hidden rounded-md border ${GH.line}`} style={later(1100 + i * 400)}>
-                  <div className={`flex items-center gap-2 border-b ${GH.line} bg-[#f6f8fa] px-3 py-1 text-[13px]`}>
+                  <div className={`flex items-center gap-2 border-b ${GH.line} bg-[var(--color-cloud)] px-3 py-1 text-[13px]`}>
                     <span>{icon}</span><b>{who}</b><span className={GH.muted}>commented</span>
-                    <span className="ml-auto rounded-full bg-[#dafbe1] px-2 font-semibold text-[#1a7f37]">high confidence ●●●</span>
+                    <span className="ml-auto rounded-full bg-[var(--color-cloud)] px-2 font-medium text-[var(--color-techblue)]">high confidence ●●●</span>
                   </div>
                   <div className="px-3 py-1 text-[14px]">{what}</div>
                 </div>
@@ -656,11 +656,11 @@ function LabScene({ step: beat }) {
           </div>
         </GitHub>
         <div className="pz-appear grid grid-cols-[1fr_1fr] gap-4" style={later(1200)}>
-          <div className="rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-500/10 px-5 py-3">
+          <div className="rounded-2xl border-2 border-dashed border-ember/60 bg-ember/10 px-5 py-3">
             <Label name="needs-human" />
             <div className="mt-1 text-[16px] text-muted">Read its question, answer it on the issue, then ask Claude to ship it again.</div>
           </div>
-          <div className="flex items-center gap-4 rounded-2xl border border-violet-400/40 bg-raised px-5">
+          <div className="flex items-center gap-4 rounded-2xl border border-brand/40 bg-raised px-5">
             <span className="text-[34px]">🙋</span>
             <span className="text-[18px] text-ink">Stuck? Put your hand up — we are walking the room.</span>
           </div>
@@ -690,13 +690,13 @@ const LAB_BEATS = [
 ];
 
 export const NEEDS_HUMAN = [
-  { id: 'needs-human', name: 'When it gets stuck', accent: 'text-amber-300', tone: 'amber', beats: NEEDS_HUMAN_BEATS, Scene: NeedsHumanScene },
+  { id: 'needs-human', name: 'When it gets stuck', accent: 'text-ember-ink', tone: 'ember', beats: NEEDS_HUMAN_BEATS, Scene: NeedsHumanScene },
 ];
 
 export const AFTER = [
-  { id: 'review', name: 'Review and QA', accent: 'text-cyan-300', tone: 'cyan', beats: REVIEW_BEATS, Scene: ReviewScene },
-  { id: 'merge', name: 'Merge', accent: 'text-violet-300', tone: 'violet', beats: MERGE_BEATS, Scene: MergeScene },
-  { id: 'scale', name: 'Many at once', accent: 'text-sky-300', tone: 'sky', beats: SCALE_BEATS, Scene: ScaleScene },
-  { id: 'role', name: 'Your role', accent: 'text-violet-300', tone: 'violet', beats: ROLE_BEATS, Scene: RoleScene },
-  { id: 'lab', name: 'Now you', accent: 'text-emerald-300', tone: 'emerald', beats: LAB_BEATS, Scene: LabScene },
+  { id: 'review', name: 'Review and QA', accent: 'text-teal-ink', tone: 'teal', beats: REVIEW_BEATS, Scene: ReviewScene },
+  { id: 'merge', name: 'Merge', accent: 'text-brand-ink', tone: 'blue', beats: MERGE_BEATS, Scene: MergeScene },
+  { id: 'scale', name: 'Many at once', accent: 'text-brand-ink', tone: 'blue', beats: SCALE_BEATS, Scene: ScaleScene },
+  { id: 'role', name: 'Your role', accent: 'text-brand-ink', tone: 'blue', beats: ROLE_BEATS, Scene: RoleScene },
+  { id: 'lab', name: 'Now you', accent: 'text-teal-ink', tone: 'teal', beats: LAB_BEATS, Scene: LabScene },
 ];

@@ -117,8 +117,8 @@ export function SchedulePage() {
 
       <div className="hidden rounded-xl border border-hairline bg-raised p-3 lg:block">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">My agenda</span>
-          <Link to="/my-agenda" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-faint">My agenda</span>
+          <Link to="/my-agenda" className="text-[11px] font-medium text-teal-ink hover:text-teal-ink">
             Open →
           </Link>
         </div>
@@ -129,7 +129,7 @@ export function SchedulePage() {
       </div>
 
       <div>
-        <h3 className="sr-only text-[11px] font-semibold uppercase tracking-wider text-faint lg:not-sr-only lg:mb-2 lg:block">Day</h3>
+        <h3 className="sr-only text-[11px] font-medium uppercase tracking-wider text-faint lg:not-sr-only lg:mb-2 lg:block">Day</h3>
         <div className="grid grid-cols-4 gap-1.5 lg:grid-cols-1">
           {days.map((d) => {
             const active = d.date === filters.day;
@@ -142,14 +142,14 @@ export function SchedulePage() {
                 aria-pressed={active}
                 className={cx(
                   'flex items-baseline justify-center rounded-lg border px-1 py-1.5 text-center transition-colors lg:justify-between lg:px-3 lg:py-2 lg:text-left',
-                  active ? 'border-violet-400/50 bg-violet-500/15 text-ink'
+                  active ? 'border-brand/50 bg-brand/15 text-ink'
                     : 'border-hairline bg-raised text-muted hover:bg-overlay hover:text-ink',
                 )}
               >
-                <span className="flex items-center gap-1.5 text-[13px] font-semibold">
+                <span className="flex items-center gap-1.5 text-[13px] font-medium">
                   {d.label}<span className="hidden lg:inline"> · {shortDay(d.date)}</span>
                   {d.date === clock.day && (
-                    <span className="size-1.5 animate-pulse-dot rounded-full bg-rose-400" title="Today" />
+                    <span className="size-1.5 animate-pulse-dot rounded-full bg-ember-ink" title="Today" />
                   )}
                 </span>
                 <span className="hidden font-mono text-[10px] text-faint lg:inline">{d.sessionCount}</span>
@@ -160,7 +160,7 @@ export function SchedulePage() {
       </div>
 
       <div>
-        <h3 className="sr-only text-[11px] font-semibold uppercase tracking-wider text-faint lg:not-sr-only lg:mb-2 lg:block">Track</h3>
+        <h3 className="sr-only text-[11px] font-medium uppercase tracking-wider text-faint lg:not-sr-only lg:mb-2 lg:block">Track</h3>
         <div className="hide-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto lg:flex-wrap">
           <button type="button" onClick={() => set('track', ALL)}
             className={cx('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
@@ -225,7 +225,7 @@ export function SchedulePage() {
                     onClick={() => set('view', v.value)}
                     data-testid={`view-${v.value}`}
                     className={cx(
-                      'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                      'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                       view === v.value && !disabled ? 'bg-overlay text-ink' : 'text-muted hover:text-ink',
                       disabled && 'cursor-not-allowed opacity-40 hover:text-muted',
                     )}
@@ -258,8 +258,8 @@ export function SchedulePage() {
                 {dayLabel(filters.day)}
               </h2>
               {filters.day === clock.day && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300">
-                  <span className="size-1.5 animate-pulse-dot rounded-full bg-rose-400" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-ember/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-ember-ink">
+                  <span className="size-1.5 animate-pulse-dot rounded-full bg-ember-ink" />
                   Today
                 </span>
               )}
@@ -272,7 +272,7 @@ export function SchedulePage() {
                 type="button"
                 onClick={clearBlocker}
                 data-testid="grid-blocked-notice"
-                className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/[0.08] px-3 py-1 text-[11px] font-medium text-amber-200 transition-colors hover:bg-amber-500/15"
+                className="inline-flex items-center gap-1.5 rounded-full border border-ember/30 bg-ember/[0.08] px-3 py-1 text-[11px] font-medium text-ember-ink transition-colors hover:bg-ember/15"
               >
                 <Icon name="info" className="size-3" />
                 Grid shows a whole day — not available with {blocker[1]}. Show whole day

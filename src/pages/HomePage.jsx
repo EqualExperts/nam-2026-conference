@@ -24,7 +24,7 @@ function HeroBar({ conference }) {
   return (
     <section className="relative overflow-hidden rounded-2xl border border-hairline" data-testid="hero">
       <HeroMedia />
-      <div className="absolute inset-0 bg-[radial-gradient(30rem_14rem_at_12%_0%,rgba(139,92,246,0.22),transparent_65%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(30rem_14rem_at_12%_0%,color-mix(in srgb, var(--color-techblue) 22%, transparent),transparent_65%)]" />
 
       <div className="relative flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 sm:px-7 sm:py-5">
         <div className="min-w-0">
@@ -37,8 +37,8 @@ function HeroBar({ conference }) {
         </div>
 
         {today && (
-          <Chip accent="cyan" className="!py-1.5">
-            <span className="size-1.5 animate-pulse-dot rounded-full bg-cyan-400" />
+          <Chip accent="blue" className="!py-1.5">
+            <span className="size-1.5 animate-pulse-dot rounded-full bg-teal-ink" />
             {today.label} · {fmtTime(clock.time)}
           </Chip>
         )}
@@ -71,11 +71,11 @@ function QuickLinks() {
           <li key={l.to}>
             <Link to={l.to}
               className="group flex items-start gap-3 rounded-xl border border-hairline bg-surface p-4 transition-colors hover:border-white/20 hover:bg-raised">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-500/12 text-violet-300">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/12 text-brand-ink">
                 <Icon name={l.icon} className="size-4" />
               </span>
               <span className="min-w-0">
-                <span className="block font-semibold group-hover:text-violet-200">{l.label}</span>
+                <span className="block font-medium group-hover:text-brand-ink">{l.label}</span>
                 <span className="block text-[13px] text-muted">{l.blurb}</span>
               </span>
             </Link>
@@ -105,17 +105,17 @@ function LatestAnnouncement() {
   if (!item) return null;
 
   const tone = {
-    warning: 'border-amber-500/25 bg-amber-500/[0.07] text-amber-200',
-    success: 'border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-200',
-    info: 'border-sky-500/25 bg-sky-500/[0.07] text-sky-200',
-  }[item.kind] ?? 'border-sky-500/25 bg-sky-500/[0.07] text-sky-200';
+    warning: 'border-ember/25 bg-ember/[0.07] text-ember-ink',
+    success: 'border-teal/25 bg-teal/[0.07] text-teal-ink',
+    info: 'border-brand/25 bg-brand/[0.07] text-brand-ink',
+  }[item.kind] ?? 'border-brand/25 bg-brand/[0.07] text-brand-ink';
 
   return (
     <section className={cx('flex gap-3 rounded-2xl border p-4', tone)} data-testid="announcements">
       <Icon name={item.kind === 'warning' ? 'alert' : 'info'} className="mt-0.5 size-4 shrink-0" />
       <div className="min-w-0">
         <div className="flex flex-wrap items-baseline gap-2">
-          <h2 className="text-sm font-semibold">{item.title}</h2>
+          <h2 className="text-sm font-medium">{item.title}</h2>
           <span className="text-[11px] text-faint">
             {relativeDate(item.postedAt, clock)}
             {item.venueId && ` · ${venueById[item.venueId]?.shortName}`}

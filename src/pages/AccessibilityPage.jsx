@@ -28,10 +28,10 @@ export function AccessibilityPage() {
 
       <div className="grid gap-3 sm:grid-cols-4">
         {[
-          [stepFree.length, 'Step-free rooms', 'emerald'],
-          [withAmenity('Hearing loop').length, 'Hearing loops', 'sky'],
-          [withAmenity('Live captions').length, 'Live captions', 'violet'],
-          [notStepFree.length, 'Stairs only', notStepFree.length ? 'amber' : 'emerald'],
+          [stepFree.length, 'Step-free rooms', 'teal'],
+          [withAmenity('Hearing loop').length, 'Hearing loops', 'blue'],
+          [withAmenity('Live captions').length, 'Live captions', 'blue'],
+          [notStepFree.length, 'Stairs only', notStepFree.length ? 'ember' : 'teal'],
         ].map(([value, label, tone]) => {
           const a = accent(tone);
           return (
@@ -44,15 +44,15 @@ export function AccessibilityPage() {
       </div>
 
       {notStepFree.length > 0 && (
-        <section className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-6" data-testid="stairs-only">
-          <h2 className="flex items-center gap-2 font-display text-xl text-amber-200">
+        <section className="rounded-2xl border border-ember/25 bg-ember/[0.07] p-6" data-testid="stairs-only">
+          <h2 className="flex items-center gap-2 font-display text-xl text-ember-ink">
             <Icon name="alert" className="size-5" />
             {plural(notStepFree.length, 'room')} without step-free access
           </h2>
           <ul className="mt-4 space-y-3">
             {notStepFree.map((r) => (
               <li key={r.id} className="text-[14px]">
-                <span className="font-semibold">{r.name}</span>
+                <span className="font-medium">{r.name}</span>
                 <span className="text-muted"> · {r.venue.shortName}, {r.floor}</span>
                 <p className="mt-0.5 text-[13px] text-muted">
                   Everything scheduled here is also livestreamed to a step-free room at the same site.
@@ -70,15 +70,15 @@ export function AccessibilityPage() {
           {rooms.map((r) => (
             <div key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{r.name}</div>
+                <div className="truncate text-sm font-medium">{r.name}</div>
                 <div className="truncate text-[11px] text-faint">
                   {r.venue.shortName} · {r.building} · {r.floor} · ~{r.walkMinutes} min from the entrance
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {r.accessible
-                  ? <Chip accent="emerald" className="!py-0.5 !text-[10px]">Step-free</Chip>
-                  : <Chip accent="amber" className="!py-0.5 !text-[10px]">Stairs only</Chip>}
+                  ? <Chip accent="teal" className="!py-0.5 !text-[10px]">Step-free</Chip>
+                  : <Chip accent="ember" className="!py-0.5 !text-[10px]">Stairs only</Chip>}
                 {['Hearing loop', 'Live captions', 'Quiet space'].filter((a) => r.amenities.includes(a)).map((a) => (
                   <Chip key={a} className="!py-0.5 !text-[10px]">{a}</Chip>
                 ))}
@@ -95,7 +95,7 @@ export function AccessibilityPage() {
           no calls. Shuttles between the two sites are step-free with a deployable ramp. If you need
           something that is not listed here, email us before the event and we will arrange it.
         </p>
-        <p className="mt-3 font-mono text-[13px] text-violet-300">access@orbitconf.dev</p>
+        <p className="mt-3 font-mono text-[13px] text-brand-ink">access@orbitconf.dev</p>
       </section>
     </div>
   );

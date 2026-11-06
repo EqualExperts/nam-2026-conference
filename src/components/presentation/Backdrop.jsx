@@ -7,13 +7,13 @@ import { motion, useReducedMotion } from 'motion/react';
  * colours follow the chapter. With reduced motion the stars hold still.
  */
 
+// a translucent wash of one brand token
+const wash = (token, pct) => `color-mix(in srgb, var(--color-${token}) ${pct}%, transparent)`;
+
 const AURORA = {
-  violet:  ['rgba(139,92,246,0.30)', 'rgba(217,70,239,0.16)', 'rgba(34,211,238,0.10)'],
-  emerald: ['rgba(16,185,129,0.24)', 'rgba(139,92,246,0.16)', 'rgba(34,211,238,0.10)'],
-  sky:     ['rgba(14,165,233,0.26)', 'rgba(139,92,246,0.16)', 'rgba(16,185,129,0.10)'],
-  fuchsia: ['rgba(217,70,239,0.26)', 'rgba(139,92,246,0.18)', 'rgba(14,165,233,0.10)'],
-  amber:   ['rgba(245,158,11,0.22)', 'rgba(244,63,94,0.14)', 'rgba(139,92,246,0.12)'],
-  cyan:    ['rgba(34,211,238,0.24)', 'rgba(139,92,246,0.18)', 'rgba(16,185,129,0.10)'],
+  blue:  [wash('brand', 28), wash('techblue', 18), wash('teal', 10)],
+  teal:  [wash('teal', 26), wash('techblue', 18), wash('brand', 10)],
+  ember: [wash('ember', 22), wash('techblue', 18), wash('brand', 10)],
 };
 
 function Stars({ warpKey }) {
@@ -30,6 +30,8 @@ function Stars({ warpKey }) {
     let seed = 7;
     const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const stars = Array.from({ length: 260 }, () => ({ x: rand() * 2 - 1, y: rand() * 2 - 1, z: rand() }));
+    // canvas cannot read var(), so take the star colour from the token once
+    const starColour = getComputedStyle(document.documentElement).getPropertyValue('--color-brand-ink').trim() || 'white';
     let frame = 0;
     let w = 0;
     let h = 0;
@@ -61,13 +63,15 @@ function Stars({ warpKey }) {
         const kp = 0.55 / pz;
         const px = w / 2 + s.x * w * kp * 0.5;
         const py = h / 2 + s.y * h * kp * 0.5;
-        ctx.strokeStyle = `rgba(220, 214, 255, ${alpha})`;
+        ctx.strokeStyle = starColour;
+        ctx.globalAlpha = alpha;
         ctx.lineWidth = Math.max(0.6, (1 - s.z) * 2.2);
         ctx.beginPath();
         ctx.moveTo(boost > 0.05 ? px : x - 0.01, boost > 0.05 ? py : y);
         ctx.lineTo(x, y);
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
       warp.current *= 0.94;
       if (!still) frame = requestAnimationFrame(draw);
     };
@@ -85,7 +89,7 @@ const BLOBS = [
 ];
 
 export function Backdrop({ tone, warpKey }) {
-  const colours = AURORA[tone] ?? AURORA.violet;
+  const colours = AURORA[tone] ?? AURORA.blue;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {BLOBS.map((b, i) => (
@@ -98,7 +102,7 @@ export function Backdrop({ tone, warpKey }) {
         />
       ))}
       <Stars warpKey={warpKey} />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(10,11,16,0.75)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,color-mix(in srgb, var(--color-ground) 75%, transparent)_100%)]" />
     </div>
   );
 }

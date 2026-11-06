@@ -17,15 +17,28 @@ const NAV = [
   { to: '/expo', label: 'Expo', icon: 'grid' },
 ];
 
+/* The white Equal Experts logo, at least 100px wide. The artwork carries its own
+   clear space (a bracket and the equals sign) inside the viewBox, so nothing but
+   plain ground sits around it. It is never recoloured, shadowed or stretched. */
+function EELogo({ className = 'w-28' }) {
+  return (
+    <img
+      src="/brand/Equal_Experts_Logo_Monochrome_White.svg"
+      alt="Equal Experts"
+      width="112"
+      height="53"
+      className={cx('h-auto min-w-[100px] shrink-0', className)}
+    />
+  );
+}
+
 function Logo() {
   return (
-    <NavLink to="/" className="flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400">
-      <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-violet-500 via-violet-600 to-cyan-500 text-base shadow-lg shadow-violet-900/40">
-        🛰️
-      </span>
+    <NavLink to="/" className="flex items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
+      <EELogo />
       <span className="leading-none">
-        <span className="block font-display text-xl tracking-tight">ORBIT</span>
-        <span className="block text-[9px] font-bold uppercase tracking-[0.22em] text-faint">Las Vegas ’26</span>
+        <span className="block font-display text-xl tracking-tight">ORBIT ’26</span>
+        <span className="block text-[10px] font-medium uppercase tracking-[0.22em] text-faint">Las Vegas</span>
       </span>
     </NavLink>
   );
@@ -57,7 +70,7 @@ export function Layout() {
       />
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-violet-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-techblue focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
       >
         Skip to content
       </a>
@@ -65,8 +78,8 @@ export function Layout() {
       {/* `npm run show` sets this: each preview is its own branch with its own
           seeded data, and two side by side looked like a bug, not two branches. */}
       {import.meta.env.VITE_PREVIEW_LABEL && (
-        <p data-testid="preview-banner" className="bg-amber-500/15 px-4 py-1.5 text-center text-xs text-amber-200">
-          Preview of <span className="font-semibold">{import.meta.env.VITE_PREVIEW_LABEL}</span> — only this branch's changes, with its own test data
+        <p data-testid="preview-banner" className="bg-ember/15 px-4 py-1.5 text-center text-xs text-ember-ink">
+          Preview of <span className="font-medium">{import.meta.env.VITE_PREVIEW_LABEL}</span> — only this branch's changes, with its own test data
         </p>
       )}
 
@@ -89,12 +102,12 @@ export function Layout() {
                   <>
                     {item.label}
                     {item.to === '/my-agenda' && reservations.size > 0 && (
-                      <span className="ml-1.5 rounded-full bg-emerald-500/20 px-1.5 py-px text-[10px] font-bold text-emerald-300">
+                      <span className="ml-1.5 rounded-full bg-teal/20 px-1.5 py-px text-[10px] font-medium text-teal-ink">
                         {reservations.size}
                       </span>
                     )}
                     {isActive && (
-                      <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-violet-400 to-cyan-400" />
+                      <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-brand" />
                     )}
                   </>
                 )}
@@ -126,13 +139,13 @@ export function Layout() {
                     end={item.end}
                     className={({ isActive }) => cx(
                       'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                      isActive ? 'bg-violet-500/12 text-violet-200' : 'text-muted hover:bg-raised hover:text-ink',
+                      isActive ? 'bg-brand/12 text-brand-ink' : 'text-muted hover:bg-raised hover:text-ink',
                     )}
                   >
                     <Icon name={item.icon} className="size-4" />
                     {item.label}
                     {item.to === '/my-agenda' && reservations.size > 0 && (
-                      <span className="ml-auto text-[11px] font-bold text-emerald-300">{reservations.size}</span>
+                      <span className="ml-auto text-[11px] font-medium text-teal-ink">{reservations.size}</span>
                     )}
                   </NavLink>
                 </li>
@@ -150,10 +163,8 @@ export function Layout() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
             <div>
-              <span className="flex items-center gap-2.5">
-                <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 via-violet-600 to-cyan-500 text-sm">
-                  🛰️
-                </span>
+              <span className="flex items-center gap-3">
+                <EELogo />
                 <span className="font-display text-lg tracking-tight">ORBIT ’26</span>
               </span>
               <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-muted">
@@ -191,7 +202,7 @@ export function Layout() {
               },
             ].map((col) => (
               <nav key={col.title} aria-label={col.title}>
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">{col.title}</h2>
+                <h2 className="text-[11px] font-medium uppercase tracking-[0.16em] text-faint">{col.title}</h2>
                 <ul className="mt-3 space-y-2">
                   {col.links.map(([label, to]) => (
                     <li key={label}>

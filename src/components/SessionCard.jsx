@@ -25,17 +25,17 @@ function AttendanceStatus({ session, attendance }) {
   const { ended, checkedIn, myStars } = attendance;
   let body;
   if (myStars != null) {
-    body = <span className="font-semibold text-violet-200">Rated ★{myStars}</span>;
+    body = <span className="font-medium text-brand-ink">Rated ★{myStars}</span>;
   } else if (checkedIn) {
     body = (
       <>
-        <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+        <span className="inline-flex items-center gap-1 font-medium text-teal-ink">
           <Icon name="check" className="size-3" /> Checked in
         </span>
         {ended && (
           // above the card's full-cover link, so it is its own target
           <Link to={`/sessions/${session.id}`} aria-label={`Rate ${session.title}`}
-            className="relative z-10 font-semibold text-violet-300 underline-offset-2 hover:text-violet-200 hover:underline">
+            className="relative z-10 font-medium text-brand-ink underline-offset-2 hover:text-brand-ink hover:underline">
             Rate it
           </Link>
         )}
@@ -85,25 +85,25 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
       <div data-testid="session-card" data-done={isDone ? 'true' : 'false'} className={cx(
         'group relative flex scroll-mt-28 items-stretch gap-0 overflow-hidden rounded-xl border bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay',
-        isLive ? 'border-rose-400/45' : onAgenda ? 'border-emerald-400/30' : 'border-hairline',
+        isLive ? 'border-ember/45' : onAgenda ? 'border-teal/30' : 'border-hairline',
         isDone && 'opacity-55',
       )}>
         <span className={cx('w-1 shrink-0 bg-gradient-to-b', a.grad)} aria-hidden="true" />
         <div className="flex min-w-0 flex-1 items-start gap-3 p-3">
           <div className="w-[4.25rem] shrink-0 pt-0.5">
-            <div className="font-mono text-xs font-semibold text-ink">{session.startsAt}</div>
+            <div className="font-mono text-xs font-medium text-ink">{session.startsAt}</div>
             <div className="font-mono text-[10px] text-faint">{session.endsAt}</div>
             {isLive && <LiveBadge className="mt-1 !px-1.5" />}
           </div>
           <div className="min-w-0 flex-1">
             <Link to={`/sessions/${session.id}`} className="block focus-visible:outline-none">
               <span className="absolute inset-0" aria-hidden="true" />
-              <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-violet-200">
+              <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-brand-ink">
                 {session.title}
               </h3>
             </Link>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-              <span className={cx('inline-flex items-center gap-1.5 font-semibold', a.text)}>
+              <span className={cx('inline-flex items-center gap-1.5 font-medium', a.text)}>
                 <span className={cx('size-1.5 rounded-full', a.dot)} />
                 {session.track.name}
               </span>
@@ -112,13 +112,13 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
                 {session.room.name}
               </span>
               {offsite && (
-                <span className={cx('inline-flex items-center gap-1 font-semibold', v.text)}>
+                <span className={cx('inline-flex items-center gap-1 font-medium', v.text)}>
                   <Icon name="car" className="size-3" /> {session.venue.shortName}
                 </span>
               )}
               <AttendanceStatus session={session} attendance={attendance} />
               {reservation === 'waitlisted' && (
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                <span className="inline-flex items-center gap-1 font-medium text-ember-ink">
                   <Icon name="clock" className="size-3" /> Waitlisted
                 </span>
               )}
@@ -142,7 +142,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
       className={cx(
         'group relative flex scroll-mt-28 flex-col overflow-hidden rounded-xl border bg-raised transition-colors duration-150',
         'hover:border-white/20 hover:bg-overlay/70',
-        isLive ? 'border-rose-400/50' : onAgenda ? 'border-emerald-400/35' : 'border-hairline',
+        isLive ? 'border-ember/50' : onAgenda ? 'border-teal/35' : 'border-hairline',
         feature && 'sm:col-span-2',
         isDone && 'opacity-60',
       )}
@@ -156,10 +156,10 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
             variant="orbit" className="size-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/35 to-transparent" />
           <div className="absolute bottom-2 left-5 flex items-center gap-2">
-            <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+            <span className="rounded-full bg-ground/55 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white backdrop-blur-sm">
               Keynote
             </span>
-            <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white/85 backdrop-blur-sm">
+            <span className="rounded-full bg-ground/55 px-2 py-0.5 text-[10px] font-medium text-white/85 backdrop-blur-sm">
               {session.room.capacity.toLocaleString()} seats
             </span>
           </div>
@@ -169,7 +169,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
       {/* Header row */}
       <div className="flex items-start justify-between gap-3 px-4 pl-5 pt-3.5">
         <div className="min-w-0">
-          <span className={cx('flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide', a.text)}>
+          <span className={cx('flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide', a.text)}>
             <span className={cx('size-1.5 shrink-0 rounded-full', a.dot)} />
             <span className="truncate">{session.track.name}</span>
           </span>
@@ -190,7 +190,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
         <Link to={`/sessions/${session.id}`} className="focus-visible:outline-none">
           <span className="absolute inset-0" aria-hidden="true" />
           <h3 className={cx(
-            'line-clamp-2 font-display leading-snug transition-colors group-hover:text-violet-200',
+            'line-clamp-2 font-display leading-snug transition-colors group-hover:text-brand-ink',
             feature ? 'text-xl' : 'text-[1.0625rem]',
           )}>
             {session.title}
@@ -213,7 +213,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
               ))}
             </div>
             <div className="min-w-0 text-[11px] leading-tight">
-              <div className="truncate font-semibold text-ink">
+              <div className="truncate font-medium text-ink">
                 {session.speakers[0].name}
                 {session.speakers.length > 1 && (
                   <span className="font-normal text-faint"> +{session.speakers.length - 1}</span>
@@ -246,12 +246,12 @@ export function SessionCard({ session, variant = 'grid', showDay = false, attend
           {!feature && session.capacity > 0 && (
             isFull ? (
               <span data-testid="card-seats"
-                className="rounded-full bg-rose-500/15 px-2 py-0.5 font-bold text-rose-200">
+                className="rounded-full bg-ember/15 px-2 py-0.5 font-bold text-ember-ink">
                 Full{waiting > 0 && ` · ${waiting} waiting`}
               </span>
             ) : (
               <span data-testid="card-seats"
-                className={cx('font-semibold', seatsLeft <= 10 ? 'text-amber-300' : 'text-faint')}>
+                className={cx('font-medium', seatsLeft <= 10 ? 'text-ember-ink' : 'text-faint')}>
                 {plural(seatsLeft, 'seat')} left
               </span>
             )

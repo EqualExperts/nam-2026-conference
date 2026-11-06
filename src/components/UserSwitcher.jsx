@@ -53,20 +53,20 @@ export function UserSwitcher() {
         aria-label={`Viewing as ${currentUser.name}. Switch attendee.`}
         className={cx(
           'flex items-center gap-2 rounded-full border border-hairline bg-raised/60 py-1 pl-1 pr-2.5 transition-colors',
-          'hover:border-white/15 hover:bg-overlay focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+          'hover:border-white/15 hover:bg-overlay focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
         )}
       >
         <Avatar name={currentUser.name} initials={currentUser.initials} accent={currentUser.accent} imageUrl={currentUser.imageUrl} size="sm" />
-        <span className="hidden text-xs font-semibold sm:block">{currentUser.name.split(' ')[0]}</span>
+        <span className="hidden text-xs font-medium sm:block">{currentUser.name.split(' ')[0]}</span>
         <Icon name="chevronDown" className={cx('size-3.5 text-faint transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
         <div
-          className="glass absolute right-0 top-full z-50 mt-2 w-[19rem] animate-rise overflow-hidden rounded-2xl border border-hairline shadow-2xl shadow-black/60"
+          className="glass absolute right-0 top-full z-50 mt-2 w-[19rem] animate-rise overflow-hidden rounded-2xl border border-hairline shadow-2xl shadow-ground/60"
         >
           <div className="border-b border-hairline px-4 py-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Viewing as</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-faint">Viewing as</p>
             <p className="mt-0.5 text-[11px] text-muted">
               Each attendee has their own agenda, follows and interests.
             </p>
@@ -89,15 +89,15 @@ export function UserSwitcher() {
                     onClick={() => { setCurrentUserId(u.id); setOpen(false); }}
                     className={cx(
                       'flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors',
-                      active ? 'bg-violet-500/12' : 'hover:bg-raised',
+                      active ? 'bg-brand/12' : 'hover:bg-raised',
                     )}
                   >
                     <Avatar name={u.name} initials={u.initials} accent={u.accent} imageUrl={u.imageUrl} size="md" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-sm font-semibold">{u.name}</span>
+                        <span className="truncate text-sm font-medium">{u.name}</span>
                         {u.ticketTier !== 'Standard' && (
-                          <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-faint">
+                          <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-faint">
                             {u.ticketTier}
                           </span>
                         )}
@@ -107,7 +107,7 @@ export function UserSwitcher() {
                         {u.company} · {agendaCount} on agenda
                       </div>
                     </div>
-                    {active && <Icon name="check" className="size-4 shrink-0 text-violet-300" />}
+                    {active && <Icon name="check" className="size-4 shrink-0 text-brand-ink" />}
                   </button>
                 </li>
               );
@@ -121,15 +121,15 @@ export function UserSwitcher() {
                 className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-raised"
                 data-testid="own-speaker-profile"
               >
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-cyan-500/12 text-cyan-300">
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-teal/12 text-teal-ink">
                   <Icon name="mic" className="size-3" />
                 </span>
-                <span className="text-sm font-semibold">Your speaker profile</span>
+                <span className="text-sm font-medium">Your speaker profile</span>
               </Link>
             </div>
           )}
           <div className="border-t border-hairline p-1.5" data-testid="talk-links">
-            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Workshop talks</p>
+            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-faint">Workshop talks</p>
             {TALKS.map((t) => (
               <Link
                 key={t.to}
@@ -137,11 +137,11 @@ export function UserSwitcher() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-raised"
               >
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-500/12 text-violet-300">
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand/12 text-brand-ink">
                   <Icon name="play" className="size-3" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{t.title}</span>
+                  <span className="block truncate text-sm font-medium">{t.title}</span>
                   <span className="block truncate text-[11px] text-faint">{t.blurb}</span>
                 </span>
               </Link>

@@ -18,7 +18,7 @@ export function MyAgendaPage() {
         className="grid place-items-center rounded-2xl border border-dashed border-hairline bg-surface px-6 py-20 text-center"
         data-testid="agenda-coming-soon"
       >
-        <span className="grid size-12 place-items-center rounded-xl bg-violet-500/12 text-violet-300">
+        <span className="grid size-12 place-items-center rounded-xl bg-brand/12 text-brand-ink">
           <Icon name="ticket" className="size-5" />
         </span>
         <h2 className="mt-4 font-display text-2xl">Coming soon</h2>

@@ -21,7 +21,7 @@ const AVATAR_SIZES = {
  * Pass `mono` for non-people — sponsors and the like — to fall back to initials
  * on a flat accent gradient.
  */
-export function Avatar({ name, initials, accent: accentName = 'violet', size = 'md', imageUrl, className, ring = true, mono = false }) {
+export function Avatar({ name, initials, accent: accentName = 'blue', size = 'md', imageUrl, className, ring = true, mono = false }) {
   const a = accent(accentName);
   const base = cx(
     'relative shrink-0 overflow-hidden rounded-full',
@@ -74,7 +74,7 @@ export function Chip({ children, accent: accentName, className, as: As = 'span',
 export function TrackPill({ track, className }) {
   const a = accent(track.color);
   return (
-    <span className={cx('inline-flex items-center gap-1.5 text-[11px] font-semibold', a.text, className)}>
+    <span className={cx('inline-flex items-center gap-1.5 text-[11px] font-medium', a.text, className)}>
       <span className={cx('size-1.5 rounded-full', a.dot)} />
       {track.name}
     </span>
@@ -83,10 +83,10 @@ export function TrackPill({ track, className }) {
 
 /* --------------------------------- Button -------------------------------- */
 const BUTTON_VARIANTS = {
-  primary: 'bg-gradient-to-r from-violet-600 to-violet-500 text-white hover:from-violet-500 hover:to-violet-400 shadow-lg shadow-violet-900/40',
+  primary: 'border border-brand/60 bg-techblue font-bold text-white shadow-lg shadow-ground/40 hover:brightness-125',
   ghost: 'border border-hairline bg-raised text-ink hover:bg-overlay hover:border-white/20',
   subtle: 'text-muted hover:text-ink hover:bg-raised',
-  danger: 'border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20',
+  danger: 'border border-ember/30 bg-ember/10 text-ember-ink hover:bg-ember/20',
 };
 const BUTTON_SIZES = {
   sm: 'h-8 px-3 text-xs gap-1.5',
@@ -101,8 +101,8 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
       to={to}
       href={href}
       className={cx(
-        'inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-150',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+        'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
         'disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]',
         BUTTON_VARIANTS[variant], BUTTON_SIZES[size], className,
       )}
@@ -139,15 +139,15 @@ export function SeatButton({ status, onClick, size = 'md', className, title, end
         // `relative z-10` keeps the button above the card's stretched link overlay,
         // which otherwise covers the whole card and swallows the click.
         'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
         dims,
         waiting
-          ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
+          ? 'border-ember/50 bg-ember/15 text-ember-ink'
           : on
-            ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+            ? 'border-teal/50 bg-teal/15 text-teal-ink'
             : closed
               ? 'cursor-not-allowed border-hairline bg-overlay/30 text-faint/60 active:scale-100'
-              : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
+              : 'border-hairline bg-overlay/60 text-faint hover:border-teal/40 hover:text-teal-ink',
         className,
       )}
     >
@@ -161,8 +161,8 @@ export function Rating({ value, count, className, showValue = true }) {
   if (!count) return <span className={cx('text-[11px] text-faint', className)}>Not yet rated</span>;
   return (
     <span className={cx('inline-flex items-center gap-1 text-[11px] text-muted', className)}>
-      <Icon name="star" filled className="size-3 text-amber-400" />
-      {showValue && <span className="font-semibold text-ink">{value.toFixed(1)}</span>}
+      <Icon name="star" filled className="size-3 text-ember-ink" />
+      {showValue && <span className="font-medium text-ink">{value.toFixed(1)}</span>}
       <span className="text-faint">({count})</span>
     </span>
   );
@@ -174,7 +174,7 @@ export function SectionHeader({ eyebrow, title, description, action, className }
     <div className={cx('flex flex-wrap items-end justify-between gap-4', className)}>
       <div className="min-w-0">
         {eyebrow && (
-          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-400">{eyebrow}</div>
+          <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-brand-ink">{eyebrow}</div>
         )}
         <h2 className="font-display text-2xl leading-tight sm:text-3xl">{title}</h2>
         {description && <p className="mt-1.5 max-w-2xl text-sm text-muted">{description}</p>}
@@ -188,7 +188,7 @@ export function SectionHeader({ eyebrow, title, description, action, className }
 export function Spinner({ className }) {
   return (
     <div className={cx('flex items-center justify-center py-16', className)} role="status" aria-label="Loading">
-      <span className="size-6 animate-spin rounded-full border-2 border-hairline border-t-violet-400" />
+      <span className="size-6 animate-spin rounded-full border-2 border-hairline border-t-brand-ink" />
     </div>
   );
 }
@@ -234,7 +234,7 @@ export function NotFoundState({ title, backTo, backLabel }) {
 
 /* ---------------------------------- Stat --------------------------------- */
 /** `note` is a second, quieter line under the label — a caveat on the number. */
-export function Stat({ value, label, accent: accentName = 'violet', testId, note = null }) {
+export function Stat({ value, label, accent: accentName = 'blue', testId, note = null }) {
   const a = accent(accentName);
   return (
     <div className="card px-4 py-3.5">
@@ -242,7 +242,7 @@ export function Stat({ value, label, accent: accentName = 'violet', testId, note
         {typeof value === 'number' ? <CountUp value={value} /> : value}
       </div>
       <div className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
-      {note && <div className="mt-1 text-[11px] font-medium text-amber-300">{note}</div>}
+      {note && <div className="mt-1 text-[11px] font-medium text-ember-ink">{note}</div>}
     </div>
   );
 }

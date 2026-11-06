@@ -81,7 +81,7 @@ function HandoffScene({ leaving, advance }) {
           <div style={at(110, 130, 820, 480)} className="flex flex-col items-start">
             <div className="space-y-1.5 whitespace-nowrap text-[22px]">
               <div className="flex items-center gap-3 text-muted"><Tick /> 🎙️ Product harness: a conversation → a ticket</div>
-              <div className="pz-appear text-ink" style={later(500)}><span className="mr-3 text-violet-300">↳</span>🚢 <b>Engineering harness</b>: the ticket → a reviewed pull request</div>
+              <div className="pz-appear text-ink" style={later(500)}><span className="mr-3 text-brand-ink">↳</span>🚢 <b>Engineering harness</b>: the ticket → a reviewed pull request</div>
             </div>
             <div className="mt-12 pl-2">
               <Token className="relative" initial={{ scale: 0.5, opacity: 0, y: 40 }} animate={{ scale: 2.4, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 140, damping: 13, delay: 0.5 }} style={{ transformOrigin: '0 50%' }} />
@@ -94,7 +94,7 @@ function HandoffScene({ leaving, advance }) {
               data-testid="presentation-handoff"
               aria-label="Continue to the engineering harness"
               onClick={(e) => { e.stopPropagation(); advance(); }}
-              className="pz-launch pz-pop mt-9 inline-flex items-center gap-3 rounded-full border border-cyan-300/60 bg-gradient-to-r from-violet-600 to-cyan-500 px-10 py-4 font-display text-[28px] text-white hover:from-violet-500 hover:to-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
+              className="pz-launch pz-pop mt-9 inline-flex items-center gap-3 rounded-full border border-teal/60 bg-gradient-to-r from-brand to-teal px-10 py-4 font-display text-[28px] text-white hover:from-brand hover:to-teal-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal"
               style={later(900)}
             >
               Continue to the engineering harness <span aria-hidden="true">→</span>
@@ -110,13 +110,13 @@ function HandoffScene({ leaving, advance }) {
 const HANDOFF_BEATS = [null];
 
 export const CREATE_TASKS = [
-  { id: 'raise', name: 'create-tasks', accent: 'text-violet-300', tone: 'violet', beats: RAISE_BEATS, Scene: RaiseAll },
+  { id: 'raise', name: 'create-tasks', accent: 'text-brand-ink', tone: 'blue', beats: RAISE_BEATS, Scene: RaiseAll },
 ];
 
 export const UPDATE_CONTEXT = [
-  { id: 'remember', name: 'update-context', accent: 'text-emerald-300', tone: 'emerald', beats: REMEMBER_BEATS, Scene: RememberAll },
+  { id: 'remember', name: 'update-context', accent: 'text-teal-ink', tone: 'teal', beats: REMEMBER_BEATS, Scene: RememberAll },
 ];
 
 export const HANDOFF = [
-  { id: 'handoff', name: 'Over to the engineering harness', accent: 'text-violet-300', tone: 'violet', beats: HANDOFF_BEATS, Scene: HandoffScene },
+  { id: 'handoff', name: 'Over to the engineering harness', accent: 'text-brand-ink', tone: 'blue', beats: HANDOFF_BEATS, Scene: HandoffScene },
 ];

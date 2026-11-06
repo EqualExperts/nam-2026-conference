@@ -20,11 +20,11 @@ function TravelNotice({ session }) {
   const options = routesBetween(travel, home.id, session.venue.id).filter((r) => r.mode !== 'Walk');
 
   return (
-    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-4" data-testid="travel-notice">
+    <div className="rounded-2xl border border-ember/25 bg-ember/[0.07] p-4" data-testid="travel-notice">
       <div className="flex items-start gap-2.5">
-        <Icon name="car" className="mt-0.5 size-4 shrink-0 text-amber-300" />
+        <Icon name="car" className="mt-0.5 size-4 shrink-0 text-ember-ink" />
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-amber-200">This one is across town</h3>
+          <h3 className="text-sm font-medium text-ember-ink">This one is across town</h3>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
             {session.venue.name} is a separate site from {home.shortName}. Allow travel time on both sides.
           </p>
@@ -32,7 +32,7 @@ function TravelNotice({ session }) {
             {options.map((o) => (
               <li key={o.mode} className="flex items-baseline gap-2 text-[12px]">
                 <span className="w-20 shrink-0 font-medium text-ink">{o.mode}</span>
-                <span className="font-mono text-amber-200">{o.minutes} min</span>
+                <span className="font-mono text-ember-ink">{o.minutes} min</span>
                 <span className="text-faint">{o.costUsd ? `≈ $${o.costUsd.toFixed(2)}` : 'free'}</span>
               </li>
             ))}
@@ -88,9 +88,9 @@ export function SessionPage() {
             <TrackPill track={session.track} />
             <Chip>{session.format}</Chip>
             <Chip>{session.level}</Chip>
-            {session.language !== 'English' && <Chip accent="sky">{session.language}</Chip>}
-            {session.isKeynote && session.format !== 'Keynote' && <Chip accent="violet">Keynote</Chip>}
-            {session.requiresRsvp && <Chip accent="amber">RSVP required</Chip>}
+            {session.language !== 'English' && <Chip accent="blue">{session.language}</Chip>}
+            {session.isKeynote && session.format !== 'Keynote' && <Chip accent="blue">Keynote</Chip>}
+            {session.requiresRsvp && <Chip accent="ember">RSVP required</Chip>}
           </div>
 
           <h1 className="mt-4 max-w-4xl font-display text-3xl leading-tight sm:text-5xl" data-testid="session-title">
@@ -115,11 +115,11 @@ export function SessionPage() {
             </span>
             {/* seat state belongs above the fold — it is what changes the decision */}
             {isFull ? (
-              <Chip accent="rose" data-testid="header-seats">
+              <Chip accent="ember" data-testid="header-seats">
                 Full{waiting > 0 && ` · ${waiting} waiting`}
               </Chip>
             ) : (
-              <Chip accent={seatsLeft <= 10 ? 'amber' : 'emerald'} data-testid="header-seats">
+              <Chip accent={seatsLeft <= 10 ? 'ember' : 'teal'} data-testid="header-seats">
                 {plural(seatsLeft, 'seat')} left
               </Chip>
             )}
@@ -158,7 +158,7 @@ export function SessionPage() {
               className="relative block aspect-video overflow-hidden rounded-xl border border-hairline"
             >
               <GeneratedCover seed={session.title} accent={session.track.color} variant="orbit" className="size-full" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ground/85 via-ground/35 to-ground/10" />
 
               <span className="absolute inset-0 grid place-items-center">
                 <span className="grid size-16 place-items-center rounded-full bg-white/15 text-white/80 ring-1 ring-white/25 backdrop-blur-sm sm:size-20">
@@ -167,10 +167,10 @@ export function SessionPage() {
               </span>
 
               <span className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-3 gap-y-1 p-4 sm:p-5">
-                <span className="rounded-full bg-rose-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-ember/90 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white">
                   Recorded
                 </span>
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-medium text-white">
                   Available 24 hours after the session
                 </span>
                 <span className="ml-auto font-mono text-xs text-white/70">{session.durationMins} min</span>
@@ -184,7 +184,7 @@ export function SessionPage() {
 
             {session.takeaways.length > 0 && (
               <>
-                <h3 className="mt-7 text-sm font-semibold uppercase tracking-wider text-faint">What you will take away</h3>
+                <h3 className="mt-7 text-sm font-medium uppercase tracking-wider text-faint">What you will take away</h3>
                 <ul className="mt-3 space-y-2">
                   {session.takeaways.map((t) => (
                     <li key={t} className="flex gap-2.5 text-[14px] text-muted">
@@ -198,7 +198,7 @@ export function SessionPage() {
 
             {session.prerequisites && (
               <div className="mt-6 rounded-xl border border-hairline bg-raised/40 p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">Before you come</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wider text-faint">Before you come</h3>
                 <p className="mt-1.5 text-[13px] text-muted">{session.prerequisites}</p>
               </div>
             )}
@@ -216,9 +216,9 @@ export function SessionPage() {
                   <Avatar name={sp.name} initials={sp.initials} accent={sp.accent} imageUrl={sp.imageUrl} size="lg" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate font-semibold group-hover:text-violet-200">{sp.name}</h3>
+                      <h3 className="truncate font-medium group-hover:text-brand-ink">{sp.name}</h3>
                       {sp.role !== 'Speaker' && (
-                        <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-faint">
+                        <span className="shrink-0 rounded bg-overlay px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-faint">
                           {sp.role}
                         </span>
                       )}
@@ -246,7 +246,7 @@ export function SessionPage() {
                       </div>
                       <div className="flex gap-0.5" aria-label={`${r.stars} out of 5`}>
                         {Array.from({ length: 5 }, (_, n) => (
-                          <Icon key={n} name="star" filled={n < r.stars} className={cx('size-3', n < r.stars ? 'text-amber-400' : 'text-overlay')} />
+                          <Icon key={n} name="star" filled={n < r.stars} className={cx('size-3', n < r.stars ? 'text-ember-ink' : 'text-overlay')} />
                         ))}
                       </div>
                     </div>
@@ -278,7 +278,7 @@ export function SessionPage() {
 
           <div className="card space-y-5 p-5">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">Room</h3>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-faint">Room</h3>
               <p className="mt-1.5 font-medium">{session.room.name}</p>
               <p className="text-xs text-muted">{session.venue.name}</p>
               <p className="mt-1 text-xs text-faint">
@@ -292,9 +292,9 @@ export function SessionPage() {
                 </div>
               )}
               {!session.room.accessible && (
-                <p className="mt-2.5 text-[11px] text-amber-300">
+                <p className="mt-2.5 text-[11px] text-ember-ink">
                   ⚠ Not step-free.{' '}
-                  <Link to="/accessibility" className="underline underline-offset-2 hover:text-amber-200">
+                  <Link to="/accessibility" className="underline underline-offset-2 hover:text-ember-ink">
                     See step-free alternatives
                   </Link>
                 </p>
@@ -303,7 +303,7 @@ export function SessionPage() {
 
             {topicTags.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">Topics</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wider text-faint">Topics</h3>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {topicTags.map((t) => (
                     <Chip key={t.slug} as={Link} to={`/schedule?tag=${t.slug}`} accent={session.track.color}
@@ -317,7 +317,7 @@ export function SessionPage() {
 
             {otherTags.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">Also tagged</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wider text-faint">Also tagged</h3>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {otherTags.map((t) => (
                     <Chip key={t.slug} className="!px-2 !py-0.5 !text-[10px]">{t.name}</Chip>
@@ -329,7 +329,7 @@ export function SessionPage() {
 
           {session.alsoInRoom.length > 0 && (
             <div className="card p-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-faint">
                 Rest of the day in {session.room.name}
               </h3>
               <ul className="mt-3 space-y-2.5">

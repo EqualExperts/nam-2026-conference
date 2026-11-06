@@ -24,7 +24,7 @@ function hash(seed) {
 
 const pick = (h, offset, max) => Math.floor((h / 7 ** offset) % max);
 
-export function GeneratedCover({ seed = '', accent = 'violet', variant = 'orbit', className }) {
+export function GeneratedCover({ seed = '', accent = 'blue', variant = 'orbit', className }) {
   const h = hash(seed || variant);
   const [light, dark] = accentHex(accent);
   const id = `c${h % 100000}`;
@@ -40,7 +40,7 @@ export function GeneratedCover({ seed = '', accent = 'violet', variant = 'orbit'
         <stop offset="100%" stopColor={dark} stopOpacity="0" />
       </radialGradient>
       <pattern id={`${id}d`} width="14" height="14" patternUnits="userSpaceOnUse">
-        <circle cx="1.5" cy="1.5" r="1.1" fill="#fff" opacity="0.14" />
+        <circle cx="1.5" cy="1.5" r="1.1" fill="var(--color-white)" opacity="0.14" />
       </pattern>
     </defs>
   );
@@ -52,10 +52,10 @@ export function GeneratedCover({ seed = '', accent = 'violet', variant = 'orbit'
       <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
         {common}
         <rect width="48" height="48" rx="12" fill={`url(#${id}g)`} />
-        <g transform={`rotate(${rot} 24 24)`} fill="#0b0d14" opacity="0.32">
+        <g transform={`rotate(${rot} 24 24)`} fill="var(--color-ground)" opacity="0.32">
           {style === 0 && <><circle cx="17" cy="17" r="9" /><circle cx="31" cy="31" r="9" /></>}
           {style === 1 && <><rect x="8" y="8" width="15" height="15" rx="4" /><rect x="25" y="25" width="15" height="15" rx="4" /></>}
-          {style === 2 && <path d="M8 40V12a10 10 0 0 1 20 0v16a6 6 0 0 0 12 0" fill="none" stroke="#0b0d14" strokeWidth="6" strokeLinecap="round" />}
+          {style === 2 && <path d="M8 40V12a10 10 0 0 1 20 0v16a6 6 0 0 0 12 0" fill="none" stroke="var(--color-ground)" strokeWidth="6" strokeLinecap="round" />}
           {style === 3 && <><path d="M24 6l16 28H8z" /></>}
         </g>
         <rect width="48" height="48" rx="12" fill={`url(#${id}d)`} opacity="0.5" />

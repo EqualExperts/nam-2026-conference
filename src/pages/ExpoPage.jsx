@@ -11,9 +11,9 @@ const TIERS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze'];
 const TIER_STYLE = {
   Diamond:  { cols: 'sm:grid-cols-2', mark: 'size-16', pad: 'p-6', title: 'font-display text-2xl', banner: true, blurb: true },
   Platinum: { cols: 'sm:grid-cols-3', mark: 'size-14', pad: 'p-5', title: 'font-display text-lg', banner: true, blurb: true },
-  Gold:     { cols: 'sm:grid-cols-3 lg:grid-cols-5', mark: 'size-11', pad: 'p-4', title: 'text-[15px] font-semibold leading-tight', blurb: true },
-  Silver:   { cols: 'sm:grid-cols-3 lg:grid-cols-4', mark: 'size-9', pad: 'p-3.5', title: 'text-sm font-semibold leading-tight' },
-  Bronze:   { cols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4', mark: 'size-8', pad: 'p-3', title: 'text-[13px] font-semibold leading-tight' },
+  Gold:     { cols: 'sm:grid-cols-3 lg:grid-cols-5', mark: 'size-11', pad: 'p-4', title: 'text-[15px] font-medium leading-tight', blurb: true },
+  Silver:   { cols: 'sm:grid-cols-3 lg:grid-cols-4', mark: 'size-9', pad: 'p-3.5', title: 'text-sm font-medium leading-tight' },
+  Bronze:   { cols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4', mark: 'size-8', pad: 'p-3', title: 'text-[13px] font-medium leading-tight' },
 };
 
 function SponsorCard({ sponsor, style, venue }) {
@@ -44,7 +44,7 @@ function SponsorCard({ sponsor, style, venue }) {
           />
           <div className={cx('min-w-0 flex-1', style.banner && 'pt-8')}>
             {/* Names wrap rather than truncate — "Blackbird S…" helps nobody. */}
-            <h3 className={cx('group-hover:text-violet-200', style.title)}>{sponsor.name}</h3>
+            <h3 className={cx('group-hover:text-brand-ink', style.title)}>{sponsor.name}</h3>
             <p className="mt-0.5 text-[11px] text-faint">
               Booth {sponsor.booth} · {venue?.shortName}
             </p>
@@ -59,7 +59,7 @@ function SponsorCard({ sponsor, style, venue }) {
         {(sponsor.perk || sponsor.hiring) && (
           <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
             {sponsor.perk && <Chip accent={sponsor.accent} className="!px-2 !py-0.5 !text-[10px]">{sponsor.perk}</Chip>}
-            {sponsor.hiring && <Chip accent="emerald" className="!px-2 !py-0.5 !text-[10px]">Hiring</Chip>}
+            {sponsor.hiring && <Chip accent="teal" className="!px-2 !py-0.5 !text-[10px]">Hiring</Chip>}
           </div>
         )}
       </div>
@@ -92,7 +92,7 @@ export function ExpoPage() {
         return (
           <section key={tier} data-testid={`tier-${tier.toLowerCase()}`}>
             <div className="mb-4 flex items-baseline gap-3">
-              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-faint">{tier}</h2>
+              <h2 className="text-sm font-medium uppercase tracking-[0.18em] text-faint">{tier}</h2>
               <span className="h-px flex-1 bg-hairline" />
               <span className="text-[11px] text-faint">{plural(tierSponsors.length, 'partner')}</span>
             </div>

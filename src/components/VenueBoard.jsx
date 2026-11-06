@@ -59,7 +59,7 @@ export function VenueBoard({ venue, day }) {
       <div className="grid gap-3 lg:grid-cols-2">
         {inUse.map(({ room, current, next, sorted }) => {
           const shown = current ?? next;
-          const a = shown ? accent(shown.track.color) : accent('violet');
+          const a = shown ? accent(shown.track.color) : accent('blue');
           const live = seatsFor(shown?.id);
           const seatsLeft = live?.seatsLeft ?? shown?.seatsLeft ?? 0;
           const waitlistCount = live?.waitlistCount ?? shown?.waitlistCount ?? 0;
@@ -71,21 +71,21 @@ export function VenueBoard({ venue, day }) {
               key={room.id}
               className={cx(
                 'group relative overflow-hidden rounded-xl border bg-raised p-4 transition-colors',
-                current ? 'border-rose-400/40' : 'border-hairline',
+                current ? 'border-ember/40' : 'border-hairline',
               )}
             >
               <span className={cx('absolute inset-y-0 left-0 w-1 bg-gradient-to-b', a.grad)} />
 
               <div className="flex items-start justify-between gap-3 pl-2">
                 <div className="min-w-0">
-                  <h4 className="truncate text-sm font-bold">{room.name}</h4>
+                  <h4 className="truncate text-sm font-medium">{room.name}</h4>
                   <p className="truncate text-[11px] text-faint">
                     {room.building} · {room.floor} · {room.capacity.toLocaleString()} seats · ~{room.walkMinutes} min walk
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {!room.accessible && (
-                    <Chip accent="amber" className="!py-0.5 !text-[9px]">Stairs</Chip>
+                    <Chip accent="ember" className="!py-0.5 !text-[9px]">Stairs</Chip>
                   )}
                   {current && <LiveBadge />}
                 </div>
@@ -94,7 +94,7 @@ export function VenueBoard({ venue, day }) {
               {shown ? (
                 <Link to={`/sessions/${shown.id}`} className="mt-3 block pl-2">
                   <div className="flex items-baseline gap-2 font-mono text-[11px]">
-                    <span className={cx(current ? 'text-rose-300' : 'text-cyan-300')}>
+                    <span className={cx(current ? 'text-ember-ink' : 'text-teal-ink')}>
                       {current ? `ends ${relativeToNow(shown.endsAt, clock.time)}` : `${fmtTime(shown.startsAt)}`}
                     </span>
                     {!current && isToday && (
@@ -102,17 +102,17 @@ export function VenueBoard({ venue, day }) {
                     )}
                     <span className={cx('ml-auto', a.text)}>{shown.track.name}</span>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug transition-colors group-hover:text-violet-200">
+                  <p className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug transition-colors group-hover:text-brand-ink">
                     {shown.title}
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-[11px]">
                     {isFull
-                      ? <span className="font-bold text-rose-300">Full{waitlistCount > 0 && ` · ${waitlistCount} waiting`}</span>
-                      : <span className={cx('font-semibold', seatsLeft <= 10 ? 'text-amber-300' : 'text-muted')}>
+                      ? <span className="font-bold text-ember-ink">Full{waitlistCount > 0 && ` · ${waitlistCount} waiting`}</span>
+                      : <span className={cx('font-medium', seatsLeft <= 10 ? 'text-ember-ink' : 'text-muted')}>
                           {plural(seatsLeft, 'seat')} left
                         </span>}
                     {mine && (
-                      <Chip accent={mine === 'waitlisted' ? 'amber' : 'emerald'} className="!py-0.5 !text-[9px]">
+                      <Chip accent={mine === 'waitlisted' ? 'ember' : 'teal'} className="!py-0.5 !text-[9px]">
                         {mine === 'waitlisted' ? 'Waitlisted' : 'On my agenda'}
                       </Chip>
                     )}

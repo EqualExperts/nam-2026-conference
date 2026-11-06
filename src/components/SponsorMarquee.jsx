@@ -28,7 +28,7 @@ export function SponsorMarquee() {
             className="flex shrink-0 items-center gap-2.5 opacity-55 transition-opacity hover:opacity-100"
           >
             <GeneratedCover seed={s.name} accent={s.accent} variant="mark" className="size-7 rounded-md" />
-            <span className="whitespace-nowrap text-sm font-semibold tracking-tight">{s.name}</span>
+            <span className="whitespace-nowrap text-sm font-medium tracking-tight">{s.name}</span>
           </Link>
         ))}
       </div>

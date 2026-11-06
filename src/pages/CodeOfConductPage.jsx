@@ -36,8 +36,8 @@ export function CodeOfConductPage() {
       </div>
 
       {[
-        { title: 'What we expect', items: EXPECTED, icon: 'check', tone: 'text-emerald-300' },
-        { title: 'What is not acceptable', items: UNACCEPTABLE, icon: 'close', tone: 'text-rose-300' },
+        { title: 'What we expect', items: EXPECTED, icon: 'check', tone: 'text-teal-ink' },
+        { title: 'What is not acceptable', items: UNACCEPTABLE, icon: 'close', tone: 'text-ember-ink' },
       ].map((block) => (
         <section key={block.title}>
           <h2 className="font-display text-2xl">{block.title}</h2>
@@ -52,8 +52,8 @@ export function CodeOfConductPage() {
         </section>
       ))}
 
-      <section className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-6">
-        <h2 className="flex items-center gap-2 font-display text-xl text-amber-200">
+      <section className="rounded-2xl border border-ember/25 bg-ember/[0.07] p-6">
+        <h2 className="flex items-center gap-2 font-display text-xl text-ember-ink">
           <Icon name="alert" className="size-5" />
           Reporting something
         </h2>
@@ -62,7 +62,7 @@ export function CodeOfConductPage() {
           registration on Level 1 at Aurora and inside the main door at the Foundry. Reports are handled
           by two named organisers and are not shared with the wider team.
         </p>
-        <p className="mt-3 font-mono text-[13px] text-amber-200">conduct@orbitconf.dev · +1 702 555 0142</p>
+        <p className="mt-3 font-mono text-[13px] text-ember-ink">conduct@orbitconf.dev · +1 702 555 0142</p>
       </section>
     </div>
   );

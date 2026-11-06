@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ *
- * ORBIT '26 design tokens
- * Dark-first. Near-black ground, layered surfaces, one violet→cyan
- * gradient used sparingly for emphasis. Everything else is restraint.
+ * ORBIT '26 design tokens — the Equal Experts brand on a dark ground.
+ * Dark Data is the page; every elevation step is a lighter tint of it.
+ * Blue is the accent, teal and ember support it, Tech Blue is the fill
+ * that carries white text. Lexend is the only typeface.
+ * Every colour in the app is one of these tokens: no hex outside @theme.
  * ------------------------------------------------------------------ */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lexend", ui-sans-serif, system-ui, sans-serif;
 
-  /* Four clear elevation steps. Each layer is visibly lighter than the one
-     beneath it — that separation is what stops a dense page turning to mush. */
-  --color-ground: #14161e;   /* page */
-  --color-surface: #1c1f2a;  /* module panel */
-  --color-raised: #242838;   /* card inside a panel */
-  --color-overlay: #2e3345;  /* controls, hover */
-  --color-hairline: #333950;
+  /* Four elevation steps, each a lighter tint of Dark Data. */
+  --color-ground: #212526;   /* page */
+  --color-surface: #2a2f31;  /* module panel */
+  --color-raised: #30373a;   /* card inside a panel */
+  --color-overlay: #394143;  /* controls, hover */
+  --color-hairline: #4f5759;
 
-  --color-ink: #eaecf3;
-  --color-muted: #9aa2b8;
-  --color-faint: #6e768d;
+  --color-ink: #ffffff;      /* Byte White */
+  --color-muted: #c4cacc;
+  --color-faint: #b0b7b9;
+  --color-cloud: #f5f5f5;    /* The Cloud */
+  --color-white: #ffffff;
+
+  --color-brand: #1795d4;      /* Equal Experts Blue: focus, borders, fills */
+  --color-brand-ink: #6cc3ef;  /* the same blue, as text on the dark steps */
+  --color-teal: #269c9e;       /* Transform Teal */
+  --color-teal-ink: #5fd0d2;
+  --color-ember: #f07c00;      /* Equal Ember: live, warnings, waitlist */
+  --color-ember-ink: #ffa645;
+  --color-techblue: #22567c;   /* fills that carry white text */
 
   --radius-card: 1rem;
 }
@@ -34,28 +45,24 @@ body {
   background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* A single, very quiet wash at the top of the page. No glow behind content —
-   layering does the work, so dense screens stay legible. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(70rem 26rem at 50% -14rem, rgba(139, 92, 246, 0.10), transparent 70%);
-}
-
 ::selection {
-  background: rgba(139, 92, 246, 0.35);
+  background: color-mix(in srgb, var(--color-brand) 45%, transparent);
 }
 
-/* Display type is a grotesk, not a serif — it needs weight and tight tracking. */
+/* Headings are Normal weight; bold is for a call to action or a key figure,
+   which opts in with font-bold. In @layer base so any utility still wins. */
+@layer base {
+  h1, h2, h3, h4, h5, h6 { font-weight: 400; }
+}
+
+/* Display type: Lexend at Normal weight, tight tracking. */
 .font-display {
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.035em;
 }
 
@@ -63,11 +70,11 @@ body::before {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #343a50;
+  background: var(--color-overlay);
   border-radius: 999px;
   border: 3px solid var(--color-ground);
 }
-::-webkit-scrollbar-thumb:hover { background: #434a66; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-hairline); }
 
 /* A module container: the outer box that groups related content. */
 @utility card {
@@ -77,7 +84,7 @@ body::before {
 }
 
 @utility glass {
-  background: rgba(24, 27, 37, 0.86);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
 }
@@ -200,8 +207,8 @@ body::before {
 @utility pz-float { animation: pz-float 5s ease-in-out infinite; }
 
 @keyframes pz-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.0), 0 0 40px -8px rgba(139, 92, 246, 0.55); }
-  50%      { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.12), 0 0 64px -4px rgba(139, 92, 246, 0.75); }
+  0%, 100% { box-shadow: 0 0 0 0 transparent, 0 0 40px -8px color-mix(in srgb, var(--color-brand) 55%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-brand) 12%, transparent), 0 0 64px -4px color-mix(in srgb, var(--color-brand) 75%, transparent); }
 }
 @utility pz-glow { animation: pz-glow 2.4s ease-in-out infinite; }
 
@@ -282,7 +289,7 @@ body::before {
  * tile scrolls without a seam. Pair with bg-clip-text text-transparent. */
 @keyframes pz-shine { to { background-position: 200% center; } }
 @utility pz-shine {
-  background-image: linear-gradient(90deg, #c4b5fd, #f0abfc, #67e8f9, #f0abfc, #c4b5fd);
+  background-image: linear-gradient(90deg, var(--color-brand-ink), var(--color-white), var(--color-teal-ink), var(--color-white), var(--color-brand-ink));
   background-size: 200% auto;
   animation: pz-shine 7s linear infinite;
 }
@@ -356,10 +363,10 @@ body::before {
 }
 @utility pz-scan-down { animation: pz-scan-down 1.6s linear both; }
 
-/* The hand-off button, ready to go: a cyan pulse rather than the violet glow. */
+/* The hand-off button, ready to go: a teal pulse around a blue glow. */
 @keyframes pz-launch {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(103, 232, 249, 0), 0 0 40px -6px rgba(139, 92, 246, 0.6); }
-  50%      { box-shadow: 0 0 0 10px rgba(103, 232, 249, 0.12), 0 0 80px -2px rgba(139, 92, 246, 0.85); }
+  0%, 100% { box-shadow: 0 0 0 0 transparent, 0 0 40px -6px color-mix(in srgb, var(--color-brand) 60%, transparent); }
+  50%      { box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-teal) 14%, transparent), 0 0 80px -2px color-mix(in srgb, var(--color-brand) 85%, transparent); }
 }
 @utility pz-launch { animation: pz-launch 1.8s ease-in-out infinite; }
 
