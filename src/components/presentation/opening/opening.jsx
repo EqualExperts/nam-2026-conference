@@ -69,6 +69,7 @@ const DAY = [
   ['🚢', 'Lab 2 · the engineering harness'],
   ['🍽️', 'Lunch'],
   ['👥', 'Teams evolve the app together'],
+  ['🎤', 'Teams present'],
 ];
 
 function TitleScene() {
@@ -433,29 +434,38 @@ function ParallelBeat({ on }) {
 }
 
 const LIMITS = [
-  ['🗂️', 'Triage', 'which tickets are ready, which collide'],
-  ['🪙', 'Tokens', 'what each run costs, and where to spend'],
+  ['🔀', 'Context switching', 'keeping several runs in your head at once'],
   ['🧩', 'Complexity', 'how big a change an agent can carry'],
+  ['🗂️', 'Triage', 'which issues should run — and which shouldn’t'],
 ];
 
 function LimitsBeat({ on }) {
   return (
     <>
-      <Show on={on} style={at(80, 70, 1440, 60)}>
-        <Kicker>There are limits — and plenty to optimise</Kicker>
+      {/* the point: parallel work is the unlock */}
+      <Show on={on} from="scale" style={at(80, 40, 1440, 190)} className="pz-glow flex flex-col items-center justify-center rounded-3xl border border-emerald-400/60 bg-raised text-center">
+        <div className="font-mono text-[15px] uppercase tracking-[0.2em] text-emerald-300">the real unlock</div>
+        <div className="mt-2 font-display text-[60px] leading-tight text-ink">Consistently parallelise the work.</div>
       </Show>
-      {LIMITS.map(([icon, h, s], i) => (
-        <Show key={h} on={on} from="up" delay={300 + i * 180} style={at(80 + i * 490, 130, 460, 170)} className={`${box} flex items-center gap-5 px-7`}>
+
+      {/* what actually limits it */}
+      <Show on={on} delay={600} style={at(80, 270, 1440, 30)}>
+        <Kicker>What actually limits it</Kicker>
+      </Show>
+      {LIMITS.map(([icon, h, sub], i) => (
+        <Show key={h} on={on} from="up" delay={800 + i * 180} style={at(80 + i * 490, 305, 460, 130)} className={`${box} flex items-center gap-5 px-7`}>
           <span className="text-[40px]">{icon}</span>
           <div>
             <div className="font-display text-[28px] text-ink">{h}</div>
-            <div className="mt-1 text-[17px] text-muted">{s}</div>
+            <div className="mt-1 text-[17px] text-muted">{sub}</div>
           </div>
         </Show>
       ))}
-      <Show on={on} from="scale" delay={1300} style={at(80, 350, 1440, 230)} className="pz-glow flex flex-col items-center justify-center rounded-3xl border border-emerald-400/60 bg-raised text-center">
-        <div className="font-mono text-[15px] uppercase tracking-[0.2em] text-emerald-300">the real unlock</div>
-        <div className="mt-3 font-display text-[54px] leading-tight text-ink">Consistently parallelise the work.</div>
+
+      {/* tokens: a footnote, on purpose */}
+      <Show on={on} from="none" delay={1800} style={at(80, 480, 1440, 40)} className="flex items-center justify-center gap-3 text-[18px] text-faint">
+        <span>🪙</span>
+        <span>Worried about tokens — especially at the individual level? <span className="text-muted">You’re worried about the wrong thing.</span></span>
       </Show>
     </>
   );
@@ -528,7 +538,10 @@ const PLAN = [
   { icon: '🚢', when: 'Lab 2', title: 'The engineering harness', sub: 'uses and curates that same context to run work in parallel', who: 'jonas' },
   { icon: '🍽️', when: 'Then', title: 'Lunch', sub: '', who: null },
   { icon: '👥', when: 'After lunch', title: 'Teams evolve the app', sub: 'complementary disciplines, one shared, planned foundation', who: null },
+  { icon: '🎤', when: 'To close', title: 'Teams present', sub: 'what each team built, and how it got there', who: null },
 ];
+const PLAN_W = 268;
+const PLAN_X = (i) => 80 + i * (PLAN_W + 25);
 const NAMES = { abraham: 'Abraham Marín Pérez', jonas: 'Jonas Claesson' };
 
 function TodayScene({ step, leaving, advance }) {
@@ -537,11 +550,11 @@ function TodayScene({ step, leaving, advance }) {
       {/* beat 0: the plan */}
       <Below>
       {PLAN.map((p, i) => (
-        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(80 + i * 365, 50, 335, 420)} className={`${box} flex flex-col p-7 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
+        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(PLAN_X(i), 50, PLAN_W, 420)} className={`${box} flex flex-col p-6 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
           <div className="font-mono text-[15px] uppercase tracking-[0.18em] text-faint">{p.when}</div>
           <span className="mt-4 text-[44px] leading-none">{p.icon}</span>
-          <div className="mt-4 font-display text-[30px] leading-tight text-ink">{p.title}</div>
-          {p.sub && <div className="mt-2 text-[18px] leading-snug text-muted">{p.sub}</div>}
+          <div className="mt-4 font-display text-[27px] leading-tight text-ink">{p.title}</div>
+          {p.sub && <div className="mt-2 text-[17px] leading-snug text-muted">{p.sub}</div>}
           {p.who && (
             <div className="mt-auto flex items-center gap-3 text-[16px] text-faint">
               <Face who={p.who} size={34} /> {NAMES[p.who]}
@@ -550,8 +563,8 @@ function TodayScene({ step, leaving, advance }) {
         </Show>
       ))}
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
-        {[0, 1, 2].map((i) => (
-          <path key={i} d={`M${80 + i * 365 + 335} 260 L${80 + (i + 1) * 365} 260`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#a78bfa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
+        {[0, 1, 2, 3].map((i) => (
+          <path key={i} d={`M${PLAN_X(i) + PLAN_W} 260 L${PLAN_X(i + 1)} 260`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#a78bfa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
         ))}
       </svg>
       <Show on={step === 0} from="none" delay={1300} style={at(80, 500, 1460, 50)} className="flex items-center">
@@ -664,9 +677,9 @@ export const OPENING = [
       },
       {
         lesson: { label: 'Lesson two', n: '2' },
-        kicker: 'The real unlock',
-        title: 'Constraints are real. Parallelism is still the unlock.',
-        body: 'Triage, tokens and complexity all set limits, and there is a lot to optimise. But what accelerates your work is being able to parallelise it, consistently.',
+        kicker: 'The limits',
+        title: 'The limits are real — the unlock is still parallel work',
+        body: 'There is a lot to optimise. But what accelerates your work is running it in parallel, consistently.',
       },
     ],
     Scene: ParallelScene,
@@ -687,8 +700,8 @@ export const OPENING = [
     beats: [
       {
         kicker: '6 · Today',
-        title: 'Two hands-on labs, then lunch, then teams',
-        body: 'Lab one: a product harness that revolves around context. Lab two: an engineering harness that uses and curates that same context to run work in parallel. After lunch, teams evolve the app together.',
+        title: 'Two hands-on labs, lunch, then teams build — and present',
+        body: 'Lab one: a product harness that revolves around context. Lab two: an engineering harness that uses and curates it to run work in parallel. After lunch, teams evolve the app, then present what they built.',
       },
       null,
     ],
