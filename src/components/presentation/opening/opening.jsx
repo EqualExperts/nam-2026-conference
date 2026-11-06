@@ -200,7 +200,7 @@ function Islands({ on }) {
         const a = ISLANDS[i];
         const x = (a.x + 360 + s.x) / 2;
         const y = (a.y + s.y) / 2 + 95;
-        return <span key={s.who} className="pz-pop absolute grid size-10 place-items-center rounded-full bg-rose-500/20 text-[18px] font-bold text-rose-300 ring-1 ring-rose-400/50" style={{ left: x - 20, top: y - 20, ...later(900 + i * 200) }}>✕</span>;
+        return <span key={s.who} className="pz-pop absolute grid size-10 place-items-center rounded-full border-2 border-dashed border-amber-400/60 bg-amber-500/10 text-[18px] font-bold text-amber-200" style={{ left: x - 20, top: y - 20, ...later(900 + i * 200) }}>?</span>;
       })}
     </Replay>
   );
@@ -588,8 +588,8 @@ export const OPENING = [
       },
       {
         kicker: '1 · Where we are',
-        title: 'There is no connected way of working across the SDLC',
-        body: 'Product, design, engineering and QA each move on their own — with their own tools, and their own memory of what was decided.',
+        title: 'The lifecycle often isn’t connected',
+        body: 'Product, design, engineering and QA often work in their own tools — each with its own memory of what was decided.',
       },
       {
         kicker: '1 · Where we are',
