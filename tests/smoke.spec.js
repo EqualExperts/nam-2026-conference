@@ -121,3 +121,48 @@ test.describe('Nothing claims to be true when it is not', () => {
     await expect(page.getByRole('contentinfo')).toContainText(bootstrap.conference.dates);
   });
 });
+
+test('the page wears the Equal Experts brand: Lexend, the white logo beside ORBIT, the blue tab icon', async ({ page, request }) => {
+  await visit(page, '/');
+
+  // Lexend is the only text font, on body, headings and small labels, desktop and mobile.
+  const families = await page.evaluate(() => {
+    const fam = (el) => getComputedStyle(el).fontFamily;
+    return {
+      body: fam(document.body),
+      heading: fam(document.querySelector('h1')),
+      label: fam(document.querySelector('footer p')),
+    };
+  });
+  for (const [where, family] of Object.entries(families)) {
+    expect(family, `${where} font`).toMatch(/^"?Lexend/);
+  }
+
+  // The white logo sits beside the event name in the header and the footer, at least 100px wide.
+  for (const region of ['banner', 'contentinfo']) {
+    const area = page.getByRole(region);
+    const logo = area.locator('img[src*="Monochrome_White"]').first();
+    await expect(logo, `${region} logo`).toBeVisible();
+    expect((await logo.boundingBox()).width, `${region} logo width`).toBeGreaterThanOrEqual(100);
+    await expect(area.getByText(/ORBIT/).first()).toBeVisible();
+  }
+
+  const icon = await page.locator('link[rel=icon]').getAttribute('href');
+  expect(icon).toContain('Blue_Circle.svg');
+  expect((await request.get(new URL(icon, page.url()).href)).ok()).toBeTruthy();
+});
+
+test('tracks and cuisines are named, never told apart by colour alone', async ({ page, request }) => {
+  // several tracks and cuisines share one brand colour, so the label has to carry the difference
+  const sessions = await (await request.get(`${API}/sessions`)).json();
+  const trackNames = [...new Set(sessions.map((x) => x.track.name))];
+  await visit(page, '/schedule?view=list');
+  await waitForResults(page);
+  const card = await page.getByTestId('session-card').first().textContent();
+  expect(trackNames.some((n) => card.includes(n)), 'the card names its track').toBeTruthy();
+
+  await visit(page, '/food');
+  await expect(page.getByTestId('vendor-count')).toBeVisible();
+  const cuisine = await page.locator('article p.text-xs.text-muted').first().textContent();
+  expect(cuisine).toMatch(/\S+ · \S+/);
+});
