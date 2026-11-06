@@ -9,8 +9,9 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 /**
  * A talk the presenter steps through: full screen, outside <Layout>, no header
  * or footer. Each chapter is a layer on a fixed 1600×900 stage; a beat is one
- * press. Both talks — /product-presentation, then /engineering-presentation —
- * are a Deck, so the second picks up exactly where the first leaves off.
+ * press. All three talks — /opening-presentation, /product-presentation, then
+ * /engineering-presentation — are a Deck, so each picks up exactly where the
+ * one before leaves off.
  *
  * `next` is the talk that follows: from the last beat, one more press goes there.
  * With `next.delay` (ms) the current scene is told it is `leaving` first and the

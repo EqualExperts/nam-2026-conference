@@ -1,0 +1,7 @@
+import { Deck } from '../components/presentation/Deck.jsx';
+import { OPENING_CHAPTERS } from '../components/presentation/opening/chapters.js';
+
+/** /opening-presentation — why the day is shaped as it is: shared context and parallel work. Hands over to the product talk. */
+export function OpeningPresentationPage() {
+  return <Deck chapters={OPENING_CHAPTERS} title="A connected lifecycle" next={{ to: '/product-presentation', label: 'The product harness', delay: 900 }} />;
+}
