@@ -47,7 +47,7 @@ export function VenueRouteMap({ venues, routes, className }) {
         aria-label={`Map showing ${a.name} and ${b.name}, ${fastest?.minutes} minutes apart by ${fastest?.mode}`}>
         <defs>
           <pattern id="streets" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M60 0H0v60" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+            <path d="M60 0H0v60" fill="none" stroke="color-mix(in srgb, var(--color-white) 5%, transparent)" strokeWidth="1" />
           </pattern>
           <linearGradient id="routeGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={accentHex(a.accent)[0]} />
@@ -57,8 +57,8 @@ export function VenueRouteMap({ venues, routes, className }) {
 
         <rect width={W} height={H} fill="url(#streets)" />
         {/* a couple of arterial roads for context */}
-        <path d={`M0 ${H * 0.78} H${W}`} stroke="rgba(255,255,255,0.07)" strokeWidth="10" />
-        <path d={`M${W * 0.63} 0 V${H}`} stroke="rgba(255,255,255,0.055)" strokeWidth="7" />
+        <path d={`M0 ${H * 0.78} H${W}`} stroke="color-mix(in srgb, var(--color-white) 7%, transparent)" strokeWidth="10" />
+        <path d={`M${W * 0.63} 0 V${H}`} stroke="color-mix(in srgb, var(--color-white) 6%, transparent)" strokeWidth="7" />
 
         {/* the route */}
         <path d={path} fill="none" stroke="url(#routeGrad)" strokeWidth="2.5"
@@ -67,7 +67,7 @@ export function VenueRouteMap({ venues, routes, className }) {
         {/* distance marker riding the arc */}
         <g transform={`translate(${midX}, ${midY + 34})`}>
           <rect x="-62" y="-17" width="124" height="34" rx="17" fill="var(--color-ground)" stroke="var(--color-hairline)" />
-          <text x="0" y="-1" textAnchor="middle" className="fill-white text-[13px] font-bold">6.2 miles</text>
+          <text x="0" y="-1" textAnchor="middle" className="fill-white text-[13px] font-medium">6.2 miles</text>
           <text x="0" y="11" textAnchor="middle" className="fill-white/45 text-[10px]">
             {fastest ? `${fastest.minutes} min by ${fastest.mode.toLowerCase()}` : ''}
           </text>

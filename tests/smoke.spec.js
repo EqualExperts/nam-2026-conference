@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, failOnPageErrors, waitForResults, ATTENDEES } from './helpers.js';
+import { API, visit, failOnPageErrors, waitForResults, ATTENDEES, shotForPR } from './helpers.js';
 
 /**
  * Smoke suite: every route renders, with no console errors and no horizontal
@@ -150,6 +150,7 @@ test('the page wears the Equal Experts brand: Lexend, the white logo beside ORBI
   const icon = await page.locator('link[rel=icon]').getAttribute('href');
   expect(icon).toContain('Blue_Circle.svg');
   expect((await request.get(new URL(icon, page.url()).href)).ok()).toBeTruthy();
+  await shotForPR(page, 'Home in the Equal Experts brand');
 });
 
 test('tracks and cuisines are named, never told apart by colour alone', async ({ page, request }) => {
@@ -160,6 +161,15 @@ test('tracks and cuisines are named, never told apart by colour alone', async ({
   await waitForResults(page);
   const card = await page.getByTestId('session-card').first().textContent();
   expect(trackNames.some((n) => card.includes(n)), 'the card names its track').toBeTruthy();
+  await shotForPR(page, 'Schedule in the Equal Experts brand');
+
+  await visit(page, '/speakers');
+  await expect(page.getByRole('heading', { name: /^Speakers$/i }).first()).toBeVisible();
+  await shotForPR(page, 'Speakers in the Equal Experts brand');
+
+  await visit(page, `/sessions/${sessions[0].id}`);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await shotForPR(page, 'A session in the Equal Experts brand');
 
   await visit(page, '/food');
   await expect(page.getByTestId('vendor-count')).toBeVisible();

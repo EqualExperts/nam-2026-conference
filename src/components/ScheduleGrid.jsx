@@ -51,7 +51,7 @@ export function ScheduleGrid({ sessions }) {
           {/* header: room + its track for the day */}
           <div className="sticky top-0 z-20 grid border-b border-hairline bg-surface"
             style={{ gridTemplateColumns: 'var(--grid)' }} role="row">
-            <div className="sticky left-0 z-10 border-r border-hairline bg-surface px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-faint">
+            <div className="sticky left-0 z-10 border-r border-hairline bg-surface px-3 py-2.5 text-[10px] font-medium uppercase tracking-wider text-faint">
               Time
             </div>
             {rooms.map((room) => {
@@ -60,12 +60,12 @@ export function ScheduleGrid({ sessions }) {
                 <div key={room.id} role="columnheader"
                   className="min-w-0 border-r border-hairline px-3 py-2 last:border-r-0">
                   <div className={cx('mb-1.5 h-0.5 w-full rounded-full bg-gradient-to-r', a.grad)} />
-                  <div className="truncate text-xs font-bold">{room.name}</div>
+                  <div className="truncate text-xs font-medium">{room.name}</div>
                   <div className="flex items-center gap-1.5">
-                    <span className={cx('truncate text-[10px] font-semibold', a.text)}>{room.track.name}</span>
+                    <span className={cx('truncate text-[10px] font-medium', a.text)}>{room.track.name}</span>
                   </div>
                   {!room.venue.isPrimary && (
-                    <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-orange-300">
+                    <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium text-ember-ink">
                       <Icon name="car" className="size-2.5" />{room.venue.shortName}
                     </div>
                   )}
@@ -90,16 +90,16 @@ export function ScheduleGrid({ sessions }) {
                   return (
                     <div key={s.id} className="grid border-b border-hairline"
                       style={{ gridTemplateColumns: `5rem 1fr` }} role="row">
-                      <div className="sticky left-0 z-10 border-r border-hairline bg-surface px-3 py-3 font-mono text-xs font-bold">
+                      <div className="sticky left-0 z-10 border-r border-hairline bg-surface px-3 py-3 font-mono text-xs font-medium">
                         {startsAt}
                       </div>
                       <Link to={`/sessions/${s.id}`}
                         className="group relative flex flex-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-raised">
                         <span className={cx('absolute inset-y-0 left-0 w-1 bg-gradient-to-b', a.grad)} />
-                        <span className={cx('rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider', a.chip)}>
+                        <span className={cx('rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider', a.chip)}>
                           {s.isKeynote ? 'Keynote' : 'Social'}
                         </span>
-                        <span className="truncate text-sm font-semibold group-hover:text-violet-200">{s.title}</span>
+                        <span className="truncate text-sm font-medium group-hover:text-brand-ink">{s.title}</span>
                         <span className="ml-auto shrink-0 text-[11px] text-faint">{s.room.name}</span>
                         <button
                           type="button"
@@ -108,7 +108,7 @@ export function ScheduleGrid({ sessions }) {
                           disabled={closed}
                           onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
                           className={cx('relative z-10 shrink-0 rounded p-1',
-                            seat ? 'text-emerald-300' : closed ? 'cursor-not-allowed text-faint/50' : 'text-faint hover:text-emerald-300')}
+                            seat ? 'text-teal-ink' : closed ? 'cursor-not-allowed text-faint/50' : 'text-faint hover:text-teal-ink')}
                         >
                           <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-4" />
                         </button>
@@ -121,7 +121,7 @@ export function ScheduleGrid({ sessions }) {
                   <div className="grid border-b border-hairline last:border-b-0"
                     style={{ gridTemplateColumns: 'var(--grid)' }} role="row">
                     <div className="sticky left-0 z-10 flex flex-col justify-center border-r border-hairline bg-surface px-3 py-2">
-                      <span className="font-mono text-xs font-bold">{startsAt}</span>
+                      <span className="font-mono text-xs font-medium">{startsAt}</span>
                       <span className="font-mono text-[10px] text-faint">
                         {rowCells.find(Boolean)?.endsAt}
                       </span>
@@ -149,15 +149,15 @@ export function ScheduleGrid({ sessions }) {
                             className={cx(
                               'group relative flex h-full min-h-[5rem] flex-col rounded-lg border p-2.5 transition-all',
                               'hover:-translate-y-0.5 hover:border-white/25 hover:bg-overlay',
-                              live ? 'border-rose-400/50 bg-rose-500/[0.07]'
-                                : seat ? 'border-emerald-400/45 bg-emerald-400/[0.06]'
+                              live ? 'border-ember/50 bg-ember/[0.07]'
+                                : seat ? 'border-teal/45 bg-teal/[0.06]'
                                 : 'border-hairline bg-raised',
                               done && 'opacity-60',
                             )}
                           >
                             <span className={cx('absolute inset-x-2.5 top-0 h-0.5 rounded-full bg-gradient-to-r', a.grad)} />
                             <div className="flex items-start justify-between gap-1.5">
-                              <h4 className="line-clamp-3 text-[12px] font-semibold leading-snug group-hover:text-violet-200">
+                              <h4 className="line-clamp-3 text-[12px] font-medium leading-snug group-hover:text-brand-ink">
                                 {s.title}
                               </h4>
                               <button
@@ -168,9 +168,9 @@ export function ScheduleGrid({ sessions }) {
                                 disabled={closed}
                                 onClick={(e) => { e.preventDefault(); if (!closed) toggleSeat(s.id, s); }}
                                 className={cx('relative z-10 -mr-1 -mt-1 shrink-0 rounded p-1 transition-colors',
-                                  seat ? 'text-emerald-300'
+                                  seat ? 'text-teal-ink'
                                     : closed ? 'cursor-not-allowed text-faint/50 opacity-0 group-hover:opacity-100'
-                                    : 'text-faint opacity-0 hover:text-emerald-300 group-hover:opacity-100 focus:opacity-100')}
+                                    : 'text-faint opacity-0 hover:text-teal-ink group-hover:opacity-100 focus:opacity-100')}
                               >
                                 <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-3.5" />
                               </button>
@@ -181,14 +181,14 @@ export function ScheduleGrid({ sessions }) {
                               const waiting = live?.waitlistCount ?? s.waitlistCount ?? 0;
                               if (left === 0) {
                                 return (
-                                  <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">
+                                  <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-ember/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ember-ink">
                                     Full{waiting > 0 && ` · ${waiting}`}
                                   </span>
                                 );
                               }
                               if (left <= 10) {
                                 return (
-                                  <span className="mt-1.5 text-[10px] font-semibold text-amber-300">{left} left</span>
+                                  <span className="mt-1.5 text-[10px] font-medium text-ember-ink">{left} left</span>
                                 );
                               }
                               return null;
@@ -202,7 +202,7 @@ export function ScheduleGrid({ sessions }) {
                                   <span className="truncate text-[10px] text-faint">{s.speakers[0].name}</span>
                                 </>
                               )}
-                              {live && <span className="ml-auto size-1.5 animate-pulse-dot rounded-full bg-rose-400" />}
+                              {live && <span className="ml-auto size-1.5 animate-pulse-dot rounded-full bg-ember-ink" />}
                             </div>
                           </Link>
                         </div>

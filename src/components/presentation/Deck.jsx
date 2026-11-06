@@ -230,7 +230,7 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
                 aria-current={i === chapter ? 'step' : undefined}
               >
                 <span className="absolute inset-x-0 bottom-1.5 h-1 overflow-hidden rounded-full bg-overlay group-hover:h-1.5">
-                  <span className="block h-full rounded-full bg-gradient-to-r from-violet-400 to-cyan-300 transition-[width] duration-500" style={{ width: `${done * 100}%` }} />
+                  <span className="block h-full rounded-full bg-gradient-to-r from-brand-ink to-teal-ink transition-[width] duration-500" style={{ width: `${done * 100}%` }} />
                 </span>
               </button>
             );

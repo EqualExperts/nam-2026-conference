@@ -15,8 +15,8 @@ const ALL = 'all';
 
 function WaitBadge({ mins, open }) {
   if (!open) return <Chip className="!py-0.5 !text-[10px] opacity-70">Closed now</Chip>;
-  if (!mins) return <Chip accent="emerald" className="!py-0.5 !text-[10px]">No queue</Chip>;
-  const tone = mins >= 25 ? 'rose' : mins >= 15 ? 'amber' : 'emerald';
+  if (!mins) return <Chip accent="teal" className="!py-0.5 !text-[10px]">No queue</Chip>;
+  const tone = mins >= 15 ? 'ember' : 'teal';
   return (
     <Chip accent={tone} className="!py-0.5 !text-[10px]">
       <Icon name="clock" className="size-3" />{mins} min
@@ -25,9 +25,9 @@ function WaitBadge({ mins, open }) {
 }
 
 function VendorCard({ vendor, venue, now, featured }) {
-  const a = accent(venue?.accent ?? 'violet');
+  const a = accent(venue?.accent ?? 'blue');
   // Colour the artwork by cuisine so the grid reads as a varied food hall,
-  // not twenty tiles of the same purple.
+  // not twenty tiles of the same blue.
   const art = accentFor(vendor.cuisine);
   const open = isOpenAt(vendor.opensAt, vendor.closesAt, now);
 
@@ -36,7 +36,7 @@ function VendorCard({ vendor, venue, now, featured }) {
       className={cx(
         'group relative flex flex-col overflow-hidden rounded-xl border bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay/70',
-        featured ? 'border-amber-400/30 sm:col-span-2' : 'border-hairline',
+        featured ? 'border-ember/30 sm:col-span-2' : 'border-hairline',
         !open && 'opacity-70',
       )}
     >
@@ -52,8 +52,8 @@ function VendorCard({ vendor, venue, now, featured }) {
           {vendor.emoji}
         </span>
         <div className="absolute right-3 top-3 flex items-center gap-1.5">
-          {featured && <Chip accent="amber" className="!py-0.5 !text-[10px] !bg-black/50 backdrop-blur-sm">Top rated</Chip>}
-          {open && <span className="rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200 backdrop-blur-sm">Open</span>}
+          {featured && <Chip accent="ember" className="!py-0.5 !text-[10px] !bg-ground/50 backdrop-blur-sm">Top rated</Chip>}
+          {open && <span className="rounded-full bg-teal/25 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-teal-ink backdrop-blur-sm">Open</span>}
         </div>
       </div>
 
@@ -66,8 +66,8 @@ function VendorCard({ vendor, venue, now, featured }) {
             <p className="text-xs text-muted">{vendor.cuisine} · {vendor.priceTier}</p>
           </div>
           <div className="shrink-0 text-right">
-            <div className={cx('inline-flex items-center gap-1 font-semibold', featured ? 'text-lg' : 'text-sm')}>
-              <Icon name="star" filled className="size-3.5 text-amber-400" />
+            <div className={cx('inline-flex items-center gap-1 font-medium', featured ? 'text-lg' : 'text-sm')}>
+              <Icon name="star" filled className="size-3.5 text-ember-ink" />
               {vendor.rating.toFixed(1)}
             </div>
             <div className="text-[10px] text-faint">{vendor.reviewCount} reviews</div>
@@ -78,7 +78,7 @@ function VendorCard({ vendor, venue, now, featured }) {
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {vendor.dietary.map((d) => (
-            <Chip key={d} accent="emerald" className="!px-2 !py-0.5 !text-[10px]">{d}</Chip>
+            <Chip key={d} accent="teal" className="!px-2 !py-0.5 !text-[10px]">{d}</Chip>
           ))}
           {vendor.acceptsMealCredit && (
             <Chip className="!px-2 !py-0.5 !text-[10px]">
@@ -170,13 +170,13 @@ export function FoodPage() {
               aria-pressed={openNow}
               data-testid="open-now-toggle"
               className={cx(
-                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                 openNow
-                  ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200'
+                  ? 'border-teal/50 bg-teal/15 text-teal-ink'
                   : 'border-hairline bg-ground/70 text-muted hover:text-ink',
               )}
             >
-              <span className={cx('size-1.5 rounded-full', openNow ? 'bg-emerald-400 animate-pulse-dot' : 'bg-faint')} />
+              <span className={cx('size-1.5 rounded-full', openNow ? 'bg-teal-ink animate-pulse-dot' : 'bg-faint')} />
               Open now
             </button>
             <Select label="Sort" value={sort} onChange={(v) => set('sort', v)}

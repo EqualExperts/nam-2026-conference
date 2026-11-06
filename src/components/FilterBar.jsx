@@ -10,7 +10,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', classN
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full rounded-lg border border-hairline bg-ground/70 pl-9 pr-3 text-sm placeholder:text-faint focus:border-violet-400/60 focus:bg-ground focus:outline-none"
+        className="h-10 w-full rounded-lg border border-hairline bg-ground/70 pl-9 pr-3 text-sm placeholder:text-faint focus:border-brand/60 focus:bg-ground focus:outline-none"
         {...rest}
       />
     </div>
@@ -24,7 +24,7 @@ export function Select({ label, value, onChange, options, className }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full appearance-none rounded-lg border border-hairline bg-ground/70 pl-3 pr-8 text-sm text-ink focus:border-violet-400/60 focus:outline-none"
+        className="h-10 w-full appearance-none rounded-lg border border-hairline bg-ground/70 pl-3 pr-8 text-sm text-ink focus:border-brand/60 focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value} className="bg-surface">{o.label}</option>
@@ -52,11 +52,11 @@ export function TabStrip({ tabs, value, onChange, className }) {
             className={cx(
               'shrink-0 rounded-xl border px-4 py-2.5 text-left transition-all',
               active
-                ? 'border-violet-400/50 bg-violet-500/15 text-ink'
+                ? 'border-brand/50 bg-brand/15 text-ink'
                 : 'border-hairline bg-surface text-muted hover:border-white/20 hover:bg-raised hover:text-ink',
             )}
           >
-            <span className="block text-sm font-semibold leading-tight">{t.label}</span>
+            <span className="block text-sm font-medium leading-tight">{t.label}</span>
             {t.sublabel && <span className="block text-[11px] text-faint">{t.sublabel}</span>}
           </button>
         );
@@ -74,7 +74,7 @@ export function ChipGroup({ label, value, onChange, options, className }) {
   return (
     <div className={cx('flex flex-wrap items-center gap-1.5', className)} role="group" aria-label={label}>
       {label && (
-        <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.14em] text-faint">{label}</span>
+        <span className="mr-1 text-[10px] font-medium uppercase tracking-[0.14em] text-faint">{label}</span>
       )}
       {options.map((o) => {
         const active = o.value === value;
@@ -88,9 +88,9 @@ export function ChipGroup({ label, value, onChange, options, className }) {
             title={o.title}
             data-testid={o.testId}
             className={cx(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-all',
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all',
               active
-                ? o.activeClass ?? 'border-violet-400/50 bg-violet-500/15 text-ink'
+                ? o.activeClass ?? 'border-brand/50 bg-brand/15 text-ink'
                 : 'border-hairline bg-raised text-muted hover:border-white/20 hover:text-ink',
               o.disabled && 'cursor-not-allowed opacity-40 hover:text-muted',
             )}

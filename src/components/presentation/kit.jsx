@@ -71,9 +71,9 @@ export function Replay({ on, children, ...rest }) {
 export const later = (ms, extra) => ({ animationDelay: `${ms}ms`, ...extra });
 
 export const MODELS = {
-  opus:   { name: 'Opus',   chip: 'bg-violet-500/15 text-violet-200 border-violet-400/40', dot: 'bg-violet-400' },
-  sonnet: { name: 'Sonnet', chip: 'bg-sky-500/15 text-sky-200 border-sky-400/40',          dot: 'bg-sky-400' },
-  haiku:  { name: 'Haiku',  chip: 'bg-emerald-500/15 text-emerald-200 border-emerald-400/40', dot: 'bg-emerald-400' },
+  opus:   { name: 'Opus',   chip: 'bg-brand/15 text-brand-ink border-brand/40', dot: 'bg-brand-ink' },
+  sonnet: { name: 'Sonnet', chip: 'bg-brand/15 text-brand-ink border-brand/40',          dot: 'bg-brand-ink' },
+  haiku:  { name: 'Haiku',  chip: 'bg-teal/15 text-teal-ink border-teal/40', dot: 'bg-teal-ink' },
 };
 
 export function Model({ m, className = '', children }) {
@@ -87,17 +87,17 @@ export function Model({ m, className = '', children }) {
 }
 
 const LABELS = {
-  'ready-for-ai':   'bg-violet-500/20 text-violet-200 border-violet-400/50',
-  'ai-working':     'bg-sky-500/20 text-sky-200 border-sky-400/50',
-  'needs-human':    'bg-amber-500/20 text-amber-200 border-amber-400/50',
-  'ready-for-human':'bg-emerald-500/20 text-emerald-200 border-emerald-400/50',
-  'ship:full':      'bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-400/50',
-  'harness-escape': 'bg-rose-500/20 text-rose-200 border-rose-400/50',
+  'ready-for-ai':   'bg-brand/20 text-brand-ink border-brand/50',
+  'ai-working':     'bg-brand/20 text-brand-ink border-brand/50',
+  'needs-human':    'bg-ember/20 text-ember-ink border-ember/50',
+  'ready-for-human':'bg-teal/20 text-teal-ink border-teal/50',
+  'ship:full':      'bg-brand/20 text-brand-ink border-brand/50',
+  'harness-escape': 'bg-ember/20 text-ember-ink border-ember/50',
 };
 
 export function Label({ name, className = '' }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-[14px] font-semibold ${LABELS[name]} ${className}`}>
+    <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-[14px] font-medium ${LABELS[name]} ${className}`}>
       {name}
     </span>
   );
@@ -133,11 +133,11 @@ export function Meter({ level }) {
 const TONES = {
   cmd:  'text-ink',
   out:  'text-muted',
-  ok:   'text-emerald-300',
-  warn: 'text-amber-300',
-  bad:  'text-rose-300',
+  ok:   'text-teal-ink',
+  warn: 'text-ember-ink',
+  bad:  'text-ember-ink',
   dim:  'text-faint',
-  hi:   'text-violet-300',
+  hi:   'text-brand-ink',
 };
 
 /**
@@ -146,18 +146,18 @@ const TONES = {
  */
 export function Terminal({ title, lines, step = 0, className = '', style, bodyClass = '' }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15] shadow-2xl shadow-black/50 ${className}`} style={style}>
+    <div className={`overflow-hidden rounded-2xl border border-hairline bg-[var(--color-ground)] shadow-2xl shadow-ground/50 ${className}`} style={style}>
       <div className="flex items-center gap-2 border-b border-hairline bg-surface px-4 py-2.5">
-        <span className="size-3 rounded-full bg-rose-400/80" />
-        <span className="size-3 rounded-full bg-amber-400/80" />
-        <span className="size-3 rounded-full bg-emerald-400/80" />
+        <span className="size-3 rounded-full bg-ember/80" />
+        <span className="size-3 rounded-full bg-ember/80" />
+        <span className="size-3 rounded-full bg-teal/80" />
         <span className="ml-3 font-mono text-[13px] text-faint">{title}</span>
       </div>
       <div className={`space-y-1.5 px-5 py-4 font-mono text-[17px] leading-relaxed ${bodyClass}`}>
         {lines.filter((l) => step >= (l.from ?? 0)).map((l, i) => (
           <div key={`${l.from ?? 0}-${i}`} className={`pz-appear ${TONES[l.tone ?? 'out']}`} style={later(l.delay ?? 0)}>
             {l.tone === 'cmd' ? (
-              <><span className="text-violet-400">❯ </span><Typed text={l.t} delay={(l.delay ?? 0) + 150} /></>
+              <><span className="text-brand-ink">❯ </span><Typed text={l.t} delay={(l.delay ?? 0) + 150} /></>
             ) : l.t}
           </div>
         ))}
@@ -170,13 +170,13 @@ export function Terminal({ title, lines, step = 0, className = '', style, bodyCl
 /** A GitHub-ish issue card. */
 export function IssueCard({ number, title, state = 'Open', labels = [], children, className = '', style }) {
   return (
-    <div className={`rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40 ${className}`} style={style}>
+    <div className={`rounded-2xl border border-hairline bg-surface shadow-2xl shadow-ground/40 ${className}`} style={style}>
       <div className="border-b border-hairline px-7 pb-5 pt-6">
         <div className="font-display text-[30px] leading-tight text-ink">
           {title} <span className="font-sans font-normal text-faint">#{number}</span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-techblue px-3 py-1 text-[14px] font-medium text-white">
             <IssueIcon /> {state}
           </span>
           {labels.map((l) => <Label key={l} name={l} className="pz-pop" />)}
@@ -219,11 +219,11 @@ export function MergeIcon({ className = 'size-4' }) {
 export function Token({ n = 140, className = '', ...rest }) {
   return (
     <motion.div
-      className={`pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-500/30 px-3 font-mono text-[15px] font-semibold text-violet-50 shadow-[0_0_28px_-2px_rgba(167,139,250,0.9),inset_0_0_12px_rgba(196,181,253,0.25)] backdrop-blur ${className}`}
+      className={`pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full border border-brand/70 bg-brand/30 px-3 font-mono text-[15px] font-medium text-brand-ink shadow-[0_0_28px_-2px_color-mix(in srgb, var(--color-brand) 90%, transparent),inset_0_0_12px_color-mix(in srgb, var(--color-brand-ink) 25%, transparent)] backdrop-blur ${className}`}
       aria-hidden="true"
       {...rest}
     >
-      <IssueIcon className="size-3.5 text-emerald-300" />#{n}
+      <IssueIcon className="size-3.5 text-teal-ink" />#{n}
     </motion.div>
   );
 }
@@ -250,7 +250,7 @@ export function Flip({ delay = 0, front, back, className = '' }) {
 export function Tick({ ok = true, className = '', style }) {
   return (
     <span
-      className={`inline-grid size-7 shrink-0 place-items-center rounded-full text-[15px] font-bold ${ok ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40' : 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/40'} ${className}`}
+      className={`inline-grid size-7 shrink-0 place-items-center rounded-full text-[15px] font-bold ${ok ? 'bg-teal/20 text-teal-ink ring-1 ring-teal/40' : 'bg-ember/20 text-ember-ink ring-1 ring-ember/40'} ${className}`}
       style={style}
       aria-label={ok ? 'passes' : 'fails'}
     >
@@ -266,10 +266,10 @@ export function Kicker({ children, className = '' }) {
 
 /** A GitHub-style verdict callout as the review and QA agents post it. */
 export function Verdict({ pass, level, title, children, className = '' }) {
-  const tone = !pass ? 'border-rose-400/60 bg-rose-500/10 text-rose-200'
-    : level === 'high' ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
-    : level === 'medium' ? 'border-sky-400/60 bg-sky-500/10 text-sky-200'
-    : 'border-amber-400/60 bg-amber-500/10 text-amber-200';
+  const tone = !pass ? 'border-ember/60 bg-ember/10 text-ember-ink'
+    : level === 'high' ? 'border-teal/60 bg-teal/10 text-teal-ink'
+    : level === 'medium' ? 'border-brand/60 bg-brand/10 text-brand-ink'
+    : 'border-ember/60 bg-ember/10 text-ember-ink';
   return (
     <div className={`rounded-xl border-l-4 px-5 py-3.5 ${tone} ${className}`}>
       <div className="flex items-center gap-3 font-display text-[21px]">

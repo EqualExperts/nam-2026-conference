@@ -64,11 +64,11 @@ export function SpeakerPage() {
             imageUrl={speaker.imageUrl} size="xl" className="-mt-16 ring-4 ring-surface sm:-mt-24" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              {isYou && <Chip accent="cyan" data-testid="speaker-is-you">This is you</Chip>}
+              {isYou && <Chip accent="blue" data-testid="speaker-is-you">This is you</Chip>}
               {speaker.keynoteCount > 0
-                ? <Chip accent="violet">Keynote speaker</Chip>
-                : speaker.featured && <Chip accent="violet">Featured speaker</Chip>}
-              {speaker.firstTime && <Chip accent="emerald">First time at ORBIT</Chip>}
+                ? <Chip accent="blue">Keynote speaker</Chip>
+                : speaker.featured && <Chip accent="blue">Featured speaker</Chip>}
+              {speaker.firstTime && <Chip accent="teal">First time at ORBIT</Chip>}
             </div>
             <h1 className="mt-2 font-display text-3xl leading-tight sm:text-4xl" data-testid="speaker-name">
               {speaker.name}
@@ -150,7 +150,7 @@ export function SpeakerPage() {
         <div className="mt-5 space-y-8">
           {Object.entries(byDay).map(([day, items]) => (
             <div key={day}>
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-faint">{dayLabel(day)}</h3>
+              <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-faint">{dayLabel(day)}</h3>
               <div className="grid grid-flow-row-dense grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
                 {items.map((s) => <SessionCard key={s.id} session={s} />)}
               </div>

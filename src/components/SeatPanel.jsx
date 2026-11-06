@@ -34,7 +34,7 @@ export function SeatPanel({ session }) {
   const isFull = seatsLeft === 0;
   // Over: no seat to offer. A seat already held keeps its status and can still be released.
   const ended = hasEnded(session, clock);
-  const tone = pct >= 100 ? 'bg-rose-400' : pct >= 85 ? 'bg-amber-400' : 'bg-emerald-400';
+  const tone = pct >= 100 ? 'bg-ember-ink' : pct >= 85 ? 'bg-ember-ink' : 'bg-teal-ink';
 
   const act = async (fn) => {
     setBusy(true);
@@ -61,8 +61,8 @@ export function SeatPanel({ session }) {
       </div>
 
       {status === 'confirmed' && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] p-3" data-testid="reservation-confirmed">
-          <p className="flex items-center gap-2 text-[13px] font-semibold text-emerald-200">
+        <div className="rounded-xl border border-teal/30 bg-teal/[0.08] p-3" data-testid="reservation-confirmed">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-teal-ink">
             <Icon name="ticket" className="size-4" />
             Your seat is reserved
           </p>
@@ -73,8 +73,8 @@ export function SeatPanel({ session }) {
       )}
 
       {status === 'waitlisted' && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3" data-testid="reservation-waitlisted">
-          <p className="flex items-center gap-2 text-[13px] font-semibold text-amber-200">
+        <div className="rounded-xl border border-ember/30 bg-ember/[0.08] p-3" data-testid="reservation-waitlisted">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-ember-ink">
             <Icon name="clock" className="size-4" />
             You are on the waitlist
           </p>
@@ -86,7 +86,7 @@ export function SeatPanel({ session }) {
                 : `${plural(ahead, 'person', 'people')} ahead of you. We will pass you a seat as they are released.`}
           </p>
           {waitlistPosition && (
-            <p className="mt-2 font-mono text-[11px] text-amber-200/80">
+            <p className="mt-2 font-mono text-[11px] text-ember-ink/80">
               Position {waitlistPosition} of {waitlistCount}
             </p>
           )}
@@ -112,7 +112,7 @@ export function SeatPanel({ session }) {
       )}
 
       {session.requiresRsvp && !status && !ended && (
-        <p className="text-[11px] text-amber-300">
+        <p className="text-[11px] text-ember-ink">
           This one needs a reservation — hands-on rooms are not open to walk-ups.
         </p>
       )}

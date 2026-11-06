@@ -38,15 +38,15 @@ export function Toaster({ children }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="glass pointer-events-auto flex animate-rise items-center gap-3 rounded-full border border-hairline py-2 pl-3.5 pr-2 shadow-2xl shadow-black/60"
+            className="glass pointer-events-auto flex animate-rise items-center gap-3 rounded-full border border-hairline py-2 pl-3.5 pr-2 shadow-2xl shadow-ground/60"
           >
-            <Icon name={t.icon} className="size-4 shrink-0 text-violet-300" />
+            <Icon name={t.icon} className="size-4 shrink-0 text-brand-ink" />
             <span className="text-[13px] font-medium">{t.message}</span>
             {t.action && (
               <button
                 type="button"
                 onClick={() => { t.action.onClick(); dismiss(t.id); }}
-                className="rounded-full bg-overlay px-3 py-1 text-[12px] font-semibold text-ink transition-colors hover:bg-raised"
+                className="rounded-full bg-overlay px-3 py-1 text-[12px] font-medium text-ink transition-colors hover:bg-raised"
               >
                 {t.action.label}
               </button>

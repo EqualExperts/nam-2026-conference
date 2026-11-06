@@ -43,7 +43,7 @@ function Stars({ value, onChange, readOnly }) {
           onClick={() => !readOnly && onChange(n)}
           className={cx('transition-transform', !readOnly && 'hover:scale-110')}
         >
-          <Icon name="star" filled={n <= shown} className={cx('size-6', n <= shown ? 'text-amber-400' : 'text-overlay')} />
+          <Icon name="star" filled={n <= shown} className={cx('size-6', n <= shown ? 'text-ember-ink' : 'text-overlay')} />
         </button>
       ))}
     </div>
@@ -105,7 +105,7 @@ export function AttendancePanel({ session }) {
       {data.canCheckIn && (
         <>
           <div>
-            <h3 className="text-sm font-semibold">You are at the door</h3>
+            <h3 className="text-sm font-medium">You are at the door</h3>
             <p className="mt-1 text-[12px] text-muted">
               Check in so the seat counts as used. Unclaimed seats are released to the walk-up line.
             </p>
@@ -124,7 +124,7 @@ export function AttendancePanel({ session }) {
       )}
 
       {data.checkedIn && !data.canRate && (
-        <p className="flex items-center gap-2 text-[13px] font-semibold text-emerald-300" data-testid="checked-in">
+        <p className="flex items-center gap-2 text-[13px] font-medium text-teal-ink" data-testid="checked-in">
           <Icon name="check" className="size-4" />
           Checked in at {fmtTime(data.checkedInAt.slice(11, 16))}
         </p>
@@ -132,7 +132,7 @@ export function AttendancePanel({ session }) {
 
       {data.canRate && (
         <div data-testid="rating-form">
-          <h3 className="text-sm font-semibold">
+          <h3 className="text-sm font-medium">
             {data.myRating ? 'Your rating' : 'How was it?'}
           </h3>
           <p className="mt-1 text-[12px] text-muted">
@@ -152,7 +152,7 @@ export function AttendancePanel({ session }) {
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Anything worth saying? Optional."
-                  className="w-full rounded-lg border border-hairline bg-ground/70 px-3 py-2 text-[13px] placeholder:text-faint focus:border-violet-400/60 focus:outline-none"
+                  className="w-full rounded-lg border border-hairline bg-ground/70 px-3 py-2 text-[13px] placeholder:text-faint focus:border-brand/60 focus:outline-none"
                 />
               </label>
               <Button

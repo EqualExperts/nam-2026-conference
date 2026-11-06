@@ -43,7 +43,7 @@ function AlphabeticalList({ speakers }) {
               onClick={() => jump(letter)}
               aria-label={has ? `Jump to ${letter}` : `No speakers under ${letter}`}
               className={cx(
-                'size-6 rounded text-[11px] font-bold transition-colors',
+                'size-6 rounded text-[11px] font-medium transition-colors',
                 has ? 'text-muted hover:bg-overlay hover:text-ink' : 'cursor-default text-faint/25',
               )}
             >
@@ -152,7 +152,7 @@ export function SpeakersPage() {
               disabled: followingIds.size === 0,
               title: followingIds.size === 0 ? 'You are not following anyone yet' : undefined,
               testId: 'filter-following',
-              activeClass: 'border-emerald-400/50 bg-emerald-500/15 text-ink',
+              activeClass: 'border-teal/50 bg-teal/15 text-ink',
             },
             { value: 'keynotes', label: 'Keynotes', icon: 'mic', testId: 'filter-keynotes' },
             { value: 'first-time', label: 'First-timers', icon: 'sparkle', testId: 'filter-first-time' },

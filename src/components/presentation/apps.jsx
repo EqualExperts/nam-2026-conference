@@ -11,8 +11,8 @@ import { later } from './kit.jsx';
  * then a page. Close enough to recognise, not a copy.
  */
 export const GH = {
-  ink: 'text-[#1f2328]', muted: 'text-[#59636e]', line: 'border-[#d1d9e0]',
-  open: 'text-[#1a7f37]', green: 'bg-[#1f883d]', link: 'text-[#0969da]',
+  ink: 'text-[var(--color-ground)]', muted: 'text-[var(--color-overlay)]', line: 'border-[var(--color-muted)]',
+  open: 'text-[var(--color-techblue)]', green: 'bg-[var(--color-techblue)]', link: 'text-[var(--color-techblue)]',
 };
 
 export function GhOpenIcon({ className = 'size-4' }) {
@@ -27,18 +27,18 @@ const GH_TABS = [['‹›', 'Code'], ['◉', 'Issues', 2], ['⇅', 'Pull request
 
 export function GitHub({ tab, children, className = '' }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-black/10 bg-white ${GH.ink} shadow-2xl shadow-black/50 ${className}`}>
-      <div className={`border-b ${GH.line} bg-[#f6f8fa] px-5 pt-3`}>
+    <div className={`overflow-hidden rounded-2xl border border-ground/10 bg-white ${GH.ink} shadow-2xl shadow-ground/50 ${className}`}>
+      <div className={`border-b ${GH.line} bg-[var(--color-cloud)] px-5 pt-3`}>
         <div className="flex items-center gap-3 text-[16px]">
-          <span className="size-7 rounded-full bg-[#1f2328]" aria-hidden="true" />
-          <span className={GH.muted}>you</span><span className={GH.muted}>/</span><span className="font-semibold">nam-2026-conference</span>
+          <span className="size-7 rounded-full bg-[var(--color-ground)]" aria-hidden="true" />
+          <span className={GH.muted}>you</span><span className={GH.muted}>/</span><span className="font-medium">nam-2026-conference</span>
           <span className={`ml-auto rounded-md border ${GH.line} bg-white px-3 py-1 text-[13px] ${GH.muted}`}>Type / to search</span>
         </div>
         <div className="mt-2 flex gap-6 text-[14px]">
           {GH_TABS.map(([icon, name, n]) => (
-            <span key={name} className={`flex items-center gap-1.5 border-b-2 pb-2 ${name === tab ? 'border-[#fd8c73] font-semibold' : `border-transparent ${GH.muted}`}`}>
+            <span key={name} className={`flex items-center gap-1.5 border-b-2 pb-2 ${name === tab ? 'border-[var(--color-ember-ink)] font-medium' : `border-transparent ${GH.muted}`}`}>
               <span className="text-[12px] opacity-70">{icon}</span>{name}
-              {n && <span className="rounded-full bg-black/[0.07] px-1.5 text-[12px]">{n}</span>}
+              {n && <span className="rounded-full bg-ground/[0.07] px-1.5 text-[12px]">{n}</span>}
             </span>
           ))}
         </div>
@@ -66,47 +66,47 @@ export function ClaudeDesktop({
   // A question Claude asks before it starts — the run to pick — then the reply.
   const replyAt = question ? 2300 : 1200;
   return (
-    <div className={`flex ${className} overflow-hidden rounded-2xl border border-black/10 bg-white text-[#1f1e1d] shadow-2xl shadow-black/50`}>
-      <div className={`${compact ? 'w-[170px]' : 'w-[215px]'} shrink-0 border-r border-black/10 bg-[#f7f7f5] px-3 py-3 text-[14px]`}>
+    <div className={`flex ${className} overflow-hidden rounded-2xl border border-ground/10 bg-white text-[var(--color-ground)] shadow-2xl shadow-ground/50`}>
+      <div className={`${compact ? 'w-[170px]' : 'w-[215px]'} shrink-0 border-r border-ground/10 bg-[var(--color-cloud)] px-3 py-3 text-[14px]`}>
         <div className="flex items-center gap-1.5">
-          <span className="size-3 rounded-full bg-[#ff5f57]" /><span className="size-3 rounded-full bg-[#febc2e]" /><span className="size-3 rounded-full bg-[#28c840]" />
+          <span className="size-3 rounded-full bg-[var(--color-ember)]" /><span className="size-3 rounded-full bg-[var(--color-ember-ink)]" /><span className="size-3 rounded-full bg-[var(--color-teal-ink)]" />
           {/* chat or code: two icons, code chosen */}
           <span className="ml-auto flex gap-1">
-            <span className="grid size-7 place-items-center rounded-lg text-black/45" aria-hidden="true">
+            <span className="grid size-7 place-items-center rounded-lg text-ground/45" aria-hidden="true">
               <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" strokeLinejoin="round" /></svg>
             </span>
-            <span className="grid size-7 place-items-center rounded-lg border border-black/10 bg-white text-black/80 shadow-sm" aria-hidden="true">
+            <span className="grid size-7 place-items-center rounded-lg border border-ground/10 bg-white text-ground/80 shadow-sm" aria-hidden="true">
               <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9 3 7 13" /></svg>
             </span>
           </span>
         </div>
         <div className="mt-3 space-y-0.5">
           {SIDEBAR.map(([icon, label, key], i) => (
-            <div key={label} className={`flex items-center gap-2.5 rounded-lg px-2 py-1 ${i === 0 ? 'bg-black/5' : ''}`}>
-              <span className="w-4 text-center text-black/60">{icon}</span>{label}
-              {key && <span className="ml-auto text-[12px] text-black/40">{key}</span>}
+            <div key={label} className={`flex items-center gap-2.5 rounded-lg px-2 py-1 ${i === 0 ? 'bg-ground/5' : ''}`}>
+              <span className="w-4 text-center text-ground/60">{icon}</span>{label}
+              {key && <span className="ml-auto text-[12px] text-ground/40">{key}</span>}
             </div>
           ))}
         </div>
-        <div className="mt-4 truncate px-2 text-[13px] text-black/50">nam-2026-conference ▾</div>
-        <div className="mt-1 truncate rounded-lg bg-black/[0.07] px-2 py-1.5">{session}</div>
+        <div className="mt-4 truncate px-2 text-[13px] text-ground/50">nam-2026-conference ▾</div>
+        <div className="mt-1 truncate rounded-lg bg-ground/[0.07] px-2 py-1.5">{session}</div>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-black/10 px-5 py-2.5 text-[15px]">{session} <span className="text-black/40">⌄</span></div>
+        <div className="border-b border-ground/10 px-5 py-2.5 text-[15px]">{session} <span className="text-ground/40">⌄</span></div>
         <div className="flex-1 space-y-3 px-5 py-4 text-[15px] leading-relaxed">
           <div className="pz-appear flex justify-end" style={later(300)}>
-            <div className="max-w-[300px] rounded-2xl bg-[#f0eee6] px-4 py-2.5">{ask}</div>
+            <div className="max-w-[300px] rounded-2xl bg-[var(--color-cloud)] px-4 py-2.5">{ask}</div>
           </div>
           {question && (
-            <div className="pz-appear rounded-xl border border-black/10 px-4 py-3" style={later(1000)}>
+            <div className="pz-appear rounded-xl border border-ground/10 px-4 py-3" style={later(1000)}>
               <div className="font-medium">{question.ask}</div>
               {/* compact: the choices on one row, so the reply still fits under them */}
               <div className={compact ? 'mt-1.5 flex flex-wrap gap-x-4 gap-y-1' : 'mt-1.5 space-y-1'}>
                 {question.options.map((o, i) => (
-                  <div key={o} className={`flex items-center gap-2 ${i === 0 ? '' : 'text-black/45'}`}>
-                    <span className={`grid size-4 place-items-center rounded-full border ${i === 0 ? 'border-[#2563eb]' : 'border-black/25'}`}>
-                      {i === 0 && <span className="pz-pop size-2 rounded-full bg-[#2563eb]" style={later(1700)} />}
+                  <div key={o} className={`flex items-center gap-2 ${i === 0 ? '' : 'text-ground/45'}`}>
+                    <span className={`grid size-4 place-items-center rounded-full border ${i === 0 ? 'border-[var(--color-techblue)]' : 'border-ground/25'}`}>
+                      {i === 0 && <span className="pz-pop size-2 rounded-full bg-[var(--color-techblue)]" style={later(1700)} />}
                     </span>
                     {o}
                   </div>
@@ -119,26 +119,26 @@ export function ClaudeDesktop({
             <ul className="mt-1.5 space-y-0.5">
               {steps.map((l, i) => (
                 <li key={l} className="pz-appear flex gap-2" style={later(replyAt + 500 + i * 450)}>
-                  <span className={i < steps.length - 1 ? 'text-[#2f9e5b]' : 'text-[#d97757]'}>{i < steps.length - 1 ? '✓' : '●'}</span>{l}
+                  <span className={i < steps.length - 1 ? 'text-[var(--color-teal)]' : 'text-[var(--color-ember)]'}>{i < steps.length - 1 ? '✓' : '●'}</span>{l}
                 </li>
               ))}
             </ul>
           </div>
         </div>
-        <div className="mx-4 mb-4 rounded-2xl border border-black/10 px-4 py-3 text-[14px] text-black/40 shadow-sm">Reply to Claude…</div>
+        <div className="mx-4 mb-4 rounded-2xl border border-ground/10 px-4 py-3 text-[14px] text-ground/40 shadow-sm">Reply to Claude…</div>
       </div>
 
       {!compact && <div className="w-[215px] shrink-0 p-3">
-        <div className="rounded-xl border border-black/10 p-3 text-[13px]">
+        <div className="rounded-xl border border-ground/10 p-3 text-[13px]">
           <div className="font-medium">Environment ▾</div>
-          <div className="mt-2 space-y-1.5 text-black/80">
+          <div className="mt-2 space-y-1.5 text-ground/80">
             <div>💻 This computer</div>
             <div>📁 nam-2026-conference</div>
             <div>⑂ main</div>
           </div>
         </div>
-        <div className="mt-2 flex justify-between rounded-xl border border-black/10 p-3 text-[13px]">
-          <span className="font-medium">Context ▸</span><span className="text-black/50">6%</span>
+        <div className="mt-2 flex justify-between rounded-xl border border-ground/10 p-3 text-[13px]">
+          <span className="font-medium">Context ▸</span><span className="text-ground/50">6%</span>
         </div>
       </div>}
     </div>

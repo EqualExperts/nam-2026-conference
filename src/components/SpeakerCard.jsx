@@ -24,14 +24,14 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
       <Link
         to={`/speakers/${speaker.id}`}
         title={`${speaker.name} — ${speaker.jobTitle}, ${speaker.company}`}
-        className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+        className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
           imageUrl={speaker.imageUrl} size="xs" ring={false} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium group-hover:text-violet-200">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium group-hover:text-brand-ink">
           {speaker.name}
         </span>
-        {following && <Icon name="check" className="size-3 shrink-0 text-emerald-400" />}
+        {following && <Icon name="check" className="size-3 shrink-0 text-teal-ink" />}
         {sessionCount > 1 && (
           <span className="shrink-0 font-mono text-[10px] text-faint">{sessionCount}</span>
         )}
@@ -45,23 +45,23 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
       className={cx(
         'group relative flex flex-col items-center gap-3 rounded-xl border border-hairline bg-raised p-5 text-center',
         'transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-overlay/70',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
       )}
     >
       {following && (
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-teal/20 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-teal-ink">
           <Icon name="check" className="size-2.5" />Following
         </span>
       )}
       {(speaker.keynoteCount > 0 || speaker.featured) && (
-        <span className="absolute right-3 top-3 rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
+        <span className="absolute right-3 top-3 rounded-full bg-brand/20 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-brand-ink">
           {speaker.keynoteCount > 0 ? 'Keynote' : 'Featured'}
         </span>
       )}
       <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
         imageUrl={speaker.imageUrl} size="lg" />
       <div className="min-w-0">
-        <h3 className="truncate font-semibold leading-tight transition-colors group-hover:text-violet-200">
+        <h3 className="truncate font-medium leading-tight transition-colors group-hover:text-brand-ink">
           {speaker.name}
         </h3>
         <p className="mt-0.5 line-clamp-1 text-xs text-muted">{speaker.jobTitle}</p>

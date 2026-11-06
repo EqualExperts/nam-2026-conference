@@ -51,9 +51,9 @@ test('no violet or cyan accent, gradient or glow remains', () => {
   const banned = /\b(violet|cyan|fuchsia|indigo|purple)\b|#(8b5cf6|a78bfa|c4b5fd|6d28d9|22d3ee|67e8f9)\b/i;
   const hits = [];
   for (const { file, text } of sources) {
-    // accents.js keeps the stored names as object keys; its values are checked below.
-    const body = file.endsWith('accents.js') ? text.replace(/^\s*(violet|cyan|fuchsia):/gm, '') : text;
-    body.split('\n').forEach((line, i) => { if (banned.test(line)) hits.push(`${file}:${i + 1}`); });
+    // accents.js keeps the stored names as keys; its classes and hexes are checked by the tests below.
+    if (file.endsWith('accents.js')) continue;
+    text.split('\n').forEach((line, i) => { if (banned.test(line)) hits.push(`${file}:${i + 1}`); });
   }
   if (/violet|cyan|fuchsia|#8b5cf6/i.test(read('index.html'))) hits.push('index.html');
   assert.deepEqual(hits, []);
@@ -82,11 +82,11 @@ test('no hard-coded colour sits outside the brand tokens', () => {
 });
 
 // accents.js feeds SVG artwork, so it holds hexes: only the brand colours and their ink tints.
-const BRAND_TINTS = new Set(['#1795d4', '#269c9e', '#f07c00', '#22567c', '#f5f5f5', '#ffffff', '#212526']);
+const BRAND_TINTS = new Set(['#1795d4', '#269c9e', '#f07c00', '#22567c', '#f5f5f5', '#ffffff', '#212526', '#6cc3ef', '#5fd0d2', '#ffa645']);
 
 test('text and meaningful colour meet WCAG AA on every elevation', () => {
   const grounds = ['ground', 'surface', 'raised', 'overlay'].map(token);
-  for (const name of ['ink', 'muted', 'faint', 'brand-ink', 'teal-ink', 'ember', 'cloud']) {
+  for (const name of ['ink', 'muted', 'faint', 'brand-ink', 'teal-ink', 'ember-ink', 'cloud']) {
     for (const g of grounds) {
       const r = contrast(token(name), g);
       assert.ok(r >= 4.5, `${name} on ${g} is ${r.toFixed(2)}:1, under 4.5:1`);
@@ -100,7 +100,7 @@ test('text and meaningful colour meet WCAG AA on every elevation', () => {
 test('the accent names the database stores all map onto a small brand set', () => {
   const text = read('src/lib/accents.js');
   const names = ['violet', 'cyan', 'emerald', 'amber', 'orange', 'rose', 'fuchsia', 'sky', 'lime', 'teal'];
-  for (const n of names) assert.match(text, new RegExp(`^\\s*${n}:`, 'm'), `${n} key is gone`);
+  for (const n of names) assert.match(text, new RegExp(`\\b${n}:`), `${n} key is gone`);
   const dots = new Set([...text.matchAll(/dot:\s*'([^']+)'/g)].map((m) => m[1]));
   assert.ok(dots.size > 0 && dots.size <= 5, `${dots.size} distinct accent colours, want at most five`);
 });

@@ -91,7 +91,7 @@ export function SpeakerSpotlight({ speakers }) {
               <Icon name="mic" className="size-3" />
               Headliner
             </Chip>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-faint">
+            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-faint">
               {plural(speaker.sessionCount ?? 0, 'session')} · {speaker.city}
             </span>
           </div>
@@ -100,7 +100,7 @@ export function SpeakerSpotlight({ speakers }) {
             {speaker.name}
           </h3>
           <p className="mt-2.5 text-sm text-muted sm:text-base">
-            {speaker.jobTitle} · <span className="font-semibold text-ink">{speaker.company}</span>
+            {speaker.jobTitle} · <span className="font-medium text-ink">{speaker.company}</span>
           </p>
           <p className="mt-3 line-clamp-3 max-w-xl text-[13px] leading-relaxed text-muted">
             {speaker.bio}

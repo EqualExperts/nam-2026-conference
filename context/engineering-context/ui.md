@@ -5,6 +5,10 @@ read_when: adding a component or page, styling anything, touching the home page,
 files:
   - src/index.css
   - src/lib/accents.js
+  - tests/unit/brand.test.js
+  - public/brand/Equal_Experts_Logo_Monochrome_White.svg
+  - public/brand/Equal_Experts_Brand_Mark_RGB_Blue_Circle.svg
+  - index.html
   - src/lib/format.js
   - src/lib/useDocumentTitle.js
   - src/lib/useInView.js
@@ -40,14 +44,26 @@ related: [architecture, speakers, venues, schedule, testing]
 
 ## How it works
 
-**Tokens — `src/index.css` `@theme`.** Colours: `ground`, `surface`, `raised`,
-`overlay` (the elevation ladder, see CLAUDE.md), `hairline` (borders), `ink`,
-`muted`, `faint` (text, strongest → weakest). Fonts: `font-sans` (Inter),
-`font-display` (Space Grotesk; `.font-display` also sets weight 700 and tight
-tracking), `font-mono`. `--radius-card`. Custom utilities: `card` (surface +
+**Tokens — `src/index.css` `@theme`.** The Equal Experts brand on Dark Data.
+Elevation: `ground` (`#212526`), `surface`, `raised`, `overlay` (lighter tints of
+it, see CLAUDE.md), `hairline` (borders). Text, strongest → weakest: `ink`
+(Byte White), `muted`, `faint`; `cloud` (The Cloud) and `white`. Brand: `brand`
+(Equal Experts Blue: focus, borders, fills) with `brand-ink` for blue *text*;
+`teal` / `teal-ink`; `ember` / `ember-ink` (live, warnings, waitlist only);
+`techblue` (the fill under white text: primary button, skip link). The `-ink`
+tints exist because the base brand colours miss 4.5:1 as small text on `overlay`.
+Fonts: `font-sans`, `font-display` and `font-mono` are all Lexend (300, 400, 500,
+700 loaded in `index.html`). Body is Light, headings Normal (base layer, so a
+utility wins), small labels `font-medium`, bold only for a CTA or key figure.
+`--radius-card`. Custom utilities: `card` (surface +
 hairline border + card radius — the module panel), `glass` (blurred translucent,
 used by the header, toasts, menus), `hide-scrollbar`. Dark only
-(`color-scheme: dark`). In SVG use `var(--color-ground)` etc.
+(`color-scheme: dark`). **No hex, rgb or raw Tailwind palette class (`violet-500`)
+anywhere in `src/` outside the `@theme` block and `accents.js`**: use tokens, in
+SVG `var(--color-ground)`, for a see-through tint `color-mix(in srgb,
+var(--color-brand) 20%, transparent)`; a canvas reads the token with
+`getComputedStyle`. `tests/unit/brand.test.js` enforces this, the AA contrast of
+every text token on every step, and Lexend.
 
 **Motion utilities** (all in `index.css`, all neutralised by the
 `prefers-reduced-motion` block at the bottom, which also forces `.reveal`
@@ -61,10 +77,15 @@ JS-driven motion (`SpeakerSpotlight`, `HeroMedia`, `CountUp`) checks
 `matchMedia('(prefers-reduced-motion: reduce)')` itself.
 
 **`src/lib/accents.js`.** `ACCENTS[name]` → `{ chip, dot, ring, grad, text,
-glow }` class strings for `violet cyan emerald amber orange rose fuchsia sky
-lime teal`. `accent(name)` (unknown → violet). `ACCENT_HEX` / `accentHex(name)`
-→ `[light, dark]` hex for SVG. `accentFor(label)` hashes any string to a stable
-accent name (used for cuisines). A new colour needs a row in both maps.
+glow }` class strings. The ten names the database stores (`violet cyan emerald
+amber orange rose fuchsia sky lime teal`) are kept as keys but map onto four
+brand colours (blue, teal, Tech Blue, Cloud), so **colour never tells tracks,
+venues or cuisines apart on its own: every chip also shows its name** (smoke-tested).
+`blue` and `ember` are semantic names for UI code; no stored name maps to ember,
+which is only for warnings, waitlists and live. `accent(name)` (unknown → blue).
+`ACCENT_HEX` / `accentHex(name)` → `[light, dark]` brand hex for SVG.
+`accentFor(label)` hashes any string to one of the ten stored names (cuisines).
+Presentation `tone` is `blue | teal | ember`.
 
 **`src/lib/format.js`.** `time('14:05')` → `2:05 PM`; `timeRange(a, b)`;
 `dayLabel(iso)` → `Tuesday, Sep 22`; `shortDay(iso)` → `Tue`;
@@ -125,7 +146,10 @@ duration })` counts once visible. `HeroMedia` (home hero only) probes
 **`Layout.jsx`** — the route shell (`<Route element={<Layout />}>` in
 `App.jsx`). Renders `<RouteChange />`, the global `<ConflictDialog>` (wired to
 `conflict` / `resolveConflict` from the store), a skip link to `#main`, the
-sticky `glass` header, `<main id="main">`, and the footer.
+sticky `glass` header, `<main id="main">`, and the footer. Header and footer
+both show `EELogo` (the white Equal Experts logo from `public/brand/`, at least
+100px wide, never recoloured) beside ORBIT ’26; the tab icon is the blue mark
+in the same folder.
 
 - `NAV` array (`to, label, icon, end`) drives both the desktop nav (`lg+`,
   `aria-label="Main"`) and the mobile menu (`aria-label="Mobile"`, toggled by

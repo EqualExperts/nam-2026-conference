@@ -14,13 +14,13 @@ function SessionChoice({ session, tone, label }) {
   return (
     <div className={cx(
       'rounded-xl border p-4',
-      tone === 'keep' ? 'border-emerald-400/35 bg-emerald-500/[0.07]' : 'border-violet-400/35 bg-violet-500/[0.07]',
+      tone === 'keep' ? 'border-teal/35 bg-teal/[0.07]' : 'border-brand/35 bg-brand/[0.07]',
     )}>
-      <p className={cx('text-[10px] font-bold uppercase tracking-[0.14em]',
-        tone === 'keep' ? 'text-emerald-300' : 'text-violet-300')}>
+      <p className={cx('text-[10px] font-medium uppercase tracking-[0.14em]',
+        tone === 'keep' ? 'text-teal-ink' : 'text-brand-ink')}>
         {label}
       </p>
-      <Link to={`/sessions/${session.id}`} className="mt-1.5 block text-sm font-semibold leading-snug hover:text-violet-200">
+      <Link to={`/sessions/${session.id}`} className="mt-1.5 block text-sm font-medium leading-snug hover:text-brand-ink">
         {session.title}
       </Link>
       <p className="mt-1.5 font-mono text-[11px] text-muted">
@@ -72,16 +72,16 @@ export function ConflictDialog({ conflict, onSwap, onCancel, busy }) {
         aria-label="Close"
         onClick={onCancel}
         disabled={busy}
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-ground/70 backdrop-blur-sm"
       />
 
       <div
         ref={ref}
         tabIndex={-1}
-        className="glass relative w-full max-w-lg animate-rise rounded-t-2xl border border-hairline p-6 shadow-2xl shadow-black/70 focus:outline-none sm:rounded-2xl"
+        className="glass relative w-full max-w-lg animate-rise rounded-t-2xl border border-hairline p-6 shadow-2xl shadow-ground/70 focus:outline-none sm:rounded-2xl"
       >
         <div className="flex items-start gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-500/15 text-amber-300">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ember/15 text-ember-ink">
             <Icon name="alert" className="size-5" />
           </span>
           <div>
