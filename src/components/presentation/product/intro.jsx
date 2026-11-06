@@ -10,7 +10,7 @@ import { box, Face, HOSTS, StepRail, STEP_CX, Wave, TYPING_MS } from './kit.jsx'
 export function Field({ style = at(940, 20, 640, 640), className = '' }) {
   // short words on the inner rings, so a label never reaches the next ring
   const rings = [
-    { r: 120, dur: '26s', words: ['listen', 'chunks'] },
+    { r: 120, dur: '26s', words: ['meeting', 'notes'] },
     { r: 200, dur: '38s', words: ['noise', 'signal', 'distil'] },
     { r: 262, dur: '54s', words: ['raise', 'remember', 'Done when', '#140'] },
   ];
@@ -176,15 +176,14 @@ function WhereScene({ step }) {
 }
 
 /* ------------------------------------------------------------------ *
- * Five steps, and three doors into them.
+ * Three steps, and two doors into them.
  * ------------------------------------------------------------------ */
 
 const DOORS = [
-  { x: 80,   icon: '🔴', title: 'Live', cmd: '/listen-to-meeting', sub: 'sit in the meeting; flags while it is still running', to: 0 },
-  { x: 580,  icon: '📄', title: 'Afterwards', cmd: '/winnow <transcript | paste | audio>', sub: 'a transcript file, pasted notes — or a voice note, via Transcribe', to: 2, demo: '/winnow context/winnow-transcripts/demo-transcript.txt' },
-  { x: 1080, icon: '⚡', title: 'One line', cmd: '/create-tasks <one line>', sub: 'you already know the ticket — just raise it properly', to: 4 },
+  { x: 80,  icon: '📄', title: 'Afterwards', cmd: '/winnow <transcript | paste | audio>', sub: 'a transcript file, pasted notes or a voice note', to: 0, demo: '/winnow context/winnow-transcripts/demo-transcript.txt' },
+  { x: 880, icon: '⚡', title: 'One line', cmd: '/create-tasks <one line>', sub: 'you already know the ticket — just raise it properly', to: 2 },
 ];
-const DOOR_W = 440;
+const DOOR_W = 640;
 const DOOR_Y = 330;
 const DOOR_H = 290;
 
@@ -195,9 +194,9 @@ function doorPath(d) {
 }
 
 const PRINCIPLES = [
-  ['💻', 'Local by default', 'Whisper runs on the laptop. No hosted transcription, no account.'],
+  ['📚', 'Grounded in the context', 'No skill works in isolation: each reads the project context before it acts.'],
   ['🙋', 'Nothing without a yes', 'Each step hands to the next only when you say so; winnow writes nothing until you agree.'],
-  ['🫥', 'No footprint', 'Working files live outside the repo. What lands in it is a ticket and a context edit you review.'],
+  ['🫥', 'No footprint', 'What lands in the repo is a ticket and a context edit you review.'],
 ];
 
 function WaysScene({ step }) {
@@ -205,25 +204,23 @@ function WaysScene({ step }) {
     <>
       <StepRail y={80} />
       <Show on={step === 0} delay={1300} style={at(80, 220, 1440, 60)} className="flex items-center justify-center gap-4 text-[21px] text-muted">
-        <span>Each step is a skill. Each hands to the next only when <b className="text-ink">you</b> say so.</span>
+        <span>Each step is a skill, grounded in the project context. Each hands to the next only when <b className="text-ink">you</b> say so.</span>
         <span className="text-faint">·</span>
         <span className="font-mono text-[17px] text-faint"><Code>/setup-winnow</Code> once per machine and repo</span>
       </Show>
-      <Show on={step === 0} delay={1900} style={at(80, 300, 1440, 90)} className="grid grid-cols-5 gap-9">
+      <Show on={step === 0} delay={1900} style={at(80, 300, 1440, 90)}>
         {[
-          'two channels, local Whisper, chunks on disk — and a flag only when it matters',
-          'faster-whisper, model small, on your machine — no hosted service, no account',
           'every line into one bucket: noise, durable knowledge, actionable work, or both',
-          'knowledge placed by the doc map into context/ — integrated, never appended',
+          'knowledge placed in the doc that owns it — integrated, never appended',
           'one goal per ticket, a Done when a test could check, a duplicate search first',
         ].map((t, i) => (
-          <div key={t} className="pz-appear text-[16px] leading-snug text-muted" style={later(i * 120)}>{t}</div>
+          <div key={t} className="pz-appear absolute text-center text-[17px] leading-snug text-muted" style={{ left: i * 540, width: 360, ...later(i * 120) }}>{t}</div>
         ))}
       </Show>
-      <Show on={step === 0} delay={2800} style={at(80, 430, 1440, 170)} className="grid grid-cols-3 gap-6">
+      <Show on={step === 0} delay={2800} style={at(80, 430, 1440, 170)} className="grid grid-cols-3 gap-4">
         {PRINCIPLES.map(([icon, h, s], i) => (
-          <div key={h} className={`${box} pz-appear flex items-center gap-5 px-6 py-4`} style={later(i * 150)}>
-            <span className="text-[34px]">{icon}</span>
+          <div key={h} className={`${box} pz-appear flex items-center gap-4 px-5 py-4`} style={later(i * 150)}>
+            <span className="text-[32px]">{icon}</span>
             <div>
               <div className="font-display text-[22px] text-ink">{h}</div>
               <div className="mt-1 text-[15px] text-muted">{s}</div>
@@ -239,8 +236,6 @@ function WaysScene({ step }) {
             {step === 1 && <g className="pz-appear" style={later(1500 + i * 200)}><path d={doorPath(d)} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="3" /></g>}
           </g>
         ))}
-        {/* audio comes in through Transcribe first */}
-        <path d={`M${STEP_CX(2) - 40} 190 C ${STEP_CX(2) - 60} 240, ${STEP_CX(1) + 40} 240, ${STEP_CX(1) + 40} 190`} pathLength="1" data-on={step === 1} className="pz-draw" fill="none" stroke="#6d28d9" strokeWidth="2" strokeDasharray="6 6" style={{ transitionDelay: '900ms' }} />
       </svg>
 
       {DOORS.map((d, i) => (
@@ -256,7 +251,7 @@ function WaysScene({ step }) {
               <span className="text-emerald-400">▶ try it</span> {d.demo}
             </div>
           )}
-          <div className="mt-auto text-[14px] text-faint">joins at <b className="text-muted">{['Listen', 'Transcribe', 'Distil', 'Remember', 'Raise'][d.to]}</b>{d.to === 2 ? ' — audio via Transcribe' : ''}</div>
+          <div className="mt-auto text-[14px] text-faint">joins at <b className="text-muted">{['Distil', 'Remember', 'Raise'][d.to]}</b></div>
         </Show>
       ))}
     </>
@@ -285,20 +280,59 @@ export const PRODUCT_INTRO = [
     ],
     Scene: WhereScene,
   },
+];
+
+/* ------------------------------------------------------------------ *
+ * The whole flow, then the demo — after every skill has been met on its own.
+ * ------------------------------------------------------------------ */
+
+const DEMO = ['/winnow', '/update-context', '/create-tasks'];
+
+function DemoScene() {
+  return (
+    <>
+      <Show from="up" style={at(80, 90, 1440, 130)}>
+        <Kicker>Now, live</Kicker>
+        <div className="mt-3 font-display text-[72px] leading-none text-ink">See it <span className="pz-shine bg-clip-text text-transparent">run</span>.</div>
+      </Show>
+      <Show from="up" delay={400} style={at(80, 300, 1440, 280)} className="grid grid-cols-3 gap-5">
+        {DEMO.map((c, i) => (
+          <div key={c} className={`${box} pz-appear flex flex-col justify-between p-6`} style={later(i * 200)}>
+            <span className="text-[34px]">{['🌾', '🧠', '🎫'][i]}</span>
+            <code className="font-mono text-[19px] text-violet-200">{c}</code>
+          </div>
+        ))}
+      </Show>
+    </>
+  );
+}
+
+export const PRODUCT_FLOW = [
   {
-    id: 'ways', name: 'Five steps, three ways in', accent: 'text-sky-300', tone: 'sky',
+    id: 'ways', name: 'The whole flow', accent: 'text-sky-300', tone: 'sky',
     beats: [
       {
-        kicker: '2 · From meeting to ticket',
-        title: 'Listen → Transcribe → Distil → Remember · Raise',
-        body: 'Five steps, from Abraham’s open-source winnow skills. Listening and transcription stay on your machine; distil separates noise from signal; remember and raise are peers — context and tickets — each after you agree.',
+        kicker: '9 · The whole flow',
+        title: 'Distil → Remember · Raise',
+        body: 'The pieces together: distil separates noise from signal, then remember and raise are peers — context and tickets — each after you agree. None of them works in isolation: every step reads the project context.',
       },
       {
-        kicker: '2 · Three ways in',
-        title: 'Live, from a transcript, or from one line',
-        body: 'Live listening flags conflicts and gaps while the people who can answer are still in the room. A transcript, pasted notes or a voice note go straight to winnow; one line goes straight to create-tasks.',
+        kicker: '9 · Two ways in',
+        title: 'From a transcript, or from one line',
+        body: 'A transcript, pasted notes or a voice note go straight to winnow, which hands the knowledge and the work on. One line goes straight to create-tasks.',
       },
     ],
     Scene: WaysScene,
+  },
+  {
+    id: 'demo', name: 'Live demo', accent: 'text-emerald-300', tone: 'emerald',
+    beats: [
+      {
+        kicker: '10 · Live demo',
+        title: 'The flow, running on this project',
+        body: 'A meeting on the phone schedule, distilled, remembered and raised — against this repository’s own context. Same skills, nothing staged.',
+      },
+    ],
+    Scene: DemoScene,
   },
 ];
