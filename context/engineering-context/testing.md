@@ -171,6 +171,7 @@ once on mobile.
 
 ## Gotchas
 
+- **`npm test` cannot render a component.** It is plain `node --test` with no JSX loader or React renderer, so a unit test may import only `.js` modules; "a component renders its label" is a browser assertion. A unit test can read a component's source as text, but that proves the source mentions the label, not that the page shows it.
 - **Pin the clock at every boundary the change depends on**, not only mid-morning:
   before the first session of Day 1 (the seed's morning is already attended),
   during a session, after it, and a later day. A test that only pins 10:30 passes
