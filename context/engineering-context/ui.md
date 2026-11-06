@@ -213,8 +213,10 @@ skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`);
 and aurora. The product talk states only what the winnow skills really do
 (`.claude/skills/winnow`, `create-tasks`, `update-context`): the bucket names and the
 ticket shape are theirs. `listen-to-meeting` is deliberately not in the talk.
-Both talks render ticket #140 from one constant, `presentation/issue.js`
-(`ISSUE_140`: title, why, what, doneWhen, outOfScope), so they cannot drift apart.
+The engineering talk renders ticket #140 from one constant, `presentation/issue.js`
+(`ISSUE_140`: title, why, what, doneWhen, outOfScope). The product talk keeps its own
+copy of the ticket (`product/winnow.jsx`: WhereScene and the Distil buckets), so a
+change to the #140 text is made in both.
 
 It is the only place that uses **Motion** (`motion/react`) — springs, the
 chapter fly-through, the camera zoom. Inside a beat, sequences are the `pz-*`
