@@ -49,7 +49,7 @@ if you are reaching for one, you are probably solving the wrong problem.
 `context/` holds what the code cannot tell you, with an `index.md` in every
 folder — read the index, then only the documents it points you to.
 `product-context/` is who the app is for and why, `engineering-context/` is how
-it is built, and `winnow-transcripts/` holds the conversations Winnow works from.
+it is built, and `winnow-transcripts/` holds the conversations Winnow works from and a record of each.
 `context/index.md` says what goes where.
 
 This file says what was decided and why; `context/engineering-context/` says where it lives

@@ -1,21 +1,28 @@
 # Winnow transcripts
 
-Where Winnow's conversations live. Today that is the demo transcript below.
+Where Winnow's conversations live: the demo transcript below, and a record of
+every conversation Winnow processes.
 
-**Planned — Winnow does not write these yet.** One record per conversation
-Winnow processes — a meeting, a voice note, a brainstorm, product or technical.
-Some of what was said becomes tickets, some goes into the context, and some is
-deliberately set aside. The record will keep all three, so "why did we decide
-not to do that?" has an answer a month later. A record will say:
+Every Winnow run leaves one record in this folder — a meeting, a voice note, a
+brainstorm, product or technical. Some of what was said becomes tickets, some
+goes into the context, and some is deliberately set aside. The record keeps all
+three, so "why did we decide not to do that?" has an answer a month later.
 
-- **The conversation** — its title, date, participants, and where the source
-  lives (a link, or the transcript itself).
-- **What came out of it** — the tickets raised, with links, and the context
-  documents updated.
-- **What was set aside, and why.**
-- **The questions Winnow asked** and how they were answered.
+The record is named `YYYY-MM-DD-<title>.md`, so the folder reads in date order,
+and has eight fields:
 
-Proposed name: `YYYY-MM-DD-<short-title>.md`, so the folder reads in date order.
+- **Title** — what the conversation was about.
+- **Date** — when it happened.
+- **Participants** — who took part.
+- **Source** — where the source lives: a path or link, or "inline" for a
+  paste. The record never holds the raw transcript.
+- **Tickets raised** — with links.
+- **Context updated** — the context documents changed.
+- **Set aside** — what was left out, and why.
+- **Q&A** — the questions Winnow asked and how they were answered.
+
+A field Winnow cannot determine reads "Unknown" — never omitted, never guessed.
+A pasted brainstorm, for instance, has no participants to name.
 
 This folder sits at the top of `context/`, not under product, because Winnow
 can process an architecture discussion just as well as a product one.
