@@ -18,6 +18,9 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
  * stars warp, so a hand-off can play out before the route changes; under
  * reduced motion it navigates at once. A scene also gets `advance`, so a button
  * on the stage can be the clicker.
+ *
+ * `captions="top"` puts each beat's caption at the top of the stage instead of
+ * the bottom; that deck's scenes leave the top for it (see `opening/opening.jsx`).
  */
 
 const STAGE_W = 1600;
@@ -80,14 +83,14 @@ const WORD = {
 // No exit animation: with AnimatePresence a fast clicker could press on before
 // the old caption finished leaving, and it stayed on screen under the new beat.
 // The old caption goes at once; the new one's words still rise in.
-function Caption({ beat, accent, index }) {
+function Caption({ beat, accent, index, top }) {
   if (!beat) return null;
   return (
     <motion.div
       key={index}
       data-testid="presentation-caption"
       className="absolute"
-      style={{ left: 80, top: 650, width: 1440 }}
+      style={{ left: 80, top: top ? 66 : 650, width: 1440 }}
       initial="hidden"
       animate="shown"
       transition={{ staggerChildren: 0.035 }}
@@ -118,7 +121,7 @@ function useParallax() {
   return { rotateX, rotateY, onPointerMove };
 }
 
-export function Deck({ chapters: CHAPTERS, title, next }) {
+export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
   useDocumentTitle(title);
   const COUNTS = useMemo(() => CHAPTERS.map((c) => c.beats.length), [CHAPTERS]);
   const TOTAL = COUNTS.reduce((a, b) => a + b, 0);
@@ -199,7 +202,7 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
             const cut = CHAPTERS[Math.max(i, chapter)].enter === 'cut';
             return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} leaving={leaving} advance={advance} />;
           })}
-          <Caption beat={current.beats[step]} accent={current.accent} index={beat} />
+          <Caption beat={current.beats[step]} accent={current.accent} index={beat} top={captions === 'top'} />
         </motion.div>
       </div>
 

@@ -9,6 +9,15 @@ import { Field } from '../product/intro.jsx';
  * day. It ends on the frame the product talk opens with, and hands over to it.
  */
 
+/**
+ * This deck's captions sit at the top of the stage (Deck `captions="top"`), so
+ * every captioned scene is drawn this far down, under its caption.
+ */
+const DROP = 210;
+function Below({ children }) {
+  return <div className="absolute inset-0" style={{ transform: `translateY(${DROP}px)` }}>{children}</div>;
+}
+
 /* ------------------------------------------------------------------ *
  * Title — the same stage as the other two talks.
  * ------------------------------------------------------------------ */
@@ -113,9 +122,8 @@ const JOURNEYS = [
 
 function Uneven({ on }) {
   return (
-    <Replay on={on} style={at(80, 60, 1440, 560)}>
-      <Kicker>Everyone is on their own AI journey</Kicker>
-      <div className="mt-6 space-y-3">
+    <Replay on={on} style={at(80, 50, 1440, 560)}>
+      <div className="space-y-3">
         {JOURNEYS.map(([who, how, tag], i) => (
           <div key={who} className="pz-appear flex items-center gap-6" style={later(i * 110)}>
             <span className="w-[330px] shrink-0 text-right text-[21px] text-muted">{who}</span>
@@ -194,11 +202,11 @@ function Islands({ on }) {
 
 function WhereScene({ step }) {
   return (
-    <>
+    <Below>
       <Uneven on={step === 0} />
       <Islands on={step === 1} />
       <Serial on={step === 2} />
-    </>
+    </Below>
   );
 }
 
@@ -215,12 +223,9 @@ const PATTERN = [
 
 function PatternScene() {
   return (
-    <>
-      <Show style={at(80, 60, 1440, 100)}>
-        <div className="font-display text-[44px] leading-tight text-ink">Transformation of any kind follows the same shape</div>
-      </Show>
+    <Below>
       {PATTERN.map(([icon, h, s], i) => (
-        <Show key={h} from="up" delay={700 + i * 260} style={at(80 + i * 365, 200, 330, 300)} className={`${box} flex flex-col p-7`}>
+        <Show key={h} from="up" delay={500 + i * 260} style={at(80 + i * 365, 60, 330, 300)} className={`${box} flex flex-col p-7`}>
           <span className="font-mono text-[15px] text-faint">{i + 1}</span>
           <span className="mt-3 text-[44px] leading-none">{icon}</span>
           <div className="mt-4 font-display text-[28px] leading-tight text-ink">{h}</div>
@@ -229,12 +234,16 @@ function PatternScene() {
         </Show>
       ))}
       {[0, 1, 2].map((i) => (
-        <Show key={i} from="none" delay={900 + i * 260} style={at(80 + i * 365 + 334, 330, 30, 40)} className="text-center text-[24px] text-violet-300">→</Show>
+        <Show key={i} from="none" delay={700 + i * 260} style={at(80 + i * 365 + 334, 190, 30, 40)} className="text-center text-[24px] text-violet-300">→</Show>
       ))}
-      <Show from="up" delay={2100} style={at(80, 540, 1440, 60)} className="text-center text-[22px] text-muted">
+      <Show from="up" delay={1900} style={at(80, 400, 1440, 90)} className="text-center">
+        <div className="font-display text-[32px] text-ink">It’s all new, and it changes every day.</div>
+        <div className="mt-1 text-[21px] text-muted">Nobody really has a plan — and we don’t have all the answers either.</div>
+      </Show>
+      <Show from="up" delay={2500} style={at(80, 520, 1440, 50)} className="text-center text-[20px] text-faint">
         Today you’ll do things you may have done before — maybe better. What we want you to keep is <b className="text-ink">two lessons</b>.
       </Show>
-    </>
+    </Below>
   );
 }
 
@@ -337,10 +346,10 @@ function MarkdownBeat({ on }) {
 
 function ContextScene({ step }) {
   return (
-    <>
+    <Below>
       <ConnectBeat on={step === 0} />
       <MarkdownBeat on={step === 1} />
-    </>
+    </Below>
   );
 }
 
@@ -426,10 +435,10 @@ function LimitsBeat({ on }) {
 
 function ParallelScene({ step }) {
   return (
-    <>
+    <Below>
       <ParallelBeat on={step === 0} />
       <LimitsBeat on={step === 1} />
-    </>
+    </Below>
   );
 }
 
@@ -458,8 +467,8 @@ function Term({ icon, h, s, delay, tone = 'border-hairline bg-surface' }) {
 
 function TakeawayScene() {
   return (
-    <Show style={at(80, 110, 1440, 480)} className="flex flex-col items-center">
-      <Kicker className="pz-appear">What we hope you take away</Kicker>
+    <Below>
+    <Show style={at(80, 90, 1440, 480)} className="flex flex-col items-center">
       <div className="mt-10 flex items-center gap-5">
         <Term {...{ icon: SUM[0][0], h: SUM[0][1], s: SUM[0][2] }} delay={200} />
         <span className="pz-appear text-[40px] text-violet-300" style={later(400)}>+</span>
@@ -478,6 +487,7 @@ function TakeawayScene() {
         → <span className="pz-shine bg-clip-text text-transparent">accelerated delivery</span>
       </div>
     </Show>
+    </Below>
   );
 }
 
@@ -497,8 +507,9 @@ function TodayScene({ step, leaving, advance }) {
   return (
     <>
       {/* beat 0: the plan */}
+      <Below>
       {PLAN.map((p, i) => (
-        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(80 + i * 365, 90, 335, 420)} className={`${box} flex flex-col p-7 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
+        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(80 + i * 365, 50, 335, 420)} className={`${box} flex flex-col p-7 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
           <div className="font-mono text-[15px] uppercase tracking-[0.18em] text-faint">{p.when}</div>
           <span className="mt-4 text-[44px] leading-none">{p.icon}</span>
           <div className="mt-4 font-display text-[30px] leading-tight text-ink">{p.title}</div>
@@ -512,13 +523,14 @@ function TodayScene({ step, leaving, advance }) {
       ))}
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
         {[0, 1, 2].map((i) => (
-          <path key={i} d={`M${80 + i * 365 + 335} 300 L${80 + (i + 1) * 365} 300`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#a78bfa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
+          <path key={i} d={`M${80 + i * 365 + 335} 260 L${80 + (i + 1) * 365} 260`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#a78bfa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
         ))}
       </svg>
-      <Show on={step === 0} from="none" delay={1300} style={at(80, 540, 1460, 50)} className="flex items-center">
+      <Show on={step === 0} from="none" delay={1300} style={at(80, 500, 1460, 50)} className="flex items-center">
         <span className="h-0.5 rounded-full bg-gradient-to-r from-cyan-400/80 to-violet-400/80" style={{ width: 700 }} />
         <span className="ml-4 text-[16px] text-muted">📚 one shared context, under both labs and every team</span>
       </Show>
+      </Below>
 
       {/* beat 1: over to the product harness — laid out like its title, rings in the same place, so the warp lands on them */}
       <Show on={step === 1} from="none" delay={200} style={at(0, 0, 1600, 900)} className="pointer-events-none">
@@ -589,8 +601,8 @@ export const OPENING = [
     beats: [
       {
         kicker: '2 · A familiar pattern',
-        title: 'It’s all new, and it changes every day',
-        body: 'Nobody really has a plan — and we don’t have all the answers either. What we are sure of is that any transformation follows this familiar pattern.',
+        title: 'Transformation of any kind follows the same shape',
+        body: 'Step back. Understand where you are today. Build a roadmap to where you want to go. Then execute it in an agile way — but with a goal in mind.',
       },
     ],
     Scene: PatternScene,
