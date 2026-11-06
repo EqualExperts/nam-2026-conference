@@ -95,8 +95,8 @@ function TitleScene() {
 }
 
 /* ------------------------------------------------------------------ *
- * Where we are: everyone on a journey, unevenly; work run one at a time;
- * no connected way of working.
+ * Where we are: everyone on a journey, unevenly; no connected way of
+ * working; work run one at a time.
  * ------------------------------------------------------------------ */
 
 const JOURNEYS = [
@@ -210,8 +210,8 @@ function WhereScene({ step }) {
   return (
     <>
       <Uneven on={step === 0} />
-      <Serial on={step === 1} />
-      <Islands on={step === 2} />
+      <Islands on={step === 1} />
+      <Serial on={step === 2} />
     </>
   );
 }
@@ -588,13 +588,13 @@ export const OPENING = [
       },
       {
         kicker: '1 · Where we are',
-        title: 'Work is still run serially — and babysat',
-        body: 'One ticket at a time, with someone watching the agent the whole way through.',
+        title: 'There is no connected way of working across the SDLC',
+        body: 'Product, design, engineering and QA each move on their own — with their own tools, and their own memory of what was decided.',
       },
       {
         kicker: '1 · Where we are',
-        title: 'There is no connected way of working across the SDLC',
-        body: 'Product, design, engineering and QA each move on their own — with their own tools, and their own memory of what was decided.',
+        title: 'Work is still run serially — and babysat',
+        body: 'One ticket at a time, with someone watching the agent the whole way through.',
       },
     ],
     Scene: WhereScene,
