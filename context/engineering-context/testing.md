@@ -225,6 +225,11 @@ once on mobile.
 - Only `momentOn`/full `THH:MM` values pin the clock; a bare date in `at` is ignored.
 - `clearAgendaFor` on a non-`clean` lane deletes seeded bookings, which the next run
   (without a reseed) no longer has — tests that expect seeded plans then fail far away.
+- **A passing suite proves nothing about a line it never exercises.** A test asserting
+  one curated pair, value or instance of a rule is not evidence for another instance of
+  the same rule — check what the assertion actually reaches before treating green as proof
+  (#283: the only contrast test checked one token pair, so a badge shipped text on a fill
+  at 2.8:1 with the suite green throughout).
 
 ## Where to change…
 
