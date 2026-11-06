@@ -251,15 +251,22 @@ function PatternScene() {
  * Lesson 1 — shared context is what connects the lifecycle.
  * ------------------------------------------------------------------ */
 
-const HUB = { x: 800, y: 330 };
+const HUB = { x: 800, y: 240 };
 const SPOKES = [
-  { label: 'Product', icon: '💡', x: 230, y: 150 },
-  { label: 'Design', icon: '🎨', x: 230, y: 330 },
-  { label: 'Engineering', icon: '⌨️', x: 230, y: 510 },
-  { label: 'any interface', icon: '🖥️', x: 1370, y: 150 },
-  { label: 'any model', icon: '🧠', x: 1370, y: 330 },
-  { label: 'any workflow', icon: '🔀', x: 1370, y: 510 },
+  { label: 'Product', icon: '💡', x: 230, y: 90 },
+  { label: 'Design', icon: '🎨', x: 230, y: 240 },
+  { label: 'Engineering', icon: '⌨️', x: 230, y: 390 },
+  { label: 'any interface', icon: '🖥️', x: 1370, y: 90 },
+  { label: 'any model', icon: '🧠', x: 1370, y: 240 },
+  { label: 'any workflow', icon: '🔀', x: 1370, y: 390 },
 ];
+/* …and beyond delivery: the same context, read by the rest of the business. */
+const BEYOND = [
+  { label: 'Marketing', icon: '📣', x: 520 },
+  { label: 'Security', icon: '🔒', x: 800 },
+  { label: 'Executives', icon: '📊', x: 1080 },
+];
+const BEYOND_Y = 540;
 
 function ConnectBeat({ on }) {
   return (
@@ -276,7 +283,28 @@ function ConnectBeat({ on }) {
             </g>
           );
         })}
+        {BEYOND.map((b, i) => {
+          const d = `M${HUB.x} ${HUB.y} C ${HUB.x} ${(HUB.y + BEYOND_Y) / 2}, ${b.x} ${(HUB.y + BEYOND_Y) / 2}, ${b.x} ${BEYOND_Y}`;
+          return (
+            <g key={b.label}>
+              <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#6b4f1d" strokeWidth="2.5" strokeDasharray="1" style={later(2600 + i * 150)} />
+              <g className="pz-appear" style={later(3400 + i * 150)}>
+                <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#fcd34d" strokeWidth="2.5" opacity="0.8" />
+              </g>
+            </g>
+          );
+        })}
       </svg>
+      <div className="pz-appear absolute flex items-center gap-4" style={{ left: 80, top: BEYOND_Y - 70, width: 1440, ...later(2400) }}>
+        <span className="font-mono text-[14px] uppercase tracking-[0.2em] text-amber-300">and beyond the SDLC</span>
+        <span className="h-px flex-1 bg-amber-400/25" />
+      </div>
+      {BEYOND.map((b, i) => (
+        <div key={b.label} className="pz-appear absolute flex items-center justify-center gap-3 rounded-2xl border border-amber-400/50 bg-amber-500/10" style={{ left: b.x - 120, top: BEYOND_Y, width: 240, height: 64, ...later(2800 + i * 150) }}>
+          <span className="text-[24px]">{b.icon}</span>
+          <span className="text-[20px] font-semibold text-amber-100">{b.label}</span>
+        </div>
+      ))}
       {SPOKES.map((s, i) => (
         <div key={s.label} className={`${box} pz-appear absolute flex items-center gap-3 px-5`} style={{ left: s.x - 130, top: s.y - 34, width: 260, height: 68, ...later(200 + i * 100) }}>
           <span className="text-[26px]">{s.icon}</span>
@@ -612,8 +640,8 @@ export const OPENING = [
     beats: [
       {
         kicker: '3 · Lesson one',
-        title: 'Shared context is the foundation of a connected SDLC',
-        body: 'Creating and curating a shared context across disciplines and harnesses is what connects them — whatever interfaces, models and workflows you choose.',
+        title: 'Shared context connects the SDLC — and beyond',
+        body: 'Creating and curating a shared context across disciplines and harnesses is the foundation of a connected SDLC, whatever tools you choose. And marketing, security and executives can tap into it too, for their own needs.',
       },
       {
         kicker: '3 · What we mean by context',
