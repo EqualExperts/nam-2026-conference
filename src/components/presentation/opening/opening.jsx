@@ -100,26 +100,44 @@ const JOURNEYS = [
   ['a developer', 0.88],
   ['the developer next to them', 0.34],
   ['another team', 0.6],
-  ['product', 0.22],
-  ['QA', 0.4],
-  ['design', 0.16],
 ];
+// the other players in the lifecycle — most of them not on the journey at all yet
+const LEFT_OUT = ['product', 'design', 'QA', 'the business'];
+const ROW_LABEL = 'w-[330px] shrink-0 text-right text-[21px]';
 
 function Uneven({ on }) {
   return (
-    <Replay on={on} style={at(80, 70, 1440, 540)}>
+    <Replay on={on} style={at(80, 60, 1440, 560)}>
       <Kicker>Everyone is on their own AI journey</Kicker>
-      <div className="mt-6 space-y-4">
+      <div className="mt-5 space-y-3">
         {JOURNEYS.map(([who, how], i) => (
           <div key={who} className="pz-appear flex items-center gap-6" style={later(i * 120)}>
-            <span className="w-[330px] shrink-0 text-right text-[21px] text-muted">{who}</span>
+            <span className={`${ROW_LABEL} text-muted`}>{who}</span>
             <span className="relative h-9 flex-1 overflow-hidden rounded-full bg-overlay">
               <span className="pz-fill absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-violet-500/70 to-cyan-400/70" style={{ width: `${how * 100}%`, animationDuration: '1.2s', animationDelay: `${300 + i * 120}ms` }} />
             </span>
           </div>
         ))}
       </div>
-      <div className="pz-appear mt-8 text-center font-display text-[34px] text-ink" style={later(1800)}>Unavoidable — and very uneven.</div>
+
+      <div className="pz-appear mt-7 flex items-center gap-6" style={later(1300)}>
+        <span className="w-[330px] shrink-0" />
+        <span className="font-mono text-[14px] uppercase tracking-[0.18em] text-amber-300">the rest of the lifecycle</span>
+        <span className="h-px flex-1 bg-amber-400/30" />
+        <span className="pz-pop rounded-full border border-amber-400/60 bg-amber-500/15 px-5 py-1 text-[19px] font-semibold text-amber-200" style={later(2200)}>⚠ missing out</span>
+      </div>
+      <div className="mt-3 space-y-3">
+        {LEFT_OUT.map((who, i) => (
+          <div key={who} className="pz-appear flex items-center gap-6" style={later(1500 + i * 120)}>
+            <span className={`${ROW_LABEL} text-faint`}>{who}</span>
+            <span className="relative flex h-9 flex-1 items-center rounded-full border border-dashed border-hairline px-5">
+              <span className="text-[16px] italic text-faint">not part of it yet</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="pz-appear mt-6 text-center font-display text-[32px] text-ink" style={later(2500)}>Unavoidable, very uneven — and some players aren’t on it at all.</div>
     </Replay>
   );
 }
@@ -563,7 +581,7 @@ export const OPENING = [
       {
         kicker: '1 · Where we are',
         title: 'Everyone here is on their own AI journey',
-        body: 'It’s unavoidable. But the evolution has been very uneven: not every developer has felt the same acceleration.',
+        body: 'It’s unavoidable, but it has been very uneven. Not every developer has felt the same acceleration — and many of the other players in the lifecycle aren’t part of it yet.',
       },
       {
         kicker: '1 · Where we are',
