@@ -217,8 +217,7 @@ function PatternScene() {
   return (
     <>
       <Show style={at(80, 60, 1440, 100)}>
-        <div className="font-display text-[34px] text-ink">It’s all new, and it changes every day.</div>
-        <div className="mt-1 text-[22px] text-muted">Nobody really has a plan — and we don’t have all the answers either.</div>
+        <div className="font-display text-[44px] leading-tight text-ink">Transformation of any kind follows the same shape</div>
       </Show>
       {PATTERN.map(([icon, h, s], i) => (
         <Show key={h} from="up" delay={700 + i * 260} style={at(80 + i * 365, 200, 330, 300)} className={`${box} flex flex-col p-7`}>
@@ -590,8 +589,8 @@ export const OPENING = [
     beats: [
       {
         kicker: '2 · A familiar pattern',
-        title: 'Transformation of any kind follows the same shape',
-        body: 'Step back. Understand where you are today. Build a roadmap to where you want to go. Then execute it in an agile way — but with a goal in mind.',
+        title: 'It’s all new, and it changes every day',
+        body: 'Nobody really has a plan — and we don’t have all the answers either. What we are sure of is that any transformation follows this familiar pattern.',
       },
     ],
     Scene: PatternScene,
