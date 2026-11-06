@@ -1,12 +1,12 @@
 lockfile_version: '1'
-apm_version: 0.33.0
+apm_version: 0.35.0
 dependencies:
 - repo_url: quiram/winnow
   name: winnow
   host: github.com
-  resolved_commit: bb79f930cd6df37812d49f580cc7fdcd8bb7b57a
-  resolved_ref: v0.10.1
-  version: 0.10.1
+  resolved_commit: 61b77830caa095627a2236eb36471ec1c803f926
+  resolved_ref: v0.11.0
+  version: 0.11.0
   package_type: skill_bundle
   deployed_files:
   - .claude/skills/create-tasks
@@ -42,12 +42,12 @@ dependencies:
     .claude/skills/setup-winnow/SKILL.md: sha256:bc4db522934f32338729b77a3e4682221979e43c1a9524bf33de64bffccdc5df
     .claude/skills/transcribe-audio/SKILL.md: sha256:27468e377e0196878c121e79d521092334b95ff4dd8eabd68dd31497859f5422
     .claude/skills/transcribe-audio/scripts/transcribe.py: sha256:2ee9b56cd800087dc41cd34126d13284ad6454d63f50778aad325edc91ecbf07
-    .claude/skills/update-context/SKILL.md: sha256:84d33cb32a0176442fd4806eb6f80eb0a46dfd92740678a2804d9bc7f0ddd73f
+    .claude/skills/update-context/SKILL.md: sha256:e15d823cb3648b2b7cdc61aef914ba277e127caac284875024c2f671c0e2e2b6
     .claude/skills/winnow-setup-audio/SKILL.md: sha256:b54beaf1afde2390623dfd4e9a7f9ea06e8bf62bcfe8ae777a764f7d5c45a26f
-    .claude/skills/winnow-setup-context/SKILL.md: sha256:30b80109e4a83a2dd061b1a382625a1a9995580316f38e5a85ecdb66b5baf481
+    .claude/skills/winnow-setup-context/SKILL.md: sha256:f54408faca66fee8447eadc75890b59e225133161a3ff25f78a2537b9fe4536e
     .claude/skills/winnow-setup-tracker/SKILL.md: sha256:aa1fbf2e63c8e88c2923b36ade0d76d8252025cc9d84e91ac81f702545d62496
-    .claude/skills/winnow/SKILL.md: sha256:a3837cadf3784c4bcc1446786e9c70f552f06a4284002060c85b919698e690e4
-  content_hash: sha256:9402847e1731dace7cf7a24929d8060c2a1f8af95cfb9d13798742e573a78a1a
+    .claude/skills/winnow/SKILL.md: sha256:48126e39b2f571bd82860e13182624d45a404d3ce5cc8d858cac62dc42d7a26f
+  content_hash: sha256:cced5544ace1db5f75f9bd6d5eb6ee2921fb8682a7e30730dfe11e9908a969c6
   declared_license: MIT
 deployments:
 - kind: project-relative
@@ -184,7 +184,7 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:84d33cb32a0176442fd4806eb6f80eb0a46dfd92740678a2804d9bc7f0ddd73f
+  content_hash: sha256:e15d823cb3648b2b7cdc61aef914ba277e127caac284875024c2f671c0e2e2b6
 - kind: project-relative
   target: claude
   value: .claude/skills/winnow
@@ -229,7 +229,7 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:30b80109e4a83a2dd061b1a382625a1a9995580316f38e5a85ecdb66b5baf481
+  content_hash: sha256:f54408faca66fee8447eadc75890b59e225133161a3ff25f78a2537b9fe4536e
 - kind: project-relative
   target: claude
   value: .claude/skills/winnow-setup-tracker
@@ -256,4 +256,4 @@ deployments:
   owners:
   - quiram/winnow
   active_owner: quiram/winnow
-  content_hash: sha256:a3837cadf3784c4bcc1446786e9c70f552f06a4284002060c85b919698e690e4
+  content_hash: sha256:48126e39b2f571bd82860e13182624d45a404d3ce5cc8d858cac62dc42d7a26f
