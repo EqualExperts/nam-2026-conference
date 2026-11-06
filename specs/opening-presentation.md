@@ -1,7 +1,7 @@
 # Add the opening talk at /opening-presentation, handing over to the product talk
 
 ## What this changes
-A third deck, given first: Andy's ten-minute opening on why the day is shaped as
+A third deck, given first: Andy's ten-minute welcome to the NAM 2026 conference exercise on why the day is shaped as
 it is. Where everyone is today (an uneven AI journey, work run serially and
 babysat, no connected way of working), the familiar pattern any transformation
 follows, the two lessons — shared context as markdown in version control, and

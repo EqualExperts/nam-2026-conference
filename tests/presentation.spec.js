@@ -237,10 +237,10 @@ test.describe('The opening presentation', () => {
     const errors = failOnPageErrors(page);
     await page.goto('/opening-presentation');
 
-    await expect(page.getByRole('heading', { level: 1, name: /A connected lifecycle/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /Welcome to NAM 2026/i })).toBeVisible();
     await expect(page.getByRole('banner')).toHaveCount(0);
     await expect(counter(page)).toHaveText(/^1 \/ \d+$/);
-    await expect(page).toHaveTitle(/A connected lifecycle/);
+    await expect(page).toHaveTitle(/Welcome to NAM 2026/);
 
     await page.keyboard.press('End');
     const { at, total } = await readCounter(page);
@@ -275,7 +275,7 @@ test.describe('The opening presentation', () => {
 
 test.describe('Reaching the talks from the app', () => {
   test('the attendee menu links to all three talks from any page', async ({ page }) => {
-    for (const [title, path] of [['A connected lifecycle', '/opening-presentation'], ['The product harness', '/product-presentation'], ['The engineering harness', '/engineering-presentation']]) {
+    for (const [title, path] of [['Welcome to NAM 2026', '/opening-presentation'], ['The product harness', '/product-presentation'], ['The engineering harness', '/engineering-presentation']]) {
       await page.goto('/speakers');
       await page.getByRole('button', { name: /Switch attendee/ }).click();
       await page.getByTestId('talk-links').getByRole('link', { name: new RegExp(title) }).click();

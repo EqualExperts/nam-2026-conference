@@ -66,14 +66,17 @@ function TitleScene() {
   return (
     <>
       <Rings />
-      <div style={at(110, 120, 900, 480)}>
-        <Kicker className="pz-appear">ORBIT &rsquo;26 · AI across the software delivery lifecycle</Kicker>
+      <div style={at(110, 90, 900, 560)}>
+        <Kicker className="pz-appear">Equal Experts · NAM conference 2026</Kicker>
         <h1 className="pz-appear mt-6 font-display text-[104px] leading-[0.92] text-ink" style={later(120)}>
-          A connected<br />
-          <span className="pz-shine bg-clip-text text-transparent">lifecycle</span>
+          Welcome to<br />
+          <span className="pz-shine bg-clip-text text-transparent">NAM 2026</span>
         </h1>
-        <p className="pz-appear mt-7 max-w-[780px] text-[27px] leading-snug text-muted" style={later(260)}>
-          Shared context and well-built harnesses — so every discipline works from one foundation, and the work runs in parallel.
+        <p className="pz-appear mt-7 max-w-[800px] text-[27px] leading-snug text-muted" style={later(260)}>
+          Today’s exercise: AI across the whole software delivery lifecycle — connected by shared context, accelerated by running work in parallel.
+        </p>
+        <p className="pz-appear mt-3 max-w-[800px] text-[19px] text-faint" style={later(500)}>
+          You’ll work on <span className="text-muted">ORBIT &rsquo;26</span>, a conference app built for the day — with My Agenda left for you to build.
         </p>
         <div className="pz-appear mt-7 space-y-1 whitespace-nowrap text-[19px] text-faint" style={later(900)}>
           {DAY.map(([icon, what], i) => (
@@ -571,7 +574,7 @@ function TodayScene({ step, leaving, advance }) {
 
 export const OPENING = [
   {
-    id: 'title', name: 'A connected lifecycle', accent: 'text-emerald-300', tone: 'emerald',
+    id: 'title', name: 'Welcome', accent: 'text-emerald-300', tone: 'emerald',
     beats: [null],
     Scene: TitleScene,
   },

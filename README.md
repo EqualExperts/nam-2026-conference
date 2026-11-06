@@ -14,7 +14,7 @@ blank — building it is the workshop.
 
 ## 📺 Watch
 
-1. [🛰️ A connected lifecycle](https://orbit26.up.railway.app/opening-presentation) — shared context and parallel work
+1. [🛰️ Welcome to NAM 2026](https://orbit26.up.railway.app/opening-presentation) — the opening: shared context and parallel work
 2. [🎙️ The product harness](https://orbit26.up.railway.app/product-presentation) — a conversation → a ticket
 3. [🚢 The engineering harness](https://orbit26.up.railway.app/engineering-presentation) — a ticket → a pull request
 
