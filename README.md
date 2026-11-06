@@ -14,6 +14,9 @@ blank — building it is the workshop.
 
 ## 📺 Watch
 
+The three talks, in the order they're given — the opening sets out why the day is
+built around shared context and parallel work, then each harness gets its own.
+
 1. [🛰️ Welcome to NAM 2026](https://orbit26.up.railway.app/opening-presentation) — the opening: shared context and parallel work
 2. [🎙️ The product harness](https://orbit26.up.railway.app/product-presentation) — a conversation → a ticket
 3. [🚢 The engineering harness](https://orbit26.up.railway.app/engineering-presentation) — a ticket → a pull request

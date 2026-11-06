@@ -190,12 +190,18 @@ scene also gets `advance`, so a button on the stage can be the clicker. The
 opening deck ends on the frame the product deck opens with ("Continue to the
 product harness"), and the product deck on the one the engineering deck opens with
 ("Continue to the engineering harness"); the engineering deck has no `next`.
-`components/presentation/chapters.js` lists the engineering chapters in order,
-`presentation/product/chapters.js` the product ones and
-`presentation/opening/chapters.js` the opening's (scenes in `opening/opening.jsx`,
-built from the shared and product kits — that deck passes `captions="top"`, so its
-captions sit at the top and its scenes draw below them, and its lesson beats carry
-`lesson: { label, n }` for a badge and a large numeral in the caption); each is
+`components/presentation/chapters.js` lists the engineering chapters in order and
+`presentation/product/chapters.js` the product ones — the workflow first
+(`workflow.jsx`: the project context, the two-fold trick, context versus the task
+tracker, a chapter slide, the three skills as one possibility), then the winnow
+skills built from the bottom (create-tasks, update-context, winnow over both), the
+whole flow and the demo, the hand-off. A beat with `hero: true` is a title slide:
+`Deck`'s caption is set large mid-stage and the scene only decorates beside it.
+`presentation/opening/chapters.js` lists the opening's (scenes in
+`opening/opening.jsx`, built from the shared and product kits): that deck passes
+`captions="top"`, so its captions sit at the top and its scenes draw below them,
+and its lesson beats carry `lesson: { label, n }` for a badge and a large numeral
+in the caption. Each is
 `{ id, name, accent, tone, beats, Scene, enter? }` — one
 caption per beat (`null` for none) and a `Scene({ step, leaving, advance })` laid out in stage
 pixels. The chapters either side of the current one stay mounted so they can fly
@@ -209,13 +215,15 @@ audit, and the needs-human chapter (`after.jsx`) breaks into ship after the loop
 before `SHIP_PR` — ship's last stop, the same `ShipScene` offset by `PR_BEAT`. It
 ends on *Your role* and a three-step *Now you* lab. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
 that travels both talks, `Flip`, `Terminal`, `Verdict`…); `product/kit.jsx` the
-product talk's own (the hosts' faces, a transcript `Line` with its Me/Others lane,
-`Wave`, `Chunks`, `Flag`, the five-step `StepRail`); `Backdrop.jsx` the starfield
+product talk's own (the hosts' faces, `Wave`, `Versus` — by hand against with the
+skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`); `Backdrop.jsx` the starfield
 and aurora. The product talk states only what the winnow skills really do
-(`.claude/skills/listen-to-meeting`, `winnow`, `create-tasks`, `update-context`):
-the flag wording, the chunk sizes, the bucket names and the ticket shape are theirs.
-Both talks render ticket #140 from one constant, `presentation/issue.js`
-(`ISSUE_140`: title, why, what, doneWhen, outOfScope), so they cannot drift apart.
+(`.claude/skills/winnow`, `create-tasks`, `update-context`): the bucket names and the
+ticket shape are theirs. `listen-to-meeting` is deliberately not in the talk.
+The engineering talk renders ticket #140 from one constant, `presentation/issue.js`
+(`ISSUE_140`: title, why, what, doneWhen, outOfScope). The product talk keeps its own
+copy of the ticket (`product/winnow.jsx`: WhereScene and the Distil buckets), so a
+change to the #140 text is made in both.
 
 It is the only place that uses **Motion** (`motion/react`) — springs, the
 chapter fly-through, the camera zoom. Inside a beat, sequences are the `pz-*`
@@ -263,7 +271,7 @@ How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 - Accent classes must be literal strings in `accents.js`; see CLAUDE.md.
 - New motion needs an entry that the reduced-motion block neutralises, and must
   not leave content hidden when it is.
-- Motion (`motion/react`) stays inside the two presentations. The app's own motion is CSS.
+- Motion (`motion/react`) stays inside the three presentations. The app's own motion is CSS.
 - The presentation states only what the harness really does; its numbers (round
   limits, typical costs, PR #96 and #97) are `context/engineering-context/harness/index.md`'s — change them together.
 

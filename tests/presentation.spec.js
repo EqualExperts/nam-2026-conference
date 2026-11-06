@@ -167,7 +167,8 @@ test.describe('The product presentation', () => {
     await expect(page).toHaveURL(/\/engineering-presentation$/);
   });
 
-  test('every beat renders without errors', async ({ page }) => {
+  test('every beat renders without errors, leads with its heading and never mentions live listening', async ({ page }) => {
+    test.slow(); // walks every beat once: a second walk made the suite CPU-bound and every spec near its 30s limit
     const errors = failOnPageErrors(page);
     await page.goto('/product-presentation');
     const { total } = await readCounter(page);
@@ -175,14 +176,22 @@ test.describe('The product presentation', () => {
 
     // the title frame and the hand-off frame are bare; every beat between them is captioned
     await expect(caption).toHaveCount(0);
+    const heroes = [];
     for (let at = 2; at < total; at++) {
       await page.keyboard.press('ArrowRight');
       await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
-      await expect(caption.getByRole('heading', { level: 2 }), `beat ${at} has no caption`).toHaveText(/\S/);
+      const heading = caption.getByRole('heading', { level: 2 });
+      await expect(heading, `beat ${at} has no caption`).toHaveText(/\S/);
+      await expect(page.getByText(/listen-to-meeting|live listening/i)).toHaveCount(0);
+      // a title slide sets its heading large, mid-stage; every other caption sits at the bottom
+      const size = await heading.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      if (size > 80) heroes.push(await heading.innerText());
     }
     await page.keyboard.press('ArrowRight');
     await expect(counter(page)).toHaveText(new RegExp(`^${total} /`));
     await expect(caption).toHaveCount(0);
+    // the caption sets each word in its own box, so compare without the spaces
+    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Theprojectcontext', 'Asampleimplementation']);
     expect(errors).toEqual([]);
   });
 
@@ -198,15 +207,6 @@ test.describe('The product presentation', () => {
     const stage = await page.locator('[data-testid="presentation"] > div.cursor-pointer').boundingBox();
     await page.mouse.click(stage.x + 8, stage.y + stage.height - 8);
     await expect(page).toHaveURL(/\/engineering-presentation$/);
-  });
-
-  test('with reduced motion the flags still show', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/product-presentation?beat=8');
-    await expect(page.getByText('Possible conflict')).toBeVisible();
-    await page.keyboard.press('ArrowRight');
-    await expect(counter(page)).toHaveText(/^9 \//);
-    await expect(page.getByText('Possible gap')).toBeVisible();
   });
 
   test('going back during the hand-off cancels it', async ({ page }) => {
