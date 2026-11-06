@@ -13,7 +13,7 @@ it stays usable as it grows.
 | --- | --- | --- | --- |
 | [`product-context/`](product-context/index.md) | Who the app is for, what it does and why | product | shaping a ticket, judging whether a request fits the product |
 | [`engineering-context/`](engineering-context/index.md) | How the app is built: one doc per area, the data model, and the harness that builds it | engineering | changing code, writing tests, working on the harness |
-| [`winnow-transcripts/`](winnow-transcripts/index.md) | Conversations for Winnow — today the demo transcript; soon a record of each one it processes | whoever ran Winnow | trying Winnow, or wondering why something was (or was not) built |
+| [`winnow-transcripts/`](winnow-transcripts/index.md) | Conversations for Winnow — the demo transcript and a record of each one it processes | whoever ran Winnow | trying Winnow, or wondering why something was (or was not) built |
 
 ## What goes where
 
@@ -31,6 +31,5 @@ This is the doc map Winnow and `update-context` follow.
   `CLAUDE.md` at the repo root, which links here for the detail. Do not repeat
   one in the other.
 - **What a conversation decided, including what it decided not to do** → a
-  record in `winnow-transcripts/`, once Winnow writes them (planned; until
-  then the conversation itself is the record).
+  record in `winnow-transcripts/`, one per Winnow run.
 - **Work to do** → a GitHub Issue, never a file here.
