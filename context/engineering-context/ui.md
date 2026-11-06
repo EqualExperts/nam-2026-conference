@@ -188,7 +188,13 @@ scene also gets `advance`, so a button on the stage can be the clicker. The
 product deck ends on the frame the engineering deck opens with, and hands over
 with a button whose name is "Continue to the engineering harness"; the engineering
 deck has no `next`. `components/presentation/chapters.js` lists the engineering
-chapters in order and `presentation/product/chapters.js` the product ones; each is
+chapters in order and `presentation/product/chapters.js` the product ones — the
+workflow first (`workflow.jsx`: the project context, the two-fold trick, context
+versus the task tracker, a chapter slide, the three skills as one possibility),
+then the winnow skills built from the bottom (create-tasks, update-context, winnow
+over both), the whole flow and the demo, the hand-off. A beat with `hero: true` is a
+title slide: `Deck`'s caption is set large mid-stage and the scene only decorates
+beside it. Each is
 `{ id, name, accent, tone, beats, Scene, enter? }` — one
 caption per beat (`null` for none) and a `Scene({ step, leaving, advance })` laid out in stage
 pixels. The chapters either side of the current one stay mounted so they can fly
@@ -202,11 +208,11 @@ audit, and the needs-human chapter (`after.jsx`) breaks into ship after the loop
 before `SHIP_PR` — ship's last stop, the same `ShipScene` offset by `PR_BEAT`. It
 ends on *Your role* and a three-step *Now you* lab. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
 that travels both talks, `Flip`, `Terminal`, `Verdict`…); `product/kit.jsx` the
-product talk's own (the hosts' faces, a transcript `Line` with its Me/Others lane,
-`Wave`, `Chunks`, `Flag`, the five-step `StepRail`); `Backdrop.jsx` the starfield
+product talk's own (the hosts' faces, `Wave`, `Versus` — by hand against with the
+skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`); `Backdrop.jsx` the starfield
 and aurora. The product talk states only what the winnow skills really do
-(`.claude/skills/listen-to-meeting`, `winnow`, `create-tasks`, `update-context`):
-the flag wording, the chunk sizes, the bucket names and the ticket shape are theirs.
+(`.claude/skills/winnow`, `create-tasks`, `update-context`): the bucket names and the
+ticket shape are theirs. `listen-to-meeting` is deliberately not in the talk.
 Both talks render ticket #140 from one constant, `presentation/issue.js`
 (`ISSUE_140`: title, why, what, doneWhen, outOfScope), so they cannot drift apart.
 

@@ -25,6 +25,7 @@ The audience will use the skills, not write them, so the talk drops mechanics:
   the flag/gap slides and every mention. Whisper, chunks and channels go with it.
 - `create-tasks` keeps only its comparison slide (the search and the ticket are gone),
   and `winnow` loses the question-by-question and agree-before-writing chapters.
+- `update-context` keeps only its comparison slide too (the doc-edit slide is gone).
 - The hand-off's recap beat is gone; the talk ends on "Over to Jonas".
 - Noise lines in the Distil scene fall into the *Noise* bucket, as in the next slide,
   instead of leaving the stage.
@@ -41,7 +42,7 @@ chapter slide, skills), `chapters.js` (order), `raise.jsx` (`CREATE_TASKS`,
 (`Versus`, `SkillHead`, `StepRail`); `Deck.jsx` for the `hero` caption. `listen.jsx` is deleted.
 
 ## Done when
-- The talk is 25 beats and every beat between the title and the hand-off is captioned.
+- The talk is 24 beats and every beat between the title and the hand-off is captioned.
 - Nothing in the talk mentions `listen-to-meeting`, live listening, or Me/Others channels.
 - Every line of the Distil scene ends inside a bucket, noise included.
 - `tests/presentation.spec.js` passes.

@@ -81,23 +81,25 @@ const WORD = {
 // The old caption goes at once; the new one's words still rise in.
 function Caption({ beat, accent, index }) {
   if (!beat) return null;
+  // a hero beat is a title slide: the caption is the slide, set large mid-stage
+  const hero = beat.hero;
   return (
     <motion.div
       key={index}
       data-testid="presentation-caption"
       className="absolute"
-      style={{ left: 80, top: 650, width: 1440 }}
+      style={hero ? { left: 80, top: 230, width: 980 } : { left: 80, top: 650, width: 1440 }}
       initial="hidden"
       animate="shown"
       transition={{ staggerChildren: 0.035 }}
     >
-      <motion.div variants={WORD} className={`font-mono text-[15px] uppercase tracking-[0.2em] ${accent}`}>{beat.kicker}</motion.div>
-      <h2 className="mt-2 font-display text-[46px] leading-tight text-ink">
+      <motion.div variants={WORD} className={`font-mono uppercase tracking-[0.2em] ${hero ? 'text-[24px]' : 'text-[15px]'} ${accent}`}>{beat.kicker}</motion.div>
+      <h2 className={`font-display text-ink ${hero ? 'mt-5 text-[108px] leading-[0.95]' : 'mt-2 text-[46px] leading-tight'}`}>
         {beat.title.split(' ').map((w, i) => (
           <motion.span key={i} variants={WORD} transition={{ type: 'spring', stiffness: 220, damping: 22 }} className="mr-[0.25em] inline-block">{w}</motion.span>
         ))}
       </h2>
-      <motion.p variants={WORD} transition={{ duration: 0.6, delay: 0.25 }} className="mt-3 max-w-[1180px] text-[22px] leading-relaxed text-muted">
+      <motion.p variants={WORD} transition={{ duration: 0.6, delay: 0.25 }} className={`max-w-[1180px] leading-relaxed text-muted ${hero ? 'mt-8 text-[28px]' : 'mt-3 text-[22px]'}`}>
         {beat.body}
       </motion.p>
     </motion.div>
