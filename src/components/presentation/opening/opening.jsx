@@ -321,39 +321,78 @@ function ConnectBeat({ on }) {
   );
 }
 
-const TREE = [
-  ['context/index.md', 'the doc map: what goes where', 0],
-  ['product-context/', 'who it is for, what it does', 1],
-  ['engineering-context/', 'how it is built, one doc per area', 1],
-  ['winnow-transcripts/', 'what each conversation decided', 1],
-];
-
 const WHY_GIT = [
   ['✍️', 'Plain markdown', 'any person reads it, any agent reads it'],
   ['🌿', 'Next to the code', 'versioned with what it describes'],
   ['🔍', 'Changed by pull request', 'reviewed like code, with a history of why'],
 ];
 
+/* Context rolls up: each repo keeps its own, in markdown, next to its code; a
+ * meta context repo gathers those and everything else that is relevant. */
+const REPOS = [
+  { name: 'web-app/', x: 80 },
+  { name: 'payments-api/', x: 365 },
+  { name: 'data-platform/', x: 650 },
+];
+const REPO_W = 250;
+const META = { x: 80, y: 62, w: 820, h: 190 };
+const REPO_Y = 327;
+const META_HOLDS = [
+  ['🔁', 'repos/', 'every repo’s context, rolled up'],
+  ['🎙️', 'transcripts/', 'what conversations decided'],
+  ['📦', 'artifacts/', 'decks, designs, decisions'],
+  ['🏢', 'domain/', 'the business, its language and rules'],
+];
+
 function MarkdownBeat({ on }) {
   return (
     <>
-      <Show on={on} from="left" style={at(80, 70, 700, 330)} className="overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15]">
-        <div className="flex items-center gap-3 border-b border-hairline bg-surface px-5 py-2.5 font-mono text-[14px] text-faint">
-          <span>nam-2026-conference</span><span className="text-violet-300">⎇ main</span>
+      {/* the meta context repo */}
+      <Show on={on} from="down" delay={900} style={at(META.x, META.y, META.w, META.h)} className="pz-glow flex flex-col rounded-2xl border border-emerald-400/60 bg-[#0d0f15]">
+        <div className="flex items-center gap-3 border-b border-hairline bg-surface px-5 py-2.5">
+          <span className="text-[20px]">🧠</span>
+          <span className="font-mono text-[16px] text-emerald-200">org-context/</span>
+          <span className="text-[15px] text-muted">the meta context repo</span>
+          <span className="ml-auto text-[14px] text-faint">everything else that’s relevant goes here too</span>
         </div>
-        <div className="space-y-4 px-6 py-6">
-          {TREE.map(([f, what, depth], i) => (
-            <div key={f} className="pz-appear flex items-baseline gap-4" style={{ paddingLeft: depth * 28, ...later(300 + i * 150) }}>
-              <span className="shrink-0 font-mono text-[19px] text-violet-200" style={{ width: 260 - depth * 28 }}>{f}</span>
-              <span className="text-[16px] text-muted">{what}</span>
+        <div className="grid flex-1 grid-cols-2 content-center gap-x-6 gap-y-4 px-6 py-3">
+          {META_HOLDS.map(([icon, f, what], k) => (
+            <div key={f} className="pz-appear flex items-baseline gap-3" style={later(1300 + k * 150)}>
+              <span className="text-[18px]">{icon}</span>
+              <span className="shrink-0 font-mono text-[17px] text-violet-200">{f}</span>
+              <span className="text-[15px] text-muted">{what}</span>
             </div>
           ))}
         </div>
-        <div className="pz-appear border-t border-hairline px-6 py-3 font-mono text-[15px] text-emerald-300" style={later(1100)}>
-          + 1 line in testing.md · in review on a pull request
-        </div>
       </Show>
-      <Show on={on} from="right" delay={400} style={at(840, 70, 680, 330)} className="flex flex-col gap-4">
+
+      {/* each repo rolls its own context up */}
+      <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
+        {REPOS.map((r, k) => {
+          const x = r.x + REPO_W / 2;
+          const d = `M${x} ${REPO_Y} L${x} ${META.y + META.h}`;
+          return (
+            <g key={r.name}>
+              <path d={d} pathLength="1" data-on={on} className="pz-draw" fill="none" stroke="#4c3d7a" strokeWidth="2.5" style={{ transitionDelay: `${500 + k * 120}ms` }} />
+              {on && <g className="pz-appear" style={later(1200 + k * 120)}><path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#6ee7b7" strokeWidth="2.5" /></g>}
+            </g>
+          );
+        })}
+      </svg>
+      {[0, 1].map((k) => (
+        <Show key={k} on={on} from="none" delay={800} style={at(REPOS[k].x + REPO_W / 2 + 14, META.y + META.h + 26, 140, 30)} className="font-mono text-[13px] uppercase tracking-[0.2em] text-emerald-300">
+          ↑ rolls up
+        </Show>
+      ))}
+      {REPOS.map((r, k) => (
+        <Show key={r.name} on={on} from="up" delay={k * 150} style={at(r.x, REPO_Y, REPO_W, 110)} className="flex flex-col rounded-xl border border-hairline bg-[#0d0f15] px-4 py-3">
+          <span className="font-mono text-[16px] text-ink">{r.name}</span>
+          <span className="mt-1.5 font-mono text-[14px] text-violet-200">CLAUDE.md · context/*.md</span>
+          <span className="mt-auto text-[13px] text-faint">its own context, next to its code</span>
+        </Show>
+      ))}
+
+      <Show on={on} from="right" delay={400} style={at(960, 62, 560, 375)} className="flex flex-col justify-center gap-4">
         <Kicker>Context, in this sense, means</Kicker>
         {WHY_GIT.map(([icon, h, s], i) => (
           <div key={h} className={`${box} pz-appear flex items-center gap-5 px-6 py-4`} style={later(700 + i * 200)}>
@@ -365,7 +404,7 @@ function MarkdownBeat({ on }) {
           </div>
         ))}
       </Show>
-      <Show on={on} from="up" delay={1600} style={at(80, 450, 1440, 90)} className="flex items-center justify-center gap-5 rounded-2xl border border-dashed border-hairline px-8 text-[20px] text-muted">
+      <Show on={on} from="up" delay={1600} style={at(80, 475, 1440, 76)} className="flex items-center justify-center gap-5 rounded-2xl border border-dashed border-hairline px-8 text-[20px] text-muted">
         <span className="text-[28px]">☕</span>
         <span>Why not a wiki like Confluence, or a search tool like Glean? Ten minutes isn’t enough — <b className="text-ink">ask me afterwards.</b></span>
       </Show>
