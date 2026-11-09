@@ -1,5 +1,5 @@
 import { at, Show, Replay, Code, Kicker, Tick, Typed, later } from '../kit.jsx';
-import { box, Face, HOSTS, StepRail, STEP_CX, Wave, TYPING_MS } from './kit.jsx';
+import { box, Face, HOSTS, StepRail, Wave, TYPING_MS } from './kit.jsx';
 
 /* ------------------------------------------------------------------ *
  * Title — the same stage as the engineering talk, with a microphone at
@@ -176,22 +176,8 @@ function WhereScene({ step }) {
 }
 
 /* ------------------------------------------------------------------ *
- * Three steps, and two doors into them.
+ * The three steps together, and what holds them to one another.
  * ------------------------------------------------------------------ */
-
-const DOORS = [
-  { x: 80,  icon: '📄', title: 'Afterwards', cmd: '/winnow <transcript | paste | audio>', sub: 'a transcript file, pasted notes or a voice note', to: 0, demo: '/winnow context/winnow-transcripts/demo-transcript.txt' },
-  { x: 880, icon: '⚡', title: 'One line', cmd: '/create-tasks <one line>', sub: 'you already know the ticket — just raise it properly', to: 2 },
-];
-const DOOR_W = 640;
-const DOOR_Y = 330;
-const DOOR_H = 290;
-
-function doorPath(d) {
-  const x0 = d.x + DOOR_W / 2;
-  const x1 = STEP_CX(d.to);
-  return `M${x0} ${DOOR_Y} C ${x0} ${DOOR_Y - 70}, ${x1} ${DOOR_Y - 60}, ${x1} 180`;
-}
 
 const PRINCIPLES = [
   ['📚', 'Grounded in the context', 'No skill works in isolation: each reads the project context before it acts.'],
@@ -228,32 +214,6 @@ function WaysScene({ step }) {
           </div>
         ))}
       </Show>
-
-      <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
-        {DOORS.map((d, i) => (
-          <g key={d.title}>
-            <path d={doorPath(d)} pathLength="1" data-on={step === 1} className="pz-draw" fill="none" stroke="#6d28d9" strokeWidth="3" style={{ transitionDelay: `${300 + i * 200}ms` }} />
-            {step === 1 && <g className="pz-appear" style={later(1500 + i * 200)}><path d={doorPath(d)} pathLength="1" className="pz-flow" fill="none" stroke="#c4b5fd" strokeWidth="3" /></g>}
-          </g>
-        ))}
-      </svg>
-
-      {DOORS.map((d, i) => (
-        <Show key={d.title} on={step === 1} from="up" delay={i * 180} style={at(d.x, DOOR_Y, DOOR_W, DOOR_H)} className={`${box} flex flex-col p-6`}>
-          <div className="flex items-center gap-3">
-            <span className="text-[30px]">{d.icon}</span>
-            <span className="font-display text-[28px] text-ink">{d.title}</span>
-          </div>
-          <code className="mt-4 block rounded-lg border border-hairline bg-ground/70 px-3 py-2 font-mono text-[16px] text-violet-200">{d.cmd}</code>
-          <div className="mt-3 text-[16px] text-muted">{d.sub}</div>
-          {d.demo && (
-            <div className="pz-appear mt-3 inline-flex items-center gap-2 self-start whitespace-nowrap rounded-full border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 font-mono text-[13px] text-emerald-200" style={later(1800)}>
-              <span className="text-emerald-400">▶ try it</span> {d.demo}
-            </div>
-          )}
-          <div className="mt-auto text-[14px] text-faint">joins at <b className="text-muted">{['Distil', 'Remember', 'Raise'][d.to]}</b></div>
-        </Show>
-      ))}
     </>
   );
 }
@@ -315,11 +275,6 @@ export const PRODUCT_FLOW = [
         kicker: '9 · The whole flow',
         title: 'Distil → Remember · Raise',
         body: 'The pieces together: distil separates noise from signal, then remember and raise are peers — context and tickets — each after you agree. None of them works in isolation: every step reads the project context.',
-      },
-      {
-        kicker: '9 · Two ways in',
-        title: 'From a transcript, or from one line',
-        body: 'A transcript, pasted notes or a voice note go straight to winnow, which hands the knowledge and the work on. One line goes straight to create-tasks.',
       },
     ],
     Scene: WaysScene,

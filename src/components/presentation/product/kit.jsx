@@ -72,8 +72,7 @@ export function SkillHead({ icon, cmd, line, className = '' }) {
 export const TYPING_MS = 700;
 
 /* ------------------------------------------------------------------ *
- * The three steps, as a rail across the top of the stage. Exported so the
- * doors chapter can draw its paths onto the exact stations.
+ * The three steps, as a rail across the top of the stage.
  * ------------------------------------------------------------------ */
 
 /* Remember and Raise are peers — winnow hands to both, in any order. The talk
@@ -87,7 +86,6 @@ const PEERS_FROM = 1;
 
 export const STEP_W = 360;
 export const STEP_X = (i) => 80 + i * 540;
-export const STEP_CX = (i) => STEP_X(i) + STEP_W / 2;
 
 export function StepRail({ y = 80, active = -1, delay = 0 }) {
   return (

@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Code, Kicker, Tick, later } from '../kit.jsx';
+import { at, Show, Replay, Code, Kicker, later } from '../kit.jsx';
 import { box } from './kit.jsx';
 
 /* ------------------------------------------------------------------ *
@@ -154,51 +154,15 @@ function Toss() {
   });
 }
 
-function Bucket({ b, i, lines, full }) {
-  const held = lines.filter((l) => l.held);
-  const plain = lines.filter((l) => !l.held);
+function Bucket({ b, i, lines }) {
   return (
-    <div className={`${box} flex flex-col overflow-hidden ${b.tone}`} style={full ? at(BX(i), 70, BUCKET_W, 540) : at(BX(i), BUCKET_Y, BUCKET_W, 200)}>
+    <div className={`${box} flex flex-col overflow-hidden ${b.tone}`} style={at(BX(i), BUCKET_Y, BUCKET_W, 200)}>
       <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
         <span className="text-[20px]">{b.icon}</span>
         <span className={`font-display text-[20px] ${b.text}`}>{b.label}</span>
         <span className="ml-auto font-mono text-[14px] text-faint">{lines.length}</span>
       </div>
-      {full ? (
-        <div className="flex flex-1 flex-col gap-2.5 p-4">
-          <div className="text-[14px] text-faint">{b.sub}</div>
-          {plain.map((l, j) => (
-            <div key={l.t} className={`pz-appear rounded-lg border border-hairline bg-raised px-3 py-2 text-[15px] leading-snug ${b.id === 'noise' ? 'text-faint' : 'text-ink'}`} style={later(300 + i * 150 + j * 200)}>
-              {l.t}
-            </div>
-          ))}
-          {held.length > 0 && (
-            <div className="pz-appear rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-[15px] leading-snug" style={later(900 + i * 150)}>
-              <div className="font-mono text-[13px] text-amber-300">held — winnow asks you first</div>
-              {held.map((l) => <div key={l.t} className="mt-1 text-ink"><span className="mr-1.5 text-amber-300">{l.held}</span>{l.t}</div>)}
-            </div>
-          )}
-          {b.id === 'know' && (
-            <div className="pz-appear mt-auto rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[14px] text-emerald-100" style={later(1600)}>
-              → <Code className="text-[12px]">context/<wbr />engineering‑context/testing.md</Code> — the viewport the mobile specs run at
-            </div>
-          )}
-          {b.id === 'work' && (
-            <div className="pz-appear mt-auto rounded-lg border border-violet-400/40 bg-violet-500/10 px-3 py-2 text-[14px] text-violet-100" style={later(1800)}>
-              <div className="font-semibold">Keep sessions in view on mobile</div>
-              <div className="mt-1 flex items-center gap-2"><Tick className="size-5 text-[11px]" /> has a why</div>
-              <div className="mt-1 flex items-center gap-2"><Tick className="size-5 text-[11px]" /> has a done-state</div>
-            </div>
-          )}
-          {b.id === 'both' && (
-            <div className="pz-appear mt-auto rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-[14px] text-cyan-100" style={later(2000)}>
-              a Done when line on the task <i>and</i> a rule in the context
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="flex-1 p-3 text-[13px] text-faint">{b.sub}</div>
-      )}
+      <div className="flex-1 p-3 text-[13px] text-faint">{b.sub}</div>
     </div>
   );
 }
@@ -225,18 +189,11 @@ function WinnowScene({ step }) {
       </Show>
       {BUCKETS.map((b, i) => (
         <Show key={b.id} on={step === 0} from="up" delay={1500 + i * 120}>
-          <Bucket b={b} i={i} lines={by(b.id)} full={false} />
+          <Bucket b={b} i={i} lines={by(b.id)} />
         </Show>
       ))}
       {/* after the buckets, so a landing line paints on top of its bucket */}
       {step === 0 && <Toss />}
-
-      {/* beat 1: the buckets, in full */}
-      {BUCKETS.map((b, i) => (
-        <Replay key={`${b.id}-full`} on={step === 1} from="up" delay={i * 120}>
-          <Bucket b={b} i={i} lines={by(b.id)} full />
-        </Replay>
-      ))}
     </>
   );
 }
@@ -246,11 +203,6 @@ const WINNOW_BEATS = [
     kicker: '8 · Distil',
     title: 'Winnow: toss it all up and sort every line',
     body: 'It reads the AI context first, so the words land on the project’s real names. Then every line goes into exactly one bucket. Noise is set aside and never written anywhere.',
-  },
-  {
-    kicker: '8 · Four buckets',
-    title: 'Noise, knowledge, actionable work — or both',
-    body: 'A candidate task needs a why and a done-state, or it is not one yet. Knowledge goes to the doc that owns it. A line can be both. Anything the room left open is held until winnow has asked you.',
   },
 ];
 
