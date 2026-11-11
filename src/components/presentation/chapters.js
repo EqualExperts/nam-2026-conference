@@ -1,6 +1,7 @@
 import { INTRO } from './intro.jsx';
 import { SHIP, SHIP_PR } from './ship.jsx';
 import { NEEDS_HUMAN, AFTER } from './after.jsx';
+import { NEXT } from './next.jsx';
 
 /**
  * The presentation, in order. Each chapter is `{ id, name, accent, beats, Scene }`:
@@ -8,4 +9,4 @@ import { NEEDS_HUMAN, AFTER } from './after.jsx';
  * needs-human breaks into ship where it happens — after the loop, before the
  * pull request — so the talk tells each idea once, at its station.
  */
-export const CHAPTERS = [...INTRO, ...SHIP, ...NEEDS_HUMAN, ...SHIP_PR, ...AFTER];
+export const CHAPTERS = [...INTRO, ...SHIP, ...NEEDS_HUMAN, ...SHIP_PR, ...AFTER, ...NEXT];

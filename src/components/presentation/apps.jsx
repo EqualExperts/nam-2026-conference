@@ -2,8 +2,7 @@ import { later } from './kit.jsx';
 
 /*
  * The apps the room actually uses — GitHub and Claude Desktop, drawn light the
- * way they look — shared by the opening's two ways in and the lab, so the two
- * never drift apart.
+ * way they look — drawn for the opening's two ways in.
  */
 
 /*
