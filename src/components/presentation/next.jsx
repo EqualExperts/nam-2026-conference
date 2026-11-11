@@ -112,7 +112,8 @@ function EvalScene({ step }) {
               <div key={s.name}>
                 <div className="flex items-baseline justify-between">
                   <span className="text-[19px] font-semibold text-ink">{s.name}</span>
-                  <span className={`font-mono text-[15px] ${v2wins ? 'text-emerald-300' : 'text-rose-300'}`}>{v2wins ? '▲ v2' : '▼ v2'}</span>
+                  <span className={`font-mono text-[15px] ${v2wins ? 'text-emerald-300' : 'text-rose-300'}`}>{/* the arrow is which way v2 moved; the colour and word, whether that helps */}
+                    {s.v2 > s.v1 ? '▲' : '▼'} v2 {v2wins ? 'better' : 'worse'}</span>
                 </div>
                 <div className="text-[13px] text-faint">{s.sub}{s.better === 'low' ? ' · lower is better' : ''}</div>
                 <div className="mt-1.5 space-y-1">
