@@ -206,7 +206,10 @@ move them. The engineering talk tells each idea once, at the station where it
 happens: sizing is Setup's second beat, the Swiss cheese strip sits on the code
 audit, and the needs-human chapter (`after.jsx`) breaks into ship after the loop,
 before `SHIP_PR` — ship's last stop, the same `ShipScene` offset by `PR_BEAT`. It
-ends on *Your role* and a three-step *Now you* lab. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
+ends on where the harness goes next (`next.jsx`): evals, a loop that learns
+from escaped defects, three challenges, slicing work into waves so agents run
+side by side, and a *Before lunch* slide that starts `/ship`. Those are directions, not features — each marks what exists *today*
+and what is *next*, and the eval scorecard is labelled illustrative. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
 that travels both talks, `Flip`, `Terminal`, `Verdict`…); `product/kit.jsx` the
 product talk's own (the hosts' faces, `Wave`, `Versus` — by hand against with the
 skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`); `Backdrop.jsx` the starfield
