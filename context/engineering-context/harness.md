@@ -365,7 +365,7 @@ cannot start another round.
   runs `scripts/depends.mjs <n>`: it reads the `**Depends on:** #m` line
   create-tasks writes and asks GitHub whether each issue is closed as
   completed. All done → build on main. One not done but being built (an open
-  pull request, or an `issue-<m>-` branch) → **stack**: `BASE` becomes that
+  pull request, or an `issue-<m>-` branch; `#m` may itself be an open, non-draft, same-repository pull request, stacked on by its head branch whatever it is named; a merged one is done) → **stack**: `BASE` becomes that
   branch, so the worktree, every gate's merge and the pull request's base all
   use it, and the PR body says *Stacked on #pr — merge that first*. In a batch
   (`/ship 2 3`, `args.batch`) it waits up to five minutes for a dependency's

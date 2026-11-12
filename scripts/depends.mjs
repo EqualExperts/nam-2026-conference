@@ -8,7 +8,7 @@
  * create-tasks writes a dependency as a `**Depends on:** #1 …` line. A
  * dependency is done when its issue is closed as completed — what merging its
  * pull request (Closes #n) does. One that is not done yet but is being built
- * — it has an `issue-<n>-` branch, or an open pull request — is something to
+ * — it has an `issue-<n>-` branch, or an open pull request (a dependency may itself be a pull request number) — is something to
  * stack on: ship builds this ticket on that branch, and when it merges, the
  * on-merge workflow points this ticket's pull request at main and updates it.
  *
@@ -32,17 +32,21 @@ export function dependsOn(body) {
 }
 
 /** Whether an issue's state counts as done. */
-export const isDone = ({ state, stateReason }) => state === 'CLOSED' && stateReason !== 'NOT_PLANNED';
+export const isDone = ({ state, stateReason }) => state === 'MERGED' || (state === 'CLOSED' && stateReason !== 'NOT_PLANNED');
 
 /**
  * The branch an unmet dependency is being built on: its open pull request's
- * head (one that says Closes/Refs #n, or is on `issue-<n>-…`), else an
- * `issue-<n>-` branch on origin. `prs`: [{ number, headRefName, body }];
+ * head (the PR numbered n itself, when n names a pull request; one that says
+ * Closes/Refs #n; or one on `issue-<n>-…`), else an `issue-<n>-` branch on
+ * origin. Draft and fork pull requests are not stacked on.
+ * `prs`: [{ number, headRefName, body, isDraft, isCrossRepository }];
  * `branches`: names on origin.
  */
 export function inFlight(n, prs, branches) {
   const own = new RegExp(`^issue-${n}-`);
   const says = new RegExp(`\\b(?:closes|fixes|resolves|refs)\\s+#${n}\\b`, 'i');
+  const self = prs.find((p) => p.number === n && !p.isDraft && !p.isCrossRepository);
+  if (self) return { branch: self.headRefName, pr: self.number };
   const pr = prs.find((p) => own.test(p.headRefName) || says.test(p.body || ''));
   if (pr) return { branch: pr.headRefName, pr: pr.number };
   const branch = branches.filter((b) => own.test(b)).sort().at(-1);
@@ -72,7 +76,7 @@ function main() {
       if (!isDone(i)) pending.push({ n: i.number, title: i.title, busy: i.labels.some((l) => l.name === 'ai-working') });
     }
     const look = () => {
-      const prs = pending.length ? gh('pr', 'list', '--state', 'open', '--json', 'number,headRefName,body', '--limit', '100') : [];
+      const prs = pending.length ? gh('pr', 'list', '--state', 'open', '--json', 'number,headRefName,body,isDraft,isCrossRepository', '--limit', '100') : [];
       let branches = [];
       try { branches = run('git', ['ls-remote', '--heads', 'origin']).split('\n').map((l) => l.split('refs/heads/')[1]).filter(Boolean); } catch { /* offline */ }
       return pending.map((p) => ({ n: p.n, title: p.title, ...(inFlight(p.n, prs, branches) || { branch: null, pr: null }) }));
