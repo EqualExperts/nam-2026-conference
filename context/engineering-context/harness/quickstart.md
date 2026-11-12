@@ -8,7 +8,7 @@ up, run everything below from Claude in your fork's folder. Every step in detail
 ## The product harness: from a conversation to tickets
 
 You stay in the conversation. The skills ask questions, and nothing is written
-until you agree. There are three levels; each one adds a step in front of the
+until you agree. There are two levels; each one adds a step in front of the
 one before.
 
 1. **Write a ticket directly:** `/create-tasks Add a page that lists every
@@ -21,10 +21,6 @@ one before.
    decisions in the docs (`update-context`) and raises the issues
    (`create-tasks`). Use the full transcript, not an AI summary: a summary
    drops who said what, and which decision replaced which.
-3. **Listen live** (needs the audio setup): `/listen-to-meeting`. It transcribes
-   on your machine and flags contradictions and gaps during the meeting. Say
-   "meeting's over" to stop it; it then offers to run `winnow` on the
-   transcript.
 
 **You should end up with:** new issues on your fork, and possibly edits to
 `context/` for you to review and commit.

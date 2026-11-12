@@ -806,7 +806,7 @@ check: the restart below fixes it, because a new session picks up Node 22 as
 the default.
 
 **All pass:** nothing to restart. Tell the person they can carry on in this
-session, and to run `/setup-winnow` (audio is optional, and recommended).
+session.
 
 **Only `ship-rote` is missing** (`ship` is listed and the guard is live): do
 not ask for a restart, and don't treat it as final. The agent type often shows
@@ -826,8 +826,7 @@ temporary workspace or rule 3 (another repository), with `<clone>` being
 
 > Setup is done. To load the workshop's commands, start Claude again in the
 > project folder: in Claude Desktop, start a new session and choose the folder
-> `<clone>`; in a terminal, `cd <clone> && claude`. In the new session, run
-> `/setup-winnow` (audio is optional, and recommended).
+> `<clone>`; in a terminal, `cd <clone> && claude`.
 
 End that message with a **👉 Your turn** block naming the folder in full. When
 `<clone>` is outside this session's folder — a temporary workspace, Step 5's
@@ -886,12 +885,7 @@ filled in:
 > 🎉 **You're ready!** Your project is in `<clone>`, and your copy on GitHub is
 > https://github.com/<you>/nam-2026-conference.
 >
-> **First:** run `/setup-winnow`. When it asks about audio, we recommend
-> **yes**: the workshop plans to listen to a live conversation. It's a one-time
-> download of a few hundred MB plus a microphone permission, so it's best done
-> now rather than on the day. Then
-> `/winnow context/winnow-transcripts/demo-transcript.txt` to turn a sample conversation into
-> tickets, and `/ship <ticket number>` to build one.
+> Run `/ship <ticket number>` to build a ticket.
 >
 > *Heads-up: `/ship` is heavy. One small ticket can take a million or so
 > tokens, so on a Pro plan you may hit your usage limit during the day. That's
@@ -911,9 +905,9 @@ if you have one: *Want me to start the app and open it in your browser?*
 Rules for the hand-off:
 
 - If any of Step 10's checks failed (commands, hook or Node), the restart comes first, in Step
-  10's exact words, before **First:**. Do not offer to start the app in that
+  10's exact words, before the `/ship` line. Do not offer to start the app in that
   case: the restart would stop it.
-- If Step 0c is ⚠️, replace the `/ship` part of **First:** with the fix for
+- If Step 0c is ⚠️, replace the `/ship` line with the fix for
   its cause (Step 0c's list), in one or two plain sentences. Keep the rest.
   Leave out the heads-up line too, since `/ship` isn't available yet.
 - If `ship-rote` is still missing now (look again; it often loads by itself),

@@ -191,8 +191,6 @@ function WaysScene({ step }) {
       <StepRail y={80} />
       <Show on={step === 0} delay={1300} style={at(80, 220, 1440, 60)} className="flex items-center justify-center gap-4 text-[21px] text-muted">
         <span>Each step is a skill, grounded in the project context. Each hands to the next only when <b className="text-ink">you</b> say so.</span>
-        <span className="text-faint">·</span>
-        <span className="font-mono text-[17px] text-faint"><Code>/setup-winnow</Code> once per machine and repo</span>
       </Show>
       <Show on={step === 0} delay={1900} style={at(80, 300, 1440, 90)}>
         {[
