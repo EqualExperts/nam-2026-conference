@@ -396,6 +396,8 @@ for (const [path, name] of DECKS) {
       if (beat === 4 && name === 'product') await shotForPR(page, 'a content slide');
       if (beat === total) {
         await expect(page.getByTestId('deck-bridge')).toBeVisible();
+        // a row of three numbered cards beside it
+        await expect(page.getByTestId('deck-closing-cards').locator(':scope > div')).toHaveCount(3);
         await shotForPR(page, `${name} closing slide`);
       } else {
         await page.keyboard.press('ArrowRight');

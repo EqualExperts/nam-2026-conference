@@ -204,7 +204,9 @@ written with `text-violet-300` takes the deck look and the rest of the app is un
 draws the left bar, ticks and top-right tab (`deck-frame`, `deck-tab`; the tab holds the
 blue mark and `presentation-counter`). The opening title slide draws its own card with the
 bridge and white logo (`deck-bridge`, `deck-logo`); `Deck`'s `Brand` adds both to the last
-beat of every deck. Files are in `public/brand/`; the ticket's `charcoal-background.png` is
+beat of every deck, with a row of three numbered cards (`deck-closing-cards`) from the last
+chapter's `closing: [{ title, body? }]`. `kit.jsx` has the card primitives: `Card`, `AccentCard`,
+`TwoPanel`, `Numeral`, `Pill`; the product kit's `box` is the outlined card. Files are in `public/brand/`; the ticket's `charcoal-background.png` is
 not used because the bridge is baked into it. Logo rules: at least 100px wide, unaltered.
 
 `components/presentation/chapters.js` lists the engineering chapters in order and

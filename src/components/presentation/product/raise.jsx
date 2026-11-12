@@ -118,5 +118,6 @@ export const UPDATE_CONTEXT = [
 ];
 
 export const HANDOFF = [
-  { id: 'handoff', name: 'Over to the engineering harness', accent: 'text-violet-300', tone: 'violet', beats: HANDOFF_BEATS, Scene: HandoffScene },
+  { id: 'handoff', name: 'Over to the engineering harness', accent: 'text-violet-300', tone: 'violet', beats: HANDOFF_BEATS, Scene: HandoffScene,
+    closing: [{ title: 'Product harness', body: 'A conversation → a ticket' }, { title: 'Engineering harness', body: 'The ticket → a reviewed pull request' }, { title: 'Over to Jonas' }] },
 ];

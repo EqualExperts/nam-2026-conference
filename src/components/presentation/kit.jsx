@@ -70,6 +70,47 @@ export function Replay({ on, children, ...rest }) {
 /** Delay a keyframe-animated child inside one beat. */
 export const later = (ms, extra) => ({ animationDelay: `${ms}ms`, ...extra });
 
+/** The NAM 2026 cards. Outlined: a #071322 panel with a thin blue outline, optionally a circled numeral. */
+export function Numeral({ n, className = '' }) {
+  return <span aria-hidden="true" className={`inline-grid size-9 shrink-0 place-items-center rounded-full border-2 border-deck-outline text-[17px] font-bold text-deck-outline ${className}`}>{n}</span>;
+}
+
+export function Card({ n, title, children, className = '', style, ...rest }) {
+  return (
+    <div className={`rounded-2xl border border-deck-outline/60 bg-deck-card p-5 ${className}`} style={style} {...rest}>
+      {(n != null || title) && (
+        <div className="flex items-center gap-3">
+          {n != null && <Numeral n={n} />}
+          {title && <div className="font-display text-[22px] leading-tight text-ink">{title}</div>}
+        </div>
+      )}
+      {children && <div className={n != null || title ? 'mt-3' : ''}>{children}</div>}
+    </div>
+  );
+}
+
+/** A card with a thick bar down its left edge in one of the palette's accents. */
+const BARS = { blue: 'border-l-deck-frame', orange: 'border-l-deck-orange', teal: 'border-l-deck-teal', cyan: 'border-l-deck-cyan' };
+export function AccentCard({ accent = 'blue', children, className = '', style, ...rest }) {
+  return <div className={`rounded-2xl border border-deck-outline/30 border-l-[8px] bg-deck-card p-5 ${BARS[accent]} ${className}`} style={style} {...rest}>{children}</div>;
+}
+
+/** Two panels side by side under one heading each — a comparison table. */
+export function TwoPanel({ left, right, className = '' }) {
+  return (
+    <div className={`grid grid-cols-2 gap-5 ${className}`}>
+      {[left, right].map((side, i) => (
+        <Card key={i} title={side.title}>{side.children}</Card>
+      ))}
+    </div>
+  );
+}
+
+/** The key-objective pill: a small rounded label in the accent. */
+export function Pill({ children, className = '' }) {
+  return <span className={`inline-flex items-center rounded-full bg-deck-frame px-4 py-1 text-[15px] font-semibold text-deck-card ${className}`}>{children}</span>;
+}
+
 export const MODELS = {
   opus:   { name: 'Opus',   chip: 'bg-violet-500/15 text-violet-200 border-violet-400/40', dot: 'bg-violet-400' },
   sonnet: { name: 'Sonnet', chip: 'bg-sky-500/15 text-sky-200 border-sky-400/40',          dot: 'bg-sky-400' },

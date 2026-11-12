@@ -6,7 +6,7 @@ import { later } from '../kit.jsx';
  * comparison, a skill's big heading, and the three-step rail the talk returns to.
  */
 
-export const box = 'rounded-2xl border border-hairline bg-surface';
+export const box = 'rounded-2xl border border-deck-outline/60 bg-deck-card';
 
 /* The hosts — attendees in the app too, so their portraits are its own. */
 export const HOSTS = {

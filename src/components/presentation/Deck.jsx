@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import { Backdrop } from './Backdrop.jsx';
 import { BRAND } from './tokens.js';
-import { useEntries } from './kit.jsx';
+import { AccentCard, Numeral, Pill, useEntries } from './kit.jsx';
 import { beatAfter, clampBeat, keyAction, locateBeat, parseBeat } from '../../lib/presentation.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
@@ -103,7 +103,7 @@ function Caption({ beat, accent, index, top }) {
         <motion.div variants={WORD} aria-hidden="true" className={`pointer-events-none absolute right-0 top-[-34px] font-display text-[200px] leading-none ${accent}`}><span className="opacity-40">{beat.lesson.n}</span></motion.div>
       )}
       <motion.div variants={WORD} className={`flex items-center gap-4 font-sans font-bold uppercase tracking-[0.2em] text-deck-outline ${hero ? 'text-[24px]' : 'text-[15px]'}`}>
-        {beat.lesson && <span className={`rounded-full border-2 border-current bg-white/5 px-4 py-0.5 font-display text-[20px] font-semibold tracking-[0.14em] [word-spacing:0.35em] ${accent}`}>{beat.lesson.label}</span>}
+        {beat.lesson && <Pill className="font-display tracking-[0.14em] [word-spacing:0.35em]">{beat.lesson.label}</Pill>}
         {beat.kicker}
       </motion.div>
       <h2 className={`font-display text-ink ${hero ? 'mt-5 text-[108px] leading-[0.95]' : 'mt-2 text-[46px] leading-tight'}`}>
@@ -215,7 +215,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
             return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} leaving={leaving} advance={advance} />;
           })}
           <Caption beat={current.beats[step]} accent={current.accent} index={beat} top={captions === 'top'} />
-          {closing && <Brand />}
+          {closing && <Brand cards={current.closing} high={!!current.beats[step]} />}
         </motion.div>
       </div>
 
@@ -280,9 +280,20 @@ function Frame({ counter }) {
 }
 
 /** Bridge on the right, white Equal Experts logo bottom-left (every closing slide). */
-function Brand() {
+function Brand({ cards, high }) {
   return (
     <>
+      {/* a row of three numbered cards, built from the chapter's own content */}
+      {cards && (
+        <div data-testid="deck-closing-cards" className="pointer-events-none absolute flex gap-5" style={{ left: 80, top: high ? 60 : 690, width: 1000 }}>
+          {cards.map((c, i) => (
+            <AccentCard key={c.title} accent={['blue', 'orange', 'teal'][i]} className="flex-1 !p-4">
+              <div className="flex items-center gap-3"><Numeral n={i + 1} /><div className="font-display text-[18px] leading-tight text-ink">{c.title}</div></div>
+              {c.body && <div className="mt-2 text-[14px] leading-snug text-muted">{c.body}</div>}
+            </AccentCard>
+          ))}
+        </div>
+      )}
       <img src={BRAND.bridge} alt="NAM Conference, Brooklyn 2026" data-testid="deck-bridge"
         className="absolute rounded-3xl" style={{ right: 70, bottom: 70, width: 360 }} />
       <img src={BRAND.logoWhite} alt="Equal Experts" data-testid="deck-logo" className="absolute" style={{ left: 80, bottom: 56, width: 160 }} />

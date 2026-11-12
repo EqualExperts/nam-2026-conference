@@ -698,5 +698,9 @@ export const AFTER = [
   { id: 'merge', name: 'Merge', accent: 'text-violet-300', tone: 'violet', beats: MERGE_BEATS, Scene: MergeScene },
   { id: 'scale', name: 'Many at once', accent: 'text-sky-300', tone: 'sky', beats: SCALE_BEATS, Scene: ScaleScene },
   { id: 'role', name: 'Your role', accent: 'text-violet-300', tone: 'violet', beats: ROLE_BEATS, Scene: RoleScene },
-  { id: 'lab', name: 'Now you', accent: 'text-emerald-300', tone: 'emerald', beats: LAB_BEATS, Scene: LabScene },
+  {
+    id: 'lab', name: 'Now you', accent: 'text-emerald-300', tone: 'emerald', beats: LAB_BEATS, Scene: LabScene,
+    // the closing slide's three numbered cards: the lab's three steps
+    closing: [{ title: 'Pick a ticket' }, { title: 'Ask Claude to ship it' }, { title: 'Review what comes back' }],
+  },
 ];

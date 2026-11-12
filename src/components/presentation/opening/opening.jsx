@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Kicker, Tick, later } from '../kit.jsx';
+import { at, Show, Replay, Kicker, Numeral, Tick, later } from '../kit.jsx';
 import { box, Face } from '../product/kit.jsx';
 import { Field } from '../product/intro.jsx';
 import { BRAND } from '../tokens.js';
@@ -593,7 +593,7 @@ function TodayScene({ step, leaving, advance }) {
       <Below>
       {PLAN.map((p, i) => (
         <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(PLAN_X(i), 50, PLAN_W, 420)} className={`${box} flex flex-col p-6 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
-          <div className="font-mono text-[15px] uppercase tracking-[0.18em] text-faint">{p.when}</div>
+          <div className="flex items-center gap-3 text-[15px] uppercase tracking-[0.18em] text-faint"><Numeral n={i + 1} />{p.when}</div>
           <span className="mt-4 text-[44px] leading-none">{p.icon}</span>
           <div className="mt-4 font-display text-[27px] leading-tight text-ink">{p.title}</div>
           {p.sub && <div className="mt-2 text-[17px] leading-snug text-muted">{p.sub}</div>}
@@ -748,5 +748,6 @@ export const OPENING = [
       null,
     ],
     Scene: TodayScene,
+    closing: [{ title: 'Lab one', body: 'The product harness' }, { title: 'Lab two', body: 'The engineering harness' }, { title: 'Teams build', body: 'Then present' }],
   },
 ];
