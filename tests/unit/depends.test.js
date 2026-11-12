@@ -55,6 +55,6 @@ test('a draft or fork pull request is not something to stack on', () => {
 
 test('a merged pull request is done; a closed one is not', () => {
   assert.equal(isDone({ state: 'MERGED', stateReason: null }), true);
-  assert.equal(isDone({ state: 'CLOSED', stateReason: null }), false);
+  assert.equal(isDone({ state: 'CLOSED', stateReason: 'NOT_PLANNED' }), false);
   assert.equal(inFlight(277, [], []), null);
 });
