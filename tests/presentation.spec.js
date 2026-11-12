@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { failOnPageErrors } from './helpers.js';
+import { failOnPageErrors, shotForPR } from './helpers.js';
 
 /**
  * /engineering-presentation — the engineering harness talk. It books nothing and reads no
@@ -283,4 +283,133 @@ test.describe('Reaching the talks from the app', () => {
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(title, 'i') })).toBeVisible();
     }
   });
+});
+
+/**
+ * The NAM 2026 look, on every beat of every deck. One walk per deck checks the
+ * frame, the ground, the font and the contrast as it goes.
+ */
+const DECKS = [
+  ['/opening-presentation', 'opening'],
+  ['/product-presentation', 'product'],
+  ['/engineering-presentation', 'engineering'],
+];
+
+/** Runs in the page: what is wrong with the current beat, as a list of strings. */
+function auditBeat() {
+  const problems = [];
+  const lum = ([r, g, b]) => {
+    const c = [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  // rgb()/rgba(), or the color(srgb r g b / a) Tailwind's opacity modifiers compute to
+  const parse = (css) => {
+    const n = (css.match(/[\d.]+/g) || []).map(Number);
+    return css.startsWith('color(') ? [n[0] * 255, n[1] * 255, n[2] * 255, ...n.slice(3)] : n;
+  };
+  const root = document.querySelector('[data-testid="presentation"]');
+  const ground = parse(getComputedStyle(root).backgroundColor);
+  if (ground.slice(0, 3).join() !== '33,33,33') problems.push(`ground is ${getComputedStyle(root).backgroundColor}`);
+  if (document.querySelector('canvas')) problems.push('a starfield canvas is drawn');
+  for (const id of ['deck-frame', 'deck-tab']) {
+    const el = document.querySelector(`[data-testid="${id}"]`);
+    if (!el || el.getBoundingClientRect().width === 0) problems.push(`${id} missing`);
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const seen = new Set();
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (!n.nodeValue.trim()) continue;
+    const el = n.parentElement;
+    if (seen.has(el) || el.closest('[aria-hidden="true"], .sr-only, svg')) continue;
+    seen.add(el);
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden') continue;
+    // a mock of GitHub or Claude on a light panel keeps its own look: only deck-styled text is held to ours
+    if (el.closest('[data-mock]')) continue;
+    if (!/^"?Lexend/.test(cs.fontFamily)) problems.push(`font ${cs.fontFamily.slice(0, 30)} on "${n.nodeValue.trim().slice(0, 24)}"`);
+    // the text colour (its alpha laid over the fill behind it) against that fill. The fill is the
+    // nearest ancestors' backgrounds composited down to the ground; a gradient or image behind the
+    // text cannot be measured, so that text is skipped.
+    const fg = parse(cs.color);
+    // Held to AA here: the caption, the tab and the chrome, whose fill is the ground or a flat colour.
+    // Scene text sits on mock panels and gradients we cannot measure from the DOM; the token pairs
+    // those scenes draw from are proved in tests/unit/presentation-style.test.js.
+    const flat = el.closest('[data-testid="presentation-caption"], [data-testid="deck-tab"], [data-testid="presentation-chapter"]');
+    if (flat && fg.length >= 3 && cs.backgroundClip !== 'text') {
+      let under = ground.slice(0, 3);
+      const stack = [];
+      let measurable = true;
+      for (let e = el; e && e !== root; e = e.parentElement) {
+        const st = getComputedStyle(e);
+        if (st.backgroundImage !== 'none') { measurable = false; break; }
+        const bg = parse(st.backgroundColor);
+        if (bg.length >= 3 && (bg.length === 3 || bg[3] > 0)) stack.push(bg);
+      }
+      if (measurable) {
+        for (const bg of stack.reverse()) {
+          const al = bg.length > 3 ? bg[3] : 1;
+          under = [0, 1, 2].map((i) => bg[i] * al + under[i] * (1 - al));
+        }
+        const a = fg.length > 3 ? fg[3] : 1;
+        const mixed = [0, 1, 2].map((i) => fg[i] * a + under[i] * (1 - a));
+        const hi = Math.max(lum(mixed), lum(under)); const lo = Math.min(lum(mixed), lum(under));
+        const ratio = (hi + 0.05) / (lo + 0.05);
+        const px = parseFloat(cs.fontSize);
+        const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
+        if (ratio < (large ? 3 : 4.5)) problems.push(`contrast ${ratio.toFixed(1)} on "${n.nodeValue.trim().slice(0, 24)}"`);
+      }
+    }
+  }
+  return problems;
+}
+
+for (const [path, name] of DECKS) {
+  test(`the ${name} deck wears the NAM 2026 look on every beat`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(path);
+    await expect(counter(page)).toHaveText(/^1 \//);
+    const { total } = await readCounter(page);
+    const bad = [];
+    for (let beat = 1; beat <= total; beat += 1) {
+      await expect(counter(page)).toHaveText(new RegExp(`^${beat} /`));
+      await expect(page.getByTestId('deck-tab')).toContainText(`${beat} / ${total}`);
+      const problems = await page.evaluate(auditBeat);
+      if (problems.length) bad.push(`beat ${beat}: ${[...new Set(problems)].slice(0, 3).join('; ')}`);
+
+      if (name === 'opening' && beat === 1) {
+        // the title slide: the bridge on the right, the white logo bottom-left, neither stretched
+        for (const [id, side] of [['deck-bridge', 'right'], ['deck-logo', 'left']]) {
+          const img = page.getByTestId(id);
+          await expect(img).toBeVisible();
+          const m = await img.evaluate((el) => ({ w: el.getBoundingClientRect().width, h: el.getBoundingClientRect().height, nw: el.naturalWidth, nh: el.naturalHeight, x: el.getBoundingClientRect().x }));
+          expect(Math.abs(m.w / m.h - m.nw / m.nh), `${id} is distorted`).toBeLessThan(0.02);
+          // the stage scales to the screen, so the logo's own width is what the rule is about
+          if (id === 'deck-logo') expect(await img.evaluate((el) => el.offsetWidth)).toBeGreaterThanOrEqual(100);
+          const mid = (await page.viewportSize()).width / 2;
+          expect(side === 'right' ? m.x > mid : m.x < mid, `${id} is on the ${side}`).toBe(true);
+        }
+        await shotForPR(page, 'opening title slide');
+      }
+      if (beat === 4 && name === 'product') await shotForPR(page, 'a content slide');
+      if (beat === total) {
+        await expect(page.getByTestId('deck-bridge')).toBeVisible();
+        await shotForPR(page, `${name} closing slide`);
+      } else {
+        await page.keyboard.press('ArrowRight');
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+}
+
+test('the rest of the app keeps its own look', async ({ page }) => {
+  for (const path of ['/', '/sessions/1']) {
+    await page.goto(path);
+    await expect(page.getByTestId('deck-frame')).toHaveCount(0);
+    const font = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+    expect(font).toMatch(/^"?Inter/);
+  }
 });

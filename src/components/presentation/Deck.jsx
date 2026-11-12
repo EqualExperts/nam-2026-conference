@@ -273,7 +273,7 @@ function Frame({ counter }) {
       <div className="absolute bottom-0 left-0 h-3 w-10 bg-deck-frame" />
       <div className="absolute right-6 top-0 flex w-20 flex-col items-center gap-1.5 rounded-b-lg bg-deck-tab pb-2 pt-3" data-testid="deck-tab">
         <img src={BRAND.mark} alt="" className="size-9" />
-        <span className="text-[13px] font-medium text-white" data-testid="presentation-counter">{counter}</span>
+        <span className="text-[13px] font-semibold text-deck-card" data-testid="presentation-counter">{counter}</span>
       </div>
     </div>
   );
