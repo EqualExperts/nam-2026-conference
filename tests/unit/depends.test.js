@@ -40,3 +40,21 @@ test('only one unmet dependency that is being built can be stacked on', () => {
   assert.equal(stackFor([{ n: 2, branch: 'a', pr: 1 }, { n: 3, branch: 'b', pr: 2 }]), null);
   assert.equal(stackFor([]), null);
 });
+
+test('a dependency that is an open pull request on any branch is stacked on by its head', () => {
+  const pr = { number: 277, headRefName: 'opening-presentation', isDraft: false, isCrossRepository: false };
+  assert.deepEqual(inFlight(277, [pr], []), { branch: 'opening-presentation', pr: 277 });
+  assert.deepEqual(stackFor([{ n: 277, ...inFlight(277, [pr], []) }]), { n: 277, branch: 'opening-presentation', pr: 277 });
+});
+
+test('a draft or fork pull request is not something to stack on', () => {
+  const base = { number: 277, headRefName: 'opening-presentation', isDraft: false, isCrossRepository: false };
+  assert.equal(inFlight(277, [{ ...base, isDraft: true }], []), null);
+  assert.equal(inFlight(277, [{ ...base, isCrossRepository: true }], []), null);
+});
+
+test('a merged pull request is done; a closed one is not', () => {
+  assert.equal(isDone({ state: 'MERGED', stateReason: null }), true);
+  assert.equal(isDone({ state: 'CLOSED', stateReason: 'NOT_PLANNED' }), false);
+  assert.equal(inFlight(277, [], []), null);
+});

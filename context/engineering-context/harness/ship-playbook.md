@@ -39,7 +39,7 @@ gh pr list --state open --json number,headRefName,isDraft \
 
 A ticket whose **Depends on** names an issue not merged yet is checked
 before setup starts (`node scripts/depends.mjs <n>`): if that issue is being
-built, this run **stacks** on its branch — the base the prompt names is that
+built, this run **stacks** on its branch (a dependency may itself be an open, non-draft, same-repository pull request, stacked on by its head branch whatever it is named) — the base the prompt names is that
 branch, not main — and the pull request says so; if it is not, the run never
 reaches setup.
 
