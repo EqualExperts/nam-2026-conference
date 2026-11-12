@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { at, Show, Replay, Kicker, Tick, later } from '../kit.jsx';
 import { box, Face } from '../product/kit.jsx';
 import { Field } from '../product/intro.jsx';
+import { BRAND } from '../tokens.js';
 
 /**
  * /opening-presentation — the talk that opens the session: the two ideas the
@@ -75,12 +76,14 @@ const DAY = [
 function TitleScene() {
   return (
     <>
-      <Rings />
-      <div style={at(110, 90, 900, 560)}>
+      <div className="absolute rounded-[40px] border-2 border-deck-outline bg-deck-card" style={at(80, 40, 1440, 790)} />
+      <img src={BRAND.bridge} alt="NAM Conference, Brooklyn 2026" data-testid="deck-bridge" className="absolute rounded-3xl" style={{ right: 110, top: 150, width: 520 }} />
+      <img src={BRAND.logoWhite} alt="Equal Experts" data-testid="deck-logo" className="absolute" style={{ left: 130, top: 740, width: 150 }} />
+      <div style={at(130, 80, 860, 600)}>
         <Kicker className="pz-appear">Equal Experts · NAM conference 2026</Kicker>
-        <h1 className="pz-appear mt-6 font-display text-[104px] leading-[0.92] text-ink" style={later(120)}>
+        <h1 className="pz-appear mt-6 font-display text-[92px] leading-[0.95] text-ink" style={later(120)}>
           Welcome to<br />
-          <span className="pz-shine bg-clip-text text-transparent">NAM 2026</span>
+          <span className="text-deck-outline">NAM 2026</span>
         </h1>
         <p className="pz-appear mt-7 max-w-[800px] text-[27px] leading-snug text-muted" style={later(260)}>
           Today’s exercise: AI across the whole software delivery lifecycle — connected by shared context, accelerated by running work in parallel.
@@ -95,11 +98,11 @@ function TitleScene() {
             </div>
           ))}
         </div>
-        <div className="pz-appear mt-6 flex items-center gap-3 text-[16px] text-faint" style={later(1200)}>
+      </div>
+      <div className="pz-appear absolute flex items-center gap-3 text-[16px] text-faint" style={{ left: 810, top: 690, ...later(1200) }}>
           <Face who="andy" size={30} />
           <span>Andy Vays · Technical Principal · Equal Experts</span>
         </div>
-      </div>
     </>
   );
 }

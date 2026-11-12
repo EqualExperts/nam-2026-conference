@@ -26,10 +26,12 @@ files:
   - src/pages/ProductPresentationPage.jsx
   - src/pages/OpeningPresentationPage.jsx
   - src/components/presentation/
+  - public/brand/
   - src/lib/presentation.js
 tests:
   - tests/unit/format.test.js
   - tests/unit/presentation.test.js
+  - tests/unit/presentation-style.test.js
   - tests/smoke.spec.js
   - tests/home.spec.js
   - tests/switcher.spec.js
@@ -190,6 +192,21 @@ scene also gets `advance`, so a button on the stage can be the clicker. The
 opening deck ends on the frame the product deck opens with ("Continue to the
 product harness"), and the product deck on the one the engineering deck opens with
 ("Continue to the engineering harness"); the engineering deck has no `next`.
+**The decks' look (NAM Conference 2026).** `presentation/tokens.js` holds the values once —
+frame `#2095d3`, tab `#1795d4`, card `#071322`, outline/eyebrow `#38bdf8`, muted
+`#94a3b8`, ground `#212121`, accents orange `#f59e0b`, teal `#3a9a9a`, cyan `#00c8e8`,
+font Lexend — and `src/index.css` writes them as `--color-deck-*` / `--font-deck`. The
+`.deck` class on Deck's root remaps `--font-*`, the elevation tokens and the whole
+violet/emerald/sky/fuchsia/amber/rose palette onto them (violet and indigo to blue,
+sky and cyan to cyan, emerald to teal, fuchsia, amber and rose to orange), so a scene
+written with `text-violet-300` takes the deck look and the rest of the app is untouched.
+`Backdrop` is a flat charcoal ground (no starfield, no canvas); `Frame` in `Deck.jsx`
+draws the left bar, ticks and top-right tab (`deck-frame`, `deck-tab`; the tab holds the
+blue mark and `presentation-counter`). The opening title slide draws its own card with the
+bridge and white logo (`deck-bridge`, `deck-logo`); `Deck`'s `Brand` adds both to the last
+beat of every deck. Files are in `public/brand/`; the ticket's `charcoal-background.png` is
+not used because the bridge is baked into it. Logo rules: at least 100px wide, unaltered.
+
 `components/presentation/chapters.js` lists the engineering chapters in order and
 `presentation/product/chapters.js` the product ones — the workflow first
 (`workflow.jsx`: the project context, the two-fold trick, context versus the task

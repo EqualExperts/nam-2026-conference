@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import { Backdrop } from './Backdrop.jsx';
+import { BRAND } from './tokens.js';
 import { useEntries } from './kit.jsx';
 import { beatAfter, clampBeat, keyAction, locateBeat, parseBeat } from '../../lib/presentation.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
@@ -101,8 +102,8 @@ function Caption({ beat, accent, index, top }) {
       {beat.lesson && (
         <motion.div variants={WORD} aria-hidden="true" className={`pointer-events-none absolute right-0 top-[-34px] font-display text-[200px] leading-none ${accent}`}><span className="opacity-40">{beat.lesson.n}</span></motion.div>
       )}
-      <motion.div variants={WORD} className={`flex items-center gap-4 font-mono uppercase tracking-[0.2em] ${hero ? 'text-[24px]' : 'text-[15px]'} ${accent}`}>
-        {beat.lesson && <span className="rounded-full border-2 border-current bg-white/5 px-4 py-0.5 font-display text-[20px] font-semibold tracking-[0.14em] [word-spacing:0.35em]">{beat.lesson.label}</span>}
+      <motion.div variants={WORD} className={`flex items-center gap-4 font-sans font-bold uppercase tracking-[0.2em] text-deck-outline ${hero ? 'text-[24px]' : 'text-[15px]'}`}>
+        {beat.lesson && <span className={`rounded-full border-2 border-current bg-white/5 px-4 py-0.5 font-display text-[20px] font-semibold tracking-[0.14em] [word-spacing:0.35em] ${accent}`}>{beat.lesson.label}</span>}
         {beat.kicker}
       </motion.div>
       <h2 className={`font-display text-ink ${hero ? 'mt-5 text-[108px] leading-[0.95]' : 'mt-2 text-[46px] leading-tight'}`}>
@@ -190,11 +191,13 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
 
   const chapterStarts = useMemo(() => COUNTS.map((_, i) => COUNTS.slice(0, i).reduce((a, b) => a + b, 0)), [COUNTS]);
   const current = CHAPTERS[chapter];
+  // the last slide of every deck carries the bridge (the opening title draws its own)
+  const closing = beat === TOTAL - 1;
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="fixed inset-0 select-none overflow-hidden bg-ground text-ink" data-testid="presentation" onPointerMove={parallax.onPointerMove}>
-      <Backdrop tone={current.tone} warpKey={leaving ? 'leaving' : chapter} />
+    <div className="deck fixed inset-0 select-none overflow-hidden bg-ground font-sans text-ink" data-testid="presentation" onPointerMove={parallax.onPointerMove}>
+      <Backdrop />
 
       {/* The stage. Clicking anywhere on it moves on, as a clicker would. */}
       <div
@@ -212,21 +215,23 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
             return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} leaving={leaving} advance={advance} />;
           })}
           <Caption beat={current.beats[step]} accent={current.accent} index={beat} top={captions === 'top'} />
+          {closing && <Brand />}
         </motion.div>
       </div>
 
+      <Frame counter={`${beat + 1} / ${TOTAL}`} />
+
       {/* Chrome — outside the stage so it stays crisp at any scale. */}
-      <div className="absolute inset-x-0 top-0 flex items-center gap-4 px-5 py-3 text-[13px]" onMouseDown={keepFocusOnStage}>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-4 py-3 pl-12 pr-32 text-[13px]" onMouseDown={keepFocusOnStage}>
         <Link to="/" className="font-display text-[15px] text-muted hover:text-ink" aria-label="Back to ORBIT '26">ORBIT &rsquo;26</Link>
         <span className="text-faint">/</span>
         <span className="text-muted" data-testid="presentation-chapter">{current.name}</span>
-        <span className="ml-auto font-mono text-faint" data-testid="presentation-counter">{beat + 1} / {TOTAL}</span>
-        <button type="button" onClick={toggleFullscreen} className="rounded-md border border-hairline px-2 py-1 text-muted hover:bg-overlay hover:text-ink" aria-label="Toggle full screen (F)">
+        <button type="button" onClick={toggleFullscreen} className="ml-auto rounded-md border border-hairline px-2 py-1 text-muted hover:bg-overlay hover:text-ink" aria-label="Toggle full screen (F)">
           ⛶
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-3" onMouseDown={keepFocusOnStage}>
+      <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 pb-3 pl-12 pr-5" onMouseDown={keepFocusOnStage}>
         <nav aria-label="Chapters" className="flex flex-1 gap-1.5">
           {CHAPTERS.map((c, i) => {
             const done = i < chapter ? 1 : i > chapter ? 0 : (step + 1) / c.beats.length;
@@ -241,7 +246,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
                 aria-current={i === chapter ? 'step' : undefined}
               >
                 <span className="absolute inset-x-0 bottom-1.5 h-1 overflow-hidden rounded-full bg-overlay group-hover:h-1.5">
-                  <span className="block h-full rounded-full bg-gradient-to-r from-violet-400 to-cyan-300 transition-[width] duration-500" style={{ width: `${done * 100}%` }} />
+                  <span className="block h-full rounded-full bg-deck-frame transition-[width] duration-500" style={{ width: `${done * 100}%` }} />
                 </span>
               </button>
             );
@@ -256,6 +261,32 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
       <span className="sr-only" aria-live="polite">{`Beat ${beat + 1} of ${TOTAL}: ${current.beats[step]?.title ?? current.name}`}</span>
     </div>
     </MotionConfig>
+  );
+}
+
+/** The NAM 2026 frame: a bracket down the left edge, and a tab top right with the mark above the counter. */
+function Frame({ counter }) {
+  return (
+    <div className="pointer-events-none absolute inset-0" data-testid="deck-frame" aria-hidden="false">
+      <div className="absolute inset-y-0 left-0 w-3 bg-deck-frame" />
+      <div className="absolute left-0 top-0 h-3 w-10 bg-deck-frame" />
+      <div className="absolute bottom-0 left-0 h-3 w-10 bg-deck-frame" />
+      <div className="absolute right-6 top-0 flex w-20 flex-col items-center gap-1.5 rounded-b-lg bg-deck-tab pb-2 pt-3" data-testid="deck-tab">
+        <img src={BRAND.mark} alt="" className="size-9" />
+        <span className="text-[13px] font-medium text-white" data-testid="presentation-counter">{counter}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Bridge on the right, white Equal Experts logo bottom-left (every closing slide). */
+function Brand() {
+  return (
+    <>
+      <img src={BRAND.bridge} alt="NAM Conference, Brooklyn 2026" data-testid="deck-bridge"
+        className="absolute rounded-3xl" style={{ right: 70, bottom: 70, width: 360 }} />
+      <img src={BRAND.logoWhite} alt="Equal Experts" data-testid="deck-logo" className="absolute" style={{ left: 80, bottom: 56, width: 160 }} />
+    </>
   );
 }
 
