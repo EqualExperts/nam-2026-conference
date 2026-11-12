@@ -1,4 +1,4 @@
-import { at, Show, Replay, Code, Kicker, Tick, Typed, later } from '../kit.jsx';
+import { at, Show, Replay, Kicker, Tick, Typed, later } from '../kit.jsx';
 import { box, Face, HOSTS, StepRail, Wave, TYPING_MS } from './kit.jsx';
 
 /* ------------------------------------------------------------------ *
