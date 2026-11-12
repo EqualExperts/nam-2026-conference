@@ -48,7 +48,7 @@ to turn on Actions. A checklist shows how far along you are.
    gh repo clone <you>/nam-2026-conference && cd nam-2026-conference
    gh repo set-default "$(git remote get-url origin)"
    npm install && npx playwright install chromium
-   claude    # then /setup-winnow, and say no to audio
+   claude
    ```
 
 </details>

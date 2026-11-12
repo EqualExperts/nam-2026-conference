@@ -167,7 +167,7 @@ test.describe('The product presentation', () => {
     await expect(page).toHaveURL(/\/engineering-presentation$/);
   });
 
-  test('every beat renders without errors, leads with its heading and never mentions live listening', async ({ page }) => {
+  test('every beat renders without errors, leads with its heading and never mentions live listening or the winnow setup', async ({ page }) => {
     test.slow(); // walks every beat once: a second walk made the suite CPU-bound and every spec near its 30s limit
     const errors = failOnPageErrors(page);
     await page.goto('/product-presentation');
@@ -182,7 +182,7 @@ test.describe('The product presentation', () => {
       await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
       const heading = caption.getByRole('heading', { level: 2 });
       await expect(heading, `beat ${at} has no caption`).toHaveText(/\S/);
-      await expect(page.getByText(/listen-to-meeting|live listening/i)).toHaveCount(0);
+      await expect(page.getByText(/listen-to-meeting|setup-winnow|live listening/i)).toHaveCount(0);
       // a title slide sets its heading large, mid-stage; every other caption sits at the bottom
       const size = await heading.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
       if (size > 80) heroes.push(await heading.innerText());

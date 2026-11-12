@@ -215,7 +215,7 @@ product talk's own (the hosts' faces, `Wave`, `Versus` — by hand against with 
 skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`); `Backdrop.jsx` the starfield
 and aurora. The product talk states only what the winnow skills really do
 (`.claude/skills/winnow`, `create-tasks`, `update-context`): the bucket names and the
-ticket shape are theirs. `listen-to-meeting` is deliberately not in the talk.
+ticket shape are theirs.
 The engineering talk renders ticket #140 from one constant, `presentation/issue.js`
 (`ISSUE_140`: title, why, what, doneWhen, outOfScope). The product talk keeps its own
 copy of the ticket (`product/winnow.jsx`: WhereScene and the Distil buckets), so a
