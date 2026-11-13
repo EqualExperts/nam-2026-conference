@@ -32,6 +32,7 @@ tests:
   - tests/unit/format.test.js
   - tests/unit/presentation.test.js
   - tests/unit/deck-contrast.test.js
+  - tests/unit/context-slide.test.js
   - tests/smoke.spec.js
   - tests/home.spec.js
   - tests/switcher.spec.js
@@ -193,7 +194,7 @@ opening deck ends on the frame the product deck opens with ("Continue to the
 product harness"), and the product deck on the one the engineering deck opens with
 ("Continue to the engineering harness"); the engineering deck has no `next`.
 `components/presentation/chapters.js` lists the engineering chapters in order and
-`presentation/product/chapters.js` the product ones, problem then flow then
+`presentation/product/chapters.js` the product ones (its context slide lists the real paths in `product/context-docs.js`, which `tests/unit/context-slide.test.js` checks against the repo), problem then flow then
 implementation: title, Where tickets come from, One way in (the bare diagram),
 The two-fold trick (two beats), Context and tasks, A sample implementation (chapter
 slide), The project context, One way to do it (the three skills), then the winnow
