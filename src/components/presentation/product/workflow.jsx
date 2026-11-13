@@ -1,5 +1,6 @@
 import { at, Show, Code, Kicker, Tick, later } from '../kit.jsx';
 import { box } from './kit.jsx';
+import { ORBIT_CONTEXT as DOCS, CONTEXT_CHIPS as CHIPS } from './orbitContext.js';
 
 /* ------------------------------------------------------------------ *
  * The workflow, before any skill: a project context made of indexed
@@ -8,18 +9,6 @@ import { box } from './kit.jsx';
  * ------------------------------------------------------------------ */
 
 /* ---- The project context: indexed files, read by the piece ---- */
-
-const DOCS = [
-  { f: 'CLAUDE.md', what: 'what was decided, and why' },
-  { f: 'context/index', what: 'one line per doc: when to read it', key: true },
-  { f: 'context/engineering-context/seats.md', what: 'the reservation rules' },
-  { f: 'context/engineering-context/schedule.md', what: 'where the schedule lives' },
-  { f: 'context/engineering-context/testing.md', what: 'how a change is proved', pick: true },
-  { f: 'context/engineering-context/ui.md', what: 'UI conventions' },
-  { f: '…', what: 'one doc per area' },
-];
-
-const CHIPS = ['CLAUDE.md', 'context/index', 'context/engineering-context/testing.md', 'context/engineering-context/ui.md'];
 
 function ContextScene({ step }) {
   const asking = step === 2;
@@ -35,14 +24,14 @@ function ContextScene({ step }) {
 
       <Show on={step >= 1} from="left" style={at(80, 70, 700, 540)} className={`${box} flex flex-col p-6`}>
         <Kicker>The project’s AI context</Kicker>
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-1.5">
           {DOCS.map((d, i) => {
             const on = !asking || d.key || d.pick;
             const tone = asking && d.pick ? 'pz-glow border-emerald-400/60 bg-raised' : asking && d.key ? 'border-violet-400/60 bg-raised' : 'border-hairline';
             return (
-              <div key={d.f} className={`pz-appear rounded-xl border px-4 py-2 transition-all duration-500 ${tone} ${on ? '' : 'opacity-35'}`} style={later(200 + i * 120)}>
-                <div className="font-mono text-[15px] text-ink">{d.f}</div>
-                <div className="text-[14px] text-faint">{d.what}</div>
+              <div key={d.path} className={`pz-appear flex items-baseline justify-between gap-4 rounded-lg border px-4 py-1.5 transition-all duration-500 ${tone} ${on ? '' : 'opacity-35'}`} style={later(200 + i * 100)}>
+                <div className={`font-mono text-[15px] ${d.path.endsWith('/') ? 'text-violet-200' : 'text-ink'}`}>{d.path}</div>
+                <div className="shrink-0 text-right text-[13px] text-faint">{d.what}</div>
               </div>
             );
           })}
@@ -70,7 +59,7 @@ function ContextScene({ step }) {
           How are the mobile specs run?
         </div>
         <div className="pz-appear rounded-xl border border-hairline bg-raised px-5 py-3.5" style={later(1000)}>
-          <div className="font-mono text-[15px] text-violet-200">read context/index → context/engineering-context/testing.md</div>
+          <div className="font-mono text-[15px] text-violet-200">read context/index.md → context/engineering-context/testing.md</div>
           <div className="mt-1 text-[17px] text-ink">Playwright runs a desktop project and a mobile one — testing.md has the viewports.</div>
         </div>
         <div className={`${box} pz-appear mt-auto p-6`} style={later(1900)}>
