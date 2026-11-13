@@ -36,7 +36,7 @@ export function Orbits({ style = at(940, 20, 640, 640), className = '' }) {
               return (
                 <g key={w}>
                   <circle cx={x} cy={y} r="6" fill={['#a78bfa', '#67e8f9', '#6ee7b7'][i]} />
-                  <text x={x + 12} y={y + 5} fill="#9aa2b8" fontSize="15" fontFamily="JetBrains Mono, monospace">{w}</text>
+                  <text x={x + 12} y={y + 5} fill="#9aa2b8" fontSize="15">{w}</text>
                 </g>
               );
             })}

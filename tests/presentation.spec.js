@@ -320,14 +320,12 @@ function auditBeat() {
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (!n.nodeValue.trim()) continue;
     const el = n.parentElement;
-    if (seen.has(el) || el.closest('[aria-hidden="true"], .sr-only, svg')) continue;
+    if (seen.has(el) || el.closest('.sr-only')) continue;
     seen.add(el);
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden') continue;
-    // a mock of GitHub or Claude on a light panel keeps its own look: only deck-styled text is held to ours
-    if (el.closest('[data-mock]')) continue;
     if (!/^"?Lexend/.test(cs.fontFamily)) problems.push(`font ${cs.fontFamily.slice(0, 30)} on "${n.nodeValue.trim().slice(0, 24)}"`);
     // the text colour (its alpha laid over the fill behind it) against that fill. The fill is the
     // nearest ancestors' backgrounds composited down to the ground; a gradient or image behind the

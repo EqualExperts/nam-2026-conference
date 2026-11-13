@@ -52,7 +52,7 @@ function Rings({ style = at(940, 20, 640, 640) }) {
               return (
                 <g key={w}>
                   <circle cx={x} cy={y} r="6" fill={['#6ee7b7', '#67e8f9', '#a78bfa'][i]} />
-                  <text x={x + (out ? 12 : -12)} y={y + 5} textAnchor={out ? 'start' : 'end'} fill="#9aa2b8" fontSize="15" fontFamily="JetBrains Mono, monospace">{w}</text>
+                  <text x={x + (out ? 12 : -12)} y={y + 5} textAnchor={out ? 'start' : 'end'} fill="#9aa2b8" fontSize="15">{w}</text>
                 </g>
               );
             })}
@@ -592,7 +592,7 @@ function TodayScene({ step, leaving, advance }) {
       {/* beat 0: the plan */}
       <Below>
       {PLAN.map((p, i) => (
-        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(PLAN_X(i), 50, PLAN_W, 420)} className={`${box} flex flex-col p-6 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
+        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(PLAN_X(i), 50, PLAN_W, 420)} className={`${box} flex flex-col p-6`}>
           <div className="flex items-center gap-3 text-[15px] uppercase tracking-[0.18em] text-faint"><Numeral n={i + 1} />{p.when}</div>
           <span className="mt-4 text-[44px] leading-none">{p.icon}</span>
           <div className="mt-4 font-display text-[27px] leading-tight text-ink">{p.title}</div>
