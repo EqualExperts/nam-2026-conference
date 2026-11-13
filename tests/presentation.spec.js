@@ -191,7 +191,7 @@ test.describe('The product presentation', () => {
     await expect(counter(page)).toHaveText(new RegExp(`^${total} /`));
     await expect(caption).toHaveCount(0);
     // the caption sets each word in its own box, so compare without the spaces
-    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Theprojectcontext', 'Asampleimplementation']);
+    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Asampleimplementation', 'Theprojectcontext']);
     expect(errors).toEqual([]);
   });
 
@@ -225,6 +225,87 @@ test.describe('The product presentation', () => {
     await expect(counter(page)).toHaveText(new RegExp(`^${total - 1} /`));
     await page.clock.runFor(2000);
     await expect(page).toHaveURL(/\/product-presentation/);
+  });
+});
+
+/**
+ * The product talk's workflow rail (#299): Information → Distil → Remember · Raise,
+ * drawn by Deck over the scenes, one node lit per chapter.
+ */
+const NAMES = ['The product harness', 'Where tickets come from', 'One way in', 'The two-fold trick', 'Context and tasks', 'A sample implementation', 'The project context', 'One way to do it', 'create-tasks', 'update-context', 'winnow', 'Distil', 'The whole flow', 'Live demo', 'Over to the engineering harness'];
+const ALL = 'distil remember raise';
+// [chapter, lit, commands shown] for each of the 22 beats, in order
+const RAIL = [
+  ['The product harness', '', false],
+  ['Where tickets come from', 'information', false], ['Where tickets come from', 'information', false],
+  ['One way in', '', false],
+  ['The two-fold trick', 'remember', false], ['The two-fold trick', 'remember', false],
+  ['Context and tasks', 'raise', false], ['Context and tasks', 'remember raise', false],
+  ['A sample implementation', ALL, true],
+  ['The project context', 'remember', true], ['The project context', 'remember', true], ['The project context', 'remember', true],
+  ['One way to do it', ALL, true], ['One way to do it', ALL, true],
+  ['create-tasks', 'raise', true],
+  ['update-context', 'remember', true],
+  ['winnow', 'distil', true], ['winnow', 'distil', true],
+  ['Distil', 'distil', true],
+  ['The whole flow', '', false],
+  ['Live demo', ALL, true],
+  ['Over to the engineering harness', '', false],
+];
+
+test.describe('The product talk rail', () => {
+  test('chapters run problem, flow, implementation, in the order of the plan', async ({ page }) => {
+    await page.goto('/product-presentation');
+    const labels = await page.getByRole('navigation', { name: 'Chapters' }).getByRole('button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label').replace(/^Chapter \d+: /, '')));
+    expect(labels).toEqual(NAMES);
+    expect((await readCounter(page)).total).toBe(RAIL.length);
+  });
+
+  test('one node is lit per chapter, commands from the sample implementation on, and no kicker is numbered', async ({ page }) => {
+    test.slow();
+    await page.goto('/product-presentation');
+    const rail = page.getByTestId('presentation-rail');
+    for (let i = 0; i < RAIL.length; i++) {
+      if (i) await page.keyboard.press('ArrowRight');
+      const [name, lit, commands] = RAIL[i];
+      const where = `beat ${i + 1} (${name})`;
+      await expect(counter(page), where).toHaveText(new RegExp(`^${i + 1} /`));
+      await expect(page.getByTestId('presentation-chapter'), where).toHaveText(name);
+      await expect(rail, where).toHaveAttribute('data-lit', lit);
+      if (lit) {
+        await expect(rail, where).toBeVisible();
+        const text = await rail.textContent();
+        for (const n of ['Information', 'Distil', 'Remember', 'Raise']) expect(text, where).toContain(n);
+        for (const cmd of ['/winnow', 'update-context', 'create-tasks']) {
+          if (commands) expect(text, where).toContain(cmd); else expect(text, where).not.toContain(cmd);
+        }
+      } else {
+        await expect(rail, where).toBeHidden();
+      }
+      const kickers = await page.locator('[data-testid="presentation-caption"] [data-eyebrow]').allInnerTexts();
+      for (const k of kickers) expect(k.trim(), `${where} kicker`).not.toMatch(/^\d/);
+    }
+  });
+
+  test('the rail sits clear of the scene under it', async ({ page }, testInfo) => {
+    // 1600×900 on desktop, the phone viewport on mobile
+    if (testInfo.project.name !== 'mobile') await page.setViewportSize({ width: 1600, height: 900 });
+    for (const beat of [2, 7, 9, 11, 13, 15, 21]) {
+      await page.goto(`/product-presentation?beat=${beat}`);
+      const rail = page.getByTestId('presentation-rail');
+      await expect(rail).toBeVisible();
+      await expect.poll(async () => {
+        const railBottom = (await rail.boundingBox()).y + (await rail.boundingBox()).height;
+        const tops = await page.evaluate(() => [...document.querySelectorAll('[data-state="current"] > div > *')]
+          .filter((el) => el.getAttribute('aria-hidden') !== 'true')
+          .map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => r.top));
+        return tops.length ? Math.min(...tops) - railBottom : 1;
+      }, { message: `beat ${beat}: the rail covers the scene`, timeout: 8000 }).toBeGreaterThanOrEqual(0);
+    }
+    await page.goto('/product-presentation?beat=9');
+    await expect(page.getByTestId('presentation-rail')).toHaveAttribute('data-lit', ALL);
+    await page.waitForTimeout(process.env.PR_SHOTS ? 2500 : 0);
+    await shotForPR(page, 'product talk rail on A sample implementation');
   });
 });
 
