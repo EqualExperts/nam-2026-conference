@@ -216,6 +216,13 @@ mobile project too, so a fit check rides along.
   ignores what comes back. Prove it through what the run returns — the verdict,
   the findings, the rendered page.
 
+- **A check that skips what the criterion names proves nothing.** "Only
+  Lexend" or "AA contrast" with `svg`, `aria-hidden` or scene text excluded,
+  or an exemption selector no source sets, passes while the thing is
+  wrong. Measure the whole surface, or name the gap in the spec's *Decisions*.
+- **A restyle is done when each scene is moved**, not when a global rule
+  recolours it. List the scenes in the spec and tick them off in the diff.
+
 ## 6. Implement
 
 `npm test` after every edit — the whole unit and API suite in a few seconds. Match the

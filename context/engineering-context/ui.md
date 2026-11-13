@@ -299,6 +299,9 @@ How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 - `Icon` with a misspelled name, and `useToast` outside `<Toaster>`, both fail
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
+- A `.deck` rule in `index.css` remaps Tailwind classes only. Hard-coded hex,
+  `stopColor`, `fill` and SVG `fontFamily` attributes in the presentation
+  scenes are untouched by it, so a restyle edits those in the scenes.
 - `format.time` expects `HH:MM`, not an ISO timestamp.
 - A `fixed` modal rendered inside the header covers only the header — it is
   `glass`, a backdrop filter, so it contains `fixed` children. Portal it to
