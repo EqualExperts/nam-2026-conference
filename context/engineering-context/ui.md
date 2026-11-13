@@ -193,11 +193,20 @@ opening deck ends on the frame the product deck opens with ("Continue to the
 product harness"), and the product deck on the one the engineering deck opens with
 ("Continue to the engineering harness"); the engineering deck has no `next`.
 `components/presentation/chapters.js` lists the engineering chapters in order and
-`presentation/product/chapters.js` the product ones — the workflow first
-(`workflow.jsx`: the project context, the two-fold trick, context versus the task
-tracker, a chapter slide, the three skills as one possibility), then the winnow
-skills built from the bottom (create-tasks, update-context, winnow over both), the
-whole flow and the demo, the hand-off. A beat with `hero: true` is a title slide:
+`presentation/product/chapters.js` the product ones, problem then flow then
+implementation: title, Where tickets come from, One way in (the bare diagram),
+The two-fold trick (two beats), Context and tasks, A sample implementation (chapter
+slide), The project context, One way to do it (the three skills), then the winnow
+skills built from the bottom (create-tasks, update-context, winnow and Distil), The
+whole flow, Live demo, the hand-off. A chapter may carry `rail` — a list of node
+ids, a function of the beat, or `{ lit, commands }` — and `Deck` (given a `Rail`
+component; only the product page passes one, `WorkflowRail` in `product/kit.jsx`)
+draws it over the scenes, outside the per-chapter layers, so only the lit node changes
+across the fly-through: `data-testid="presentation-rail"`, `data-lit` the lit ids
+(`information distil remember raise`, empty and hidden with no `rail`), skill commands
+under the nodes when `commands`. While a rail is lit the scene container shrinks to
+0.88, bottom-anchored (`litAt` in `lib/presentation.js` resolves it). Kickers carry no
+numbers. A beat with `hero: true` is a title slide:
 `Deck`'s caption is set large mid-stage and the scene only decorates beside it.
 `presentation/opening/chapters.js` lists the opening's (scenes in
 `opening/opening.jsx`, built from the shared and product kits): that deck passes

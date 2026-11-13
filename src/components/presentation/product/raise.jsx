@@ -25,7 +25,7 @@ function RememberAll() {
 
 const REMEMBER_BEATS = [
   {
-    kicker: '7 · update-context',
+    kicker: 'update-context',
     title: 'Why not just edit the docs yourself?',
     body: 'You can — and a small edit by hand is fine. Repeated by hand, it is how a context rots into a pile of bolted-on sentences. The skill does the part people skip: place, integrate, supersede.',
   },
@@ -53,7 +53,7 @@ function RaiseAll() {
 
 const RAISE_BEATS = [
   {
-    kicker: '6 · create-tasks',
+    kicker: 'create-tasks',
     title: 'Why not just write the ticket yourself?',
     body: 'You can. But a ticket from memory skips the why, misses the duplicate and bundles two goals. The skill is the checklist you would follow on a good day, followed on every day.',
   },
@@ -111,11 +111,11 @@ function HandoffScene({ leaving, advance }) {
 const HANDOFF_BEATS = [null];
 
 export const CREATE_TASKS = [
-  { id: 'raise', name: 'create-tasks', accent: 'text-blue-300', tone: 'violet', beats: RAISE_BEATS, Scene: RaiseAll },
+  { id: 'raise', name: 'create-tasks', accent: 'text-blue-300', tone: 'violet', rail: { lit: ['raise'], commands: true }, beats: RAISE_BEATS, Scene: RaiseAll },
 ];
 
 export const UPDATE_CONTEXT = [
-  { id: 'remember', name: 'update-context', accent: 'text-teal-300', tone: 'emerald', beats: REMEMBER_BEATS, Scene: RememberAll },
+  { id: 'remember', name: 'update-context', accent: 'text-teal-300', tone: 'emerald', rail: { lit: ['remember'], commands: true }, beats: REMEMBER_BEATS, Scene: RememberAll },
 ];
 
 export const HANDOFF = [

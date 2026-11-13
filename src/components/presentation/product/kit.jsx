@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { later } from '../kit.jsx';
 
 /**
@@ -114,5 +115,42 @@ export function StepRail({ y = 80, active = -1, delay = 0 }) {
         </span>
       ))}
     </>
+  );
+}
+
+/**
+ * The rail across the top of the product talk: Information → Distil → Remember · Raise,
+ * drawn by Deck over the scenes (so the fly-through leaves it in place) with the
+ * chapter's nodes lit and the others ghosted. `commands` puts each skill's
+ * command under its name. With nothing lit it is hidden, `data-lit` empty.
+ */
+const RAIL_NODES = [
+  { id: 'information', icon: '💬', label: 'Information' },
+  ...['distil', 'remember', 'raise'].map((id) => ({ ...STEPS.find((s) => s.id === id) })),
+];
+
+export function WorkflowRail({ lit, commands }) {
+  return (
+    <div
+      data-testid="presentation-rail"
+      data-lit={lit.join(' ')}
+      role="group"
+      aria-label="Workflow"
+      className={`pointer-events-none absolute flex items-center gap-3 transition-opacity duration-500 ${lit.length ? 'visible opacity-100' : 'invisible opacity-0'}`}
+      style={{ left: 80, top: 16, right: 200, height: 76 }}
+    >
+      {RAIL_NODES.map((n, i) => {
+        const on = lit.includes(n.id);
+        return (
+          <Fragment key={n.id}>
+            {i > 0 && <span className="text-[26px] text-blue-300" aria-hidden="true">{i === 3 ? '·' : '→'}</span>}
+            <div className={`flex h-full w-[250px] flex-col items-center justify-center rounded-xl border text-center transition-all duration-500 ${on ? 'pz-glow border-blue-400/70 bg-raised' : 'border-hairline bg-surface opacity-70'}`}>
+              <span className={`text-[20px] font-semibold ${on ? 'text-ink' : 'text-muted'}`}><span aria-hidden="true">{n.icon}</span> {n.label}</span>
+              {commands && n.cmd && <span className="font-mono text-[13px] text-faint">{n.cmd}</span>}
+            </div>
+          </Fragment>
+        );
+      })}
+    </div>
   );
 }

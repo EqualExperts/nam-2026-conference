@@ -54,3 +54,14 @@ export function locateBeat(index, counts) {
   const last = counts.length - 1;
   return { chapter: last, step: counts[last] - 1, start: start - counts[last] };
 }
+
+/**
+ * The rail nodes a chapter lights on a beat. A chapter's `rail` is a list of
+ * node ids, a function of the beat returning one, or `{ lit, commands }` with
+ * either as `lit`; a chapter without one lights nothing (and shows no rail).
+ */
+export function litAt(rail, step) {
+  const lit = rail && !Array.isArray(rail) && typeof rail === 'object' ? rail.lit : rail;
+  const ids = typeof lit === 'function' ? lit(step) : lit;
+  return Array.isArray(ids) ? ids : [];
+}
