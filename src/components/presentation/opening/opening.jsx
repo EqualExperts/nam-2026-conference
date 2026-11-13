@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Kicker, Tick, later } from '../kit.jsx';
+import { at, Show, Replay, Kicker, Tick, later, ClosingRow, Bridge } from '../kit.jsx';
 import { box, Face } from '../product/kit.jsx';
 import { Field } from '../product/intro.jsx';
 
@@ -33,15 +33,15 @@ function Rings({ style = at(940, 20, 640, 640) }) {
       <defs>
         <radialGradient id="pz-opening" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#6ee7b7" stopOpacity="0.85" />
-          <stop offset="60%" stopColor="#8b5cf6" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+          <stop offset="60%" stopColor="#2095d3" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#2095d3" stopOpacity="0" />
         </radialGradient>
       </defs>
       <circle cx="320" cy="320" r="70" fill="url(#pz-opening)" />
       <text x="320" y="331" textAnchor="middle" fontSize="34">🛰️</text>
       {rings.map((ring, i) => (
         <g key={ring.r}>
-          <circle cx="320" cy="320" r={ring.r} fill="none" stroke="#333950" strokeDasharray={i === 1 ? '4 8' : undefined} />
+          <circle cx="320" cy="320" r={ring.r} fill="none" stroke="#1f5c80" strokeDasharray={i === 1 ? '4 8' : undefined} />
           <g className="pz-spin" style={{ transformOrigin: '320px 320px', animationDuration: ring.dur, animationDirection: i % 2 ? 'reverse' : 'normal' }}>
             {ring.words.map((w, j) => {
               const a = (j / ring.words.length) * Math.PI * 2 + i + 0.3;
@@ -50,8 +50,8 @@ function Rings({ style = at(940, 20, 640, 640) }) {
               const out = Math.cos(a) >= 0;
               return (
                 <g key={w}>
-                  <circle cx={x} cy={y} r="6" fill={['#6ee7b7', '#67e8f9', '#a78bfa'][i]} />
-                  <text x={x + (out ? 12 : -12)} y={y + 5} textAnchor={out ? 'start' : 'end'} fill="#9aa2b8" fontSize="15" fontFamily="JetBrains Mono, monospace">{w}</text>
+                  <circle cx={x} cy={y} r="6" fill={['#6ee7b7', '#67e8f9', '#60a5fa'][i]} />
+                  <text x={x + (out ? 12 : -12)} y={y + 5} textAnchor={out ? 'start' : 'end'} fill="#94a3b8" fontSize="15" fontFamily="Lexend, sans-serif">{w}</text>
                 </g>
               );
             })}
@@ -75,31 +75,33 @@ const DAY = [
 function TitleScene() {
   return (
     <>
-      <Rings />
-      <div style={at(110, 90, 900, 560)}>
-        <Kicker className="pz-appear">Equal Experts · NAM conference 2026</Kicker>
-        <h1 className="pz-appear mt-6 font-display text-[104px] leading-[0.92] text-ink" style={later(120)}>
+      <div style={at(80, 120, 1440, 700)} className="rounded-[36px] border-2 border-edge bg-surface" />
+      <Bridge className="pointer-events-none absolute" style={{ left: 1010, top: 190, width: 460, height: 430 }} />
+      <div style={at(130, 160, 880, 540)}>
+        <Kicker className="pz-appear !text-[20px]">Equal Experts · NAM conference 2026</Kicker>
+        <h1 className="pz-appear mt-5 font-display text-[92px] font-bold leading-[0.95] text-ink" style={later(120)}>
           Welcome to<br />
-          <span className="pz-shine bg-clip-text text-transparent">NAM 2026</span>
+          <span className="text-edge">NAM 2026</span>
         </h1>
-        <p className="pz-appear mt-7 max-w-[800px] text-[27px] leading-snug text-muted" style={later(260)}>
+        <p className="pz-appear mt-6 max-w-[800px] text-[24px] leading-snug text-ink" style={later(260)}>
           Today’s exercise: AI across the whole software delivery lifecycle — connected by shared context, accelerated by running work in parallel.
         </p>
-        <p className="pz-appear mt-3 max-w-[800px] text-[19px] text-faint" style={later(500)}>
-          You’ll work on <span className="text-muted">ORBIT &rsquo;26</span>, a conference app built for the day — with My Agenda left for you to build.
+        <p className="pz-appear mt-3 max-w-[800px] text-[18px] text-muted" style={later(500)}>
+          You’ll work on <span className="text-ink">ORBIT &rsquo;26</span>, a conference app built for the day — with My Agenda left for you to build.
         </p>
-        <div className="pz-appear mt-7 space-y-1 whitespace-nowrap text-[19px] text-faint" style={later(900)}>
+        <div className="pz-appear mt-5 space-y-1 whitespace-nowrap text-[18px] text-muted" style={later(900)}>
           {DAY.map(([icon, what], i) => (
-            <div key={what} className={i === 0 ? 'text-muted' : ''}>
-              {i > 0 && <span className="mr-3 text-violet-300">↳</span>}{icon} {i === 0 ? <b className="text-ink">{what}</b> : what}
+            <div key={what} className={i === 0 ? 'text-ink' : ''}>
+              {i > 0 && <span className="mr-3 text-edge">↳</span>}{icon} {i === 0 ? <b className="text-ink">{what}</b> : what}
             </div>
           ))}
         </div>
-        <div className="pz-appear mt-6 flex items-center gap-3 text-[16px] text-faint" style={later(1200)}>
-          <Face who="andy" size={30} />
-          <span>Andy Vays · Technical Principal · Equal Experts</span>
-        </div>
       </div>
+      <div className="pz-appear absolute flex items-center gap-3 text-[16px] text-muted" style={{ ...at(1010, 690, 480, 40), animationDelay: '1200ms' }}>
+        <Face who="andy" size={30} />
+        <span>Andy Vays · Technical Principal · Equal Experts</span>
+      </div>
+      <img data-testid="deck-logo" src="/brand/Equal_Experts_Logo_Monochrome_White.svg" alt="Equal Experts" className="absolute" style={{ left: 130, top: 700, width: 180 }} />
     </>
   );
 }
@@ -129,7 +131,7 @@ function Uneven({ on }) {
           <div key={who} className="pz-appear flex items-center gap-6" style={later(i * 110)}>
             <span className="w-[330px] shrink-0 text-right text-[21px] text-muted">{who}</span>
             <span className="relative h-10 flex-1 overflow-hidden rounded-full bg-overlay">
-              <span className="pz-fill absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-violet-500/70 to-cyan-400/70" style={{ width: `${how * 100}%`, animationDuration: '1.2s', animationDelay: `${300 + i * 110}ms` }} />
+              <span className="pz-fill absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500/70 to-cyan-400/70" style={{ width: `${how * 100}%`, animationDuration: '1.2s', animationDelay: `${300 + i * 110}ms` }} />
               <span className="pz-appear absolute inset-y-0 left-5 flex items-center whitespace-nowrap text-[16px] text-white/90" style={later(1500 + i * 110)}>{tag}</span>
             </span>
           </div>
@@ -149,9 +151,9 @@ function Serial({ on }) {
       <div className="mt-10 flex items-center gap-4">
         {QUEUE.map((n, i) => (
           <div key={n} className="flex items-center gap-4">
-            <div className={`pz-appear flex h-[120px] w-[220px] flex-col items-center justify-center rounded-xl border ${i === 0 ? 'pz-glow border-violet-400/70 bg-raised' : 'border-hairline bg-surface opacity-60'}`} style={later(i * 140)}>
+            <div className={`pz-appear flex h-[120px] w-[220px] flex-col items-center justify-center rounded-xl border ${i === 0 ? 'pz-glow border-blue-400/70 bg-raised' : 'border-edge bg-surface opacity-60'}`} style={later(i * 140)}>
               <span className="font-mono text-[24px] text-ink">{n}</span>
-              <span className={`mt-1 text-[15px] ${i === 0 ? 'text-violet-200' : 'text-faint'}`}>{i === 0 ? 'running…' : 'waiting'}</span>
+              <span className={`mt-1 text-[15px] ${i === 0 ? 'text-blue-200' : 'text-faint'}`}>{i === 0 ? 'running…' : 'waiting'}</span>
             </div>
             {i < QUEUE.length - 1 && <span className="pz-appear text-[24px] text-faint" style={later(i * 140 + 80)}>→</span>}
           </div>
@@ -231,11 +233,11 @@ function PatternScene() {
           <span className="mt-3 text-[44px] leading-none">{icon}</span>
           <div className="mt-4 font-display text-[28px] leading-tight text-ink">{h}</div>
           <div className="mt-2 text-[18px] text-muted">{s}</div>
-          {i === PATTERN.length - 1 && <span className="pz-spin ml-auto mt-auto text-[26px] text-emerald-300" style={{ animationDuration: '6s' }} aria-hidden="true">↻</span>}
+          {i === PATTERN.length - 1 && <span className="pz-spin ml-auto mt-auto text-[26px] text-teal-300" style={{ animationDuration: '6s' }} aria-hidden="true">↻</span>}
         </Show>
       ))}
       {[0, 1, 2].map((i) => (
-        <Show key={i} from="none" delay={700 + i * 260} style={at(80 + i * 365 + 334, 190, 30, 40)} className="text-center text-[24px] text-violet-300">→</Show>
+        <Show key={i} from="none" delay={700 + i * 260} style={at(80 + i * 365 + 334, 190, 30, 40)} className="text-center text-[24px] text-blue-300">→</Show>
       ))}
       <Show from="up" delay={1900} style={at(80, 400, 1440, 90)} className="text-center">
         <div className="font-display text-[32px] text-ink">It’s all new, and it changes every day.</div>
@@ -277,7 +279,7 @@ function ConnectBeat({ on }) {
           const d = `M${s.x} ${s.y} C ${(s.x + HUB.x) / 2} ${s.y}, ${(s.x + HUB.x) / 2} ${HUB.y}, ${HUB.x} ${HUB.y}`;
           return (
             <g key={s.label}>
-              <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#4c3d7a" strokeWidth="2.5" style={later(700 + i * 120)} />
+              <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke="#1f5c80" strokeWidth="2.5" style={later(700 + i * 120)} />
               <g className="pz-appear" style={later(1700 + i * 120)}>
                 <path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#6ee7b7" strokeWidth="2.5" opacity="0.8" />
               </g>
@@ -312,7 +314,7 @@ function ConnectBeat({ on }) {
           <span className="text-[20px] font-semibold text-ink">{s.label}</span>
         </div>
       ))}
-      <div className="pz-pop pz-glow absolute flex flex-col items-center justify-center rounded-3xl border border-emerald-400/70 bg-raised" style={{ left: HUB.x - 150, top: HUB.y - 95, width: 300, height: 190, ...later(500) }}>
+      <div className="pz-pop pz-glow absolute flex flex-col items-center justify-center rounded-3xl border border-teal-400/70 bg-raised" style={{ left: HUB.x - 150, top: HUB.y - 95, width: 300, height: 190, ...later(500) }}>
         <span className="text-[38px]">📚</span>
         <span className="mt-1 font-display text-[32px] text-ink">Shared context</span>
         <span className="text-[15px] text-faint">created and curated together</span>
@@ -348,10 +350,10 @@ function MarkdownBeat({ on }) {
   return (
     <>
       {/* the meta context repo */}
-      <Show on={on} from="down" delay={900} style={at(META.x, META.y, META.w, META.h)} className="pz-glow flex flex-col rounded-2xl border border-emerald-400/60 bg-[#0d0f15]">
-        <div className="flex items-center gap-3 border-b border-hairline bg-surface px-5 py-2.5">
+      <Show on={on} from="down" delay={900} style={at(META.x, META.y, META.w, META.h)} className="pz-glow flex flex-col rounded-2xl border border-teal-400/60 bg-[#071322]">
+        <div className="flex items-center gap-3 border-b border-edge bg-surface px-5 py-2.5">
           <span className="text-[20px]">🧠</span>
-          <span className="font-mono text-[16px] text-emerald-200">org-context/</span>
+          <span className="font-mono text-[16px] text-teal-200">org-context/</span>
           <span className="text-[15px] text-muted">the meta context repo</span>
           <span className="ml-auto text-[14px] text-faint">everything else that’s relevant goes here too</span>
         </div>
@@ -359,7 +361,7 @@ function MarkdownBeat({ on }) {
           {META_HOLDS.map(([icon, f, what], k) => (
             <div key={f} className="pz-appear flex items-baseline gap-3" style={later(1300 + k * 150)}>
               <span className="text-[18px]">{icon}</span>
-              <span className="shrink-0 font-mono text-[17px] text-violet-200">{f}</span>
+              <span className="shrink-0 font-mono text-[17px] text-blue-200">{f}</span>
               <span className="text-[15px] text-muted">{what}</span>
             </div>
           ))}
@@ -373,21 +375,21 @@ function MarkdownBeat({ on }) {
           const d = `M${x} ${REPO_Y} L${x} ${META.y + META.h}`;
           return (
             <g key={r.name}>
-              <path d={d} pathLength="1" data-on={on} className="pz-draw" fill="none" stroke="#4c3d7a" strokeWidth="2.5" style={{ transitionDelay: `${500 + k * 120}ms` }} />
+              <path d={d} pathLength="1" data-on={on} className="pz-draw" fill="none" stroke="#1f5c80" strokeWidth="2.5" style={{ transitionDelay: `${500 + k * 120}ms` }} />
               {on && <g className="pz-appear" style={later(1200 + k * 120)}><path d={d} pathLength="1" className="pz-flow" fill="none" stroke="#6ee7b7" strokeWidth="2.5" /></g>}
             </g>
           );
         })}
       </svg>
       {[0, 1].map((k) => (
-        <Show key={k} on={on} from="none" delay={800} style={at(REPOS[k].x + REPO_W / 2 + 14, META.y + META.h + 26, 140, 30)} className="font-mono text-[13px] uppercase tracking-[0.2em] text-emerald-300">
+        <Show key={k} on={on} from="none" delay={800} style={at(REPOS[k].x + REPO_W / 2 + 14, META.y + META.h + 26, 140, 30)} className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-300">
           ↑ rolls up
         </Show>
       ))}
       {REPOS.map((r, k) => (
-        <Show key={r.name} on={on} from="up" delay={k * 150} style={at(r.x, REPO_Y, REPO_W, 110)} className="flex flex-col rounded-xl border border-hairline bg-[#0d0f15] px-4 py-3">
+        <Show key={r.name} on={on} from="up" delay={k * 150} style={at(r.x, REPO_Y, REPO_W, 110)} className="flex flex-col rounded-xl border border-hairline bg-[#071322] px-4 py-3">
           <span className="font-mono text-[16px] text-ink">{r.name}</span>
-          <span className="mt-1.5 font-mono text-[14px] text-violet-200">CLAUDE.md · context/*.md</span>
+          <span className="mt-1.5 font-mono text-[14px] text-blue-200">CLAUDE.md · context/*.md</span>
           <span className="mt-auto text-[13px] text-faint">its own context, next to its code</span>
         </Show>
       ))}
@@ -438,9 +440,9 @@ function ParallelBeat({ on }) {
     <Replay on={on} style={at(80, 70, 1440, 540)}>
       {/* one at a time */}
       <div className="absolute left-0 top-0 w-[210px] pt-3 text-right text-[20px] text-muted">one at a time</div>
-      <div className="absolute h-14 overflow-hidden rounded-xl border border-hairline bg-surface" style={{ left: LANE_X, top: 0, width: LANE_W }}>
+      <div className="absolute h-14 overflow-hidden rounded-xl border border-edge bg-surface" style={{ left: LANE_X, top: 0, width: LANE_W }}>
         {TICKETS.map((n, i) => (
-          <span key={n} className="pz-fill absolute inset-y-1.5 flex items-center justify-center rounded-lg bg-violet-500/30 font-mono text-[16px] text-violet-100"
+          <span key={n} className="pz-fill absolute inset-y-1.5 flex items-center justify-center rounded-lg bg-blue-500/30 font-mono text-[16px] text-blue-100"
             style={{ left: 6 + i * SLOT, width: SLOT - 12, animationDuration: '0.6s', animationDelay: `${300 + i * 600}ms` }}>{n}</span>
         ))}
       </div>
@@ -448,8 +450,8 @@ function ParallelBeat({ on }) {
       {/* in parallel */}
       <div className="absolute left-0 w-[210px] text-right text-[20px] text-ink" style={{ top: 190 }}>in parallel</div>
       {TICKETS.map((n, i) => (
-        <div key={n} className="absolute h-11 overflow-hidden rounded-xl border border-hairline bg-surface" style={{ left: LANE_X, top: 90 + i * 54, width: LANE_W }}>
-          <span className="pz-fill absolute inset-y-1 left-1.5 flex items-center justify-center rounded-lg bg-emerald-500/30 font-mono text-[16px] text-emerald-100"
+        <div key={n} className="absolute h-11 overflow-hidden rounded-xl border border-edge bg-surface" style={{ left: LANE_X, top: 90 + i * 54, width: LANE_W }}>
+          <span className="pz-fill absolute inset-y-1 left-1.5 flex items-center justify-center rounded-lg bg-teal-500/30 font-mono text-[16px] text-teal-100"
             style={{ width: PAR[i], animationDuration: '0.9s', animationDelay: `${300 + i * 60}ms` }}>{n}</span>
         </div>
       ))}
@@ -457,12 +459,12 @@ function ParallelBeat({ on }) {
       {/* the time axis, and where each way finishes */}
       <div className="absolute border-t border-hairline" style={{ left: LANE_X, top: 380, width: LANE_W }} />
       <div className="absolute text-[15px] text-faint" style={{ left: LANE_X + LANE_W - 60, top: 388 }}>time →</div>
-      <div className="pz-appear absolute border-l-2 border-dashed border-emerald-400/70" style={{ left: LANE_X + PAR_DONE, top: 84, height: 300, ...later(1300) }} />
-      <div className="pz-appear absolute -translate-x-1/2 whitespace-nowrap rounded-full border border-emerald-400/60 bg-emerald-500/15 px-4 py-1 text-[17px] font-semibold text-emerald-200" style={{ left: LANE_X + PAR_DONE, top: 396, ...later(1400) }}>
+      <div className="pz-appear absolute border-l-2 border-dashed border-teal-400/70" style={{ left: LANE_X + PAR_DONE, top: 84, height: 300, ...later(1300) }} />
+      <div className="pz-appear absolute -translate-x-1/2 whitespace-nowrap rounded-full border border-teal-400/60 bg-teal-500/15 px-4 py-1 text-[17px] font-semibold text-teal-200" style={{ left: LANE_X + PAR_DONE, top: 396, ...later(1400) }}>
         all five ready for review
       </div>
-      <div className="pz-appear absolute border-l-2 border-dashed border-violet-400/60" style={{ left: LANE_X + LANE_W - 2, top: -6, height: 390, ...later(3300) }} />
-      <div className="pz-appear absolute -translate-x-full whitespace-nowrap pr-3 text-[16px] text-violet-200" style={{ left: LANE_X + LANE_W, top: 64, ...later(3300) }}>
+      <div className="pz-appear absolute border-l-2 border-dashed border-blue-400/60" style={{ left: LANE_X + LANE_W - 2, top: -6, height: 390, ...later(3300) }} />
+      <div className="pz-appear absolute -translate-x-full whitespace-nowrap pr-3 text-[16px] text-blue-200" style={{ left: LANE_X + LANE_W, top: 64, ...later(3300) }}>
         …all five, one after another
       </div>
       <div className="pz-appear absolute text-[22px] text-muted" style={{ left: LANE_X + PAR_DONE + 40, top: 200, ...later(3600) }}>
@@ -482,8 +484,8 @@ function LimitsBeat({ on }) {
   return (
     <>
       {/* the point: parallel work is the unlock */}
-      <Show on={on} from="scale" style={at(80, 40, 1440, 190)} className="pz-glow flex flex-col items-center justify-center rounded-3xl border border-emerald-400/60 bg-raised text-center">
-        <div className="font-mono text-[15px] uppercase tracking-[0.2em] text-emerald-300">the real unlock</div>
+      <Show on={on} from="scale" style={at(80, 40, 1440, 190)} className="pz-glow flex flex-col items-center justify-center rounded-3xl border border-teal-400/60 bg-raised text-center">
+        <div className="font-mono text-[15px] uppercase tracking-[0.2em] text-teal-300">the real unlock</div>
         <div className="mt-2 font-display text-[60px] leading-tight text-ink">Consistently parallelise the work.</div>
       </Show>
 
@@ -532,7 +534,7 @@ const RESULT = [
   ['⫴', 'Parallelise the work', 'not one ticket at a time'],
 ];
 
-function Term({ icon, h, s, delay, tone = 'border-hairline bg-surface' }) {
+function Term({ icon, h, s, delay, tone = 'border-edge bg-surface' }) {
   return (
     <div className={`pz-appear flex h-[150px] w-[300px] flex-col items-center justify-center rounded-2xl border text-center ${tone}`} style={later(delay)}>
       <span className="text-[34px] leading-none">{icon}</span>
@@ -548,12 +550,12 @@ function TakeawayScene() {
     <Show style={at(80, 90, 1440, 480)} className="flex flex-col items-center">
       <div className="mt-10 flex items-center gap-5">
         <Term {...{ icon: SUM[0][0], h: SUM[0][1], s: SUM[0][2] }} delay={200} />
-        <span className="pz-appear text-[40px] text-violet-300" style={later(400)}>+</span>
+        <span className="pz-appear text-[40px] text-blue-300" style={later(400)}>+</span>
         <Term {...{ icon: SUM[1][0], h: SUM[1][1], s: SUM[1][2] }} delay={500} />
-        <span className="pz-appear text-[40px] text-violet-300" style={later(800)}>→</span>
+        <span className="pz-appear text-[40px] text-blue-300" style={later(800)}>→</span>
         <div className="flex flex-col gap-3">
           {RESULT.map(([icon, h, s], i) => (
-            <div key={h} className="pz-appear flex h-[69px] w-[340px] items-center gap-4 rounded-xl border border-violet-400/50 bg-violet-500/10 px-5" style={later(1000 + i * 200)}>
+            <div key={h} className="pz-appear flex h-[69px] w-[340px] items-center gap-4 rounded-xl border border-blue-400/50 bg-blue-500/10 px-5" style={later(1000 + i * 200)}>
               <span className="text-[26px]">{icon}</span>
               <div><div className="text-[19px] font-semibold text-ink">{h}</div><div className="text-[14px] text-faint">{s}</div></div>
             </div>
@@ -603,11 +605,11 @@ function TodayScene({ step, leaving, advance }) {
       ))}
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
         {[0, 1, 2, 3].map((i) => (
-          <path key={i} d={`M${PLAN_X(i) + PLAN_W} 260 L${PLAN_X(i + 1)} 260`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#a78bfa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
+          <path key={i} d={`M${PLAN_X(i) + PLAN_W} 260 L${PLAN_X(i + 1)} 260`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#60a5fa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
         ))}
       </svg>
       <Show on={step === 0} from="none" delay={1300} style={at(80, 500, 1460, 50)} className="flex items-center">
-        <span className="h-0.5 rounded-full bg-gradient-to-r from-cyan-400/80 to-violet-400/80" style={{ width: 700 }} />
+        <span className="h-0.5 rounded-full bg-gradient-to-r from-cyan-400/80 to-blue-400/80" style={{ width: 700 }} />
         <span className="ml-4 text-[16px] text-muted">📚 one shared context, under both labs and every team</span>
       </Show>
       </Below>
@@ -624,11 +626,12 @@ function TodayScene({ step, leaving, advance }) {
           style={{ transformOrigin: '50% 45%' }}
         >
           <div style={at(110, 150, 820, 460)} className="flex flex-col items-start">
+            <div data-eyebrow className="mb-4 text-[18px] font-semibold uppercase tracking-[0.2em] text-edge">Handing over</div>
             <div className="space-y-1.5 whitespace-nowrap text-[22px]">
               <div className="flex items-center gap-3 text-muted"><Tick /> 🛰️ Why: the core concepts</div>
-              <div className="pz-appear text-ink" style={later(500)}><span className="mr-3 text-violet-300">↳</span>🎙️ <b>Lab 1 · the product harness</b></div>
+              <div className="pz-appear text-ink" style={later(500)}><span className="mr-3 text-blue-300">↳</span>🎙️ <b>Lab 1 · the product harness</b></div>
             </div>
-            <div className="pz-appear mt-14 font-display text-[64px] leading-none text-ink" style={later(700)}>
+            <div data-deck-title className="pz-appear mt-14 font-display text-[64px] font-bold leading-none text-ink" style={later(700)}>
               Over to <span className="pz-shine bg-clip-text text-transparent">Abraham</span>.
             </div>
             <button
@@ -636,7 +639,7 @@ function TodayScene({ step, leaving, advance }) {
               data-testid="presentation-handoff"
               aria-label="Continue to the product harness"
               onClick={(e) => { e.stopPropagation(); advance(); }}
-              className="pz-launch pz-pop mt-10 inline-flex items-center gap-3 rounded-full border border-cyan-300/60 bg-gradient-to-r from-violet-600 to-cyan-500 px-10 py-4 font-display text-[28px] text-white hover:from-violet-500 hover:to-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
+              className="pz-launch pz-pop mt-10 inline-flex items-center gap-3 rounded-full border border-cyan-300/60 bg-gradient-to-r from-blue-600 to-cyan-500 px-10 py-4 font-display text-[28px] text-white hover:from-blue-500 hover:to-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
               style={later(900)}
             >
               Continue to the product harness <span aria-hidden="true">→</span>
@@ -645,13 +648,20 @@ function TodayScene({ step, leaving, advance }) {
           </div>
         </motion.div>
       </Show>
+      <Show on={step === 1} from="up" delay={600} style={at(0, 0, 1600, 900)} className="pointer-events-none">
+        <ClosingRow cards={[
+          { title: 'Shared context', sub: 'one base under every team' },
+          { title: 'Parallel work', sub: 'agents side by side' },
+          { title: 'Your labs', sub: 'product, then engineering' },
+        ]} />
+      </Show>
     </>
   );
 }
 
 export const OPENING = [
   {
-    id: 'title', name: 'Welcome', accent: 'text-emerald-300', tone: 'emerald',
+    id: 'title', name: 'Welcome', accent: 'text-teal-300', tone: 'emerald',
     beats: [null],
     Scene: TitleScene,
   },
@@ -688,7 +698,7 @@ export const OPENING = [
     Scene: PatternScene,
   },
   {
-    id: 'context', name: 'Lesson 1 · Shared context', accent: 'text-emerald-300', tone: 'emerald',
+    id: 'context', name: 'Lesson 1 · Shared context', accent: 'text-teal-300', tone: 'emerald',
     beats: [
       {
         lesson: { label: 'Lesson one', n: '1' },
@@ -706,7 +716,7 @@ export const OPENING = [
     Scene: ContextScene,
   },
   {
-    id: 'parallel', name: 'Lesson 2 · Parallel work', accent: 'text-violet-300', tone: 'violet',
+    id: 'parallel', name: 'Lesson 2 · Parallel work', accent: 'text-blue-300', tone: 'violet',
     beats: [
       {
         lesson: { label: 'Lesson two', n: '2' },

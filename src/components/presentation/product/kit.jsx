@@ -6,7 +6,7 @@ import { later } from '../kit.jsx';
  * comparison, a skill's big heading, and the three-step rail the talk returns to.
  */
 
-export const box = 'rounded-2xl border border-hairline bg-surface';
+export const box = 'rounded-2xl border border-edge bg-surface';
 
 /* The hosts — attendees in the app too, so their portraits are its own. */
 export const HOSTS = {
@@ -42,12 +42,12 @@ export function Versus({ rows, foot, delay = 0, className = '' }) {
     <div className={`flex h-full flex-col gap-3 ${className}`}>
       <div className="grid grid-cols-2 gap-5 px-1">
         <div className="font-display text-[22px] text-rose-200">By hand</div>
-        <div className="font-display text-[22px] text-emerald-200">With the skill</div>
+        <div className="font-display text-[22px] text-teal-200">With the skill</div>
       </div>
       {rows.map(([hand, skill], i) => (
         <div key={hand} className="pz-appear grid grid-cols-2 gap-5" style={later(delay + i * EVERY)}>
           <div className="rounded-xl border border-rose-400/30 bg-rose-500/5 px-4 py-3 text-[17px] leading-snug text-muted">{hand}</div>
-          <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-[17px] leading-snug text-ink">{skill}</div>
+          <div className="rounded-xl border border-teal-400/40 bg-teal-500/10 px-4 py-3 text-[17px] leading-snug text-ink">{skill}</div>
         </div>
       ))}
       {foot && <div className="pz-appear mt-auto text-[17px] text-muted" style={later(delay + rows.length * EVERY + 300)}>{foot}</div>}
@@ -61,7 +61,7 @@ export function SkillHead({ icon, cmd, line, className = '' }) {
     <div className={`flex items-center gap-6 ${className}`}>
       <span className="text-[68px] leading-none">{icon}</span>
       <div>
-        <div className="font-mono text-[60px] leading-none text-violet-200">{cmd}</div>
+        <div className="font-mono text-[60px] leading-none text-blue-200">{cmd}</div>
         <div className="mt-2 text-[24px] text-muted">{line}</div>
       </div>
     </div>
@@ -95,7 +95,7 @@ export function StepRail({ y = 80, active = -1, delay = 0 }) {
         return (
           <div
             key={s.id}
-            className={`pz-appear absolute flex flex-col items-center justify-center rounded-xl border text-center transition-all duration-500 ${on ? 'pz-glow border-violet-400/70 bg-raised' : 'border-hairline bg-surface'}`}
+            className={`pz-appear absolute flex flex-col items-center justify-center rounded-xl border text-center transition-all duration-500 ${on ? 'pz-glow border-blue-400/70 bg-raised' : 'border-edge bg-surface'}`}
             style={{ left: STEP_X(i), top: y, width: STEP_W, height: 96, ...later(delay + i * 140) }}
           >
             <span className="text-[26px] leading-none">{s.icon}</span>
@@ -107,7 +107,7 @@ export function StepRail({ y = 80, active = -1, delay = 0 }) {
       {STEPS.slice(1).map((s, i) => (
         <span
           key={s.id}
-          className={`pz-appear absolute w-[180px] text-center ${i === PEERS_FROM ? 'font-mono text-[12px] uppercase leading-tight tracking-wider text-violet-300' : 'text-[28px] text-violet-300'}`}
+          className={`pz-appear absolute w-[180px] text-center ${i === PEERS_FROM ? 'font-mono text-[12px] uppercase leading-tight tracking-wider text-blue-300' : 'text-[28px] text-blue-300'}`}
           style={{ left: STEP_X(i) + STEP_W, top: y + (i === PEERS_FROM ? 30 : 28), ...later(delay + 500 + i * 140) }}
         >
           {i === PEERS_FROM ? <>·<br />peers</> : '→'}

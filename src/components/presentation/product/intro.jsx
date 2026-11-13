@@ -19,15 +19,15 @@ export function Field({ style = at(940, 20, 640, 640), className = '' }) {
       <defs>
         <radialGradient id="pz-mic" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.9" />
-          <stop offset="60%" stopColor="#8b5cf6" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+          <stop offset="60%" stopColor="#2095d3" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#2095d3" stopOpacity="0" />
         </radialGradient>
       </defs>
       <circle cx="320" cy="320" r="70" fill="url(#pz-mic)" />
       <text x="320" y="331" textAnchor="middle" fontSize="34">🎙️</text>
       {rings.map((ring, i) => (
         <g key={ring.r}>
-          <circle cx="320" cy="320" r={ring.r} fill="none" stroke="#333950" strokeDasharray={i === 1 ? '4 8' : undefined} />
+          <circle cx="320" cy="320" r={ring.r} fill="none" stroke="#1f5c80" strokeDasharray={i === 1 ? '4 8' : undefined} />
           <g className="pz-spin" style={{ transformOrigin: '320px 320px', animationDuration: ring.dur, animationDirection: i % 2 ? 'reverse' : 'normal' }}>
             {ring.words.map((w, j) => {
               const a = (j / ring.words.length) * Math.PI * 2 + i + 0.6;
@@ -37,8 +37,8 @@ export function Field({ style = at(940, 20, 640, 640), className = '' }) {
               const out = Math.cos(a) >= 0;
               return (
                 <g key={w}>
-                  <circle cx={x} cy={y} r="6" fill={['#67e8f9', '#a78bfa', '#6ee7b7'][i]} />
-                  <text x={x + (out ? 12 : -12)} y={y + 5} textAnchor={out ? 'start' : 'end'} fill="#9aa2b8" fontSize="15" fontFamily="JetBrains Mono, monospace">{w}</text>
+                  <circle cx={x} cy={y} r="6" fill={['#67e8f9', '#60a5fa', '#6ee7b7'][i]} />
+                  <text x={x + (out ? 12 : -12)} y={y + 5} textAnchor={out ? 'start' : 'end'} fill="#94a3b8" fontSize="15" fontFamily="Lexend, sans-serif">{w}</text>
                 </g>
               );
             })}
@@ -64,7 +64,7 @@ function TitleScene() {
         </p>
         <div className="pz-appear mt-9 space-y-1.5 whitespace-nowrap text-[19px] text-faint" style={later(900)}>
           <div className="text-muted">🎙️ <b className="text-ink">Product harness</b>: a conversation → a ticket</div>
-          <div><span className="mr-3 text-violet-300">↳</span>🚢 Engineering harness: the ticket → a reviewed pull request</div>
+          <div><span className="mr-3 text-blue-300">↳</span>🚢 Engineering harness: the ticket → a reviewed pull request</div>
         </div>
         <div className="pz-appear mt-6 flex items-center gap-3 text-[16px] text-faint" style={later(1200)}>
           <Face who="abraham" size={30} />
@@ -96,7 +96,7 @@ function Tile({ who, t, delay }) {
   return (
     <div className={`${box} flex flex-col items-center px-6 pb-5 pt-6`}>
       <span className="relative">
-        <span className="pz-radar absolute inset-0 rounded-full border-2 border-emerald-300" style={{ animationDelay: `${delay}ms`, animationIterationCount: 2 }} aria-hidden="true" />
+        <span className="pz-radar absolute inset-0 rounded-full border-2 border-teal-300" style={{ animationDelay: `${delay}ms`, animationIterationCount: 2 }} aria-hidden="true" />
         <Face who={who} size={96} />
       </span>
       <div className="mt-3 text-[17px] text-muted">{HOSTS[who].name}</div>
@@ -257,7 +257,7 @@ function DemoScene() {
         {DEMO.map((c, i) => (
           <div key={c} className={`${box} pz-appear flex flex-col justify-between p-6`} style={later(i * 200)}>
             <span className="text-[34px]">{['🌾', '🧠', '🎫'][i]}</span>
-            <code className="font-mono text-[19px] text-violet-200">{c}</code>
+            <code className="font-mono text-[19px] text-blue-200">{c}</code>
           </div>
         ))}
       </Show>
@@ -278,7 +278,7 @@ export const PRODUCT_FLOW = [
     Scene: WaysScene,
   },
   {
-    id: 'demo', name: 'Live demo', accent: 'text-emerald-300', tone: 'emerald',
+    id: 'demo', name: 'Live demo', accent: 'text-teal-300', tone: 'emerald',
     beats: [
       {
         kicker: '10 · Live demo',

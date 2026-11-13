@@ -71,7 +71,7 @@ export function ClaudeDesktop({
           <span className="size-3 rounded-full bg-[#ff5f57]" /><span className="size-3 rounded-full bg-[#febc2e]" /><span className="size-3 rounded-full bg-[#28c840]" />
           {/* chat or code: two icons, code chosen */}
           <span className="ml-auto flex gap-1">
-            <span className="grid size-7 place-items-center rounded-lg text-black/45" aria-hidden="true">
+            <span className="grid size-7 place-items-center rounded-lg text-black/65" aria-hidden="true">
               <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" strokeLinejoin="round" /></svg>
             </span>
             <span className="grid size-7 place-items-center rounded-lg border border-black/10 bg-white text-black/80 shadow-sm" aria-hidden="true">
@@ -83,16 +83,16 @@ export function ClaudeDesktop({
           {SIDEBAR.map(([icon, label, key], i) => (
             <div key={label} className={`flex items-center gap-2.5 rounded-lg px-2 py-1 ${i === 0 ? 'bg-black/5' : ''}`}>
               <span className="w-4 text-center text-black/60">{icon}</span>{label}
-              {key && <span className="ml-auto text-[12px] text-black/40">{key}</span>}
+              {key && <span className="ml-auto text-[12px] text-black/65">{key}</span>}
             </div>
           ))}
         </div>
-        <div className="mt-4 truncate px-2 text-[13px] text-black/50">nam-2026-conference ▾</div>
+        <div className="mt-4 truncate px-2 text-[13px] text-black/65">nam-2026-conference ▾</div>
         <div className="mt-1 truncate rounded-lg bg-black/[0.07] px-2 py-1.5">{session}</div>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-black/10 px-5 py-2.5 text-[15px]">{session} <span className="text-black/40">⌄</span></div>
+        <div className="border-b border-black/10 px-5 py-2.5 text-[15px]">{session} <span className="text-black/65">⌄</span></div>
         <div className="flex-1 space-y-3 px-5 py-4 text-[15px] leading-relaxed">
           <div className="pz-appear flex justify-end" style={later(300)}>
             <div className="max-w-[300px] rounded-2xl bg-[#f0eee6] px-4 py-2.5">{ask}</div>
@@ -103,7 +103,7 @@ export function ClaudeDesktop({
               {/* compact: the choices on one row, so the reply still fits under them */}
               <div className={compact ? 'mt-1.5 flex flex-wrap gap-x-4 gap-y-1' : 'mt-1.5 space-y-1'}>
                 {question.options.map((o, i) => (
-                  <div key={o} className={`flex items-center gap-2 ${i === 0 ? '' : 'text-black/45'}`}>
+                  <div key={o} className={`flex items-center gap-2 ${i === 0 ? '' : 'text-black/65'}`}>
                     <span className={`grid size-4 place-items-center rounded-full border ${i === 0 ? 'border-[#2563eb]' : 'border-black/25'}`}>
                       {i === 0 && <span className="pz-pop size-2 rounded-full bg-[#2563eb]" style={later(1700)} />}
                     </span>
@@ -118,13 +118,13 @@ export function ClaudeDesktop({
             <ul className="mt-1.5 space-y-0.5">
               {steps.map((l, i) => (
                 <li key={l} className="pz-appear flex gap-2" style={later(replyAt + 500 + i * 450)}>
-                  <span className={i < steps.length - 1 ? 'text-[#2f9e5b]' : 'text-[#d97757]'}>{i < steps.length - 1 ? '✓' : '●'}</span>{l}
+                  <span className={i < steps.length - 1 ? 'text-[#1f7a43]' : 'text-[#a8452a]'}>{i < steps.length - 1 ? '✓' : '●'}</span>{l}
                 </li>
               ))}
             </ul>
           </div>
         </div>
-        <div className="mx-4 mb-4 rounded-2xl border border-black/10 px-4 py-3 text-[14px] text-black/40 shadow-sm">Reply to Claude…</div>
+        <div className="mx-4 mb-4 rounded-2xl border border-black/10 px-4 py-3 text-[14px] text-black/65 shadow-sm">Reply to Claude…</div>
       </div>
 
       {!compact && <div className="w-[215px] shrink-0 p-3">
@@ -137,7 +137,7 @@ export function ClaudeDesktop({
           </div>
         </div>
         <div className="mt-2 flex justify-between rounded-xl border border-black/10 p-3 text-[13px]">
-          <span className="font-medium">Context ▸</span><span className="text-black/50">6%</span>
+          <span className="font-medium">Context ▸</span><span className="text-black/65">6%</span>
         </div>
       </div>}
     </div>

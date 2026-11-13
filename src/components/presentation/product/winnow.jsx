@@ -24,10 +24,10 @@ function InputScene({ step }) {
     <>
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
         {INPUTS.map((_, i) => (
-          <path key={i} d={`M520 ${IN_CY(i)} C 590 ${IN_CY(i)}, 590 320, 660 320`} pathLength="1" data-on className="pz-draw" fill="none" stroke="#6d28d9" strokeWidth="3" style={{ transitionDelay: `${500 + i * 150}ms` }} />
+          <path key={i} d={`M520 ${IN_CY(i)} C 590 ${IN_CY(i)}, 590 320, 660 320`} pathLength="1" data-on className="pz-draw" fill="none" stroke="#1d6fa5" strokeWidth="3" style={{ transitionDelay: `${500 + i * 150}ms` }} />
         ))}
         {OUTS.map((o) => (
-          <path key={o.skill} d={`M1000 320 C 1070 320, 1070 ${o.cy}, 1140 ${o.cy}`} pathLength="1" data-on={step === 1} className="pz-draw" fill="none" stroke="#6d28d9" strokeWidth="3" style={{ transitionDelay: '300ms' }} />
+          <path key={o.skill} d={`M1000 320 C 1070 320, 1070 ${o.cy}, 1140 ${o.cy}`} pathLength="1" data-on={step === 1} className="pz-draw" fill="none" stroke="#1d6fa5" strokeWidth="3" style={{ transitionDelay: '300ms' }} />
         ))}
       </svg>
       {INPUTS.map(([icon, h, s], i) => (
@@ -39,8 +39,8 @@ function InputScene({ step }) {
           </div>
         </Show>
       ))}
-      <Show from="pop" delay={700} style={at(660, 170, 340, 300)} className={`${box} pz-glow flex flex-col justify-center border-fuchsia-400/60 p-6`}>
-        <div className="font-display text-[34px] text-fuchsia-200">🌾 winnow</div>
+      <Show from="pop" delay={700} style={at(660, 170, 340, 300)} className={`${box} pz-glow flex flex-col justify-center border-cyan-400/60 p-6`}>
+        <div className="font-display text-[34px] text-cyan-200">🌾 winnow</div>
         <div className="mt-3 space-y-1.5 text-[16px] text-muted">
           <div>reads the whole transcript</div>
           <div>grounds itself in the context</div>
@@ -82,8 +82,8 @@ const INPUT_BEATS = [
 
 const BUCKETS = [
   { id: 'noise', label: 'Noise', icon: '🌬️', tone: 'border-hairline', text: 'text-faint', sub: 'set aside — never written anywhere' },
-  { id: 'know',  label: 'Durable knowledge', icon: '🧠', tone: 'border-emerald-400/50', text: 'text-emerald-200', sub: '→ a context update' },
-  { id: 'work',  label: 'Actionable work', icon: '🎫', tone: 'border-violet-400/60', text: 'text-violet-200', sub: '→ a candidate task' },
+  { id: 'know',  label: 'Durable knowledge', icon: '🧠', tone: 'border-teal-400/50', text: 'text-teal-200', sub: '→ a context update' },
+  { id: 'work',  label: 'Actionable work', icon: '🎫', tone: 'border-blue-400/60', text: 'text-blue-200', sub: '→ a candidate task' },
   { id: 'both',  label: 'Both', icon: '🧠🎫', tone: 'border-cyan-400/50', text: 'text-cyan-200', sub: '→ a rule and a Done when line' },
 ];
 
@@ -137,7 +137,7 @@ function Toss() {
     return (
       <motion.div
         key={l.t}
-        className={`pz-lit absolute rounded-md border px-2.5 py-0.5 font-mono text-[13px] leading-tight ${to.noise ? 'border-hairline bg-raised text-faint' : l.held ? 'border-amber-400/50 bg-raised text-ink' : 'border-violet-400/40 bg-raised text-ink'}`}
+        className={`pz-lit absolute rounded-md border px-2.5 py-0.5 font-mono text-[13px] leading-tight ${to.noise ? 'border-hairline bg-raised text-faint' : l.held ? 'border-amber-400/50 bg-raised text-ink' : 'border-blue-400/40 bg-raised text-ink'}`}
         style={{ left: from.x, top: from.y, whiteSpace: 'nowrap', ...later(READ_AT + i * READ_EVERY) }}
         initial={{ x: 0, y: 0, rotate: 0, opacity: 1, width: SHEAF.w - 36 }}
         animate={{
@@ -185,7 +185,7 @@ function WinnowScene({ step }) {
       </Replay>
       <Show on={step === 0} from="left" style={at(SHEAF.x, SHEAF.y, SHEAF.w, SHEAF.h)} className={`${box} overflow-hidden`}>
         <div className="border-b border-hairline px-4 py-2 font-mono text-[13px] text-faint">transcript · {LINES.length} lines that said anything</div>
-        <div className="pz-scan-down pointer-events-none absolute inset-x-0 top-10 h-7 bg-gradient-to-b from-transparent via-fuchsia-300/20 to-transparent" style={{ '--scan': `${SHEAF.h - 70}px`, ...later(READ_AT - 100) }} aria-hidden="true" />
+        <div className="pz-scan-down pointer-events-none absolute inset-x-0 top-10 h-7 bg-gradient-to-b from-transparent via-cyan-300/20 to-transparent" style={{ '--scan': `${SHEAF.h - 70}px`, ...later(READ_AT - 100) }} aria-hidden="true" />
       </Show>
       {BUCKETS.map((b, i) => (
         <Show key={b.id} on={step === 0} from="up" delay={1500 + i * 120}>
@@ -207,6 +207,6 @@ const WINNOW_BEATS = [
 ];
 
 export const WINNOW = [
-  { id: 'input', name: 'winnow', accent: 'text-fuchsia-300', tone: 'fuchsia', beats: INPUT_BEATS, Scene: InputScene },
-  { id: 'winnow', name: 'Distil', accent: 'text-fuchsia-300', tone: 'fuchsia', beats: WINNOW_BEATS, Scene: WinnowScene },
+  { id: 'input', name: 'winnow', accent: 'text-cyan-300', tone: 'fuchsia', beats: INPUT_BEATS, Scene: InputScene },
+  { id: 'winnow', name: 'Distil', accent: 'text-cyan-300', tone: 'fuchsia', beats: WINNOW_BEATS, Scene: WinnowScene },
 ];

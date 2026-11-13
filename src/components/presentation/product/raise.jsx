@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { at, Show, Tick, Token, later } from '../kit.jsx';
+import { at, Show, Tick, Token, later, ClosingRow } from '../kit.jsx';
 import { Versus, SkillHead } from './kit.jsx';
 import { Field } from './intro.jsx';
 
@@ -79,14 +79,15 @@ function HandoffScene({ leaving, advance }) {
           style={{ transformOrigin: '50% 45%' }}
         >
           <div style={at(110, 130, 820, 480)} className="flex flex-col items-start">
+            <div data-eyebrow className="mb-4 text-[18px] font-semibold uppercase tracking-[0.2em] text-edge">Handing over</div>
             <div className="space-y-1.5 whitespace-nowrap text-[22px]">
               <div className="flex items-center gap-3 text-muted"><Tick /> 🎙️ Product harness: a conversation → a ticket</div>
-              <div className="pz-appear text-ink" style={later(500)}><span className="mr-3 text-violet-300">↳</span>🚢 <b>Engineering harness</b>: the ticket → a reviewed pull request</div>
+              <div className="pz-appear text-ink" style={later(500)}><span className="mr-3 text-blue-300">↳</span>🚢 <b>Engineering harness</b>: the ticket → a reviewed pull request</div>
             </div>
             <div className="mt-12 pl-2">
               <Token className="relative" initial={{ scale: 0.5, opacity: 0, y: 40 }} animate={{ scale: 2.4, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 140, damping: 13, delay: 0.5 }} style={{ transformOrigin: '0 50%' }} />
             </div>
-            <div className="pz-appear mt-10 font-display text-[64px] leading-none text-ink" style={later(700)}>
+            <div data-deck-title className="pz-appear mt-10 font-display text-[64px] font-bold leading-none text-ink" style={later(700)}>
               Over to <span className="pz-shine bg-clip-text text-transparent">Jonas</span>.
             </div>
             <button
@@ -94,7 +95,7 @@ function HandoffScene({ leaving, advance }) {
               data-testid="presentation-handoff"
               aria-label="Continue to the engineering harness"
               onClick={(e) => { e.stopPropagation(); advance(); }}
-              className="pz-launch pz-pop mt-9 inline-flex items-center gap-3 rounded-full border border-cyan-300/60 bg-gradient-to-r from-violet-600 to-cyan-500 px-10 py-4 font-display text-[28px] text-white hover:from-violet-500 hover:to-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
+              className="pz-launch pz-pop mt-9 inline-flex items-center gap-3 rounded-full border border-cyan-300/60 bg-gradient-to-r from-blue-600 to-cyan-500 px-10 py-4 font-display text-[28px] text-white hover:from-blue-500 hover:to-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
               style={later(900)}
             >
               Continue to the engineering harness <span aria-hidden="true">→</span>
@@ -103,6 +104,13 @@ function HandoffScene({ leaving, advance }) {
           </div>
         </motion.div>
       </Show>
+      <Show from="up" delay={600} style={at(0, 0, 1600, 900)} className="pointer-events-none">
+        <ClosingRow cards={[
+          { title: 'create-tasks', sub: 'a conversation becomes tickets' },
+          { title: 'update-context', sub: 'what we learned is kept' },
+          { title: 'winnow', sub: 'the ticket carries over' },
+        ]} />
+      </Show>
     </>
   );
 }
@@ -110,13 +118,13 @@ function HandoffScene({ leaving, advance }) {
 const HANDOFF_BEATS = [null];
 
 export const CREATE_TASKS = [
-  { id: 'raise', name: 'create-tasks', accent: 'text-violet-300', tone: 'violet', beats: RAISE_BEATS, Scene: RaiseAll },
+  { id: 'raise', name: 'create-tasks', accent: 'text-blue-300', tone: 'violet', beats: RAISE_BEATS, Scene: RaiseAll },
 ];
 
 export const UPDATE_CONTEXT = [
-  { id: 'remember', name: 'update-context', accent: 'text-emerald-300', tone: 'emerald', beats: REMEMBER_BEATS, Scene: RememberAll },
+  { id: 'remember', name: 'update-context', accent: 'text-teal-300', tone: 'emerald', beats: REMEMBER_BEATS, Scene: RememberAll },
 ];
 
 export const HANDOFF = [
-  { id: 'handoff', name: 'Over to the engineering harness', accent: 'text-violet-300', tone: 'violet', beats: HANDOFF_BEATS, Scene: HandoffScene },
+  { id: 'handoff', name: 'Over to the engineering harness', accent: 'text-blue-300', tone: 'violet', beats: HANDOFF_BEATS, Scene: HandoffScene },
 ];

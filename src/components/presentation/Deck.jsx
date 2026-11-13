@@ -26,6 +26,25 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 const STAGE_W = 1600;
 const STAGE_H = 900;
 
+/**
+ * The NAM 2026 frame: a thick blue bar down the left edge with short ticks
+ * along the top and bottom, and a tab at top right holding the Equal
+ * Experts mark above the slide number.
+ */
+function Frame({ number }) {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div data-testid="deck-frame" className="absolute bottom-[40px] left-0 top-[40px] w-[14px] bg-frame" />
+      <div className="absolute left-0 top-[40px] h-[6px] w-[56px] bg-frame" />
+      <div className="absolute bottom-[40px] left-0 h-[6px] w-[56px] bg-frame" />
+      <div data-testid="deck-tab" className="absolute right-[56px] top-0 flex h-[104px] w-[104px] flex-col items-center justify-center gap-1 rounded-b-xl bg-tab">
+        <img src="/brand/Equal_Experts_Logo_Monochrome_White.svg" alt="" className="w-[76px]" />
+        <span className="text-[26px] font-bold leading-none text-ink">{number}</span>
+      </div>
+    </div>
+  );
+}
+
 function useStageScale() {
   const fit = () => Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
   const [scale, setScale] = useState(fit);
@@ -83,7 +102,7 @@ const WORD = {
 // No exit animation: with AnimatePresence a fast clicker could press on before
 // the old caption finished leaving, and it stayed on screen under the new beat.
 // The old caption goes at once; the new one's words still rise in.
-function Caption({ beat, accent, index, top }) {
+function Caption({ beat, index, top }) {
   if (!beat) return null;
   // a hero beat is a title slide: the caption is the slide, set large mid-stage
   const hero = beat.hero;
@@ -99,13 +118,13 @@ function Caption({ beat, accent, index, top }) {
     >
       {/* a beat can belong to a named section (`lesson: { label, n }`): a badge, and its number large behind the headline */}
       {beat.lesson && (
-        <motion.div variants={WORD} aria-hidden="true" className={`pointer-events-none absolute right-0 top-[-34px] font-display text-[200px] leading-none ${accent}`}><span className="opacity-40">{beat.lesson.n}</span></motion.div>
+        <motion.div variants={WORD} aria-hidden="true" className={`pointer-events-none absolute right-0 top-[-34px] font-display text-[200px] font-bold leading-none text-edge`}><span className="opacity-40">{beat.lesson.n}</span></motion.div>
       )}
-      <motion.div variants={WORD} className={`flex items-center gap-4 font-mono uppercase tracking-[0.2em] ${hero ? 'text-[24px]' : 'text-[15px]'} ${accent}`}>
+      <motion.div variants={WORD} data-eyebrow className={`flex items-center gap-4 font-semibold uppercase tracking-[0.2em] text-edge ${hero ? 'text-[24px]' : 'text-[15px]'}`}>
         {beat.lesson && <span className="rounded-full border-2 border-current bg-white/5 px-4 py-0.5 font-display text-[20px] font-semibold tracking-[0.14em] [word-spacing:0.35em]">{beat.lesson.label}</span>}
         {beat.kicker}
       </motion.div>
-      <h2 className={`font-display text-ink ${hero ? 'mt-5 text-[108px] leading-[0.95]' : 'mt-2 text-[46px] leading-tight'}`}>
+      <h2 className={`font-display font-bold text-ink ${hero ? 'mt-5 text-[108px] leading-[0.95]' : 'mt-2 text-[46px] leading-tight'}`}>
         {beat.title.split(' ').map((w, i) => (
           <motion.span key={i} variants={WORD} transition={{ type: 'spring', stiffness: 220, damping: 22 }} className="mr-[0.25em] inline-block">{w}</motion.span>
         ))}
@@ -193,8 +212,8 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="fixed inset-0 select-none overflow-hidden bg-ground text-ink" data-testid="presentation" onPointerMove={parallax.onPointerMove}>
-      <Backdrop tone={current.tone} warpKey={leaving ? 'leaving' : chapter} />
+    <div className="deck fixed inset-0 select-none overflow-hidden bg-ground text-ink" data-testid="presentation" onPointerMove={parallax.onPointerMove}>
+      <Backdrop />
 
       {/* The stage. Clicking anywhere on it moves on, as a clicker would. */}
       <div
@@ -202,6 +221,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
         style={{ width: STAGE_W, height: STAGE_H, transform: `translate(-50%, -50%) scale(${scale})`, perspective: 1800 }}
         onClick={advance}
       >
+        <Frame number={beat + 1} />
         <motion.div className="absolute inset-0" style={{ rotateX: parallax.rotateX, rotateY: parallax.rotateY, transformStyle: 'preserve-3d' }}>
           {CHAPTERS.map((c, i) => {
             if (Math.abs(i - chapter) > 1) return null;
@@ -211,7 +231,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
             const cut = CHAPTERS[Math.max(i, chapter)].enter === 'cut';
             return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} leaving={leaving} advance={advance} />;
           })}
-          <Caption beat={current.beats[step]} accent={current.accent} index={beat} top={captions === 'top'} />
+          <Caption beat={current.beats[step]} index={beat} top={captions === 'top'} />
         </motion.div>
       </div>
 
@@ -221,7 +241,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
         <span className="text-faint">/</span>
         <span className="text-muted" data-testid="presentation-chapter">{current.name}</span>
         <span className="ml-auto font-mono text-faint" data-testid="presentation-counter">{beat + 1} / {TOTAL}</span>
-        <button type="button" onClick={toggleFullscreen} className="rounded-md border border-hairline px-2 py-1 text-muted hover:bg-overlay hover:text-ink" aria-label="Toggle full screen (F)">
+        <button type="button" onClick={toggleFullscreen} className="rounded-md border border-edge/60 px-2 py-1 text-muted hover:bg-overlay hover:text-ink" aria-label="Toggle full screen (F)">
           ⛶
         </button>
       </div>
@@ -241,16 +261,16 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
                 aria-current={i === chapter ? 'step' : undefined}
               >
                 <span className="absolute inset-x-0 bottom-1.5 h-1 overflow-hidden rounded-full bg-overlay group-hover:h-1.5">
-                  <span className="block h-full rounded-full bg-gradient-to-r from-violet-400 to-cyan-300 transition-[width] duration-500" style={{ width: `${done * 100}%` }} />
+                  <span className="block h-full rounded-full bg-gradient-to-r from-blue-400 to-cyan-300 transition-[width] duration-500" style={{ width: `${done * 100}%` }} />
                 </span>
               </button>
             );
           })}
         </nav>
         <button type="button" data-testid="presentation-prev" onClick={() => go(beat - 1)} disabled={beat === 0}
-          className="rounded-lg border border-hairline bg-surface/80 px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30" aria-label="Previous">←</button>
+          className="rounded-lg border border-edge/60 bg-surface px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30" aria-label="Previous">←</button>
         <button type="button" data-testid="presentation-next" onClick={() => go(beat + 1)} disabled={!next && beat === TOTAL - 1}
-          className="rounded-lg border border-hairline bg-surface/80 px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30"
+          className="rounded-lg border border-edge/60 bg-surface px-3 py-1.5 text-[13px] text-muted hover:text-ink disabled:opacity-30"
           aria-label={next && beat === TOTAL - 1 ? `Next: ${next.label}` : 'Next'}>→</button>
       </div>
       <span className="sr-only" aria-live="polite">{`Beat ${beat + 1} of ${TOTAL}: ${current.beats[step]?.title ?? current.name}`}</span>

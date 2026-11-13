@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { at, Show, Replay, Kicker, Code, Terminal, PrIcon, later } from './kit.jsx';
+import { at, Show, Replay, Kicker, Code, Terminal, PrIcon, later, ClosingRow, Bridge } from './kit.jsx';
 import { Orbits } from './intro.jsx';
 
 /*
@@ -9,7 +9,7 @@ import { Orbits } from './intro.jsx';
  * marked as such, and the numbers are a drawn example, never data.
  */
 
-const box = 'rounded-2xl border border-hairline bg-surface';
+const box = 'rounded-2xl border border-edge bg-surface';
 
 /** "next · not built yet" — on anything the harness does not do today. */
 function NextTag({ className = '' }) {
@@ -22,7 +22,7 @@ function NextTag({ className = '' }) {
 
 function TodayTag({ className = '' }) {
   return (
-    <span className={`inline-flex items-center rounded-full border border-emerald-400/50 bg-emerald-500/15 px-2.5 py-0.5 font-mono text-[12px] uppercase tracking-wider text-emerald-200 ${className}`}>
+    <span className={`inline-flex items-center rounded-full border border-teal-400/50 bg-teal-500/15 px-2.5 py-0.5 font-mono text-[12px] uppercase tracking-wider text-teal-200 ${className}`}>
       today
     </span>
   );
@@ -64,7 +64,7 @@ const SCORE_AT = 3200;
 function Dot({ ok, delay }) {
   return (
     <span
-      className={`pz-pop inline-block size-4 rounded-full ${ok ? 'bg-emerald-400/90 shadow-[0_0_10px_rgba(52,211,153,0.6)]' : 'bg-rose-400/90 shadow-[0_0_10px_rgba(251,113,133,0.6)]'}`}
+      className={`pz-pop inline-block size-4 rounded-full ${ok ? 'bg-teal-400/90 shadow-[0_0_10px_rgba(93,176,176,0.6)]' : 'bg-rose-400/90 shadow-[0_0_10px_rgba(251,113,133,0.6)]'}`}
       style={later(delay)}
       aria-hidden="true"
     />
@@ -79,7 +79,7 @@ function EvalScene({ step }) {
         <div className="grid grid-cols-[150px_1fr_1fr] items-end gap-6 border-b border-hairline pb-3">
           <Kicker>Past tickets</Kicker>
           <div>
-            <div className="font-display text-[26px] text-violet-200">Ship v1</div>
+            <div className="font-display text-[26px] text-blue-200">Ship v1</div>
             <div className="text-[15px] text-muted">today’s harness</div>
           </div>
           <div className="pz-appear" style={later(V2_AT - 300)}>
@@ -112,11 +112,11 @@ function EvalScene({ step }) {
               <div key={s.name}>
                 <div className="flex items-baseline justify-between">
                   <span className="text-[19px] font-semibold text-ink">{s.name}</span>
-                  <span className={`font-mono text-[15px] ${v2wins ? 'text-emerald-300' : 'text-rose-300'}`}>{v2wins ? '▲ v2' : '▼ v2'}</span>
+                  <span className={`font-mono text-[15px] ${v2wins ? 'text-teal-300' : 'text-rose-300'}`}>{v2wins ? '▲ v2' : '▼ v2'}</span>
                 </div>
                 <div className="text-[13px] text-faint">{s.sub}{s.better === 'low' ? ' · lower is better' : ''}</div>
                 <div className="mt-1.5 space-y-1">
-                  {[['v1', s.v1, 'bg-violet-400'], ['v2', s.v2, 'bg-sky-400']].map(([who, w, c], k) => (
+                  {[['v1', s.v1, 'bg-blue-400'], ['v2', s.v2, 'bg-sky-400']].map(([who, w, c], k) => (
                     <div key={who} className="flex items-center gap-2">
                       <span className="w-5 font-mono text-[12px] text-faint">{who}</span>
                       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-overlay">
@@ -195,8 +195,8 @@ function LoopScene({ step }) {
           const built = s.id === 'ship';
           return (
             <g key={s.id}>
-              <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke={built ? '#6d28d9' : '#7c5a1e'} strokeWidth="3" style={later(LOOP_AT + i * SEG_MS)} />
-              <path d={d} pathLength="1" className="pz-flow" fill="none" stroke={built ? '#c4b5fd' : '#fcd34d'} strokeWidth="3" opacity="0.7" />
+              <path d={d} pathLength="1" className="pz-draw-in" fill="none" stroke={built ? '#1d6fa5' : '#7c5a1e'} strokeWidth="3" style={later(LOOP_AT + i * SEG_MS)} />
+              <path d={d} pathLength="1" className="pz-flow" fill="none" stroke={built ? '#93c5fd' : '#fcd34d'} strokeWidth="3" opacity="0.7" />
             </g>
           );
         })}
@@ -225,7 +225,7 @@ function LoopScene({ step }) {
         return (
           <div
             key={s.id}
-            className={`pz-appear absolute rounded-2xl border px-4 py-3 transition-colors duration-500 ${s.today ? 'border-violet-400/50 bg-raised' : 'border-dashed border-amber-400/50 bg-surface'} ${lit ? 'pz-glow' : ''}`}
+            className={`pz-appear absolute rounded-2xl border px-4 py-3 transition-colors duration-500 ${s.today ? 'border-blue-400/50 bg-raised' : 'border-dashed border-amber-400/50 bg-surface'} ${lit ? 'pz-glow' : ''}`}
             style={{ ...at(x - NODE_W / 2, y - NODE_H / 2, NODE_W, NODE_H), ...later(LOOP_AT + i * SEG_MS) }}
           >
             <div className="flex items-center gap-2 text-[21px] font-semibold text-ink">
@@ -233,7 +233,7 @@ function LoopScene({ step }) {
             </div>
             <div className="mt-0.5 whitespace-nowrap text-[15px] text-muted">{s.what}</div>
             <Show on={step > 0} from="up" delay={i * 90} className="mt-2">
-              {s.today ? <span className="inline-flex items-center gap-2"><TodayTag /><span className="text-[14px] text-emerald-200">{s.today}</span></span> : <NextTag />}
+              {s.today ? <span className="inline-flex items-center gap-2"><TodayTag /><span className="text-[14px] text-teal-200">{s.today}</span></span> : <NextTag />}
             </Show>
           </div>
         );
@@ -261,12 +261,12 @@ const LOOP_BEATS = [
 
 const CHALLENGES = [
   {
-    letter: 'A', icon: '🧠', title: 'Make it smarter', ring: 'border-violet-400/50 bg-violet-500/[0.06]', tone: 'text-violet-200',
+    letter: 'A', icon: '🧠', title: 'Make it smarter', ring: 'border-blue-400/50 bg-blue-500/[0.06]', tone: 'text-blue-200',
     ask: 'Find a weakness. Sharpen a gate, change what each agent reads, catch a defect ship misses today.',
     start: ['codeLenses', '.claude/rules/'],
   },
   {
-    letter: 'B', icon: '✂️', title: 'Make it leaner', ring: 'border-emerald-400/50 bg-emerald-500/[0.06]', tone: 'text-emerald-200',
+    letter: 'B', icon: '✂️', title: 'Make it leaner', ring: 'border-teal-400/50 bg-teal-500/[0.06]', tone: 'text-teal-200',
     ask: 'Fewer tokens, fewer agent steps, a cheaper model. Same correctness.',
     start: ['TIERS', 'the AI spend comment'],
   },
@@ -312,7 +312,8 @@ function ChallengeScene({ step }) {
         <Orbits style={at(380, 10, 840, 840)} className="opacity-25" />
       </Show>
       <Show on={step === 1} from="scale" style={at(80, 70, 1440, 760)} className="flex flex-col items-center justify-center text-center">
-        <div className="font-display text-[104px] leading-[0.98] text-ink">
+        <Kicker className="mb-6 !text-[22px]">Your move</Kicker>
+        <div data-deck-title className="font-display text-[104px] font-bold leading-[0.98] text-ink">
           The harness isn’t finished.<br />
           <span className="pz-shine bg-clip-text text-transparent">What would you change?</span>
         </div>
@@ -360,10 +361,10 @@ function WaveRow({ n, title, at: delay, dur, depends, shared }) {
       <div className="min-w-0">
         <div className="truncate text-[18px] text-ink"><span className="font-mono text-faint">#{n}</span> {title}</div>
         {depends && <div className="font-mono text-[13px] text-sky-300">Depends on #151</div>}
-        {shared && <div className="font-mono text-[13px] text-emerald-300">shared · small · first</div>}
+        {shared && <div className="font-mono text-[13px] text-teal-300">shared · small · first</div>}
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-overlay">
-        <span className="pz-fill block h-full w-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-300" style={{ animationDuration: `${dur}ms`, animationDelay: `${delay + 200}ms` }} />
+        <span className="pz-fill block h-full w-full rounded-full bg-gradient-to-r from-blue-500 to-teal-300" style={{ animationDuration: `${dur}ms`, animationDelay: `${delay + 200}ms` }} />
       </div>
     </div>
   );
@@ -393,8 +394,8 @@ function WavesScene() {
       </div>
 
       {/* sliced in waves: a small shared piece, everything else in parallel */}
-      <div className="flex flex-col rounded-2xl border border-emerald-400/40 bg-emerald-500/[0.05] px-7 py-6">
-        <Kicker className="text-emerald-300">Sliced into waves</Kicker>
+      <div className="flex flex-col rounded-2xl border border-teal-400/40 bg-teal-500/[0.05] px-7 py-6">
+        <Kicker className="text-teal-300">Sliced into waves</Kicker>
         <div className="mt-4 grid flex-1 grid-cols-2 gap-8">
           <div className="flex flex-col gap-5">
             <div className="font-display text-[24px] text-ink">☕ Wave 1 · while you’re away</div>
@@ -437,42 +438,37 @@ const LUNCH_LINES = [
 ];
 
 const LUNCH_TIMELINE = [
-  { icon: '✓', title: 'Now: it’s running', sub: 'see the plan land before you get up', tone: 'border-emerald-400/60 text-emerald-300' },
+  { icon: '✓', title: 'Now: it’s running', sub: 'see the plan land before you get up', tone: 'border-teal-400/60 text-teal-300' },
   { icon: '🍽️', title: 'Lunch', sub: 'nothing to watch', tone: 'border-hairline text-ink' },
-  { icon: <PrIcon className="size-5" />, title: 'After: a pull request', sub: 'read it, then Squash and merge', tone: 'border-violet-400/60 text-violet-300' },
+  { icon: <PrIcon className="size-5" />, title: 'After: a pull request', sub: 'read it, then Squash and merge', tone: 'border-blue-400/60 text-blue-300' },
 ];
 
 function LunchScene() {
   return (
     <>
       <Show on from="up" style={at(80, 60, 1440, 190)}>
-        <Kicker className="text-emerald-300">11 · Before lunch</Kicker>
-        <div className="mt-3 font-display text-[78px] leading-[0.98] text-ink">
+        <Kicker className="text-teal-300">11 · Before lunch</Kicker>
+        <div data-deck-title className="mt-3 font-display text-[60px] font-bold leading-[1] text-ink">
           Start a ship. <span className="pz-shine bg-clip-text text-transparent">Come back to a pull request.</span>
         </div>
       </Show>
 
-      <Show on from="left" delay={200} style={at(80, 235, 820, 420)} className="flex flex-col gap-3">
+      <Show on from="left" delay={200} style={at(80, 235, 820, 380)} className="flex flex-col gap-3">
         <div className="text-[18px] text-muted">
           Just one today: the issue in your fork. In <b className="text-ink">Claude Code</b>, or the <b className="text-ink">Code</b> tab of Claude Desktop:
         </div>
         <Terminal title="claude — nam-2026-conference" lines={LUNCH_LINES} className="flex-1" />
       </Show>
 
-      <Show on from="right" delay={400} style={at(960, 235, 560, 420)} className="relative flex flex-col justify-between py-1">
-        <span className="absolute bottom-10 left-[27px] top-10 w-px bg-hairline" aria-hidden="true" />
-        {LUNCH_TIMELINE.map((s, i) => (
-          <div key={s.title} className="pz-appear relative flex items-center gap-5" style={later(1800 + i * 900)}>
-            <span className={`grid size-14 shrink-0 place-items-center rounded-full border-2 bg-surface text-[22px] ${s.tone}`}>{s.icon}</span>
-            <div>
-              <div className="font-display text-[30px] leading-tight text-ink">{s.title}</div>
-              <div className="text-[17px] text-muted">{s.sub}</div>
-            </div>
-          </div>
-        ))}
+      <Show on from="right" delay={400} style={at(1000, 215, 500, 400)}>
+        <Bridge className="size-full" />
       </Show>
 
-      <Show on from="up" delay={700} style={at(80, 680, 1440, 160)} className="flex flex-col gap-3 border-t border-hairline pt-5">
+      <Show on from="up" delay={900} style={at(0, 0, 1600, 900)} className="pointer-events-none">
+        <ClosingRow bridge={false} y={635} width={1440} cards={LUNCH_TIMELINE} />
+      </Show>
+
+      <Show on from="up" delay={700} style={at(80, 765, 1440, 100)} className="flex flex-col gap-2 border-t border-hairline pt-3">
         <div className="text-[18px] text-muted">
           Not set up yet? Paste the setup prompt from the README into Claude. Then, after lunch, pick a challenge.
         </div>
@@ -488,7 +484,7 @@ function LunchScene() {
 export const NEXT = [
   { id: 'evals', name: 'Who tests the harness?', accent: 'text-cyan-300', tone: 'cyan', beats: EVAL_BEATS, Scene: EvalScene },
   { id: 'learning', name: 'Learning from escapes', accent: 'text-amber-300', tone: 'amber', beats: LOOP_BEATS, Scene: LoopScene },
-  { id: 'challenge', name: 'Your move', accent: 'text-fuchsia-300', tone: 'fuchsia', beats: CHALLENGE_BEATS, Scene: ChallengeScene },
+  { id: 'challenge', name: 'Your move', accent: 'text-cyan-300', tone: 'fuchsia', beats: CHALLENGE_BEATS, Scene: ChallengeScene },
   { id: 'waves', name: 'Ship in waves', accent: 'text-sky-300', tone: 'sky', beats: WAVES_BEATS, Scene: WavesScene },
-  { id: 'lunch', name: 'Before lunch', accent: 'text-emerald-300', tone: 'emerald', beats: [null], Scene: LunchScene },
+  { id: 'lunch', name: 'Before lunch', accent: 'text-teal-300', tone: 'emerald', beats: [null], Scene: LunchScene },
 ];

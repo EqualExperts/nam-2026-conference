@@ -27,9 +27,11 @@ files:
   - src/pages/OpeningPresentationPage.jsx
   - src/components/presentation/
   - src/lib/presentation.js
+  - public/brand/
 tests:
   - tests/unit/format.test.js
   - tests/unit/presentation.test.js
+  - tests/unit/deck-contrast.test.js
   - tests/smoke.spec.js
   - tests/home.spec.js
   - tests/switcher.spec.js
@@ -184,7 +186,7 @@ them; `tests/presentation.spec.js` covers them instead. All three pages are a
 keys — →/Space/Enter/PageDown on, ←/PageUp/Backspace back, Home/End, F full
 screen) and draws a fixed 1600×900 stage scaled to the window. `Deck`'s `next`
 is the talk that follows: one press past the last beat navigates there — with
-`next.delay` the current scene is first told it is `leaving` (and the stars warp)
+`next.delay` the current scene is first told it is `leaving` 
 so a hand-off can play, except under reduced motion, which navigates at once; a
 scene also gets `advance`, so a button on the stage can be the clicker. The
 opening deck ends on the frame the product deck opens with ("Continue to the
@@ -219,14 +221,36 @@ side by side, and a *Before lunch* slide that starts `/ship`. Those are directio
 and what is *next*, and the eval scorecard is labelled illustrative. `kit.jsx` has the primitives (`Show`, `Replay`, `Token` — the #140 ticket
 that travels both talks, `Flip`, `Terminal`, `Verdict`…); `product/kit.jsx` the
 product talk's own (the hosts' faces, `Wave`, `Versus` — by hand against with the
-skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`); `Backdrop.jsx` the starfield
-and aurora. The product talk states only what the winnow skills really do
+skill — `SkillHead`, a skill's name set large, and the three-step `StepRail`); `Backdrop.jsx` the flat charcoal ground. The product talk states only what the winnow skills really do
 (`.claude/skills/winnow`, `create-tasks`, `update-context`): the bucket names and the
 ticket shape are theirs.
 The engineering talk renders ticket #140 from one constant, `presentation/issue.js`
 (`ISSUE_140`: title, why, what, doneWhen, outOfScope). The product talk keeps its own
 copy of the ticket (`product/winnow.jsx`: WhereScene and the Distil buckets), so a
 change to the #140 text is made in both.
+
+**The decks wear the NAM Conference 2026 slide deck.** The tokens live in one `.deck`
+block in `src/index.css`, set on `Deck`'s root, so the app's own `@theme` is untouched:
+ground charcoal `#212121`, cards `#071322` (`bg-surface`, so every old `box`/`bg-surface`
+remaps) outlined `#38bdf8` (`border-edge`), titles `#fff`, muted and faint `#94a3b8`,
+frame `#2095d3`, tab `#1795d4`, accents `orange #f59e0b`, `teal #3a9a9a`, `cyan #00c8e8`
+(the scenes' `emerald-*` classes are the teal ramp there; the old violet is gone, no scene
+class or hex may say violet). **Lexend is the only text font** (`--font-sans/display/mono`
+all resolve to it inside `.deck`; SVG `<text>` says it too). `Deck`'s `Frame` draws the
+left bar (`deck-frame`), the ticks and the top-right tab (`deck-tab`: the white Equal
+Experts logo above the slide number); `Backdrop` is the flat ground. An eyebrow is a
+`data-eyebrow` element (the caption's kicker, or `Kicker`) and a slide with no caption
+marks its title `data-deck-title`. `kit.jsx` has the card shapes — `Card` (circled numeral),
+`AccentCard` (colour bar, big numeral), `TwoPanel`, `Pill` — plus `Bridge` and `ClosingRow`:
+the last beat of each deck (the opening's *Over to Abraham*, the product's *Over to Jonas*,
+the engineering's *Before lunch*) is three numbered `closing-card`s and the bridge
+(`deck-bridge`). The opening's title slide is one large outlined card with the bridge on
+the right and the white logo (`deck-logo`, at least 100px wide) bottom-left. Files in
+`public/brand/`: `nam-bridge-logo.png`, `Equal_Experts_Logo_Monochrome_White.svg`. The
+supplied `charcoal-background.png` has the bridge baked into a corner, so it is not used.
+Text colour pairs are pinned by `tests/unit/deck-contrast.test.js`, and
+`tests/presentation.spec.js` walks every beat of every deck for the frame, an eyebrow and
+title, Lexend, no violet and AA contrast of each text over its fill.
 
 It is the only place that uses **Motion** (`motion/react`) — springs, the
 chapter fly-through, the camera zoom. Inside a beat, sequences are the `pz-*`
