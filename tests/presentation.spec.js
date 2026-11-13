@@ -412,6 +412,9 @@ test.describe('The opening title slide', () => {
     expect((await logo.boundingBox()).width / (stage.width / 1600)).toBeGreaterThanOrEqual(100);
     const [b, l] = [await bridge.boundingBox(), await logo.boundingBox()];
     expect(b.x).toBeGreaterThan(l.x + l.width);
+    // the logo sits clear of the day list above it
+    const day = await page.getByTestId('opening-day').boundingBox();
+    expect(l.y).toBeGreaterThanOrEqual(day.y + day.height);
     for (const img of [bridge, logo]) await expect.poll(() => img.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true);
     if (process.env.PR_SHOTS) await page.waitForTimeout(2500);
     await shotForPR(page, 'opening title slide');

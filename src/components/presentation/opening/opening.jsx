@@ -79,7 +79,7 @@ function TitleScene() {
       <Bridge className="pointer-events-none absolute" style={{ left: 1010, top: 190, width: 460, height: 430 }} />
       <div style={at(130, 160, 880, 540)}>
         <Kicker className="pz-appear !text-[20px]">Equal Experts · NAM conference 2026</Kicker>
-        <h1 className="pz-appear mt-5 font-display text-[92px] font-bold leading-[0.95] text-ink" style={later(120)}>
+        <h1 className="pz-appear mt-4 font-display text-[84px] font-bold leading-[0.95] text-ink" style={later(120)}>
           Welcome to<br />
           <span className="text-edge">NAM 2026</span>
         </h1>
@@ -89,7 +89,7 @@ function TitleScene() {
         <p className="pz-appear mt-3 max-w-[800px] text-[18px] text-muted" style={later(500)}>
           You’ll work on <span className="text-ink">ORBIT &rsquo;26</span>, a conference app built for the day — with My Agenda left for you to build.
         </p>
-        <div className="pz-appear mt-5 space-y-1 whitespace-nowrap text-[18px] text-muted" style={later(900)}>
+        <div data-testid="opening-day" className="pz-appear mt-4 whitespace-nowrap text-[17px] leading-[1.4] text-muted" style={later(900)}>
           {DAY.map(([icon, what], i) => (
             <div key={what} className={i === 0 ? 'text-ink' : ''}>
               {i > 0 && <span className="mr-3 text-edge">↳</span>}{icon} {i === 0 ? <b className="text-ink">{what}</b> : what}
@@ -101,7 +101,7 @@ function TitleScene() {
         <Face who="andy" size={30} />
         <span>Andy Vays · Technical Principal · Equal Experts</span>
       </div>
-      <img data-testid="deck-logo" src="/brand/Equal_Experts_Logo_Monochrome_White.svg" alt="Equal Experts" className="absolute" style={{ left: 130, top: 700, width: 180 }} />
+      <img data-testid="deck-logo" src="/brand/Equal_Experts_Logo_Monochrome_White.svg" alt="Equal Experts" className="absolute" style={{ left: 130, top: 738, width: 180 }} />
     </>
   );
 }
