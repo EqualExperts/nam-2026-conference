@@ -9,14 +9,18 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 /**
  * A talk the presenter steps through: full screen, outside <Layout>, no header
  * or footer. Each chapter is a layer on a fixed 1600×900 stage; a beat is one
- * press. Both talks — /product-presentation, then /engineering-presentation —
- * are a Deck, so the second picks up exactly where the first leaves off.
+ * press. All three talks — /opening-presentation, /product-presentation, then
+ * /engineering-presentation — are a Deck, so each picks up exactly where the
+ * one before leaves off.
  *
  * `next` is the talk that follows: from the last beat, one more press goes there.
  * With `next.delay` (ms) the current scene is told it is `leaving` first and the
  * stars warp, so a hand-off can play out before the route changes; under
  * reduced motion it navigates at once. A scene also gets `advance`, so a button
  * on the stage can be the clicker.
+ *
+ * `captions="top"` puts each beat's caption at the top of the stage instead of
+ * the bottom; that deck's scenes leave the top for it (see `opening/opening.jsx`).
  */
 
 const STAGE_W = 1600;
@@ -79,7 +83,7 @@ const WORD = {
 // No exit animation: with AnimatePresence a fast clicker could press on before
 // the old caption finished leaving, and it stayed on screen under the new beat.
 // The old caption goes at once; the new one's words still rise in.
-function Caption({ beat, accent, index }) {
+function Caption({ beat, accent, index, top }) {
   if (!beat) return null;
   // a hero beat is a title slide: the caption is the slide, set large mid-stage
   const hero = beat.hero;
@@ -88,12 +92,19 @@ function Caption({ beat, accent, index }) {
       key={index}
       data-testid="presentation-caption"
       className="absolute"
-      style={hero ? { left: 80, top: 230, width: 980 } : { left: 80, top: 650, width: 1440 }}
+      style={hero ? { left: 80, top: 230, width: 980 } : { left: 80, top: top ? 66 : 650, width: 1440 }}
       initial="hidden"
       animate="shown"
       transition={{ staggerChildren: 0.035 }}
     >
-      <motion.div variants={WORD} className={`font-mono uppercase tracking-[0.2em] ${hero ? 'text-[24px]' : 'text-[15px]'} ${accent}`}>{beat.kicker}</motion.div>
+      {/* a beat can belong to a named section (`lesson: { label, n }`): a badge, and its number large behind the headline */}
+      {beat.lesson && (
+        <motion.div variants={WORD} aria-hidden="true" className={`pointer-events-none absolute right-0 top-[-34px] font-display text-[200px] leading-none ${accent}`}><span className="opacity-40">{beat.lesson.n}</span></motion.div>
+      )}
+      <motion.div variants={WORD} className={`flex items-center gap-4 font-mono uppercase tracking-[0.2em] ${hero ? 'text-[24px]' : 'text-[15px]'} ${accent}`}>
+        {beat.lesson && <span className="rounded-full border-2 border-current bg-white/5 px-4 py-0.5 font-display text-[20px] font-semibold tracking-[0.14em] [word-spacing:0.35em]">{beat.lesson.label}</span>}
+        {beat.kicker}
+      </motion.div>
       <h2 className={`font-display text-ink ${hero ? 'mt-5 text-[108px] leading-[0.95]' : 'mt-2 text-[46px] leading-tight'}`}>
         {beat.title.split(' ').map((w, i) => (
           <motion.span key={i} variants={WORD} transition={{ type: 'spring', stiffness: 220, damping: 22 }} className="mr-[0.25em] inline-block">{w}</motion.span>
@@ -119,7 +130,7 @@ function useParallax() {
   return { rotateX, rotateY, onPointerMove };
 }
 
-export function Deck({ chapters: CHAPTERS, title, next }) {
+export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
   useDocumentTitle(title);
   const COUNTS = useMemo(() => CHAPTERS.map((c) => c.beats.length), [CHAPTERS]);
   const TOTAL = COUNTS.reduce((a, b) => a + b, 0);
@@ -200,7 +211,7 @@ export function Deck({ chapters: CHAPTERS, title, next }) {
             const cut = CHAPTERS[Math.max(i, chapter)].enter === 'cut';
             return <Layer key={c.id} chapter={c} state={state} step={s} cut={cut} leaving={leaving} advance={advance} />;
           })}
-          <Caption beat={current.beats[step]} accent={current.accent} index={beat} />
+          <Caption beat={current.beats[step]} accent={current.accent} index={beat} top={captions === 'top'} />
         </motion.div>
       </div>
 

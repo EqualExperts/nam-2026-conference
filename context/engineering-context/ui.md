@@ -24,6 +24,7 @@ files:
   - src/pages/NotFoundPage.jsx
   - src/pages/PresentationPage.jsx
   - src/pages/ProductPresentationPage.jsx
+  - src/pages/OpeningPresentationPage.jsx
   - src/components/presentation/
   - src/lib/presentation.js
 tests:
@@ -140,7 +141,7 @@ sticky `glass` header, `<main id="main">`, and the footer.
   Kenji, Sofia or Marcus through localStorage, and they must be able to switch
   back). `/bootstrap` still returns all six. Calls `setCurrentUserId`; closes on outside pointer
   or Escape. Under the list, "Workshop talks" (`data-testid="talk-links"`, the
-  `TALKS` array) links to both decks, so they are one click from every page
+  `TALKS` array) links to all three decks, so they are one click from every page
   without taking header space. Each row shows "N on agenda"; every row but the signed-in
   attendee's reads `u.reservedCount` from `/bootstrap` (frozen at load), but
   the active row counts `'confirmed'` entries in `useConference().reservations`
@@ -171,12 +172,13 @@ returns `null` when empty, wrapped in `<Reveal>`.
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
 scheduled here".
 
-**`/product-presentation` and `/engineering-presentation`** — two talks, the
-product harness (a conversation → a ticket) then the engineering harness (the
+**`/opening-presentation`, `/product-presentation` and `/engineering-presentation`** —
+three talks: the opening (why the day is shaped around shared context and parallel
+work), the product harness (a conversation → a ticket) then the engineering harness (the
 ticket → a reviewed pull request), part of the app so anyone with the URL can
 give or watch them. The routes **outside `<Layout>`**: full screen, no header or
 footer, so the smoke suite (which expects a banner and footer) does not list
-them; `tests/presentation.spec.js` covers them instead. Both pages are a
+them; `tests/presentation.spec.js` covers them instead. All three pages are a
 `components/presentation/Deck.jsx`, which holds one flat beat index in `?beat=`
 (1-based, matching the counter; `src/lib/presentation.js` parses, clamps and maps
 keys — →/Space/Enter/PageDown on, ←/PageUp/Backspace back, Home/End, F full
@@ -185,16 +187,21 @@ is the talk that follows: one press past the last beat navigates there — with
 `next.delay` the current scene is first told it is `leaving` (and the stars warp)
 so a hand-off can play, except under reduced motion, which navigates at once; a
 scene also gets `advance`, so a button on the stage can be the clicker. The
-product deck ends on the frame the engineering deck opens with, and hands over
-with a button whose name is "Continue to the engineering harness"; the engineering
-deck has no `next`. `components/presentation/chapters.js` lists the engineering
-chapters in order and `presentation/product/chapters.js` the product ones — the
-workflow first (`workflow.jsx`: the project context, the two-fold trick, context
-versus the task tracker, a chapter slide, the three skills as one possibility),
-then the winnow skills built from the bottom (create-tasks, update-context, winnow
-over both), the whole flow and the demo, the hand-off. A beat with `hero: true` is a
-title slide: `Deck`'s caption is set large mid-stage and the scene only decorates
-beside it. Each is
+opening deck ends on the frame the product deck opens with ("Continue to the
+product harness"), and the product deck on the one the engineering deck opens with
+("Continue to the engineering harness"); the engineering deck has no `next`.
+`components/presentation/chapters.js` lists the engineering chapters in order and
+`presentation/product/chapters.js` the product ones — the workflow first
+(`workflow.jsx`: the project context, the two-fold trick, context versus the task
+tracker, a chapter slide, the three skills as one possibility), then the winnow
+skills built from the bottom (create-tasks, update-context, winnow over both), the
+whole flow and the demo, the hand-off. A beat with `hero: true` is a title slide:
+`Deck`'s caption is set large mid-stage and the scene only decorates beside it.
+`presentation/opening/chapters.js` lists the opening's (scenes in
+`opening/opening.jsx`, built from the shared and product kits): that deck passes
+`captions="top"`, so its captions sit at the top and its scenes draw below them,
+and its lesson beats carry `lesson: { label, n }` for a badge and a large numeral
+in the caption. Each is
 `{ id, name, accent, tone, beats, Scene, enter? }` — one
 caption per beat (`null` for none) and a `Scene({ step, leaving, advance })` laid out in stage
 pixels. The chapters either side of the current one stay mounted so they can fly
@@ -267,7 +274,7 @@ How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 - Accent classes must be literal strings in `accents.js`; see CLAUDE.md.
 - New motion needs an entry that the reduced-motion block neutralises, and must
   not leave content hidden when it is.
-- Motion (`motion/react`) stays inside the two presentations. The app's own motion is CSS.
+- Motion (`motion/react`) stays inside the three presentations. The app's own motion is CSS.
 - The presentation states only what the harness really does; its numbers (round
   limits, typical costs, PR #96 and #97) are `context/engineering-context/harness/index.md`'s — change them together.
 
@@ -291,4 +298,5 @@ How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 - A new cover composition: another `variant` branch in `GeneratedCover`.
 - A presentation beat: a caption in the chapter's `beats` and the `step` it shows in
   its `Scene`; a new chapter: an entry in that talk's chapter list —
-  `components/presentation/chapters.js` (engineering) or `presentation/product/chapters.js` (product).
+  `components/presentation/chapters.js` (engineering), `presentation/product/chapters.js` (product)
+  or `presentation/opening/chapters.js` (opening).
