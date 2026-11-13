@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { failOnPageErrors } from './helpers.js';
+import { failOnPageErrors, shotForPR } from './helpers.js';
 
 /**
  * /engineering-presentation — the engineering harness talk. It books nothing and reads no
@@ -282,5 +282,129 @@ test.describe('Reaching the talks from the app', () => {
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(title, 'i') })).toBeVisible();
     }
+  });
+});
+
+/**
+ * The NAM 2026 look (#293): every beat of every deck wears the frame and the tab,
+ * has an eyebrow and a title, uses no violet, and sets text in Lexend. Text
+ * colour is measured per beat over the card fill (colour only: ancestor
+ * opacity is the entrance animation, which is settled by then).
+ */
+const DECKS = [
+  { path: '/opening-presentation', name: 'opening' },
+  { path: '/product-presentation', name: 'product' },
+  { path: '/engineering-presentation', name: 'engineering' },
+];
+
+
+/** Lowest contrast of any text on the stage against the card fill, and the offending text. */
+async function worstContrast(page) {
+  return page.evaluate(() => {
+    const parse = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+    const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    const L = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const card = [7, 19, 34];
+    let worst = { ratio: 99, text: '' };
+    const walker = document.createTreeWalker(document.querySelector('[data-testid="presentation"] > div.cursor-pointer'), NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const t = n.textContent.trim();
+      if (!t) continue;
+      const el = n.parentElement;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || el.closest('[aria-hidden="true"]')) continue;
+      const [r, g, b, a = 1] = parse(cs.color);
+      if (cs.backgroundClip === 'text' || cs.webkitTextFillColor === 'rgba(0, 0, 0, 0)') continue; // gradient text
+      const mix = [r, g, b].map((c, i) => c * a + card[i] * (1 - a));
+      const l1 = L(...mix), l2 = L(...card);
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      const px = parseFloat(cs.fontSize);
+      const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
+      const need = large ? 3 : 4.5;
+      if (ratio / need < worst.ratio) worst = { ratio: ratio / need, text: `${t.slice(0, 40)} (${ratio.toFixed(2)}:1, ${px}px)` };
+    }
+    return worst;
+  });
+}
+
+for (const deck of DECKS) {
+  test.describe(`The ${deck.name} deck's NAM 2026 look`, () => {
+    test('every beat has the frame, the tab, an eyebrow and a title, in Lexend, with no violet and AA text', async ({ page }) => {
+      test.slow();
+      const errors = failOnPageErrors(page);
+      await page.goto(deck.path);
+      const { total } = await readCounter(page);
+      for (let at = 1; at <= total; at++) {
+        if (at > 1) await page.keyboard.press('ArrowRight');
+        await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
+        const where = `${deck.name} beat ${at}`;
+        await expect(page.getByTestId('deck-frame'), where).toBeVisible();
+        await expect(page.getByTestId('deck-tab'), where).toContainText(String(at));
+        await expect(page.locator('[data-eyebrow]').first(), `${where} has no eyebrow`).toBeAttached();
+        await expect(page.locator('h1, h2, [data-deck-title]').first(), `${where} has no title`).toBeAttached();
+        const bad = await page.evaluate(() => {
+          const stage = document.querySelector('[data-testid="presentation"]');
+          const violet = [...stage.querySelectorAll('*')].filter((el) => /(violet|fuchsia|purple)/.test(el.getAttribute('class') || '') || /#(8b5cf6|a78bfa|c4b5fd|6d28d9)|139, ?92, ?246/i.test(el.getAttribute('style') || '')).length;
+          const fonts = [...stage.querySelectorAll('*')].filter((el) => el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && !/^"?Lexend/.test(getComputedStyle(el).fontFamily)).map((el) => getComputedStyle(el).fontFamily);
+          return { violet, fonts };
+        });
+        expect(bad.violet, `${where} still uses violet`).toBe(0);
+        expect(bad.fonts, `${where} has text outside Lexend`).toEqual([]);
+        const worst = await worstContrast(page);
+        expect(worst.ratio, `${where}: ${worst.text} is under AA`).toBeGreaterThanOrEqual(1);
+      }
+      expect(errors).toEqual([]);
+    });
+
+    test('the closing slide shows the bridge and three numbered cards', async ({ page }) => {
+      await page.goto(deck.path);
+      await page.keyboard.press('End');
+      await expect(page.getByTestId('deck-bridge')).toBeVisible();
+      await expect(page.getByTestId('closing-card')).toHaveCount(3);
+      await expect(page.getByTestId('closing-card').first()).toContainText('01');
+      const loaded = await page.getByTestId('deck-bridge').evaluate((img) => img.complete && img.naturalWidth > 0);
+      expect(loaded).toBe(true);
+      await shotForPR(page, `${deck.name} closing slide`);
+    });
+
+    test('a content slide sits in a card on the table colours', async ({ page }) => {
+      await page.goto(`${deck.path}?beat=3`);
+      await expect(page.getByTestId('deck-frame')).toBeVisible();
+      const css = await page.evaluate(() => {
+        const bg = (id) => getComputedStyle(document.querySelector(`[data-testid="${id}"]`)).backgroundColor;
+        return { frame: bg('deck-frame'), tab: bg('deck-tab'), ground: getComputedStyle(document.querySelector('[data-testid="presentation"]')).backgroundColor };
+      });
+      expect(css.frame).toBe('rgb(32, 149, 211)');
+      expect(css.tab).toBe('rgb(23, 149, 212)');
+      expect(css.ground).toBe('rgb(33, 33, 33)');
+      await shotForPR(page, `${deck.name} content slide`);
+    });
+  });
+}
+
+test.describe('The opening title slide', () => {
+  test('shows the bridge on the right and the white Equal Experts logo, big enough', async ({ page }) => {
+    await page.goto('/opening-presentation');
+    const bridge = page.getByTestId('deck-bridge');
+    const logo = page.getByTestId('deck-logo');
+    await expect(bridge).toBeVisible();
+    await expect(logo).toBeVisible();
+    expect((await logo.boundingBox()).width).toBeGreaterThanOrEqual(100);
+    const [b, l] = [await bridge.boundingBox(), await logo.boundingBox()];
+    expect(b.x).toBeGreaterThan(l.x + l.width);
+    for (const img of [bridge, logo]) expect(await img.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true);
+    await shotForPR(page, 'opening title slide');
+  });
+});
+
+test.describe('Outside the decks', () => {
+  test('the app keeps its own font and ground', async ({ page }) => {
+    await page.goto('/');
+    const look = await page.evaluate(() => ({
+      font: getComputedStyle(document.body).fontFamily,
+      ground: getComputedStyle(document.documentElement).getPropertyValue('--color-ground').trim(),
+    }));
+    expect(look.font).toMatch(/Inter/);
+    expect(look.ground).toBe('#14161e');
   });
 });
