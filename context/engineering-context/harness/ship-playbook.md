@@ -209,6 +209,12 @@ mobile project too, so a fit check rides along.
 - **Never edit an existing test to make it pass.** A failing test means your
   change is wrong, unless the ticket explicitly changes that behaviour.
 - **Never delete, skip or `.only` a test.**
+- **A criterion naming every member of a set — each deck, day or role — needs
+  a test that walks every member**, not one shaped like the others that only
+  reaches one. #302 kept the opening deck's pre-existing title-slide test
+  outside the loop the other two decks' captures ran in, so the product and
+  engineering decks could never produce one, and the gap read as done because
+  a similarly-shaped test existed.
 - **Never assert a value copied from your own output.** It comes from the
   ticket, or from reasoning about it.
 - **Assert the decision, not the instruction.** A check that an agent's prompt
