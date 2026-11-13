@@ -24,7 +24,7 @@
 | Chapter after "Where" is the bare diagram; two-fold trick has two beats | chapter order read from the progress-bar buttons' `aria-label`s; beat counts via counter | spec |
 | Chapter order as in the table | `aria-label` list of the Chapters nav equals the expected names | spec |
 | No kicker starts with a number | every `[data-eyebrow]` in the walk does not match `^\d` | spec |
-| Beat count unchanged, every middle beat captioned, existing specs pass | existing walk updated for hero order; total asserted equal to today's count (25 when walked on main today, read in the test as a constant) | spec |
+| Beat count unchanged, every middle beat captioned, existing specs pass | existing walk updated for hero order; total asserted equal to today's count (22 beats today, counted from chapters.js; a constant in the test) | spec |
 | Content under the rail not covered at 1600×900 or phone | rail bottom vs. scene content tops, both projects | spec |
 | `ui.md` states the order | the doc names the chapters in order; `node scripts/context.mjs for` covers it, read in review (no automated check) | review |
 | `litAt` resolves value / function / absent | unit | unit |
