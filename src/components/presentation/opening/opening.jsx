@@ -590,7 +590,7 @@ function TodayScene({ step, leaving, advance }) {
       {/* beat 0: the plan */}
       <Below>
       {PLAN.map((p, i) => (
-        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(PLAN_X(i), 50, PLAN_W, 420)} className={`${box} flex flex-col p-6 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
+        <Show key={p.title} on={step === 0} from="up" delay={200 + i * 220} style={at(PLAN_X(i), 50, PLAN_W, 380)} className={`${box} flex flex-col p-6 ${p.title === 'Lunch' ? 'opacity-70' : ''}`}>
           <div className="font-mono text-[15px] uppercase tracking-[0.18em] text-faint">{p.when}</div>
           <span className="mt-4 text-[44px] leading-none">{p.icon}</span>
           <div className="mt-4 font-display text-[27px] leading-tight text-ink">{p.title}</div>
@@ -604,12 +604,34 @@ function TodayScene({ step, leaving, advance }) {
       ))}
       <svg viewBox="0 0 1600 900" className="pointer-events-none absolute inset-0" aria-hidden="true">
         {[0, 1, 2, 3].map((i) => (
-          <path key={i} d={`M${PLAN_X(i) + PLAN_W} 260 L${PLAN_X(i + 1)} 260`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#60a5fa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
+          <path key={i} d={`M${PLAN_X(i) + PLAN_W} 240 L${PLAN_X(i + 1)} 240`} pathLength="1" data-on={step === 0} className="pz-draw" fill="none" stroke="#60a5fa" strokeWidth="3" style={{ transitionDelay: `${900 + i * 220}ms` }} />
         ))}
       </svg>
-      <Show on={step === 0} from="none" delay={1300} style={at(80, 500, 1460, 50)} className="flex items-center">
+      <Show on={step === 0} from="none" delay={1300} style={at(80, 455, 1460, 50)} className="flex items-center">
         <span className="h-0.5 rounded-full bg-gradient-to-r from-cyan-400/80 to-blue-400/80" style={{ width: 700 }} />
         <span className="ml-4 text-[16px] text-muted">📚 one shared context, under both labs and every team</span>
+      </Show>
+      <Show on={step === 0} from="up" delay={1600} style={at(80, 520, 1440, 108)} className="flex items-stretch overflow-hidden rounded-2xl border border-cyan-400/30 bg-cyan-500/[0.06]">
+        <div className="flex flex-col justify-center px-11 py-5">
+          <div className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">🚀 Try the live app</div>
+          <a
+            href="https://orbit26.up.railway.app/"
+            target="_blank"
+            rel="noreferrer"
+            data-testid="opening-live-app"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 font-display text-[26px] leading-tight text-cyan-300 hover:text-cyan-200"
+          >
+            orbit26.up.railway.app <span aria-hidden="true" className="text-[20px]">↗</span>
+          </a>
+        </div>
+        <div className="my-6 w-px bg-cyan-400/25" />
+        <div className="flex flex-col justify-center px-11 py-5">
+          <div className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">🛠️ Where to start</div>
+          <div className="mt-1 text-[20px] leading-snug text-muted">
+            <span className="text-ink">Home</span> and <span className="text-ink">My Agenda</span> are left raw on purpose — build on them first.
+          </div>
+        </div>
       </Show>
       </Below>
 
