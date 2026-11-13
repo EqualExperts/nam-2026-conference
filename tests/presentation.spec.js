@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 import { failOnPageErrors, shotForPR } from './helpers.js';
 
 /**
- * /engineering-presentation — the engineering harness talk. It books nothing and reads no
+ * /engineering-presentation â the engineering harness talk. It books nothing and reads no
  * attendee state, so no data lane and no pinned clock are needed.
  */
 
 const counter = (page) => page.getByTestId('presentation-counter');
 
-/** "6 / 43" → { at: 6, total: 43 } */
+/** "6 / 43" â { at: 6, total: 43 } */
 async function readCounter(page) {
   const [at, total] = (await counter(page).innerText()).split('/').map((n) => Number(n.trim()));
   return { at, total };
@@ -128,7 +128,7 @@ test.describe('The harness presentation', () => {
 });
 
 /**
- * /product-presentation — the product harness talk, which ends by handing over
+ * /product-presentation â the product harness talk, which ends by handing over
  * to the engineering one. Like it, it touches no attendee state.
  */
 test.describe('The product presentation', () => {
@@ -191,7 +191,7 @@ test.describe('The product presentation', () => {
     await expect(counter(page)).toHaveText(new RegExp(`^${total} /`));
     await expect(caption).toHaveCount(0);
     // the caption sets each word in its own box, so compare without the spaces
-    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Theprojectcontext', 'Asampleimplementation']);
+    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Asampleimplementation', 'Theprojectcontext']);
     expect(errors).toEqual([]);
   });
 
@@ -229,7 +229,94 @@ test.describe('The product presentation', () => {
 });
 
 /**
- * /opening-presentation — the talk that opens the day, handing over to the
+ * The product talk's workflow rail (#299): Information â Distil â Remember Â· Raise,
+ * drawn by Deck over the scenes, one node lit per chapter.
+ */
+const NAMES = ['The product harness', 'Where tickets come from', 'One way in', 'The two-fold trick', 'Context and tasks', 'A sample implementation', 'The project context', 'One way to do it', 'create-tasks', 'update-context', 'winnow', 'Distil', 'The whole flow', 'Live demo', 'Over to the engineering harness'];
+const ALL = 'distil remember raise';
+// [chapter, lit, commands shown] for each of the 22 beats, in order
+const RAIL = [
+  ['The product harness', '', false],
+  ['Where tickets come from', 'information', false], ['Where tickets come from', 'information', false],
+  ['One way in', '', false],
+  ['The two-fold trick', 'remember', false], ['The two-fold trick', 'remember', false],
+  ['Context and tasks', 'raise', false], ['Context and tasks', 'remember raise', false],
+  ['A sample implementation', ALL, true],
+  ['The project context', 'remember', true], ['The project context', 'remember', true], ['The project context', 'remember', true],
+  ['One way to do it', ALL, true], ['One way to do it', ALL, true],
+  ['create-tasks', 'raise', true],
+  ['update-context', 'remember', true],
+  ['winnow', 'distil', true], ['winnow', 'distil', true],
+  ['Distil', 'distil', true],
+  ['The whole flow', '', false],
+  ['Live demo', ALL, true],
+  ['Over to the engineering harness', '', false],
+];
+
+test.describe('The product talk rail', () => {
+  test('chapters run problem, flow, implementation, in the order of the plan', async ({ page }) => {
+    await page.goto('/product-presentation');
+    const chapterButtons = page.getByRole('navigation', { name: 'Chapters' }).getByRole('button');
+    await expect(chapterButtons).toHaveCount(NAMES.length); // the deck renders after load; reading earlier gives []
+    const labels = await chapterButtons.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label').replace(/^Chapter \d+: /, '')));
+    expect(labels).toEqual(NAMES);
+    expect((await readCounter(page)).total).toBe(RAIL.length);
+  });
+
+  test('one node is lit per chapter, commands from the sample implementation on, and no kicker is numbered', async ({ page }) => {
+    test.slow();
+    await page.goto('/product-presentation');
+    const rail = page.getByTestId('presentation-rail');
+    for (let i = 0; i < RAIL.length; i++) {
+      if (i) await page.keyboard.press('ArrowRight');
+      const [name, lit, commands] = RAIL[i];
+      const where = `beat ${i + 1} (${name})`;
+      await expect(counter(page), where).toHaveText(new RegExp(`^${i + 1} /`));
+      await expect(page.getByTestId('presentation-chapter'), where).toHaveText(name);
+      await expect(rail, where).toHaveAttribute('data-lit', lit);
+      if (lit) {
+        await expect(rail, where).toBeVisible();
+        const text = await rail.textContent();
+        for (const n of ['Information', 'Distil', 'Remember', 'Raise']) expect(text, where).toContain(n);
+        for (const cmd of ['/winnow', 'update-context', 'create-tasks']) {
+          if (commands) expect(text, where).toContain(cmd); else expect(text, where).not.toContain(cmd);
+        }
+      } else {
+        await expect(rail, where).toBeHidden();
+      }
+      const kickers = await page.locator('[data-testid="presentation-caption"] [data-eyebrow]').allInnerTexts();
+      for (const k of kickers) expect(k.trim(), `${where} kicker`).not.toMatch(/^\d/);
+    }
+  });
+
+  test('the rail sits clear of the scene under it', async ({ page }, testInfo) => {
+    // 1600Ã900 on desktop, the phone viewport on mobile
+    if (testInfo.project.name !== 'mobile') await page.setViewportSize({ width: 1600, height: 900 });
+    for (const beat of [2, 7, 9, 11, 13, 15, 21]) {
+      await page.goto(`/product-presentation?beat=${beat}`);
+      const rail = page.getByTestId('presentation-rail');
+      await expect(rail).toBeVisible();
+      await expect.poll(async () => {
+        const railBottom = (await rail.boundingBox()).y + (await rail.boundingBox()).height;
+        const tops = await page.evaluate(() => [...document.querySelectorAll('[data-state="current"] > div > *')]
+          .filter((el) => el.getAttribute('aria-hidden') !== 'true')
+          .map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => r.top));
+        return tops.length ? Math.min(...tops) - railBottom : 1;
+      }, { message: `beat ${beat}: the rail covers the scene`, timeout: 8000 }).toBeGreaterThanOrEqual(0);
+      // and below the top bar (ORBIT ’26 / chapter name), which sits outside the stage
+      const bar = await page.getByTestId('presentation-chapter').boundingBox();
+      const railBox = await rail.boundingBox();
+      expect(railBox.y, `beat ${beat}: the rail sits on the top bar`).toBeGreaterThanOrEqual(bar.y + bar.height);
+    }
+    await page.goto('/product-presentation?beat=9');
+    await expect(page.getByTestId('presentation-rail')).toHaveAttribute('data-lit', ALL);
+    await page.waitForTimeout(process.env.PR_SHOTS ? 2500 : 0);
+    await shotForPR(page, 'product talk rail on A sample implementation');
+  });
+});
+
+/**
+ * /opening-presentation â the talk that opens the day, handing over to the
  * product one. It touches no attendee state either.
  */
 test.describe('The opening presentation', () => {
@@ -301,7 +388,7 @@ const DECKS = [
 /** Every text on the stage under AA against what it sits on (the card fill when nothing else is behind it). */
 async function worstContrast(page) {
   return page.evaluate(() => {
-    // any CSS colour (Tailwind's palette computes to oklch, its /90 to color(srgb …)) as [r, g, b, a], via a canvas pixel
+    // any CSS colour (Tailwind's palette computes to oklch, its /90 to color(srgb â¦)) as [r, g, b, a], via a canvas pixel
     const px = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     const parse = (c) => {
       px.clearRect(0, 0, 1, 1);

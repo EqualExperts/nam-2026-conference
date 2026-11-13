@@ -64,12 +64,12 @@ function InputScene({ step }) {
 
 const INPUT_BEATS = [
   {
-    kicker: '8 · winnow',
+    kicker: 'winnow',
     title: 'One skill for a whole transcript, in any format',
     body: 'A screenshot, a text file, pasted notes, an audio file or a link: winnow turns whatever it is given into text, then works through all of it, grounded in the project’s context.',
   },
   {
-    kicker: '8 · winnow calls the other two',
+    kicker: 'winnow calls the other two',
     title: 'It decides; update-context and create-tasks do',
     body: 'You do not run the two skills you just met by hand: winnow hands them what you agreed, knowledge to one and work to the other. The same skills still work on their own.',
   },
@@ -200,13 +200,13 @@ function WinnowScene({ step }) {
 
 const WINNOW_BEATS = [
   {
-    kicker: '8 · Distil',
+    kicker: 'Distil',
     title: 'Winnow: toss it all up and sort every line',
     body: 'It reads the AI context first, so the words land on the project’s real names. Then every line goes into exactly one bucket. Noise is set aside and never written anywhere.',
   },
 ];
 
 export const WINNOW = [
-  { id: 'input', name: 'winnow', accent: 'text-cyan-300', tone: 'fuchsia', beats: INPUT_BEATS, Scene: InputScene },
-  { id: 'winnow', name: 'Distil', accent: 'text-cyan-300', tone: 'fuchsia', beats: WINNOW_BEATS, Scene: WinnowScene },
+  { id: 'input', name: 'winnow', accent: 'text-cyan-300', tone: 'fuchsia', rail: { lit: ['distil'], commands: true }, beats: INPUT_BEATS, Scene: InputScene },
+  { id: 'winnow', name: 'Distil', accent: 'text-cyan-300', tone: 'fuchsia', rail: { lit: ['distil'], commands: true }, beats: WINNOW_BEATS, Scene: WinnowScene },
 ];

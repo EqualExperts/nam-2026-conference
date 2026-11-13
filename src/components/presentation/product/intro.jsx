@@ -223,15 +223,15 @@ export const PRODUCT_INTRO = [
     Scene: TitleScene,
   },
   {
-    id: 'where', name: 'Where tickets come from', accent: 'text-amber-300', tone: 'amber',
+    id: 'where', name: 'Where tickets come from', accent: 'text-amber-300', tone: 'amber', rail: ['information'],
     beats: [
       {
-        kicker: '1 · Where tickets come from',
+        kicker: 'Where tickets come from',
         title: 'Decisions are made in meetings — and die there',
         body: 'The answer to “which phones?” was said out loud by the person who knew. Nobody wrote it down, so by the time anyone builds anything it has to be guessed again.',
       },
       {
-        kicker: '1 · The ticket written from memory',
+        kicker: 'The ticket written from memory',
         title: 'A ticket without a why or a done-state is a guess',
         body: 'An engineering harness is only as good as its ticket: a Done when a test can check, and the why a reviewer judges it by. The product harness exists to get that out of the room.',
       },
@@ -244,6 +244,7 @@ export const PRODUCT_INTRO = [
  * The whole flow, then the demo — after every skill has been met on its own.
  * ------------------------------------------------------------------ */
 
+const ALL_THREE = ['distil', 'remember', 'raise'];
 const DEMO = ['/winnow', '/update-context', '/create-tasks'];
 
 function DemoScene() {
@@ -270,7 +271,7 @@ export const PRODUCT_FLOW = [
     id: 'ways', name: 'The whole flow', accent: 'text-sky-300', tone: 'sky',
     beats: [
       {
-        kicker: '9 · The whole flow',
+        kicker: 'The whole flow',
         title: 'Distil → Remember · Raise',
         body: 'The pieces together: distil separates noise from signal, then remember and raise are peers — context and tickets — each after you agree. None of them works in isolation: every step reads the project context.',
       },
@@ -278,10 +279,10 @@ export const PRODUCT_FLOW = [
     Scene: WaysScene,
   },
   {
-    id: 'demo', name: 'Live demo', accent: 'text-teal-300', tone: 'emerald',
+    id: 'demo', name: 'Live demo', accent: 'text-teal-300', tone: 'emerald', rail: { lit: ALL_THREE, commands: true },
     beats: [
       {
-        kicker: '10 · Live demo',
+        kicker: 'Live demo',
         title: 'The flow, running on this project',
         body: 'A meeting on the phone schedule, distilled, remembered and raised — against this repository’s own context. Same skills, nothing staged.',
       },

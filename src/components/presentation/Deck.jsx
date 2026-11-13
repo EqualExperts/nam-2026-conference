@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import { Backdrop } from './Backdrop.jsx';
 import { useEntries } from './kit.jsx';
-import { beatAfter, clampBeat, keyAction, locateBeat, parseBeat } from '../../lib/presentation.js';
+import { beatAfter, clampBeat, keyAction, litAt, locateBeat, parseBeat } from '../../lib/presentation.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 /**
@@ -25,6 +25,7 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 const STAGE_W = 1600;
 const STAGE_H = 900;
+const RAILED_SCALE = 0.84;
 
 /**
  * The NAM 2026 tab: a small blue tab at top right holding the Equal Experts
@@ -80,6 +81,7 @@ function Layer({ chapter, state, step, cut, leaving, advance }) {
         ? { duration: 0.5, opacity: { duration: 0.5 } }
         : { type: 'spring', stiffness: 70, damping: 18, mass: 1, opacity: { duration: 0.7 }, filter: { duration: 0.7 } }}
       aria-hidden={state === 'current' ? undefined : true}
+      data-state={state}
       className="absolute inset-0"
     >
       <div key={entries} className="absolute inset-0">
@@ -144,7 +146,7 @@ function useParallax() {
   return { rotateX, rotateY, onPointerMove };
 }
 
-export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
+export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom', Rail }) {
   useDocumentTitle(title);
   const COUNTS = useMemo(() => CHAPTERS.map((c) => c.beats.length), [CHAPTERS]);
   const TOTAL = COUNTS.reduce((a, b) => a + b, 0);
@@ -204,6 +206,9 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
 
   const chapterStarts = useMemo(() => COUNTS.map((_, i) => COUNTS.slice(0, i).reduce((a, b) => a + b, 0)), [COUNTS]);
   const current = CHAPTERS[chapter];
+  // a chapter's `rail` says which nodes to light; with none lit there is no rail and the stage keeps its size
+  const lit = Rail ? litAt(current.rail, step) : [];
+  const railed = lit.length > 0;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -217,7 +222,8 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
         onClick={advance}
       >
         <Frame />
-        <motion.div className="absolute inset-0" style={{ rotateX: parallax.rotateX, rotateY: parallax.rotateY, transformStyle: 'preserve-3d' }}>
+        {/* with a rail up the scenes shrink, anchored to the bottom, so none that starts at the top sits under it */}
+        <motion.div className="absolute inset-0" initial={false} animate={{ scale: railed ? RAILED_SCALE : 1 }} transition={{ duration: 0.5 }} style={{ rotateX: parallax.rotateX, rotateY: parallax.rotateY, transformStyle: 'preserve-3d', transformOrigin: '50% 100%' }}>
           {CHAPTERS.map((c, i) => {
             if (Math.abs(i - chapter) > 1) return null;
             const state = i < chapter ? 'past' : i > chapter ? 'future' : 'current';
@@ -228,6 +234,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
           })}
           <Caption beat={current.beats[step]} index={beat} top={captions === 'top'} />
         </motion.div>
+        {Rail && <Rail lit={lit} commands={Boolean(current.rail?.commands)} />}
       </div>
 
       {/* Chrome — outside the stage so it stays crisp at any scale. */}

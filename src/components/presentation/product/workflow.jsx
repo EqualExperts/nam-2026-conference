@@ -104,29 +104,28 @@ function BigArrow({ on, label, tone, className = '', style, flip }) {
 
 function LoopScene({ step }) {
   const move = MOVE[Math.min(step, 1)];
-  const top = step < 2;
   return (
     <>
-      <Show on={top} from="left" style={at(80, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 0 ? move.ring : 'border-edge bg-surface opacity-30'}`}>
+      <Show from="left" style={at(80, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 0 ? move.ring : 'border-edge bg-surface opacity-30'}`}>
         <Kicker>Decide and act</Kicker>
         <div className="mt-3 space-y-1.5 text-[18px] text-muted">
           <div>build a feature</div><div>review a change</div><div>pick the next task</div>
         </div>
       </Show>
-      <Show on={top} from="up" delay={150} style={at(610, 170, 380, 270)} className={`${box} flex flex-col items-center justify-center border-blue-400/60 p-6 text-center`}>
+      <Show from="up" delay={150} style={at(610, 170, 380, 270)} className={`${box} flex flex-col items-center justify-center border-blue-400/60 p-6 text-center`}>
         <div className="text-[44px]">📚</div>
         <div className="font-display text-[30px] text-ink">Project context</div>
         <div className="mt-1 text-[16px] text-muted">indexed files — the project as it is today</div>
       </Show>
-      <Show on={top} from="right" delay={300} style={at(1140, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 1 ? move.ring : 'border-edge bg-surface opacity-30'}`}>
+      <Show from="right" delay={300} style={at(1140, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 1 ? move.ring : 'border-edge bg-surface opacity-30'}`}>
         <Kicker>New information</Kicker>
         <div className="mt-3 space-y-1.5 text-[18px] text-muted">
           <div>a meeting</div><div>a decision</div><div>something you learned</div>
         </div>
       </Show>
 
-      <BigArrow on={step === 0} tone={MOVE[0].arrow} label="read first" className={top ? '' : 'hidden'} style={at(465, 240, 140, 140)} />
-      <BigArrow on={step === 1} tone={MOVE[1].arrow} label="written in" className={top ? '' : 'hidden'} style={at(995, 240, 140, 140)} />
+      <BigArrow on={step === 0} tone={MOVE[0].arrow} label="read first" style={at(465, 240, 140, 140)} />
+      <BigArrow on={step === 1} tone={MOVE[1].arrow} label="written in" style={at(995, 240, 140, 140)} />
 
       <Show on={step === 0} from="up" style={at(80, 480, 1440, 130)} className={`flex items-center gap-6 rounded-2xl border px-8 ${MOVE[0].band}`}>
         <span className="text-[40px]">①</span>
@@ -142,26 +141,33 @@ function LoopScene({ step }) {
           <div className="mt-1 text-[18px] text-muted">A context nobody updates quietly turns into fiction. Each time something durable is learned, it is folded into the doc that owns it — so the next decision starts from the truth.</div>
         </div>
       </Show>
+    </>
+  );
+}
 
-      {/* beat 2: information goes one way — new information, distilled, then remembered or raised */}
-      <Show on={step === 2} from="left" style={at(80, 190, 330, 230)} className={`${box} flex flex-col justify-center p-6`}>
+/* ---- The bare diagram: information goes one way ---- */
+
+function DiagramScene() {
+  return (
+    <>
+      <Show from="left" style={at(80, 190, 330, 230)} className={`${box} flex flex-col justify-center p-6`}>
         <div className="text-[44px]">💬</div>
         <div className="font-display text-[30px] text-ink">New information</div>
         <div className="mt-1 text-[16px] text-muted">a meeting, notes, a voice note</div>
       </Show>
-      <Show on={step === 2} from="left" delay={300} style={at(500, 190, 330, 230)} className={`${box} pz-glow flex flex-col justify-center border-cyan-400/60 p-6`}>
+      <Show from="left" delay={300} style={at(500, 190, 330, 230)} className={`${box} pz-glow flex flex-col justify-center border-cyan-400/60 p-6`}>
         <div className="text-[44px]">🌾</div>
         <div className="font-display text-[30px] text-ink">Distil</div>
         <div className="mt-1 text-[16px] text-muted">noise out; knowledge and work sorted</div>
       </Show>
-      <Show on={step === 2} from="none" delay={150} style={at(410, 260, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">→</Show>
-      <Show on={step === 2} from="none" delay={450} style={at(830, 150, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">↗</Show>
-      <Show on={step === 2} from="none" delay={450} style={at(830, 370, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">↘</Show>
-      <Show on={step === 2} from="right" delay={700} style={at(930, 90, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-teal-400/50 bg-teal-500/10 p-6">
+      <Show from="none" delay={150} style={at(410, 260, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">→</Show>
+      <Show from="none" delay={450} style={at(830, 150, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">↗</Show>
+      <Show from="none" delay={450} style={at(830, 370, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">↘</Show>
+      <Show from="right" delay={700} style={at(930, 90, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-teal-400/50 bg-teal-500/10 p-6">
         <div className="font-display text-[32px] text-ink">🧠 Remember</div>
         <div className="mt-2 text-[20px] text-muted">knowledge goes into the project context</div>
       </Show>
-      <Show on={step === 2} from="right" delay={950} style={at(930, 330, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-blue-400/50 bg-blue-500/10 p-6">
+      <Show from="right" delay={950} style={at(930, 330, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-blue-400/50 bg-blue-500/10 p-6">
         <div className="font-display text-[32px] text-ink">🎫 Raise</div>
         <div className="mt-2 text-[20px] text-muted">work goes into the task tracker</div>
       </Show>
@@ -281,60 +287,47 @@ function ImplementationScene() {
   );
 }
 
+const WORKFLOW_ALL = ['distil', 'remember', 'raise'];
+
+/* In order: the bare diagram, the two-fold trick, context versus tasks — the general flow — then the sample implementation: its chapter slide, the project context, the skills. */
 export const WORKFLOW = [
   {
-    id: 'context', name: 'The project context', accent: 'text-blue-300', tone: 'violet',
+    id: 'diagram', name: 'One way in', accent: 'text-cyan-300', tone: 'cyan',
     beats: [
       {
-        hero: true,
-        kicker: '2 · Part of the workflow',
-        title: 'The project context',
-        body: 'The project’s memory, written for people and AI.',
-      },
-      {
-        kicker: '2 · The project context',
-        title: 'A context is the project’s memory, written for people and AI',
-        body: 'What was decided and why, where things live, how they work — in plain files in the repository, so a newcomer, or an agent starting cold, can work here correctly after reading them.',
-      },
-      {
-        kicker: '2 · Indexed files',
-        title: 'Many small files, and an index that says which to read',
-        body: 'A single giant file is re-read in full on every turn. An index of small docs lets an agent read one line, open the one doc that matters, and leave the rest alone.',
+        kicker: 'One way in',
+        title: 'New information → Distil → Remember or Raise',
+        body: 'Information only flows one way: what was said is distilled, the noise is dropped, durable knowledge is folded into the context and work is raised as tasks. Everything after this is one way to run it.',
       },
     ],
-    Scene: ContextScene,
+    Scene: DiagramScene,
   },
   {
-    id: 'loop', name: 'The two-fold trick', accent: 'text-cyan-300', tone: 'cyan',
+    id: 'loop', name: 'The two-fold trick', accent: 'text-cyan-300', tone: 'cyan', rail: { lit: ['remember'] },
     beats: [
       {
-        kicker: '3 · Frame decisions on it',
+        kicker: 'Frame decisions on it',
         title: 'Every decision starts from the context',
         body: 'Building, reviewing, planning: before any of it, read what the project already knows. That is what turns an agent’s output from plausible into right for this project.',
       },
       {
-        kicker: '3 · Keep it current',
+        kicker: 'Keep it current',
         title: 'When new information comes in, the context changes',
         body: 'The other half. A context that is only read goes stale; one that is updated whenever something durable is learned stays worth reading.',
-      },
-      {
-        kicker: '3 · One way in',
-        title: 'New information → Distil → Remember or Raise',
-        body: 'Information only flows one way: what was said is distilled, the noise is dropped, durable knowledge is folded into the context and work is raised as tasks. Everything after this is one way to run it.',
       },
     ],
     Scene: LoopScene,
   },
   {
-    id: 'tracking', name: 'Context and tasks', accent: 'text-amber-300', tone: 'amber',
+    id: 'tracking', name: 'Context and tasks', accent: 'text-amber-300', tone: 'amber', rail: { lit: (step) => (step === 0 ? ['raise'] : ['remember', 'raise']) },
     beats: [
       {
-        kicker: '4 · Two different goals',
+        kicker: 'Two different goals',
         title: 'The context is today; the tracker is past and future',
         body: 'Tasks can be kept inside the context, but it is usually more efficient to keep them outside. The context should show the project as it is now; the tracker also keeps what is done and what is planned.',
       },
       {
-        kicker: '4 · They shape each other',
+        kicker: 'They shape each other',
         title: 'Pick tasks from the state; the state moves with the tasks',
         body: 'What the project is today decides which task to pick next, and finishing a task changes what the project is. Complementary, influencing each other — and not the same thing.',
       },
@@ -342,7 +335,7 @@ export const WORKFLOW = [
     Scene: TrackingScene,
   },
   {
-    id: 'implementation', name: 'A sample implementation', accent: 'text-teal-300', tone: 'emerald',
+    id: 'implementation', name: 'A sample implementation', accent: 'text-teal-300', tone: 'emerald', rail: { lit: WORKFLOW_ALL, commands: true },
     beats: [
       {
         hero: true,
@@ -354,15 +347,37 @@ export const WORKFLOW = [
     Scene: ImplementationScene,
   },
   {
-    id: 'skills', name: 'One way to do it', accent: 'text-teal-300', tone: 'emerald',
+    id: 'context', name: 'The project context', accent: 'text-blue-300', tone: 'violet', rail: { lit: ['remember'], commands: true },
     beats: [
       {
-        kicker: '5 · The skills',
+        hero: true,
+        kicker: 'Part of the workflow',
+        title: 'The project context',
+        body: 'The project’s memory, written for people and AI.',
+      },
+      {
+        kicker: 'The project context',
+        title: 'A context is the project’s memory, written for people and AI',
+        body: 'What was decided and why, where things live, how they work — in plain files in the repository, so a newcomer, or an agent starting cold, can work here correctly after reading them.',
+      },
+      {
+        kicker: 'Indexed files',
+        title: 'Many small files, and an index that says which to read',
+        body: 'A single giant file is re-read in full on every turn. An index of small docs lets an agent read one line, open the one doc that matters, and leave the rest alone.',
+      },
+    ],
+    Scene: ContextScene,
+  },
+  {
+    id: 'skills', name: 'One way to do it', accent: 'text-teal-300', tone: 'emerald', rail: { lit: WORKFLOW_ALL, commands: true },
+    beats: [
+      {
+        kicker: 'The skills',
         title: 'Three skills that run that workflow',
         body: 'Abraham’s open-source winnow skills are one implementation of it: update the context, raise the work, or distil a whole meeting into both. They are one possibility, not the only one.',
       },
       {
-        kicker: '5 · Yours to take',
+        kicker: 'Yours to take',
         title: 'Use them, adapt them, or build your own',
         body: 'Nobody has to use these. Take them as they are, change them to fit your project, or start from scratch — the workflow is what matters, not the skills.',
       },
