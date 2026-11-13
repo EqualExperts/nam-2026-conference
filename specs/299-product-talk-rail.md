@@ -4,7 +4,7 @@
 `/product-presentation` gets a persistent rail across the top of the stage: *Information → Distil → Remember · Raise*. It is drawn by `Deck` over the scenes, so the camera fly-through leaves it in place and only the lit node changes. Chapters now run problem → flow → implementation: the bare diagram ("One way in") becomes its own chapter right after "Where tickets come from"; the two-fold trick (two beats) and "Context and tasks" follow; "A sample implementation" comes next; "The project context" moves after it and before "One way to do it". From "A sample implementation" onward each node shows its skill command. While a rail is up the stage shrinks a little, bottom-anchored, so scenes (drawn from the top) never sit under it. Numbered kickers go. The engineering and opening talks are unchanged (no chapter of theirs has a `rail`).
 
 ## Where
-- `src/components/presentation/Deck.jsx` — takes a `Rail` prop. Resolves `chapter.rail` (a value, or a function of `step`) to a list of lit node ids, or none. Renders `<Rail lit={…} />` inside the stage, outside the per-chapter `Layer`s, and scales the scene container (not the rail) to about 0.88 anchored bottom while a rail is up. Under reduced motion no animation, same state. Test in `tests/presentation.spec.js`.
+- `src/components/presentation/Deck.jsx` — takes a `Rail` prop. Resolves `chapter.rail` (a value, or a function of `step`) to a list of lit node ids, or none. Renders `<Rail lit={…} />` inside the stage, outside the per-chapter `Layer`s, and scales the scene container (not the rail) to about 0.84 anchored bottom while a rail is up. Under reduced motion no animation, same state. Test in `tests/presentation.spec.js`.
 - `src/lib/presentation.js` — new pure `litAt(rail, step)` (value or function → array of ids, `[]` when absent); unit test in `tests/unit/presentation.test.js`.
 - `src/components/presentation/product/kit.jsx` — `WorkflowRail({ lit, commands })`: four nodes (`information`, `distil`, `remember`, `raise`; Remember and Raise as peers) with `data-testid="presentation-rail"` on the rail, `data-lit="<ids joined by space>"`, ghosted nodes when unlit, commands from `STEPS` under the node names when `commands`. Reuses `STEPS`; `StepRail` stays for `WaysScene`.
 - `src/pages/ProductPresentationPage.jsx` — passes `Rail={WorkflowRail}` to `Deck`.
@@ -33,7 +33,7 @@
 - Do the Title, diagram, whole-flow and hand-off chapters show no rail at all (empty `data-lit`, rail hidden), rather than all four ghosted — OK?
 - Is the "Information" node unlit (ghosted) rather than absent from every chapter after "Where tickets come from" — OK?
 - Should the rail carry skill commands only from "A sample implementation" on, so the "Context and tasks" lights show names alone — as the ticket's table says?
-- Is a shrunk, bottom-anchored stage (about 0.88) acceptable on every railed chapter, instead of moving each scene down?
+- Is a shrunk, bottom-anchored stage (about 0.84) acceptable on every railed chapter, instead of moving each scene down?
 
 ## Out of scope
 Changing the engineering talk or carrying the ticket from Raise into it; what the project-context slide shows (#301).

@@ -25,7 +25,7 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 const STAGE_W = 1600;
 const STAGE_H = 900;
-const RAILED_SCALE = 0.88;
+const RAILED_SCALE = 0.84;
 
 /**
  * The NAM 2026 tab: a small blue tab at top right holding the Equal Experts

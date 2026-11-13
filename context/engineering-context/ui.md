@@ -205,7 +205,7 @@ draws it over the scenes, outside the per-chapter layers, so only the lit node c
 across the fly-through: `data-testid="presentation-rail"`, `data-lit` the lit ids
 (`information distil remember raise`, empty and hidden with no `rail`), skill commands
 under the nodes when `commands`. While a rail is lit the scene container shrinks to
-0.88, bottom-anchored (`litAt` in `lib/presentation.js` resolves it). Kickers carry no
+0.84, bottom-anchored (`litAt` in `lib/presentation.js` resolves it). Kickers carry no
 numbers. A beat with `hero: true` is a title slide:
 `Deck`'s caption is set large mid-stage and the scene only decorates beside it.
 `presentation/opening/chapters.js` lists the opening's (scenes in

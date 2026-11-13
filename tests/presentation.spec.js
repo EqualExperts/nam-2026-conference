@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 import { failOnPageErrors, shotForPR } from './helpers.js';
 
 /**
- * /engineering-presentation — the engineering harness talk. It books nothing and reads no
+ * /engineering-presentation â the engineering harness talk. It books nothing and reads no
  * attendee state, so no data lane and no pinned clock are needed.
  */
 
 const counter = (page) => page.getByTestId('presentation-counter');
 
-/** "6 / 43" → { at: 6, total: 43 } */
+/** "6 / 43" â { at: 6, total: 43 } */
 async function readCounter(page) {
   const [at, total] = (await counter(page).innerText()).split('/').map((n) => Number(n.trim()));
   return { at, total };
@@ -128,7 +128,7 @@ test.describe('The harness presentation', () => {
 });
 
 /**
- * /product-presentation — the product harness talk, which ends by handing over
+ * /product-presentation â the product harness talk, which ends by handing over
  * to the engineering one. Like it, it touches no attendee state.
  */
 test.describe('The product presentation', () => {
@@ -229,7 +229,7 @@ test.describe('The product presentation', () => {
 });
 
 /**
- * The product talk's workflow rail (#299): Information → Distil → Remember · Raise,
+ * The product talk's workflow rail (#299): Information â Distil â Remember Â· Raise,
  * drawn by Deck over the scenes, one node lit per chapter.
  */
 const NAMES = ['The product harness', 'Where tickets come from', 'One way in', 'The two-fold trick', 'Context and tasks', 'A sample implementation', 'The project context', 'One way to do it', 'create-tasks', 'update-context', 'winnow', 'Distil', 'The whole flow', 'Live demo', 'Over to the engineering harness'];
@@ -256,7 +256,9 @@ const RAIL = [
 test.describe('The product talk rail', () => {
   test('chapters run problem, flow, implementation, in the order of the plan', async ({ page }) => {
     await page.goto('/product-presentation');
-    const labels = await page.getByRole('navigation', { name: 'Chapters' }).getByRole('button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label').replace(/^Chapter \d+: /, '')));
+    const chapterButtons = page.getByRole('navigation', { name: 'Chapters' }).getByRole('button');
+    await expect(chapterButtons).toHaveCount(NAMES.length); // the deck renders after load; reading earlier gives []
+    const labels = await chapterButtons.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label').replace(/^Chapter \d+: /, '')));
     expect(labels).toEqual(NAMES);
     expect((await readCounter(page)).total).toBe(RAIL.length);
   });
@@ -288,7 +290,7 @@ test.describe('The product talk rail', () => {
   });
 
   test('the rail sits clear of the scene under it', async ({ page }, testInfo) => {
-    // 1600×900 on desktop, the phone viewport on mobile
+    // 1600Ã900 on desktop, the phone viewport on mobile
     if (testInfo.project.name !== 'mobile') await page.setViewportSize({ width: 1600, height: 900 });
     for (const beat of [2, 7, 9, 11, 13, 15, 21]) {
       await page.goto(`/product-presentation?beat=${beat}`);
@@ -301,6 +303,10 @@ test.describe('The product talk rail', () => {
           .map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => r.top));
         return tops.length ? Math.min(...tops) - railBottom : 1;
       }, { message: `beat ${beat}: the rail covers the scene`, timeout: 8000 }).toBeGreaterThanOrEqual(0);
+      // and below the top bar (ORBIT ’26 / chapter name), which sits outside the stage
+      const bar = await page.getByTestId('presentation-chapter').boundingBox();
+      const railBox = await rail.boundingBox();
+      expect(railBox.y, `beat ${beat}: the rail sits on the top bar`).toBeGreaterThanOrEqual(bar.y + bar.height);
     }
     await page.goto('/product-presentation?beat=9');
     await expect(page.getByTestId('presentation-rail')).toHaveAttribute('data-lit', ALL);
@@ -310,7 +316,7 @@ test.describe('The product talk rail', () => {
 });
 
 /**
- * /opening-presentation — the talk that opens the day, handing over to the
+ * /opening-presentation â the talk that opens the day, handing over to the
  * product one. It touches no attendee state either.
  */
 test.describe('The opening presentation', () => {
@@ -382,7 +388,7 @@ const DECKS = [
 /** Every text on the stage under AA against what it sits on (the card fill when nothing else is behind it). */
 async function worstContrast(page) {
   return page.evaluate(() => {
-    // any CSS colour (Tailwind's palette computes to oklch, its /90 to color(srgb …)) as [r, g, b, a], via a canvas pixel
+    // any CSS colour (Tailwind's palette computes to oklch, its /90 to color(srgb â¦)) as [r, g, b, a], via a canvas pixel
     const px = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     const parse = (c) => {
       px.clearRect(0, 0, 1, 1);

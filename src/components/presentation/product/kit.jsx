@@ -136,8 +136,8 @@ export function WorkflowRail({ lit, commands }) {
       data-lit={lit.join(' ')}
       role="group"
       aria-label="Workflow"
-      className={`pointer-events-none absolute flex items-center gap-3 transition-opacity duration-500 ${lit.length ? 'visible opacity-100' : 'invisible opacity-0'}`}
-      style={{ left: 80, top: 16, right: 200, height: 76 }}
+      className={`pointer-events-none absolute flex items-center justify-center gap-3 transition-opacity duration-500 ${lit.length ? 'visible opacity-100' : 'invisible opacity-0'}`}
+      style={{ left: 0, top: 60, right: 0, height: 64 }}
     >
       {RAIL_NODES.map((n, i) => {
         const on = lit.includes(n.id);
