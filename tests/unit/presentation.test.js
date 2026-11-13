@@ -65,3 +65,39 @@ describe('A flat beat index finds its chapter', () => {
     assert.deepEqual(locateBeat(99, counts), { chapter: 2, step: 0, start: 5 });
   });
 });
+
+describe('The product talk’s context slide lists Orbit’s real files', async () => {
+  const { existsSync, readFileSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const { ORBIT_CONTEXT, CONTEXT_CHIPS } = await import('../../src/components/presentation/product/orbitContext.js');
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const real = ORBIT_CONTEXT.filter((e) => e.path !== '…');
+
+  test('every listed path exists in the repository', () => {
+    for (const e of [...real, ...CONTEXT_CHIPS.map((path) => ({ path }))]) {
+      assert.ok(existsSync(join(root, e.path)), `${e.path} is not in the repository`);
+    }
+  });
+
+  test('context/index.md and the three folders are listed, each with a file', () => {
+    const paths = ORBIT_CONTEXT.map((e) => e.path);
+    assert.ok(paths.includes('context/index.md'));
+    for (const folder of ['product-context', 'engineering-context', 'winnow-transcripts']) {
+      assert.ok(paths.includes(`context/${folder}/`), `${folder}/ missing`);
+      assert.ok(paths.some((p) => p.startsWith(`context/${folder}/`) && !p.endsWith('/')), `${folder}/ has no file`);
+    }
+  });
+
+  test('names are in full: folders end in a slash, files carry an extension', () => {
+    for (const e of real) assert.match(e.path, /(\/|\.\w+)$/, e.path);
+  });
+
+  test('one line per entry, and the mobile example opens a doc that answers it', () => {
+    for (const e of ORBIT_CONTEXT) assert.ok(e.what);
+    const pick = ORBIT_CONTEXT.filter((e) => e.pick);
+    assert.deepEqual(pick.map((e) => e.path), ['context/engineering-context/testing.md']);
+    const text = readFileSync(join(root, pick[0].path), 'utf8').toLowerCase();
+    assert.ok(text.includes('mobile') && text.includes('viewport'));
+  });
+});
