@@ -35,7 +35,7 @@ function Rail({ active }) {
   return (
     <>
       <div style={at(80, RAIL_Y, 1440, 2)} className="rounded-full bg-hairline" />
-      <div style={{ ...at(80, RAIL_Y, Math.max(0, x - 80), 2) }} className="rounded-full bg-gradient-to-r from-violet-500 to-cyan-300 transition-[width] duration-1000 ease-out" />
+      <div style={{ ...at(80, RAIL_Y, Math.max(0, x - 80), 2) }} className="rounded-full bg-gradient-to-r from-blue-500 to-cyan-300 transition-[width] duration-1000 ease-out" />
       <Token
         className="absolute"
         initial={{ left: TOKEN_PARK.left, top: TOKEN_PARK.top, scale: 0.9 }}
@@ -51,7 +51,7 @@ export function Station({ s, state = 'idle' }) {
   return (
     <div
       className={`flex size-full flex-col items-center justify-center rounded-xl border text-center transition-all duration-500
-        ${state === 'active' ? 'pz-glow -translate-y-1 border-violet-400/70 bg-raised' : 'border-hairline bg-surface'}
+        ${state === 'active' ? 'pz-glow -translate-y-1 border-blue-400/70 bg-raised' : 'border-edge bg-surface'}
         ${state === 'next' ? 'opacity-45' : ''}`}
     >
       <span className="text-[24px] leading-none">{s.icon}</span>
@@ -68,13 +68,13 @@ function Stations({ active }) {
       <div key={s.id} style={at(SX(i), STATION_Y, STATION_W, 84)} className="relative">
         <Station s={s} state={state} />
         {/* the stamp: a ring leaves the station the moment the ticket arrives */}
-        {state === 'active' && <span key={active} className="pz-ping pointer-events-none absolute inset-0 rounded-xl border-2 border-violet-300" aria-hidden="true" />}
+        {state === 'active' && <span key={active} className="pz-ping pointer-events-none absolute inset-0 rounded-xl border-2 border-blue-300" aria-hidden="true" />}
       </div>
     );
   });
 }
 
-const box = 'rounded-2xl border border-hairline bg-surface';
+const box = 'rounded-2xl border border-edge bg-surface';
 
 function Row({ icon, title, sub, delay }) {
   return (
@@ -96,7 +96,7 @@ function SetupDetail() {
         <div className="mt-3 font-display text-[24px] leading-tight text-ink">#140 Keep sessions in view on mobile</div>
         <div className="mt-4 space-y-2 text-[15px] text-muted">
           {['first session in view on a phone', 'every filter still there', 'laptop unchanged'].map((d, i) => (
-            <div key={d} className="pz-appear flex gap-2" style={later(200 + i * 150)}><span className="text-violet-300">☐</span>{d}</div>
+            <div key={d} className="pz-appear flex gap-2" style={later(200 + i * 150)}><span className="text-blue-300">☐</span>{d}</div>
           ))}
         </div>
       </div>
@@ -117,22 +117,22 @@ function SetupDetail() {
 
 const SPEC_LINES = [
   { t: '# Keep sessions in view on mobile', c: 'text-ink font-semibold' },
-  { t: '## What this changes', c: 'text-violet-300' },
+  { t: '## What this changes', c: 'text-blue-300' },
   { t: 'Below lg the opened filter rail is compact: days in one row, selects in two columns.', c: 'text-muted' },
-  { t: '## Where', c: 'text-violet-300' },
+  { t: '## Where', c: 'text-blue-300' },
   { t: 'src/pages/SchedulePage.jsx — the rail · tests/schedule.spec.js', c: 'text-muted' },
-  { t: '## How it will be proved', c: 'text-violet-300' },
-  { t: '| first card in view | phone, Filters open | spec |', c: 'text-emerald-300' },
-  { t: '## Decisions', c: 'text-violet-300' },
+  { t: '## How it will be proved', c: 'text-blue-300' },
+  { t: '| first card in view | phone, Filters open | spec |', c: 'text-teal-300' },
+  { t: '## Decisions', c: 'text-blue-300' },
   { t: 'Hide the My agenda card below lg — OK?', c: 'text-amber-300' },
 ];
 
 function SpecDetail() {
   return (
     <div className="grid h-full grid-cols-[1.6fr_1fr] gap-6">
-      <div className="overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15]">
-        <div className="flex border-b border-hairline bg-surface font-mono text-[13px]">
-          <span className="border-r border-hairline bg-[#0d0f15] px-4 py-2 text-ink">specs/140-compact-mobile-filters.md</span>
+      <div className="overflow-hidden rounded-2xl border border-hairline bg-[#071322]">
+        <div className="flex border-b border-edge bg-surface font-mono text-[13px]">
+          <span className="border-r border-hairline bg-[#071322] px-4 py-2 text-ink">specs/140-compact-mobile-filters.md</span>
         </div>
         <div className="space-y-1.5 px-6 py-4 font-mono text-[16px]">
           {SPEC_LINES.map((l, i) => <div key={i} className={`pz-appear ${l.c}`} style={later(150 + i * 220)}>{l.t}</div>)}
@@ -157,25 +157,25 @@ function ImplementDetail() {
     <div className="grid h-full grid-cols-[1fr_auto_1fr] items-stretch gap-5">
       <div className={`${box} flex flex-col p-5`}>
         <Kicker>1 · the check first</Kicker>
-        <div className="mt-3 rounded-xl bg-[#0d0f15] p-4 font-mono text-[15px] leading-relaxed">
-          <div className="text-violet-300">test(<span className="text-emerald-300">'on a phone the open filter</span></div>
-          <div className="text-emerald-300 pl-4">rail leaves the first session in view'</div>
+        <div className="mt-3 rounded-xl bg-[#071322] p-4 font-mono text-[15px] leading-relaxed">
+          <div className="text-blue-300">test(<span className="text-teal-300">'on a phone the open filter</span></div>
+          <div className="text-teal-300 pl-4">rail leaves the first session in view'</div>
           <div className="text-muted pl-4">await page.getByRole('button', {'{'} name: 'Filters' {'}'}).click()</div>
           <div className="text-muted pl-4">await expect(firstCard).toBeInViewport()</div>
         </div>
         <div className="pz-appear mt-4 flex items-center gap-3 text-[18px] text-rose-300" style={later(600)}><Tick ok={false} /> fails — the filters fill the screen</div>
         <div className="pz-appear mt-2 font-mono text-[14px] text-amber-300" style={later(900)}>● test(schedule): first session stays in view</div>
       </div>
-      <div className="flex items-center text-[34px] text-violet-300">→</div>
+      <div className="flex items-center text-[34px] text-blue-300">→</div>
       <div className={`${box} flex flex-col p-5`}>
         <Kicker>2 · then the change</Kicker>
-        <div className="pz-appear mt-3 rounded-xl bg-[#0d0f15] p-4 font-mono text-[15px] leading-relaxed" style={later(1300)}>
+        <div className="pz-appear mt-3 rounded-xl bg-[#071322] p-4 font-mono text-[15px] leading-relaxed" style={later(1300)}>
           <div className="text-faint">src/pages/SchedulePage.jsx</div>
           <div className="bg-rose-500/10 text-rose-300">- &lt;div className="space-y-6"&gt;</div>
-          <div className="bg-emerald-500/10 text-emerald-300">+ &lt;div className="grid grid-cols-2 gap-2</div>
-          <div className="bg-emerald-500/10 pl-4 text-emerald-300">+   lg:block lg:space-y-6"&gt;</div>
+          <div className="bg-teal-500/10 text-teal-300">+ &lt;div className="grid grid-cols-2 gap-2</div>
+          <div className="bg-teal-500/10 pl-4 text-teal-300">+   lg:block lg:space-y-6"&gt;</div>
         </div>
-        <div className="pz-appear mt-4 flex items-center gap-3 text-[18px] text-emerald-300" style={later(2100)}><Tick /> passes</div>
+        <div className="pz-appear mt-4 flex items-center gap-3 text-[18px] text-teal-300" style={later(2100)}><Tick /> passes</div>
         <div className="pz-appear mt-2 text-[16px] text-muted" style={later(2400)}>The docs that describe what changed are updated in the same push.</div>
       </div>
     </div>
@@ -205,7 +205,7 @@ function GateDetail() {
         ))}
       </div>
       <div className={`${box} pz-appear flex flex-col justify-center p-6`} style={later(1500)}>
-        <div className="font-mono text-[26px] text-emerald-300">{'{"ok":true}'}</div>
+        <div className="font-mono text-[26px] text-teal-300">{'{"ok":true}'}</div>
         <div className="mt-3 text-[20px] text-muted">
           The script reads the exit code, not the agent’s word. <b className="text-ink">Red goes back to the implementer</b>, however sure it sounds.
         </div>
@@ -229,7 +229,7 @@ function Run({ file, tone, children }) {
 
 function Result({ ok, label }) {
   return (
-    <div className={`flex h-full items-center gap-3 rounded-xl px-5 text-[22px] ${ok ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'}`}>
+    <div className={`flex h-full items-center gap-3 rounded-xl px-5 text-[22px] ${ok ? 'bg-teal-500/10 text-teal-300' : 'bg-rose-500/10 text-rose-300'}`}>
       <Tick ok={ok} /> {label}
     </div>
   );
@@ -241,7 +241,7 @@ function RedCheckDetail() {
     <div className="grid h-full grid-cols-[1fr_1fr] gap-6">
       <div className={`${box} flex flex-col p-6`}>
         <Kicker>1 · With the change</Kicker>
-        <div className="mt-3 h-[96px]"><Run file="SchedulePage.jsx" tone="border-emerald-400/40 bg-emerald-500/[0.06]"><span className="text-emerald-300">+ grid grid-cols-2 gap-2 lg:block</span></Run></div>
+        <div className="mt-3 h-[96px]"><Run file="SchedulePage.jsx" tone="border-teal-400/40 bg-teal-500/[0.06]"><span className="text-teal-300">+ grid grid-cols-2 gap-2 lg:block</span></Run></div>
         <div className="pz-appear mt-4 h-[64px]" style={later(300)}><Result ok label="first session stays in view — passes" /></div>
         <div className="pz-appear mt-3 text-[18px] text-muted" style={later(700)}>Green, across the whole gate. Green alone proves little.</div>
       </div>
@@ -250,7 +250,7 @@ function RedCheckDetail() {
         <Flip
           className="mt-3 h-[96px]"
           delay={FLIP}
-          front={<Run file="SchedulePage.jsx" tone="border-emerald-400/40 bg-emerald-500/[0.06]"><span className="text-emerald-300">+ grid grid-cols-2 gap-2 lg:block</span></Run>}
+          front={<Run file="SchedulePage.jsx" tone="border-teal-400/40 bg-teal-500/[0.06]"><span className="text-teal-300">+ grid grid-cols-2 gap-2 lg:block</span></Run>}
           back={<Run file="SchedulePage.jsx" tone="border-amber-400/50 bg-amber-500/[0.08]"><span className="text-amber-300">origin/main — the fix reverted, the test kept</span></Run>}
         />
         <Flip
@@ -259,7 +259,7 @@ function RedCheckDetail() {
           front={<Result ok label="first session stays in view — passes" />}
           back={<Result ok={false} label="first session stays in view — fails" />}
         />
-        <div className="pz-appear mt-3 text-[18px] text-emerald-300" style={later(FLIP + 1200)}>… which is the point: the test can tell the two apart.</div>
+        <div className="pz-appear mt-3 text-[18px] text-teal-300" style={later(FLIP + 1200)}>… which is the point: the test can tell the two apart.</div>
       </div>
       <div className="pz-appear col-span-2 rounded-xl border border-hairline bg-raised px-6 py-4 text-[19px] text-muted" style={later(FLIP + 1700)}>
         <Code>scripts/red-check.mjs</Code> puts the old code back and runs the new tests: <b className="text-ink">a test that still passes without the fix proves nothing</b>.
@@ -317,7 +317,7 @@ function AuditDetail() {
       <div className="pz-appear mt-auto flex items-center gap-3 rounded-xl border border-hairline bg-raised px-5 py-3" style={later(3400)}>
         <span className="text-[26px]">🧀</span>
         {SLICES.map(([name, ai, holes]) => (
-          <span key={name} className={`relative flex h-11 flex-1 items-center justify-center overflow-hidden rounded-lg text-[14px] font-semibold ${ai ? 'bg-amber-400/20 text-amber-100' : 'bg-emerald-400/20 text-emerald-100'}`}>
+          <span key={name} className={`relative flex h-11 flex-1 items-center justify-center overflow-hidden rounded-lg text-[14px] font-semibold ${ai ? 'bg-amber-400/20 text-amber-100' : 'bg-teal-400/20 text-teal-100'}`}>
             {holes.map(([x, y]) => <span key={`${x}-${y}`} className="absolute size-3 rounded-full bg-ground/70" style={{ left: `${x}%`, top: `${y}%` }} />)}
             <span className="relative">{name}</span>
           </span>
@@ -348,7 +348,7 @@ function LoopDetail() {
     <div className="grid h-full grid-cols-[520px_1fr] gap-8">
       <div className="relative">
         <svg viewBox="0 0 520 400" className="absolute inset-0 size-full" aria-hidden="true">
-          <circle cx="260" cy="200" r="150" fill="none" stroke="#333950" strokeWidth="3" />
+          <circle cx="260" cy="200" r="150" fill="none" stroke="#1f5c80" strokeWidth="3" />
           <circle cx="260" cy="200" r="150" pathLength="1" className="pz-flow" fill="none" stroke="#fbbf24" strokeWidth="3" />
         </svg>
         {nodes.map((n, i) => (
@@ -362,7 +362,7 @@ function LoopDetail() {
         <div className="pz-appear flex items-center gap-4 rounded-xl border border-rose-400/40 bg-rose-500/10 px-5 py-3 text-[19px] text-rose-200" style={later(400)}>
           <span className="font-mono text-[15px] text-faint">Round 1</span> 1 blocker — the search field at 360 px
         </div>
-        <div className="pz-appear flex items-center gap-4 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-5 py-3 text-[19px] text-emerald-200" style={later(1500)}>
+        <div className="pz-appear flex items-center gap-4 rounded-xl border border-teal-400/40 bg-teal-500/10 px-5 py-3 text-[19px] text-teal-200" style={later(1500)}>
           <span className="font-mono text-[15px] text-faint">Round 2</span> clean <Tick className="ml-auto" />
         </div>
         <div className="pz-appear mt-2 space-y-2 text-[18px] text-muted" style={later(2100)}>
@@ -392,7 +392,7 @@ function PrDetail() {
         <div className="border-b border-hairline px-6 py-4">
           <div className="font-display text-[24px] leading-tight text-ink">Keep sessions in view on mobile <span className="font-sans font-normal text-faint">#142</span></div>
           <div className="mt-2 flex items-center gap-2 text-[14px]">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 font-semibold text-white"><PrIcon /> Open</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1 font-semibold text-white"><PrIcon /> Open</span>
             <span className="text-muted">ready for review · Closes #140 · 📄 Spec</span>
           </div>
         </div>
@@ -533,7 +533,7 @@ const SHIP_BEATS = [
 
 function Lane({ title, tone, steps, foot, at }) {
   return (
-    <div className="pz-appear rounded-2xl border border-hairline bg-surface px-5 py-4" style={later(at)}>
+    <div className="pz-appear rounded-2xl border border-edge bg-surface px-5 py-4" style={later(at)}>
       <div className="flex items-baseline justify-between">
         <div className={`font-display text-[24px] ${tone}`}>{title}</div>
         <div className="font-mono text-[15px] text-muted">{foot}</div>
@@ -554,11 +554,11 @@ const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' };
 function SizeDetail() {
   return (
     <div className="flex flex-col gap-3">
-      <Lane at={200} title="⚡ Fast — the workshop" tone="text-emerald-300" foot="2 rounds"
+      <Lane at={200} title="⚡ Fast — the workshop" tone="text-teal-300" foot="2 rounds"
         steps={[['setup', 'sonnet'], ['plan', 'sonnet'], ['implement', 'sonnet'], ['gate, tests it reaches', 'haiku'], ['one auditor', 'sonnet'], ['fix', 'sonnet'], ['PR', 'haiku']]} />
       <Lane at={450} title="🟢 Small — most tickets" tone="text-sky-300" foot="2 rounds"
         steps={[['setup', 'opus'], ['plan', 'sonnet'], ['implement', 'sonnet'], ['gate', 'haiku'], ['auditors', 'sonnet', 2], ['fix', 'sonnet'], ['PR', 'haiku']]} />
-      <Lane at={700} title="🔵 Full — rules, APIs, bigger changes" tone="text-fuchsia-300" foot="4 rounds"
+      <Lane at={700} title="🔵 Full — rules, APIs, bigger changes" tone="text-cyan-300" foot="4 rounds"
         steps={[['setup', 'opus'], ['plan', 'opus'], ['plan audit', 'opus', 2], ['implement', 'opus'], ['gate', 'haiku'], ['auditors', 'opus', 3], ['fix', 'opus'], ['PR', 'haiku']]} />
     </div>
   );
@@ -571,9 +571,9 @@ function PrScene({ step }) {
 
 export const SHIP = [
   // `enter: 'cut'` — the map chapter has already unpacked the stations into place, so this one lands on them
-  { id: 'ship', name: 'Inside ship', accent: 'text-violet-300', tone: 'violet', enter: 'cut', beats: SHIP_BEATS.slice(0, PR_BEAT), Scene: ShipScene },
+  { id: 'ship', name: 'Inside ship', accent: 'text-blue-300', tone: 'violet', enter: 'cut', beats: SHIP_BEATS.slice(0, PR_BEAT), Scene: ShipScene },
 ];
 
 export const SHIP_PR = [
-  { id: 'pr', name: 'The pull request', accent: 'text-violet-300', tone: 'violet', beats: SHIP_BEATS.slice(PR_BEAT), Scene: PrScene },
+  { id: 'pr', name: 'The pull request', accent: 'text-blue-300', tone: 'violet', beats: SHIP_BEATS.slice(PR_BEAT), Scene: PrScene },
 ];

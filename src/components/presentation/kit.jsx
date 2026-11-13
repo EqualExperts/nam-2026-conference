@@ -71,9 +71,9 @@ export function Replay({ on, children, ...rest }) {
 export const later = (ms, extra) => ({ animationDelay: `${ms}ms`, ...extra });
 
 export const MODELS = {
-  opus:   { name: 'Opus',   chip: 'bg-violet-500/15 text-violet-200 border-violet-400/40', dot: 'bg-violet-400' },
+  opus:   { name: 'Opus',   chip: 'bg-blue-500/15 text-blue-200 border-blue-400/40', dot: 'bg-blue-400' },
   sonnet: { name: 'Sonnet', chip: 'bg-sky-500/15 text-sky-200 border-sky-400/40',          dot: 'bg-sky-400' },
-  haiku:  { name: 'Haiku',  chip: 'bg-emerald-500/15 text-emerald-200 border-emerald-400/40', dot: 'bg-emerald-400' },
+  haiku:  { name: 'Haiku',  chip: 'bg-teal-500/15 text-teal-200 border-teal-400/40', dot: 'bg-teal-400' },
 };
 
 export function Model({ m, className = '', children }) {
@@ -87,11 +87,11 @@ export function Model({ m, className = '', children }) {
 }
 
 const LABELS = {
-  'ready-for-ai':   'bg-violet-500/20 text-violet-200 border-violet-400/50',
+  'ready-for-ai':   'bg-blue-500/20 text-blue-200 border-blue-400/50',
   'ai-working':     'bg-sky-500/20 text-sky-200 border-sky-400/50',
   'needs-human':    'bg-amber-500/20 text-amber-200 border-amber-400/50',
-  'ready-for-human':'bg-emerald-500/20 text-emerald-200 border-emerald-400/50',
-  'ship:full':      'bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-400/50',
+  'ready-for-human':'bg-teal-500/20 text-teal-200 border-teal-400/50',
+  'ship:full':      'bg-cyan-500/20 text-cyan-200 border-cyan-400/50',
   'harness-escape': 'bg-rose-500/20 text-rose-200 border-rose-400/50',
 };
 
@@ -133,11 +133,11 @@ export function Meter({ level }) {
 const TONES = {
   cmd:  'text-ink',
   out:  'text-muted',
-  ok:   'text-emerald-300',
+  ok:   'text-teal-300',
   warn: 'text-amber-300',
   bad:  'text-rose-300',
   dim:  'text-faint',
-  hi:   'text-violet-300',
+  hi:   'text-blue-300',
 };
 
 /**
@@ -146,18 +146,18 @@ const TONES = {
  */
 export function Terminal({ title, lines, step = 0, className = '', style, bodyClass = '' }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-hairline bg-[#0d0f15] shadow-2xl shadow-black/50 ${className}`} style={style}>
-      <div className="flex items-center gap-2 border-b border-hairline bg-surface px-4 py-2.5">
+    <div className={`overflow-hidden rounded-2xl border border-hairline bg-[#071322] shadow-2xl shadow-black/50 ${className}`} style={style}>
+      <div className="flex items-center gap-2 border-b border-edge bg-surface px-4 py-2.5">
         <span className="size-3 rounded-full bg-rose-400/80" />
         <span className="size-3 rounded-full bg-amber-400/80" />
-        <span className="size-3 rounded-full bg-emerald-400/80" />
+        <span className="size-3 rounded-full bg-teal-400/80" />
         <span className="ml-3 font-mono text-[13px] text-faint">{title}</span>
       </div>
       <div className={`space-y-1.5 px-5 py-4 font-mono text-[17px] leading-relaxed ${bodyClass}`}>
         {lines.filter((l) => step >= (l.from ?? 0)).map((l, i) => (
           <div key={`${l.from ?? 0}-${i}`} className={`pz-appear ${TONES[l.tone ?? 'out']}`} style={later(l.delay ?? 0)}>
             {l.tone === 'cmd' ? (
-              <><span className="text-violet-400">❯ </span><Typed text={l.t} delay={(l.delay ?? 0) + 150} /></>
+              <><span className="text-blue-400">❯ </span><Typed text={l.t} delay={(l.delay ?? 0) + 150} /></>
             ) : l.t}
           </div>
         ))}
@@ -170,13 +170,13 @@ export function Terminal({ title, lines, step = 0, className = '', style, bodyCl
 /** A GitHub-ish issue card. */
 export function IssueCard({ number, title, state = 'Open', labels = [], children, className = '', style }) {
   return (
-    <div className={`rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40 ${className}`} style={style}>
+    <div className={`rounded-2xl border border-edge bg-surface shadow-2xl shadow-black/40 ${className}`} style={style}>
       <div className="border-b border-hairline px-7 pb-5 pt-6">
         <div className="font-display text-[30px] leading-tight text-ink">
           {title} <span className="font-sans font-normal text-faint">#{number}</span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1 text-[14px] font-semibold text-white">
             <IssueIcon /> {state}
           </span>
           {labels.map((l) => <Label key={l} name={l} className="pz-pop" />)}
@@ -219,11 +219,11 @@ export function MergeIcon({ className = 'size-4' }) {
 export function Token({ n = 140, className = '', ...rest }) {
   return (
     <motion.div
-      className={`pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-500/30 px-3 font-mono text-[15px] font-semibold text-violet-50 shadow-[0_0_28px_-2px_rgba(167,139,250,0.9),inset_0_0_12px_rgba(196,181,253,0.25)] backdrop-blur ${className}`}
+      className={`pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full border border-blue-300/70 bg-blue-500/30 px-3 font-mono text-[15px] font-semibold text-blue-50 shadow-[0_0_28px_-2px_rgba(96,165,250,0.9),inset_0_0_12px_rgba(147,197,253,0.25)] backdrop-blur ${className}`}
       aria-hidden="true"
       {...rest}
     >
-      <IssueIcon className="size-3.5 text-emerald-300" />#{n}
+      <IssueIcon className="size-3.5 text-teal-300" />#{n}
     </motion.div>
   );
 }
@@ -250,7 +250,7 @@ export function Flip({ delay = 0, front, back, className = '' }) {
 export function Tick({ ok = true, className = '', style }) {
   return (
     <span
-      className={`inline-grid size-7 shrink-0 place-items-center rounded-full text-[15px] font-bold ${ok ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40' : 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/40'} ${className}`}
+      className={`inline-grid size-7 shrink-0 place-items-center rounded-full text-[15px] font-bold ${ok ? 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-400/40' : 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/40'} ${className}`}
       style={style}
       aria-label={ok ? 'passes' : 'fails'}
     >
@@ -261,13 +261,13 @@ export function Tick({ ok = true, className = '', style }) {
 
 /** A small kicker above a panel. */
 export function Kicker({ children, className = '' }) {
-  return <div className={`font-mono text-[13px] uppercase tracking-[0.18em] text-faint ${className}`}>{children}</div>;
+  return <div data-eyebrow className={`text-[13px] font-semibold uppercase tracking-[0.18em] text-edge ${className}`}>{children}</div>;
 }
 
 /** A GitHub-style verdict callout as the review and QA agents post it. */
 export function Verdict({ pass, level, title, children, className = '' }) {
   const tone = !pass ? 'border-rose-400/60 bg-rose-500/10 text-rose-200'
-    : level === 'high' ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
+    : level === 'high' ? 'border-teal-400/60 bg-teal-500/10 text-teal-200'
     : level === 'medium' ? 'border-sky-400/60 bg-sky-500/10 text-sky-200'
     : 'border-amber-400/60 bg-amber-500/10 text-amber-200';
   return (
@@ -278,5 +278,74 @@ export function Verdict({ pass, level, title, children, className = '' }) {
       </div>
       {children && <div className="mt-1 text-[16px] text-ink/80">{children}</div>}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The NAM 2026 card shapes (#293). Colours are the `.deck` tokens.
+ * ------------------------------------------------------------------ */
+
+/** The card: #071322 fill, thin #38bdf8 outline. */
+export const CARD = 'rounded-2xl border border-edge bg-surface';
+
+/** An outlined card with a circled numeral top left and a coloured heading. */
+export function Card({ n, title, tone = 'text-edge', children, className = '', style, ...rest }) {
+  return (
+    <div className={`${CARD} p-6 ${className}`} style={style} {...rest}>
+      <div className="flex items-center gap-4">
+        {n != null && <span className={`grid size-11 shrink-0 place-items-center rounded-full border-2 border-current text-[18px] font-bold ${tone}`}>{n}</span>}
+        {title && <div className={`text-[24px] font-bold leading-tight ${tone}`}>{title}</div>}
+      </div>
+      {children && <div className="mt-3 text-[18px] leading-snug text-ink">{children}</div>}
+    </div>
+  );
+}
+
+/** A coloured bar down the left edge and a big numeral beside the text. */
+export function AccentCard({ n, title, color = 'edge', compact = false, children, className = '', style, ...rest }) {
+  const c = { edge: ['bg-edge', 'text-edge'], orange: ['bg-orange', 'text-orange'], teal: ['bg-teal', 'text-teal'], cyan: ['bg-cyan', 'text-cyan'] }[color];
+  return (
+    <div className={`relative flex items-center ${compact ? '' : 'gap-6'} overflow-hidden ${CARD} ${compact ? 'gap-4 py-4 pl-8 pr-4' : 'py-5 pl-9 pr-6'} ${className}`} style={style} {...rest}>
+      <span className={`absolute inset-y-0 left-0 w-3 ${c[0]}`} aria-hidden="true" />
+      <span className={`${compact ? 'text-[44px]' : 'text-[72px]'} font-bold leading-none ${c[1]}`}>{n}</span>
+      <div>
+        <div className={`${compact ? 'text-[20px]' : 'text-[26px]'} font-bold leading-tight text-ink`}>{title}</div>
+        {children && <div className={`mt-1 ${compact ? 'text-[15px]' : 'text-[18px]'} leading-snug text-muted`}>{children}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** A small outlined pill, for a key objective. */
+export function Pill({ children, className = '' }) {
+  return <span className={`inline-block rounded-full border border-edge px-4 py-1 text-[16px] font-semibold text-edge ${className}`}>{children}</span>;
+}
+
+/** Two side-by-side panels, each with an uppercase coloured header and a thin divider. */
+export function TwoPanel({ left, right, className = '', style }) {
+  return (
+    <div className={`grid grid-cols-2 gap-6 ${className}`} style={style}>
+      {[left, right].map((p) => (
+        <div key={p.title} className={`${CARD} p-6`}>
+          <div className={`text-[16px] font-bold uppercase tracking-[0.16em] ${p.tone ?? 'text-edge'}`}>{p.title}</div>
+          <div className="my-3 h-px bg-hairline" />
+          {p.children}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Closing slides: a row of three numbered cards over the charcoal. */
+export function ClosingRow({ cards, y = 640, width = 1000 }) {
+  const colors = ['edge', 'orange', 'cyan'];
+  return (
+    <>
+      <div className="pointer-events-none absolute grid grid-cols-3 gap-5" style={{ left: 80, top: y, width }}>
+        {cards.map((c, i) => (
+          <AccentCard key={c.title} n={`0${i + 1}`} title={c.title} color={colors[i]} data-testid="closing-card" compact>{c.sub}</AccentCard>
+        ))}
+      </div>
+    </>
   );
 }

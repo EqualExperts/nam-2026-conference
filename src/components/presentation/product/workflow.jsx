@@ -27,7 +27,7 @@ function ContextScene({ step }) {
     <>
       {/* the title slide: its heading is the caption, set large; this is the picture beside it */}
       <Show on={step === 0} from="right" delay={200} style={at(1120, 150, 400, 420)} className="flex flex-col items-center justify-center gap-5">
-        <div className="pz-glow grid size-[220px] place-items-center rounded-full border border-violet-400/60 bg-surface text-[120px]">📚</div>
+        <div className="pz-glow grid size-[220px] place-items-center rounded-full border border-blue-400/60 bg-surface text-[120px]">📚</div>
         {CHIPS.map((c, i) => (
           <span key={c} className="pz-appear rounded-lg border border-hairline bg-raised px-4 py-1.5 font-mono text-[15px] text-muted" style={later(700 + i * 150)}>{c}</span>
         ))}
@@ -38,7 +38,7 @@ function ContextScene({ step }) {
         <div className="mt-4 space-y-2">
           {DOCS.map((d, i) => {
             const on = !asking || d.key || d.pick;
-            const tone = asking && d.pick ? 'pz-glow border-emerald-400/60 bg-raised' : asking && d.key ? 'border-violet-400/60 bg-raised' : 'border-hairline';
+            const tone = asking && d.pick ? 'pz-glow border-teal-400/60 bg-raised' : asking && d.key ? 'border-blue-400/60 bg-raised' : 'border-hairline';
             return (
               <div key={d.f} className={`pz-appear rounded-xl border px-4 py-2 transition-all duration-500 ${tone} ${on ? '' : 'opacity-35'}`} style={later(200 + i * 120)}>
                 <div className="font-mono text-[15px] text-ink">{d.f}</div>
@@ -70,7 +70,7 @@ function ContextScene({ step }) {
           How are the mobile specs run?
         </div>
         <div className="pz-appear rounded-xl border border-hairline bg-raised px-5 py-3.5" style={later(1000)}>
-          <div className="font-mono text-[15px] text-violet-200">read context/index → context/engineering-context/testing.md</div>
+          <div className="font-mono text-[15px] text-blue-200">read context/index → context/engineering-context/testing.md</div>
           <div className="mt-1 text-[17px] text-ink">Playwright runs a desktop project and a mobile one — testing.md has the viewports.</div>
         </div>
         <div className={`${box} pz-appear mt-auto p-6`} style={later(1900)}>
@@ -87,7 +87,7 @@ function ContextScene({ step }) {
 /* Each move has its own colour, so the two beats differ at a glance, not just in their words. */
 const MOVE = [
   { ring: 'border-sky-400 bg-sky-500/10 shadow-[0_0_44px_rgba(56,189,248,0.4)]', arrow: 'text-sky-300', band: 'border-sky-400/60 bg-sky-500/10' },
-  { ring: 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_44px_rgba(52,211,153,0.4)]', arrow: 'text-emerald-300', band: 'border-emerald-400/60 bg-emerald-500/10' },
+  { ring: 'border-teal-400 bg-teal-500/10 shadow-[0_0_44px_rgba(93,176,176,0.4)]', arrow: 'text-teal-300', band: 'border-teal-400/60 bg-teal-500/10' },
 ];
 
 /** A thick arrow: big and bright when it is the one in play, a faint stub when it is not. */
@@ -107,18 +107,18 @@ function LoopScene({ step }) {
   const top = step < 2;
   return (
     <>
-      <Show on={top} from="left" style={at(80, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 0 ? move.ring : 'border-hairline bg-surface opacity-30'}`}>
+      <Show on={top} from="left" style={at(80, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 0 ? move.ring : 'border-edge bg-surface opacity-30'}`}>
         <Kicker>Decide and act</Kicker>
         <div className="mt-3 space-y-1.5 text-[18px] text-muted">
           <div>build a feature</div><div>review a change</div><div>pick the next task</div>
         </div>
       </Show>
-      <Show on={top} from="up" delay={150} style={at(610, 170, 380, 270)} className={`${box} flex flex-col items-center justify-center border-violet-400/60 p-6 text-center`}>
+      <Show on={top} from="up" delay={150} style={at(610, 170, 380, 270)} className={`${box} flex flex-col items-center justify-center border-blue-400/60 p-6 text-center`}>
         <div className="text-[44px]">📚</div>
         <div className="font-display text-[30px] text-ink">Project context</div>
         <div className="mt-1 text-[16px] text-muted">indexed files — the project as it is today</div>
       </Show>
-      <Show on={top} from="right" delay={300} style={at(1140, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 1 ? move.ring : 'border-hairline bg-surface opacity-30'}`}>
+      <Show on={top} from="right" delay={300} style={at(1140, 190, 380, 230)} className={`rounded-2xl border p-6 transition-all duration-500 ${step === 1 ? move.ring : 'border-edge bg-surface opacity-30'}`}>
         <Kicker>New information</Kicker>
         <div className="mt-3 space-y-1.5 text-[18px] text-muted">
           <div>a meeting</div><div>a decision</div><div>something you learned</div>
@@ -149,19 +149,19 @@ function LoopScene({ step }) {
         <div className="font-display text-[30px] text-ink">New information</div>
         <div className="mt-1 text-[16px] text-muted">a meeting, notes, a voice note</div>
       </Show>
-      <Show on={step === 2} from="left" delay={300} style={at(500, 190, 330, 230)} className={`${box} pz-glow flex flex-col justify-center border-fuchsia-400/60 p-6`}>
+      <Show on={step === 2} from="left" delay={300} style={at(500, 190, 330, 230)} className={`${box} pz-glow flex flex-col justify-center border-cyan-400/60 p-6`}>
         <div className="text-[44px]">🌾</div>
         <div className="font-display text-[30px] text-ink">Distil</div>
         <div className="mt-1 text-[16px] text-muted">noise out; knowledge and work sorted</div>
       </Show>
-      <Show on={step === 2} from="none" delay={150} style={at(410, 260, 90, 90)} className="grid place-items-center text-[64px] leading-none text-violet-300">→</Show>
-      <Show on={step === 2} from="none" delay={450} style={at(830, 150, 90, 90)} className="grid place-items-center text-[64px] leading-none text-violet-300">↗</Show>
-      <Show on={step === 2} from="none" delay={450} style={at(830, 370, 90, 90)} className="grid place-items-center text-[64px] leading-none text-violet-300">↘</Show>
-      <Show on={step === 2} from="right" delay={700} style={at(930, 90, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-emerald-400/50 bg-emerald-500/10 p-6">
+      <Show on={step === 2} from="none" delay={150} style={at(410, 260, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">→</Show>
+      <Show on={step === 2} from="none" delay={450} style={at(830, 150, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">↗</Show>
+      <Show on={step === 2} from="none" delay={450} style={at(830, 370, 90, 90)} className="grid place-items-center text-[64px] leading-none text-blue-300">↘</Show>
+      <Show on={step === 2} from="right" delay={700} style={at(930, 90, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-teal-400/50 bg-teal-500/10 p-6">
         <div className="font-display text-[32px] text-ink">🧠 Remember</div>
         <div className="mt-2 text-[20px] text-muted">knowledge goes into the project context</div>
       </Show>
-      <Show on={step === 2} from="right" delay={950} style={at(930, 330, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-violet-400/50 bg-violet-500/10 p-6">
+      <Show on={step === 2} from="right" delay={950} style={at(930, 330, 590, 190)} className="flex flex-col justify-center rounded-2xl border border-blue-400/50 bg-blue-500/10 p-6">
         <div className="font-display text-[32px] text-ink">🎫 Raise</div>
         <div className="mt-2 text-[20px] text-muted">work goes into the task tracker</div>
       </Show>
@@ -181,7 +181,7 @@ function TrackingScene({ step }) {
           <div className="flex gap-3"><Tick className="size-6 text-[12px]" /> how it works, where it lives, what was decided</div>
           <div className="flex gap-3"><Tick className="size-6 text-[12px]" /> present state only — not how it got here</div>
         </div>
-        <div className="mt-auto rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-4 py-2.5 text-[17px] text-emerald-100">Goal: the right knowledge to decide and act</div>
+        <div className="mt-auto rounded-lg border border-teal-400/40 bg-teal-500/10 px-4 py-2.5 text-[17px] text-teal-100">Goal: the right knowledge to decide and act</div>
       </Show>
       <Show from="right" style={at(900, 70, 620, 370)} className={`${box} flex flex-col p-7`}>
         <div className="flex items-center gap-3"><span className="text-[32px]">🎫</span><span className="font-display text-[30px] text-ink">Task tracker</span></div>
@@ -190,16 +190,16 @@ function TrackingScene({ step }) {
           <div className="rounded-lg border border-hairline bg-raised px-4 py-2.5"><b className="text-ink">Done</b><div className="text-[14px] text-faint">the record of the past</div></div>
           <div className="rounded-lg border border-hairline bg-raised px-4 py-2.5"><b className="text-ink">Roadmap</b><div className="text-[14px] text-faint">the future, in order</div></div>
         </div>
-        <div className="mt-auto rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-2.5 text-[17px] text-violet-100">Goal: planning</div>
+        <div className="mt-auto rounded-lg border border-blue-400/40 bg-blue-500/10 px-4 py-2.5 text-[17px] text-blue-100">Goal: planning</div>
       </Show>
 
       <Show on={step === 1} from="none" style={at(700, 130, 200, 260)} className="flex flex-col justify-center gap-10 text-center">
         <div>
-          <div className="text-[34px] text-violet-300">→</div>
+          <div className="text-[34px] text-blue-300">→</div>
           <div className="text-[14px] leading-snug text-muted">pick the next task from where the project is today</div>
         </div>
         <div>
-          <div className="text-[34px] text-violet-300">←</div>
+          <div className="text-[34px] text-blue-300">←</div>
           <div className="text-[14px] leading-snug text-muted">finishing a task changes where it is</div>
         </div>
       </Show>
@@ -241,7 +241,7 @@ function SkillsScene({ step }) {
       {MAP.map(([what, skill], i) => (
         <Show key={skill} on={step === 0} from="left" delay={200 + i * 200} style={at(80, 150 + i * 110, 1440, 90)} className={`${box} flex items-center gap-6 px-7`}>
           <span className="w-[640px] text-[22px] text-muted">{what}</span>
-          <span className="text-[26px] text-violet-300">→</span>
+          <span className="text-[26px] text-blue-300">→</span>
           <Code className="text-[22px]">{skill}</Code>
         </Show>
       ))}
@@ -272,10 +272,10 @@ function ImplementationScene() {
         <Tick className="size-8 shrink-0 text-[14px]" />
         <div><div className="text-[14px] text-faint">so far</div><div className="font-display text-[26px] leading-tight text-ink">The workflow</div></div>
       </Show>
-      <Show from="none" delay={500} style={at(1120, 345, 400, 60)} className="text-center text-[44px] leading-none text-violet-300">↓</Show>
-      <Show from="right" delay={700} style={at(1120, 410, 400, 170)} className={`${box} pz-glow flex items-center gap-4 border-emerald-400/60 px-6`}>
+      <Show from="none" delay={500} style={at(1120, 345, 400, 60)} className="text-center text-[44px] leading-none text-blue-300">↓</Show>
+      <Show from="right" delay={700} style={at(1120, 410, 400, 170)} className={`${box} pz-glow flex items-center gap-4 border-teal-400/60 px-6`}>
         <span className="text-[44px]">🧰</span>
-        <div><div className="text-[14px] text-emerald-300">next</div><div className="font-display text-[28px] leading-tight text-ink">A sample implementation</div></div>
+        <div><div className="text-[14px] text-teal-300">next</div><div className="font-display text-[28px] leading-tight text-ink">A sample implementation</div></div>
       </Show>
     </>
   );
@@ -283,7 +283,7 @@ function ImplementationScene() {
 
 export const WORKFLOW = [
   {
-    id: 'context', name: 'The project context', accent: 'text-violet-300', tone: 'violet',
+    id: 'context', name: 'The project context', accent: 'text-blue-300', tone: 'violet',
     beats: [
       {
         hero: true,
@@ -342,7 +342,7 @@ export const WORKFLOW = [
     Scene: TrackingScene,
   },
   {
-    id: 'implementation', name: 'A sample implementation', accent: 'text-emerald-300', tone: 'emerald',
+    id: 'implementation', name: 'A sample implementation', accent: 'text-teal-300', tone: 'emerald',
     beats: [
       {
         hero: true,
@@ -354,7 +354,7 @@ export const WORKFLOW = [
     Scene: ImplementationScene,
   },
   {
-    id: 'skills', name: 'One way to do it', accent: 'text-emerald-300', tone: 'emerald',
+    id: 'skills', name: 'One way to do it', accent: 'text-teal-300', tone: 'emerald',
     beats: [
       {
         kicker: '5 · The skills',

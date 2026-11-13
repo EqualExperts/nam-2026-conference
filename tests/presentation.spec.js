@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { failOnPageErrors } from './helpers.js';
+import { failOnPageErrors, shotForPR } from './helpers.js';
 
 /**
  * /engineering-presentation — the engineering harness talk. It books nothing and reads no
@@ -282,5 +282,148 @@ test.describe('Reaching the talks from the app', () => {
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(title, 'i') })).toBeVisible();
     }
+  });
+});
+
+/**
+ * The NAM 2026 look (#293): every beat of every deck wears the frame and the tab,
+ * has an eyebrow and a title, uses no violet, and sets text in Lexend. Text
+ * colour is measured per beat over the card fill (colour only: ancestor
+ * opacity is the entrance animation, which is settled by then).
+ */
+const DECKS = [
+  { path: '/opening-presentation', name: 'opening' },
+  { path: '/product-presentation', name: 'product' },
+  { path: '/engineering-presentation', name: 'engineering' },
+];
+
+
+/** Every text on the stage under AA against what it sits on (the card fill when nothing else is behind it). */
+async function worstContrast(page) {
+  return page.evaluate(() => {
+    // any CSS colour (Tailwind's palette computes to oklch, its /90 to color(srgb …)) as [r, g, b, a], via a canvas pixel
+    const px = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const parse = (c) => {
+      px.clearRect(0, 0, 1, 1);
+      px.fillStyle = '#000';
+      px.fillStyle = c;
+      px.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = px.getImageData(0, 0, 1, 1).data;
+      return [r, g, b, a / 255];
+    };
+    const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    const L = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const card = [7, 19, 34];
+    const fails = [];
+    const walker = document.createTreeWalker(document.querySelector('[data-testid="presentation"] > div.cursor-pointer'), NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const t = n.textContent.trim();
+      if (!t) continue;
+      const el = n.parentElement;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || el.closest('[aria-hidden="true"]')) continue;
+      // the nearest filled ancestor is what the text sits on; the card fill when there is none
+      let bg = card;
+      for (let p = el; p && p.tagName !== 'BODY'; p = p.parentElement) {
+        const [pr, pg, pb, pa = 1] = parse(getComputedStyle(p).backgroundColor);
+        if (pa > 0.5) { bg = [pr, pg, pb]; break; }
+      }
+      const [r, g, b, a = 1] = parse(cs.color);
+      if (cs.backgroundClip === 'text' || cs.webkitTextFillColor === 'rgba(0, 0, 0, 0)') continue; // gradient text
+      const mix = [r, g, b].map((c, i) => c * a + bg[i] * (1 - a));
+      const l1 = L(...mix), l2 = L(...bg);
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      const px = parseFloat(cs.fontSize);
+      const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
+      const need = large ? 3 : 4.5;
+      if (ratio < need) fails.push(`${t.slice(0, 30)} (${ratio.toFixed(2)}:1, ${px}px, ${el.tagName}.${String(el.getAttribute('class')).slice(0, 50)})`);
+    }
+    return fails;
+  });
+}
+
+for (const deck of DECKS) {
+  test.describe(`The ${deck.name} deck's NAM 2026 look`, () => {
+    test('every beat has the tab, an eyebrow and a title, in Lexend, with no violet and AA text', async ({ page }) => {
+      test.slow();
+      const errors = failOnPageErrors(page);
+      await page.goto(deck.path);
+      const { total } = await readCounter(page);
+      const problems = [];
+      for (let at = 1; at <= total; at++) {
+        if (at > 1) await page.keyboard.press('ArrowRight');
+        await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
+        const where = `${deck.name} beat ${at}`;
+        await expect(page.getByTestId('deck-tab'), where).toBeVisible();
+        if (!await page.locator('[data-eyebrow]').count()) problems.push(`${where}: no eyebrow`);
+        if (!await page.locator('h1, h2, [data-deck-title]').count()) problems.push(`${where}: no title`);
+        const bad = await page.evaluate(() => {
+          const stage = document.querySelector('[data-testid="presentation"]');
+          const violet = [...stage.querySelectorAll('*')].filter((el) => /(violet|fuchsia|purple)/.test(el.getAttribute('class') || '') || /#(8b5cf6|a78bfa|c4b5fd|6d28d9)|139, ?92, ?246/i.test(el.getAttribute('style') || '')).length;
+          const fonts = [...stage.querySelectorAll('*')].filter((el) => el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && !/^"?Lexend/.test(getComputedStyle(el).fontFamily)).map((el) => `${el.tagName}.${String(el.getAttribute('class')).slice(0, 40)} ${getComputedStyle(el).fontFamily}`);
+          return { violet, fonts };
+        });
+        if (bad.violet) problems.push(`${where}: still uses violet`);
+        for (const f of bad.fonts) problems.push(`${where}: text outside Lexend ${f}`);
+        for (const f of await worstContrast(page)) problems.push(`${where}: under AA ${f}`);
+      }
+      expect([...new Set(problems)]).toEqual([]);
+      expect(errors).toEqual([]);
+    });
+
+    test('the closing slide has no bridge, no frame bar and no slide number in the tab', async ({ page }) => {
+      await page.goto(deck.path);
+      await expect(counter(page)).toHaveText(/^1 \//);
+      await page.keyboard.press('End');
+      await expect(page.getByTestId('deck-bridge')).toHaveCount(0);
+      await expect(page.getByTestId('deck-frame')).toHaveCount(0);
+      await expect(page.getByTestId('deck-tab')).toHaveText('');
+      if (process.env.PR_SHOTS) await page.waitForTimeout(2500); // let the entrance finish
+      await shotForPR(page, `${deck.name} closing slide`);
+    });
+
+    test('a content slide sits in a card on the table colours', async ({ page }) => {
+      await page.goto(`${deck.path}?beat=3`);
+      await expect(page.getByTestId('deck-tab')).toBeVisible();
+      const css = await page.evaluate(() => {
+        const bg = (id) => getComputedStyle(document.querySelector(`[data-testid="${id}"]`)).backgroundColor;
+        return { tab: bg('deck-tab'), ground: getComputedStyle(document.querySelector('[data-testid="presentation"]')).backgroundColor };
+      });
+      expect(css.tab).toBe('rgb(23, 149, 212)');
+      expect(css.ground).toBe('rgb(33, 33, 33)');
+      if (process.env.PR_SHOTS) await page.waitForTimeout(2500);
+      await shotForPR(page, `${deck.name} content slide`);
+    });
+  });
+}
+
+test.describe('The opening title slide', () => {
+  test('shows the white Equal Experts logo, big enough, and no bridge', async ({ page }) => {
+    await page.goto('/opening-presentation');
+    const logo = page.getByTestId('deck-logo');
+    await expect(page.getByTestId('deck-bridge')).toHaveCount(0);
+    await expect(logo).toBeVisible();
+    // the stage is scaled to the window: the 100px rule is the logo's size on the 1600px stage
+    const stage = await page.locator('[data-testid="presentation"] > div.cursor-pointer').boundingBox();
+    expect((await logo.boundingBox()).width / (stage.width / 1600)).toBeGreaterThanOrEqual(100);
+    const l = await logo.boundingBox();
+    // the logo sits clear of the day list above it
+    const day = await page.getByTestId('opening-day').boundingBox();
+    expect(l.y).toBeGreaterThanOrEqual(day.y + day.height);
+    await expect.poll(() => logo.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true);
+    if (process.env.PR_SHOTS) await page.waitForTimeout(2500);
+    await shotForPR(page, 'opening title slide');
+  });
+});
+
+test.describe('Outside the decks', () => {
+  test('the app keeps its own font and ground', async ({ page }) => {
+    await page.goto('/');
+    const look = await page.evaluate(() => ({
+      font: getComputedStyle(document.body).fontFamily,
+      ground: getComputedStyle(document.documentElement).getPropertyValue('--color-ground').trim(),
+    }));
+    expect(look.font).toMatch(/Inter/);
+    expect(look.ground).toBe('#14161e');
   });
 });

@@ -23,6 +23,51 @@
   --color-faint: #6e768d;
 
   --radius-card: 1rem;
+
+  /* The NAM 2026 deck palette. The app does not use these; `.deck` below sets
+     the same names, and declaring them here is what makes the utilities exist. */
+  --color-edge: #38bdf8;
+  --color-frame: #2095d3;
+  --color-tab: #1795d4;
+  --color-orange: #f59e0b;
+  --color-teal: #3a9a9a;
+  --color-cyan: #00c8e8;
+}
+
+/* ------------------------------------------------------------------ *
+ * The decks (/opening-, /product-, /engineering-presentation) wear the
+ * NAM Conference 2026 slide deck: charcoal ground, #071322 cards with a
+ * #38bdf8 outline, Equal Experts blue frame, Lexend only. The tokens are
+ * redefined inside `.deck` alone, so the old scene classes (bg-surface,
+ * text-muted, border-hairline…) remap and the app's own theme is untouched.
+ * ------------------------------------------------------------------ */
+.deck {
+  --font-sans: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --color-ground: #212121;
+  --color-surface: #071322;
+  --color-raised: #0b1d33;
+  --color-overlay: #12304c;
+  --color-hairline: #1f5c80;
+  --color-ink: #ffffff;
+  --color-muted: #94a3b8;
+  --color-faint: #94a3b8;
+  --color-edge: #38bdf8;
+  --color-frame: #2095d3;
+  --color-tab: #1795d4;
+  --color-orange: #f59e0b;
+  --color-teal: #3a9a9a;
+  --color-cyan: #00c8e8;
+  /* the scenes' emerald is the deck's teal */
+  --color-teal-200: #b4dcdc;
+  --color-teal-300: #7cc4c4;
+  --color-teal-400: #5db0b0;
+  --color-teal-500: #3a9a9a;
+  --color-teal-600: #2d7b7b;
+  font-family: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
 }
 
 html {
@@ -200,8 +245,8 @@ body::before {
 @utility pz-float { animation: pz-float 5s ease-in-out infinite; }
 
 @keyframes pz-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.0), 0 0 40px -8px rgba(139, 92, 246, 0.55); }
-  50%      { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.12), 0 0 64px -4px rgba(139, 92, 246, 0.75); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(32, 149, 211, 0.0), 0 0 40px -8px rgba(32, 149, 211, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(32, 149, 211, 0.12), 0 0 64px -4px rgba(32, 149, 211, 0.75); }
 }
 @utility pz-glow { animation: pz-glow 2.4s ease-in-out infinite; }
 
@@ -282,7 +327,7 @@ body::before {
  * tile scrolls without a seam. Pair with bg-clip-text text-transparent. */
 @keyframes pz-shine { to { background-position: 200% center; } }
 @utility pz-shine {
-  background-image: linear-gradient(90deg, #c4b5fd, #f0abfc, #67e8f9, #f0abfc, #c4b5fd);
+  background-image: linear-gradient(90deg, #7dd3fc, #00c8e8, #ffffff, #00c8e8, #7dd3fc);
   background-size: 200% auto;
   animation: pz-shine 7s linear infinite;
 }
@@ -358,8 +403,8 @@ body::before {
 
 /* The hand-off button, ready to go: a cyan pulse rather than the violet glow. */
 @keyframes pz-launch {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(103, 232, 249, 0), 0 0 40px -6px rgba(139, 92, 246, 0.6); }
-  50%      { box-shadow: 0 0 0 10px rgba(103, 232, 249, 0.12), 0 0 80px -2px rgba(139, 92, 246, 0.85); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(103, 232, 249, 0), 0 0 40px -6px rgba(32, 149, 211, 0.6); }
+  50%      { box-shadow: 0 0 0 10px rgba(103, 232, 249, 0.12), 0 0 80px -2px rgba(32, 149, 211, 0.85); }
 }
 @utility pz-launch { animation: pz-launch 1.8s ease-in-out infinite; }
 

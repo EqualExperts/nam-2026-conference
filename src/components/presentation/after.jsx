@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { at, Show, Replay, Code, Label, Kicker, Tick, Verdict, IssueIcon, PrIcon, MergeIcon, later } from './kit.jsx';
 
-const box = 'rounded-2xl border border-hairline bg-surface';
+const box = 'rounded-2xl border border-edge bg-surface';
 
 /* ------------------------------------------------------------------ *
  * When it will not converge — needs-human.
@@ -18,7 +18,7 @@ function NeedsHumanScene({ step }) {
       <Show on={step === 0} from="scale" style={at(80, 80, 1440, 520)} className="grid grid-cols-[520px_1fr] gap-10">
         <div className="relative">
           <svg viewBox="0 0 520 480" className="absolute inset-0 size-full" aria-hidden="true">
-            <circle cx="260" cy="240" r="170" fill="none" stroke="#333950" strokeWidth="3" />
+            <circle cx="260" cy="240" r="170" fill="none" stroke="#1f5c80" strokeWidth="3" />
             <circle cx="260" cy="240" r="170" pathLength="1" className="pz-flow" fill="none" stroke="#f59e0b" strokeWidth="3" />
           </svg>
           {[['🛠️ Fix', 190, 30], ['🚦 Gate', 360, 300], ['🧐 Audit', 20, 300]].map(([l, x, y]) => (
@@ -54,7 +54,7 @@ function NeedsHumanScene({ step }) {
       {/* what it leaves behind */}
       <Show on={step >= 1} from="up" style={at(80, 70, 840)} className={`${box} overflow-hidden pb-6`}>
         <div className="flex items-center gap-3 border-b border-hairline px-6 py-4">
-          <IssueIcon className="size-6 text-emerald-400" />
+          <IssueIcon className="size-6 text-teal-400" />
           <span className="font-display text-[24px] text-ink">#140 Keep sessions in view on mobile</span>
         </div>
         <div className="flex items-center gap-2 px-6 pt-4">
@@ -63,7 +63,7 @@ function NeedsHumanScene({ step }) {
           <span className="pz-pop" style={later(RELABEL_AT)}><Label name="ready-for-ai" /></span>
         </div>
         <div className="m-6 mb-4 rounded-xl border border-hairline bg-raised p-5">
-          <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-violet-500/30 text-[14px]">🤖</span> ship · stopped at Code audit</div>
+          <div className="flex items-center gap-2 text-[15px] text-faint"><span className="grid size-7 place-items-center rounded-full bg-blue-500/30 text-[14px]">🤖</span> ship · stopped at Code audit</div>
           <div className="mt-3 text-[18px] text-ink">I could not get the first card into view on a 360 px phone without hiding the day tabs. <b>Still open:</b></div>
           <ul className="mt-2 space-y-1 text-[17px] text-muted">
             <li>• keep the day tabs visible, or collapse them behind Filters?</li>
@@ -85,7 +85,7 @@ function NeedsHumanScene({ step }) {
       </Show>
 
       <Show on={step >= 1} from="right" delay={700} style={at(960, 350, 560, 260)} className="flex flex-col justify-center gap-3">
-        <div className="pz-appear rounded-2xl border border-violet-400/50 bg-raised p-6" style={later(RELABEL_AT + 400)}>
+        <div className="pz-appear rounded-2xl border border-blue-400/50 bg-raised p-6" style={later(RELABEL_AT + 400)}>
             <div className="font-display text-[26px] text-ink">🔁 Back into ship</div>
             <div className="mt-2 text-[18px] text-muted">Relabel <Label name="ready-for-ai" className="mx-1 text-[12px]" /> and a fresh run picks up the answer, the branch and the spec.</div>
           </div>
@@ -113,8 +113,8 @@ const NEEDS_HUMAN_BEATS = [
 
 function Runner({ icon, name, file, lines, step, glow }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-[#0d0f15] transition-all duration-700 ${glow ? 'border-violet-400/50' : 'border-hairline'}`}>
-      <div className="flex items-center gap-3 border-b border-hairline bg-surface px-5 py-3">
+    <div className={`overflow-hidden rounded-2xl border bg-[#071322] transition-all duration-700 ${glow ? 'border-blue-400/50' : 'border-hairline'}`}>
+      <div className="flex items-center gap-3 border-b border-edge bg-surface px-5 py-3">
         <span className="text-[24px]">{icon}</span>
         <span className="font-display text-[22px] text-ink">{name}</span>
         <span className="ml-auto font-mono text-[13px] text-faint">{file}</span>
@@ -131,7 +131,7 @@ function ReviewScene({ step }) {
   return (
     <>
       <Show on={step === 0} style={at(80, 80, 380, 260)} className={`${box} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-[14px] font-semibold text-white"><PrIcon /> Open</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1 text-[14px] font-semibold text-white"><PrIcon /> Open</span>
         <div className="mt-3 font-display text-[24px] leading-tight text-ink">#142 Keep sessions in view on mobile</div>
         <div className="mt-2 text-[16px] text-muted">opened → two workflows start, side by side</div>
       </Show>
@@ -165,9 +165,9 @@ function ReviewScene({ step }) {
             <div className="mx-auto mt-2 h-1.5 w-16 rounded-full bg-overlay" />
             <div className="p-3 font-mono text-[11px] text-faint">Pixel 7 · /schedule</div>
             <div className="space-y-2 px-3">
-              <div className="flex gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className="h-5 flex-1 rounded bg-violet-500/30" />)}</div>
+              <div className="flex gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className="h-5 flex-1 rounded bg-blue-500/30" />)}</div>
               <div className="grid grid-cols-2 gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className="h-5 rounded bg-raised" />)}</div>
-              {[0, 1, 2, 3].map((i) => <div key={i} className={`h-[60px] rounded-lg ${i === 0 ? 'bg-emerald-500/20 ring-1 ring-emerald-400/60' : 'bg-raised'}`} />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className={`h-[60px] rounded-lg ${i === 0 ? 'bg-teal-500/20 ring-1 ring-teal-400/60' : 'bg-raised'}`} />)}
             </div>
           </div>
           {[[120, 70, 400], [330, 210, 900], [700, 230, 1400], [690, 120, 1900]].map(([x, y, d], i) => (
@@ -199,13 +199,13 @@ function ReviewScene({ step }) {
 
       {/* confidence decides who reads it */}
       <Replay on={step === 2} style={at(80, 80, 1440, 520)} className="grid grid-cols-2 gap-8">
-        <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-emerald-400/40 bg-emerald-500/[0.06] p-7" style={later(100)}>
-          <Kicker className="text-emerald-300">Both high</Kicker>
+        <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-teal-400/40 bg-teal-500/[0.06] p-7" style={later(100)}>
+          <Kicker className="text-teal-300">Both high</Kicker>
           <Verdict pass level="high" title="Code review">Every criterion traced.</Verdict>
           <Verdict pass level="high" title="QA">Every criterion exercised, both viewports.</Verdict>
           <div className="mt-auto flex items-center gap-4">
-            <span className="grid size-14 place-items-center rounded-full bg-emerald-500/20 text-[30px]">⚡</span>
-            <div><div className="font-display text-[28px] text-emerald-200">Merge on sight</div><div className="text-[16px] text-muted">the agents could judge all of it, and found nothing</div></div>
+            <span className="grid size-14 place-items-center rounded-full bg-teal-500/20 text-[30px]">⚡</span>
+            <div><div className="font-display text-[28px] text-teal-200">Merge on sight</div><div className="text-[16px] text-muted">the agents could judge all of it, and found nothing</div></div>
           </div>
         </div>
         <div className="pz-appear flex flex-col gap-4 rounded-3xl border border-amber-400/40 bg-amber-500/[0.06] p-7" style={later(700)}>
@@ -249,7 +249,7 @@ const REVIEW_BEATS = [
 const SPARKS = Array.from({ length: 34 }, (_, i) => {
   const a = (i / 34) * Math.PI * 2 + (i % 3) * 0.13;
   const r = 260 + ((i * 37) % 180);
-  return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, s: 8 + ((i * 5) % 12), c: ['bg-violet-300', 'bg-fuchsia-300', 'bg-cyan-300', 'bg-emerald-300'][i % 4] };
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, s: 8 + ((i * 5) % 12), c: ['bg-blue-300', 'bg-cyan-300', 'bg-cyan-300', 'bg-teal-300'][i % 4] };
 });
 
 function Burst() {
@@ -278,7 +278,7 @@ function MergeScene({ step }) {
       <Show on={step === 0} from="scale" style={at(330, 90, 940, 500)} className={`${box} flex flex-col items-center justify-center p-10 text-center`}>
         {merged && <Burst />}
         <motion.div
-          className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[20px] font-semibold text-white ${merged ? 'bg-violet-600' : 'bg-emerald-600'}`}
+          className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[20px] font-semibold text-white ${merged ? 'bg-blue-600' : 'bg-teal-600'}`}
           animate={{ scale: merged ? [1, 1.25, 1] : 1 }}
           transition={{ duration: 0.5 }}
         >
@@ -292,14 +292,14 @@ function MergeScene({ step }) {
         <motion.button
           type="button"
           tabIndex={-1}
-          className={`relative mt-8 rounded-xl px-8 py-4 font-display text-[24px] text-white ${merged ? 'bg-violet-700/50' : 'bg-emerald-600'}`}
+          className={`relative mt-8 rounded-xl px-8 py-4 font-display text-[24px] text-white ${merged ? 'bg-blue-700/50' : 'bg-teal-600'}`}
           animate={merged ? { scale: [1, 0.92, 1.06, 1] } : {}}
           transition={{ duration: 0.5 }}
         >
           {merged ? '✓ Pull request merged' : 'Merge pull request'}
-          {!merged && <span className="pz-ping absolute inset-0 rounded-xl border-2 border-emerald-300" style={{ animationDelay: '700ms' }} aria-hidden="true" />}
+          {!merged && <span className="pz-ping absolute inset-0 rounded-xl border-2 border-teal-300" style={{ animationDelay: '700ms' }} aria-hidden="true" />}
         </motion.button>
-        {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(139,92,246,0.7)', backgroundColor: 'rgba(196,181,253,0.16)' }} animate={{ boxShadow: '0 0 0 90px rgba(139,92,246,0)', backgroundColor: 'rgba(196,181,253,0)' }} transition={{ duration: 1.1 }} />}
+        {merged && <motion.div className="pointer-events-none absolute inset-0 rounded-2xl" initial={{ boxShadow: '0 0 0 0 rgba(32,149,211,0.7)', backgroundColor: 'rgba(147,197,253,0.16)' }} animate={{ boxShadow: '0 0 0 90px rgba(32,149,211,0)', backgroundColor: 'rgba(147,197,253,0)' }} transition={{ duration: 1.1 }} />}
       </Show>
 
     </>
@@ -320,5 +320,5 @@ export const NEEDS_HUMAN = [
 
 export const AFTER = [
   { id: 'review', name: 'Review and QA', accent: 'text-cyan-300', tone: 'cyan', beats: REVIEW_BEATS, Scene: ReviewScene },
-  { id: 'merge', name: 'Merge', accent: 'text-violet-300', tone: 'violet', beats: MERGE_BEATS, Scene: MergeScene },
+  { id: 'merge', name: 'Merge', accent: 'text-blue-300', tone: 'violet', beats: MERGE_BEATS, Scene: MergeScene },
 ];
