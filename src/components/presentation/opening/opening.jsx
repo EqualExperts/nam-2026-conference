@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { at, Show, Replay, Kicker, Tick, later, ClosingRow, Bridge } from '../kit.jsx';
+import { at, Show, Replay, Kicker, Tick, later } from '../kit.jsx';
 import { box, Face } from '../product/kit.jsx';
 import { Field } from '../product/intro.jsx';
 
@@ -76,7 +76,6 @@ function TitleScene() {
   return (
     <>
       <div style={at(80, 120, 1440, 700)} className="rounded-[36px] border-2 border-edge bg-surface" />
-      <Bridge className="pointer-events-none absolute" style={{ left: 1010, top: 190, width: 460, height: 430 }} />
       <div style={at(130, 160, 880, 540)}>
         <Kicker className="pz-appear !text-[20px]">Equal Experts · NAM conference 2026</Kicker>
         <h1 className="pz-appear mt-4 font-display text-[84px] font-bold leading-[0.95] text-ink" style={later(120)}>
@@ -647,13 +646,6 @@ function TodayScene({ step, leaving, advance }) {
             <div className="pz-appear mt-3 text-[15px] text-faint" style={later(1500)}>or press → as usual</div>
           </div>
         </motion.div>
-      </Show>
-      <Show on={step === 1} from="up" delay={600} style={at(0, 0, 1600, 900)} className="pointer-events-none">
-        <ClosingRow cards={[
-          { title: 'Shared context', sub: 'one base under every team' },
-          { title: 'Parallel work', sub: 'agents side by side' },
-          { title: 'Your labs', sub: 'product, then engineering' },
-        ]} />
       </Show>
     </>
   );

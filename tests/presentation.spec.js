@@ -344,7 +344,7 @@ async function worstContrast(page) {
 
 for (const deck of DECKS) {
   test.describe(`The ${deck.name} deck's NAM 2026 look`, () => {
-    test('every beat has the frame, the tab, an eyebrow and a title, in Lexend, with no violet and AA text', async ({ page }) => {
+    test('every beat has the tab, an eyebrow and a title, in Lexend, with no violet and AA text', async ({ page }) => {
       test.slow();
       const errors = failOnPageErrors(page);
       await page.goto(deck.path);
@@ -354,8 +354,7 @@ for (const deck of DECKS) {
         if (at > 1) await page.keyboard.press('ArrowRight');
         await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
         const where = `${deck.name} beat ${at}`;
-        await expect(page.getByTestId('deck-frame'), where).toBeVisible();
-        await expect(page.getByTestId('deck-tab'), where).toContainText(String(at));
+        await expect(page.getByTestId('deck-tab'), where).toBeVisible();
         if (!await page.locator('[data-eyebrow]').count()) problems.push(`${where}: no eyebrow`);
         if (!await page.locator('h1, h2, [data-deck-title]').count()) problems.push(`${where}: no title`);
         const bad = await page.evaluate(() => {
@@ -372,26 +371,24 @@ for (const deck of DECKS) {
       expect(errors).toEqual([]);
     });
 
-    test('the closing slide shows the bridge and three numbered cards', async ({ page }) => {
+    test('the closing slide has no bridge, no frame bar and no slide number in the tab', async ({ page }) => {
       await page.goto(deck.path);
       await expect(counter(page)).toHaveText(/^1 \//);
       await page.keyboard.press('End');
-      await expect(page.getByTestId('deck-bridge')).toBeVisible();
-      await expect(page.getByTestId('closing-card')).toHaveCount(3);
-      await expect(page.getByTestId('closing-card').first()).toContainText('01');
-      await expect.poll(() => page.getByTestId('deck-bridge').evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
+      await expect(page.getByTestId('deck-bridge')).toHaveCount(0);
+      await expect(page.getByTestId('deck-frame')).toHaveCount(0);
+      await expect(page.getByTestId('deck-tab')).toHaveText('');
       if (process.env.PR_SHOTS) await page.waitForTimeout(2500); // let the entrance finish
       await shotForPR(page, `${deck.name} closing slide`);
     });
 
     test('a content slide sits in a card on the table colours', async ({ page }) => {
       await page.goto(`${deck.path}?beat=3`);
-      await expect(page.getByTestId('deck-frame')).toBeVisible();
+      await expect(page.getByTestId('deck-tab')).toBeVisible();
       const css = await page.evaluate(() => {
         const bg = (id) => getComputedStyle(document.querySelector(`[data-testid="${id}"]`)).backgroundColor;
-        return { frame: bg('deck-frame'), tab: bg('deck-tab'), ground: getComputedStyle(document.querySelector('[data-testid="presentation"]')).backgroundColor };
+        return { tab: bg('deck-tab'), ground: getComputedStyle(document.querySelector('[data-testid="presentation"]')).backgroundColor };
       });
-      expect(css.frame).toBe('rgb(32, 149, 211)');
       expect(css.tab).toBe('rgb(23, 149, 212)');
       expect(css.ground).toBe('rgb(33, 33, 33)');
       if (process.env.PR_SHOTS) await page.waitForTimeout(2500);
@@ -401,21 +398,19 @@ for (const deck of DECKS) {
 }
 
 test.describe('The opening title slide', () => {
-  test('shows the bridge on the right and the white Equal Experts logo, big enough', async ({ page }) => {
+  test('shows the white Equal Experts logo, big enough, and no bridge', async ({ page }) => {
     await page.goto('/opening-presentation');
-    const bridge = page.getByTestId('deck-bridge');
     const logo = page.getByTestId('deck-logo');
-    await expect(bridge).toBeVisible();
+    await expect(page.getByTestId('deck-bridge')).toHaveCount(0);
     await expect(logo).toBeVisible();
     // the stage is scaled to the window: the 100px rule is the logo's size on the 1600px stage
     const stage = await page.locator('[data-testid="presentation"] > div.cursor-pointer').boundingBox();
     expect((await logo.boundingBox()).width / (stage.width / 1600)).toBeGreaterThanOrEqual(100);
-    const [b, l] = [await bridge.boundingBox(), await logo.boundingBox()];
-    expect(b.x).toBeGreaterThan(l.x + l.width);
+    const l = await logo.boundingBox();
     // the logo sits clear of the day list above it
     const day = await page.getByTestId('opening-day').boundingBox();
     expect(l.y).toBeGreaterThanOrEqual(day.y + day.height);
-    for (const img of [bridge, logo]) await expect.poll(() => img.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true);
+    await expect.poll(() => logo.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true);
     if (process.env.PR_SHOTS) await page.waitForTimeout(2500);
     await shotForPR(page, 'opening title slide');
   });

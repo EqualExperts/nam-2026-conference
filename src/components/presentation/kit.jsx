@@ -336,13 +336,8 @@ export function TwoPanel({ left, right, className = '', style }) {
   );
 }
 
-/** The Brooklyn bridge, the conference's logo. */
-export function Bridge({ className = '', style }) {
-  return <img data-testid="deck-bridge" src="/brand/nam-bridge-logo.png" alt="Brooklyn Bridge, the NAM 2026 logo" className={`rounded-2xl object-contain ${className}`} style={style} />;
-}
-
-/** Closing slides: a row of three numbered cards over the charcoal, and the bridge. */
-export function ClosingRow({ cards, y = 640, width = 1000, bridge = true }) {
+/** Closing slides: a row of three numbered cards over the charcoal. */
+export function ClosingRow({ cards, y = 640, width = 1000 }) {
   const colors = ['edge', 'orange', 'cyan'];
   return (
     <>
@@ -351,7 +346,6 @@ export function ClosingRow({ cards, y = 640, width = 1000, bridge = true }) {
           <AccentCard key={c.title} n={`0${i + 1}`} title={c.title} color={colors[i]} data-testid="closing-card" compact>{c.sub}</AccentCard>
         ))}
       </div>
-      {bridge && <Bridge className="pointer-events-none absolute" style={{ left: 1180, top: 600, width: 300, height: 280 }} />}
     </>
   );
 }

@@ -31,3 +31,7 @@
 
 ## Out of scope
 Restyling the rest of the app, changing slide content, beats or ordering, a light theme.
+
+## Revision after review
+
+The left bar and ticks, the slide number in the tab, the Brooklyn bridge everywhere, and the invented closing cards on the opening and product decks were removed: they overlapped content, repeated the chapter bar's count, looked out of place, or added labels that were never in the talks. The engineering deck's *Before lunch* timeline stays as cards.

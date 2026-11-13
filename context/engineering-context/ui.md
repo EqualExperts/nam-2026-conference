@@ -236,20 +236,18 @@ remaps) outlined `#38bdf8` (`border-edge`), titles `#fff`, muted and faint `#94a
 frame `#2095d3`, tab `#1795d4`, accents `orange #f59e0b`, `teal #3a9a9a`, `cyan #00c8e8`
 (the scenes' `emerald-*` classes are the teal ramp there; the old violet is gone, no scene
 class or hex may say violet). **Lexend is the only text font** (`--font-sans/display/mono`
-all resolve to it inside `.deck`; SVG `<text>` says it too). `Deck`'s `Frame` draws the
-left bar (`deck-frame`), the ticks and the top-right tab (`deck-tab`: the white Equal
-Experts logo above the slide number); `Backdrop` is the flat ground. An eyebrow is a
+all resolve to it inside `.deck`; SVG `<text>` says it too). `Deck`'s `Frame` draws only the top-right tab (`deck-tab`: the white Equal Experts logo, no
+slide number — the chapter bar counts the beats); there is no left bar and no bridge.
+`Backdrop` is the flat ground. An eyebrow is a
 `data-eyebrow` element (the caption's kicker, or `Kicker`) and a slide with no caption
 marks its title `data-deck-title`. `kit.jsx` has the card shapes — `Card` (circled numeral),
-`AccentCard` (colour bar, big numeral), `TwoPanel`, `Pill` — plus `Bridge` and `ClosingRow`:
-the last beat of each deck (the opening's *Over to Abraham*, the product's *Over to Jonas*,
-the engineering's *Before lunch*) is three numbered `closing-card`s and the bridge
-(`deck-bridge`). The opening's title slide is one large outlined card with the bridge on
-the right and the white logo (`deck-logo`, at least 100px wide) bottom-left. Files in
-`public/brand/`: `nam-bridge-logo.png`, `Equal_Experts_Logo_Monochrome_White.svg`. The
-supplied `charcoal-background.png` has the bridge baked into a corner, so it is not used.
+`AccentCard` (colour bar, big numeral), `TwoPanel`, `Pill` — plus `ClosingRow`, three
+numbered `closing-card`s; only the engineering deck's *Before lunch* uses it, for its
+timeline. The opening's title slide is one large outlined card with the white logo
+(`deck-logo`, at least 100px wide) bottom-left. The supplied `charcoal-background.png`
+has the bridge baked into a corner, so it is not used.
 Text colour pairs are pinned by `tests/unit/deck-contrast.test.js`, and
-`tests/presentation.spec.js` walks every beat of every deck for the frame, an eyebrow and
+`tests/presentation.spec.js` walks every beat of every deck for the tab, an eyebrow and
 title, Lexend, no violet and AA contrast of each text over its fill.
 
 It is the only place that uses **Motion** (`motion/react`) — springs, the
@@ -305,7 +303,7 @@ How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 ## Gotchas
 
 - **Visible and wide enough is not clear of its neighbours.** A deck's absolutely
-  positioned furniture (`deck-logo`, `deck-bridge`, `deck-tab`) can sit on top of slide text
+  positioned furniture (`deck-logo`, `deck-tab`) can sit on top of slide text
   while a visibility or size assertion passes. Give it a bounding-box no-overlap assertion
   against the text blocks, at the narrow desktop width too, and look at the screenshot.
 - `Icon` with a misspelled name, and `useToast` outside `<Toaster>`, both fail

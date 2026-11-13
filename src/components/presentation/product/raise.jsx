@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { at, Show, Tick, Token, later, ClosingRow } from '../kit.jsx';
+import { at, Show, Tick, Token, later } from '../kit.jsx';
 import { Versus, SkillHead } from './kit.jsx';
 import { Field } from './intro.jsx';
 
@@ -103,13 +103,6 @@ function HandoffScene({ leaving, advance }) {
             <div className="pz-appear mt-3 text-[15px] text-faint" style={later(1500)}>or press → as usual — the ticket carries over</div>
           </div>
         </motion.div>
-      </Show>
-      <Show from="up" delay={600} style={at(0, 0, 1600, 900)} className="pointer-events-none">
-        <ClosingRow cards={[
-          { title: 'create-tasks', sub: 'a conversation becomes tickets' },
-          { title: 'update-context', sub: 'what we learned is kept' },
-          { title: 'winnow', sub: 'the ticket carries over' },
-        ]} />
       </Show>
     </>
   );

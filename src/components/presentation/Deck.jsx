@@ -27,19 +27,14 @@ const STAGE_W = 1600;
 const STAGE_H = 900;
 
 /**
- * The NAM 2026 frame: a thick blue bar down the left edge with short ticks
- * along the top and bottom, and a tab at top right holding the Equal
- * Experts mark above the slide number.
+ * The NAM 2026 tab: a small blue tab at top right holding the Equal Experts
+ * mark. No slide number: the chapter bar already counts the beats.
  */
-function Frame({ number }) {
+function Frame() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-      <div data-testid="deck-frame" className="absolute bottom-[40px] left-0 top-[40px] w-[14px] bg-frame" />
-      <div className="absolute left-0 top-[40px] h-[6px] w-[56px] bg-frame" />
-      <div className="absolute bottom-[40px] left-0 h-[6px] w-[56px] bg-frame" />
-      <div data-testid="deck-tab" className="absolute right-[56px] top-0 flex h-[104px] w-[104px] flex-col items-center justify-center gap-1 rounded-b-xl bg-tab">
+      <div data-testid="deck-tab" className="absolute right-[56px] top-0 flex h-[64px] w-[104px] items-center justify-center rounded-b-xl bg-tab">
         <img src="/brand/Equal_Experts_Logo_Monochrome_White.svg" alt="" className="w-[76px]" />
-        <span className="text-[26px] font-bold leading-none text-ink">{number}</span>
       </div>
     </div>
   );
@@ -221,7 +216,7 @@ export function Deck({ chapters: CHAPTERS, title, next, captions = 'bottom' }) {
         style={{ width: STAGE_W, height: STAGE_H, transform: `translate(-50%, -50%) scale(${scale})`, perspective: 1800 }}
         onClick={advance}
       >
-        <Frame number={beat + 1} />
+        <Frame />
         <motion.div className="absolute inset-0" style={{ rotateX: parallax.rotateX, rotateY: parallax.rotateY, transformStyle: 'preserve-3d' }}>
           {CHAPTERS.map((c, i) => {
             if (Math.abs(i - chapter) > 1) return null;

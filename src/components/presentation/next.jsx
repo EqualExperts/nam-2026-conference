@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { at, Show, Replay, Kicker, Code, Terminal, PrIcon, later, ClosingRow, Bridge } from './kit.jsx';
+import { at, Show, Replay, Kicker, Code, Terminal, PrIcon, later, ClosingRow } from './kit.jsx';
 import { Orbits } from './intro.jsx';
 
 /*
@@ -460,12 +460,8 @@ function LunchScene() {
         <Terminal title="claude — nam-2026-conference" lines={LUNCH_LINES} className="flex-1" />
       </Show>
 
-      <Show on from="right" delay={400} style={at(1000, 215, 500, 400)}>
-        <Bridge className="size-full" />
-      </Show>
-
       <Show on from="up" delay={900} style={at(0, 0, 1600, 900)} className="pointer-events-none">
-        <ClosingRow bridge={false} y={635} width={1440} cards={LUNCH_TIMELINE} />
+        <ClosingRow y={635} width={1440} cards={LUNCH_TIMELINE} />
       </Show>
 
       <Show on from="up" delay={700} style={at(80, 765, 1440, 100)} className="flex flex-col gap-2 border-t border-hairline pt-3">
