@@ -24,7 +24,7 @@ function ContextScene({ step }) {
 
       <Show on={step >= 1} from="left" style={at(80, 70, 700, 540)} className={`${box} flex flex-col p-6`}>
         <Kicker>The project’s AI context</Kicker>
-        <div className="mt-3 space-y-1.5">
+        <div className="mt-2 space-y-1">
           {DOCS.map((d, i) => {
             const on = !asking || d.key || d.pick;
             const tone = asking && d.pick ? 'pz-glow border-teal-400/60 bg-raised' : asking && d.key ? 'border-blue-400/60 bg-raised' : 'border-hairline';
@@ -33,7 +33,7 @@ function ContextScene({ step }) {
             const nested = parts.length > 2;
             const name = nested ? parts[parts.length - 1] + (folder ? '/' : '') : d.f;
             return (
-              <div key={d.f} className={`pz-appear flex items-baseline gap-3 rounded-lg border px-3 py-1 transition-all duration-500 ${folder && !nested ? 'mt-2.5 border-transparent' : `${tone} ${nested && !folder ? 'ml-6' : ''}`} ${on ? '' : 'opacity-35'}`} style={later(200 + i * 100)}>
+              <div key={d.f} className={`pz-appear flex items-baseline gap-3 rounded-lg border px-3 py-0.5 transition-all duration-500 ${folder && !nested ? 'mt-2.5 border-transparent' : `${tone} ${nested && !folder ? 'ml-6' : ''}`} ${on ? '' : 'opacity-35'}`} style={later(200 + i * 100)}>
                 <div className={`font-mono text-[15px] ${folder ? 'font-bold text-blue-200' : 'text-ink'}`}>{name}</div>
                 <div className="text-[14px] text-faint">{d.what}</div>
               </div>
