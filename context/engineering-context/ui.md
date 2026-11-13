@@ -304,6 +304,10 @@ How to test one: `context/engineering-context/testing.md` § Testing a dialog.
 
 ## Gotchas
 
+- **Visible and wide enough is not clear of its neighbours.** A deck's absolutely
+  positioned furniture (`deck-logo`, `deck-bridge`, `deck-tab`) can sit on top of slide text
+  while a visibility or size assertion passes. Give it a bounding-box no-overlap assertion
+  against the text blocks, at the narrow desktop width too, and look at the screenshot.
 - `Icon` with a misspelled name, and `useToast` outside `<Toaster>`, both fail
   silently (nothing renders / no-op).
 - `SectionHeader` is each page's visible title; the smoke suite finds pages by it.
