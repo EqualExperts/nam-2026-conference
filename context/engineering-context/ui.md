@@ -192,7 +192,7 @@ product harness"), and the product deck on the one the engineering deck opens wi
 ("Continue to the engineering harness"); the engineering deck has no `next`.
 `components/presentation/chapters.js` lists the engineering chapters in order and
 `presentation/product/chapters.js` the product ones — the workflow first
-(`workflow.jsx`: the project context, the two-fold trick, context versus the task
+(`workflow.jsx`: the project context — its file list is `product/orbitContext.js`, checked against the repo by a unit test — the two-fold trick, context versus the task
 tracker, a chapter slide, the three skills as one possibility), then the winnow
 skills built from the bottom (create-tasks, update-context, winnow over both), the
 whole flow and the demo, the hand-off. A beat with `hero: true` is a title slide:
