@@ -19,21 +19,11 @@ const DOCS = [
   { f: '…', what: 'one doc per area' },
 ];
 
-const CHIPS = ['CLAUDE.md', 'context/index', 'context/engineering-context/testing.md', 'context/engineering-context/ui.md'];
-
 function ContextScene({ step }) {
-  const asking = step === 2;
+  const asking = step === 1;
   return (
     <>
-      {/* the title slide: its heading is the caption, set large; this is the picture beside it */}
-      <Show on={step === 0} from="right" delay={200} style={at(1120, 150, 400, 420)} className="flex flex-col items-center justify-center gap-5">
-        <div className="pz-glow grid size-[220px] place-items-center rounded-full border border-blue-400/60 bg-surface text-[120px]">📚</div>
-        {CHIPS.map((c, i) => (
-          <span key={c} className="pz-appear rounded-lg border border-hairline bg-raised px-4 py-1.5 font-mono text-[15px] text-muted" style={later(700 + i * 150)}>{c}</span>
-        ))}
-      </Show>
-
-      <Show on={step >= 1} from="left" style={at(80, 70, 700, 540)} className={`${box} flex flex-col p-6`}>
+      <Show from="left" style={at(80, 70, 700, 540)} className={`${box} flex flex-col p-6`}>
         <Kicker>The project’s AI context</Kicker>
         <div className="mt-4 space-y-2">
           {DOCS.map((d, i) => {
@@ -49,7 +39,7 @@ function ContextScene({ step }) {
         </div>
       </Show>
 
-      <Show on={step === 1} from="right" delay={300} style={at(820, 70, 700, 540)} className={`${box} flex flex-col gap-4 p-7`}>
+      <Show on={step === 0} from="right" delay={300} style={at(820, 70, 700, 540)} className={`${box} flex flex-col gap-4 p-7`}>
         <Kicker>The advanced README</Kicker>
         <div className="font-display text-[32px] leading-tight text-ink">Everything a newcomer — person or AI — needs to work here correctly.</div>
         <div className="mt-2 space-y-3 text-[19px] text-muted">
@@ -64,7 +54,7 @@ function ContextScene({ step }) {
         <div className="pz-appear mt-auto text-[17px] text-faint" style={later(2100)}>Plain files in the repository — versioned, reviewed and diffed like code.</div>
       </Show>
 
-      <Show on={step === 2} from="right" delay={300} style={at(820, 70, 700, 540)} className="flex flex-col gap-4">
+      <Show on={step === 1} from="right" delay={300} style={at(820, 70, 700, 540)} className="flex flex-col gap-4">
         <div className="rounded-xl border border-sky-400/40 bg-sky-500/10 px-5 py-3.5 text-[18px] text-ink">
           <div className="text-[14px] text-faint">you</div>
           How are the mobile specs run?
@@ -177,7 +167,7 @@ function DiagramScene() {
 
 /* ---- Context and tracker: two things, not one ---- */
 
-function TrackingScene({ step }) {
+function TrackingScene() {
   return (
     <>
       <Show from="left" style={at(80, 70, 620, 370)} className={`${box} flex flex-col p-7`}>
@@ -199,25 +189,9 @@ function TrackingScene({ step }) {
         <div className="mt-auto rounded-lg border border-blue-400/40 bg-blue-500/10 px-4 py-2.5 text-[17px] text-blue-100">Goal: planning</div>
       </Show>
 
-      <Show on={step === 1} from="none" style={at(700, 130, 200, 260)} className="flex flex-col justify-center gap-10 text-center">
-        <div>
-          <div className="text-[34px] text-blue-300">→</div>
-          <div className="text-[14px] leading-snug text-muted">pick the next task from where the project is today</div>
-        </div>
-        <div>
-          <div className="text-[34px] text-blue-300">←</div>
-          <div className="text-[14px] leading-snug text-muted">finishing a task changes where it is</div>
-        </div>
-      </Show>
-
-      <Show on={step === 0} from="up" delay={400} style={at(80, 480, 1440, 130)} className={`${box} flex items-center gap-6 px-8`}>
+      <Show from="up" delay={400} style={at(80, 480, 1440, 130)} className={`${box} flex items-center gap-6 px-8`}>
         <div className="text-[19px] leading-snug text-muted">
           Tasks <b className="text-ink">can</b> live in the context too. Keeping them outside is usually cheaper: the context stays a picture of <b className="text-ink">today</b>, while the tracker also carries what is done and what is coming.
-        </div>
-      </Show>
-      <Show on={step === 1} from="up" style={at(80, 480, 1440, 130)} className={`${box} flex items-center gap-6 px-8`}>
-        <div className="text-[19px] leading-snug text-muted">
-          Each shapes the other — but they are <b className="text-ink">not the same thing</b>, and a harness needs both: one to know, one to plan.
         </div>
       </Show>
     </>
@@ -289,7 +263,7 @@ function ImplementationScene() {
 
 const WORKFLOW_ALL = ['distil', 'remember', 'raise'];
 
-/* In order: the bare diagram, the two-fold trick, context versus tasks — the general flow — then the sample implementation: its chapter slide, the project context, the skills. */
+/* In order: the bare diagram, context versus tasks, the two-fold trick — the general flow — then the sample implementation: its chapter slide, the project context, the skills. */
 export const WORKFLOW = [
   {
     id: 'diagram', name: 'One way in', accent: 'text-cyan-300', tone: 'cyan',
@@ -301,6 +275,17 @@ export const WORKFLOW = [
       },
     ],
     Scene: DiagramScene,
+  },
+  {
+    id: 'tracking', name: 'Context and tasks', accent: 'text-amber-300', tone: 'amber', rail: { lit: ['raise'] },
+    beats: [
+      {
+        kicker: 'Two different goals',
+        title: 'The context is today; the tracker is past and future',
+        body: 'Tasks can be kept inside the context, but it is usually more efficient to keep them outside. The context should show the project as it is now; the tracker also keeps what is done and what is planned.',
+      },
+    ],
+    Scene: TrackingScene,
   },
   {
     id: 'loop', name: 'The two-fold trick', accent: 'text-cyan-300', tone: 'cyan', rail: { lit: ['remember'] },
@@ -319,22 +304,6 @@ export const WORKFLOW = [
     Scene: LoopScene,
   },
   {
-    id: 'tracking', name: 'Context and tasks', accent: 'text-amber-300', tone: 'amber', rail: { lit: (step) => (step === 0 ? ['raise'] : ['remember', 'raise']) },
-    beats: [
-      {
-        kicker: 'Two different goals',
-        title: 'The context is today; the tracker is past and future',
-        body: 'Tasks can be kept inside the context, but it is usually more efficient to keep them outside. The context should show the project as it is now; the tracker also keeps what is done and what is planned.',
-      },
-      {
-        kicker: 'They shape each other',
-        title: 'Pick tasks from the state; the state moves with the tasks',
-        body: 'What the project is today decides which task to pick next, and finishing a task changes what the project is. Complementary, influencing each other — and not the same thing.',
-      },
-    ],
-    Scene: TrackingScene,
-  },
-  {
     id: 'implementation', name: 'A sample implementation', accent: 'text-teal-300', tone: 'emerald', rail: { lit: WORKFLOW_ALL, commands: true },
     beats: [
       {
@@ -349,12 +318,6 @@ export const WORKFLOW = [
   {
     id: 'context', name: 'The project context', accent: 'text-blue-300', tone: 'violet', rail: { lit: ['remember'], commands: true },
     beats: [
-      {
-        hero: true,
-        kicker: 'Part of the workflow',
-        title: 'The project context',
-        body: 'The project’s memory, written for people and AI.',
-      },
       {
         kicker: 'The project context',
         title: 'A context is the project’s memory, written for people and AI',

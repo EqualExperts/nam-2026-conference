@@ -191,8 +191,40 @@ test.describe('The product presentation', () => {
     await expect(counter(page)).toHaveText(new RegExp(`^${total} /`));
     await expect(caption).toHaveCount(0);
     // the caption sets each word in its own box, so compare without the spaces
-    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Asampleimplementation', 'Theprojectcontext']);
+    expect(heroes.map((h) => h.replace(/\s/g, ''))).toEqual(['Asampleimplementation']);
     expect(errors).toEqual([]);
+  });
+
+  test('from the diagram the talk runs tracker, context, implementation', async ({ page }) => {
+    test.slow();
+    await page.goto('/product-presentation?beat=4');
+    await expect(counter(page)).toHaveText(/^4 \//);
+    const caption = page.getByTestId('presentation-caption');
+    const strip = (t) => t.replace(/\s/g, '');
+    const want = [
+      'The context is today; the tracker is past and future',
+      'Every decision starts from the context',
+      'When new information comes in, the context changes',
+      'A sample implementation',
+      'A context is the project’s memory, written for people and AI',
+    ];
+    for (let i = 0; i < want.length; i++) {
+      await page.keyboard.press('ArrowRight');
+      await expect(counter(page)).toHaveText(new RegExp(`^${5 + i} /`));
+      await expect.poll(async () => strip(await caption.getByRole('heading', { level: 2 }).innerText()), `beat ${5 + i}`).toBe(strip(want[i]));
+    }
+
+    // neither removed slide appears anywhere, and the deck is 20 beats
+    await page.goto('/product-presentation');
+    const { total } = await readCounter(page);
+    expect(total).toBe(20);
+    for (let at = 2; at < total; at++) {
+      await page.keyboard.press('ArrowRight');
+      await expect(counter(page)).toHaveText(new RegExp(`^${at} /`));
+      const title = strip(await caption.getByRole('heading', { level: 2 }).innerText());
+      expect(title).not.toContain(strip('Pick tasks from the state'));
+      expect(title).not.toBe(strip('The project context'));
+    }
   });
 
   test('clicking the stage on the last beat hands over', async ({ page }) => {
@@ -232,17 +264,17 @@ test.describe('The product presentation', () => {
  * The product talk's workflow rail (#299): Information â Distil â Remember Â· Raise,
  * drawn by Deck over the scenes, one node lit per chapter.
  */
-const NAMES = ['The product harness', 'Where tickets come from', 'One way in', 'The two-fold trick', 'Context and tasks', 'A sample implementation', 'The project context', 'One way to do it', 'create-tasks', 'update-context', 'winnow', 'Distil', 'The whole flow', 'Live demo', 'Over to the engineering harness'];
+const NAMES = ['The product harness', 'Where tickets come from', 'One way in', 'Context and tasks', 'The two-fold trick', 'A sample implementation', 'The project context', 'One way to do it', 'create-tasks', 'update-context', 'winnow', 'Distil', 'The whole flow', 'Live demo', 'Over to the engineering harness'];
 const ALL = 'distil remember raise';
-// [chapter, lit, commands shown] for each of the 22 beats, in order
+// [chapter, lit, commands shown] for each of the 20 beats, in order
 const RAIL = [
   ['The product harness', '', false],
   ['Where tickets come from', 'information', false], ['Where tickets come from', 'information', false],
   ['One way in', '', false],
+  ['Context and tasks', 'raise', false],
   ['The two-fold trick', 'remember', false], ['The two-fold trick', 'remember', false],
-  ['Context and tasks', 'raise', false], ['Context and tasks', 'remember raise', false],
   ['A sample implementation', ALL, true],
-  ['The project context', 'remember', true], ['The project context', 'remember', true], ['The project context', 'remember', true],
+  ['The project context', 'remember', true], ['The project context', 'remember', true],
   ['One way to do it', ALL, true], ['One way to do it', ALL, true],
   ['create-tasks', 'raise', true],
   ['update-context', 'remember', true],
@@ -292,7 +324,7 @@ test.describe('The product talk rail', () => {
   test('the rail sits clear of the scene under it', async ({ page }, testInfo) => {
     // 1600Ã900 on desktop, the phone viewport on mobile
     if (testInfo.project.name !== 'mobile') await page.setViewportSize({ width: 1600, height: 900 });
-    for (const beat of [2, 7, 9, 11, 13, 15, 21]) {
+    for (const beat of [2, 5, 8, 9, 11, 13, 19]) {
       await page.goto(`/product-presentation?beat=${beat}`);
       const rail = page.getByTestId('presentation-rail');
       await expect(rail).toBeVisible();
@@ -308,7 +340,7 @@ test.describe('The product talk rail', () => {
       const railBox = await rail.boundingBox();
       expect(railBox.y, `beat ${beat}: the rail sits on the top bar`).toBeGreaterThanOrEqual(bar.y + bar.height);
     }
-    await page.goto('/product-presentation?beat=9');
+    await page.goto('/product-presentation?beat=8');
     await expect(page.getByTestId('presentation-rail')).toHaveAttribute('data-lit', ALL);
     await page.waitForTimeout(process.env.PR_SHOTS ? 2500 : 0);
     await shotForPR(page, 'product talk rail on A sample implementation');

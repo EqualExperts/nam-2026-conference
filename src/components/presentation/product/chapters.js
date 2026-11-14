@@ -6,7 +6,7 @@ import { WINNOW } from './winnow.jsx';
 /**
  * The product talk, in order — the same chapter shape as the engineering
  * deck's: `{ id, name, accent, tone, beats, Scene, enter? }`. The workflow
- * comes first (context, the two-fold trick, context vs tasks), then the winnow
+ * comes first (context vs tasks, then the two-fold trick), then the winnow
  * skills as one way to run it, built from the bottom: create-tasks and
  * update-context, then winnow over both. It ends
  * on the frame the engineering talk opens with, and Deck's `next` carries the
