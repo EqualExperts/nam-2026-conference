@@ -195,8 +195,8 @@ product harness"), and the product deck on the one the engineering deck opens wi
 `components/presentation/chapters.js` lists the engineering chapters in order and
 `presentation/product/chapters.js` the product ones, problem then flow then
 implementation: title, Where tickets come from, One way in (the bare diagram),
-The two-fold trick (two beats), Context and tasks, A sample implementation (chapter
-slide), The project context, One way to do it (the three skills), then the winnow
+Context and tasks, The two-fold trick (two beats), A sample implementation (chapter
+slide), The project context (two beats, no title slide), One way to do it (the three skills), then the winnow
 skills built from the bottom (create-tasks, update-context, winnow and Distil), The
 whole flow, Live demo, the hand-off. A chapter may carry `rail` — a list of node
 ids, a function of the beat, or `{ lit, commands }` — and `Deck` (given a `Rail`
